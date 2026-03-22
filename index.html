@@ -470,11 +470,19 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 
 <!-- ══ 그래프 ══ -->
 <div class="sec" id="tab-graph">
+  <div style="display:flex;gap:6px;margin-bottom:.6rem;flex-wrap:wrap">
+    <div style="font-size:11px;color:var(--text2);align-self:center">기간:</div>
+    <div class="g-chip" id="gp7" onclick="setGPeriod(7,this)">7일</div>
+    <div class="g-chip" id="gp30" onclick="setGPeriod(30,this)">30일</div>
+    <div class="g-chip" id="gp90" onclick="setGPeriod(90,this)">90일</div>
+    <div class="g-chip active" id="gpAll" onclick="setGPeriod(0,this)">전체</div>
+  </div>
   <div class="g-filter">
     <div class="g-chip active" data-g="bg">혈당</div>
     <div class="g-chip active" data-g="ket">케톤</div>
     <div class="g-chip active" data-g="wt">체중</div>
-    <div class="g-chip active" data-g="kcal">칼로리</div>
+    <div class="g-chip" data-g="kcal">칼로리</div>
+    <div class="g-chip" data-g="ins">인슐린</div>
   </div>
   <div id="chartsWrap"></div>
 </div>
@@ -716,33 +724,108 @@ function renderHistory(){
 }
 
 /* 그래프 */
-let gInst=[];const gActive=new Set(['bg','ket','wt','kcal']);
-document.querySelectorAll('.g-chip').forEach(c=>{
+let gInst=[];let gPeriod=0;
+const gActive=new Set(['bg','ket','wt']);
+
+function setGPeriod(n,el){
+  gPeriod=n;
+  document.querySelectorAll('#gp7,#gp30,#gp90,#gpAll').forEach(x=>x.classList.remove('active'));
+  el.classList.add('active');
+  renderGraphs();
+}
+
+document.querySelectorAll('.g-filter .g-chip').forEach(c=>{
   c.onclick=()=>{const k=c.dataset.g;
+    if(!k)return;
     if(gActive.has(k)){if(gActive.size>1)gActive.delete(k);else return}else gActive.add(k);
     c.classList.toggle('active',gActive.has(k));renderGraphs();
   };
 });
+
+function getAllDates(){
+  const recs=state.records[state.activeCat]||{};
+  return Object.keys(recs).sort();
+}
+
+function getDateRange(){
+  if(gPeriod===0){
+    const all=getAllDates();
+    if(!all.length)return getLast(30);
+    const start=new Date(all[0]);
+    const end=new Date();
+    const days=[];
+    for(let d=new Date(start);d<=end;d.setDate(d.getDate()+1)){
+      days.push(d.toISOString().slice(0,10));
+    }
+    return days;
+  }
+  return getLast(gPeriod);
+}
+
 function getLast(n){const d=[];for(let i=n-1;i>=0;i--){const dt=new Date();dt.setDate(dt.getDate()-i);d.push(dt.toISOString().slice(0,10))}return d}
+
 function renderGraphs(){
   gInst.forEach(c=>c.destroy());gInst=[];
   const wrap=document.getElementById('chartsWrap');wrap.innerHTML='';
   const isDark=matchMedia('(prefers-color-scheme:dark)').matches;
   const gc=isDark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.05)';
   const tc=isDark?'#B4B2A9':'#888780';
-  const opts=()=>({responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:gc},ticks:{color:tc,font:{size:10}}},y:{grid:{color:gc},ticks:{color:tc,font:{size:10}}}}});
-  const days7=getLast(7),days30=getLast(30);
-  [{k:'bg',label:'혈당 (mg/dL)',days:days7,color:'#1D9E75',fn:d=>{const r=getRec(state.activeCat,d);const arr=r.bg.filter(x=>x.bg!=='').map(x=>parseFloat(x.bg));return arr.length?Math.round(arr.reduce((a,b)=>a+b)/arr.length):null}},
-   {k:'ket',label:'케톤 (mmol/L)',days:days7,color:'#BA7517',fn:d=>{const r=getRec(state.activeCat,d);const arr=r.bg.filter(x=>x.ketone!=='').map(x=>parseFloat(x.ketone));return arr.length?parseFloat((arr.reduce((a,b)=>a+b)/arr.length).toFixed(2)):null}},
-   {k:'wt',label:'체중 (kg)',days:days30,color:'#534AB7',fn:d=>{const r=getRec(state.activeCat,d);const ws=r.weights||[];return ws.length?ws[ws.length-1].weight:null}},
-   {k:'kcal',label:'칼로리 (kcal)',days:days7,color:'#185FA5',fn:d=>{const r=getRec(state.activeCat,d);const s=r.meals.reduce((a,m)=>a+m.kcal,0);return s||null}},
-  ].forEach(def=>{
+  const days=getDateRange();
+  const periodLabel=gPeriod===0?'전체':gPeriod+'일';
+
+  const defs=[
+    {k:'bg',label:`혈당 (mg/dL) — 최근 ${periodLabel}`,color:'#1D9E75',type:'line',
+     yMin:0,yMax:450,
+     annotations:[{value:200,color:'rgba(186,117,23,0.4)',label:'200'},{value:80,color:'rgba(24,95,165,0.4)',label:'80'}],
+     fn:d=>{const r=getRec(state.activeCat,d);const arr=r.bg.filter(x=>x.bg!=='').map(x=>parseFloat(x.bg));return arr.length?Math.round(arr.reduce((a,b)=>a+b)/arr.length):null}},
+    {k:'ket',label:`케톤 (mmol/L) — 최근 ${periodLabel}`,color:'#BA7517',type:'line',
+     yMin:0,yMax:6,
+     annotations:[{value:2.4,color:'rgba(216,90,48,0.5)',label:'2.4 위험'},{value:0.5,color:'rgba(186,117,23,0.3)',label:'0.5 주의'}],
+     fn:d=>{const r=getRec(state.activeCat,d);const arr=r.bg.filter(x=>x.ketone!=='').map(x=>parseFloat(x.ketone));return arr.length?parseFloat((arr.reduce((a,b)=>a+b)/arr.length).toFixed(2)):null}},
+    {k:'wt',label:`체중 (kg) — 최근 ${periodLabel}`,color:'#534AB7',type:'line',
+     fn:d=>{const r=getRec(state.activeCat,d);const ws=r.weights||[];return ws.length?ws[ws.length-1].weight:null}},
+    {k:'kcal',label:`칼로리 (kcal) — 최근 ${periodLabel}`,color:'#185FA5',type:'bar',
+     fn:d=>{const r=getRec(state.activeCat,d);const s=r.meals.reduce((a,m)=>a+m.kcal,0);return s||null}},
+    {k:'ins',label:`인슐린 투여량 (U) — 최근 ${periodLabel}`,color:'#BA7517',type:'bar',
+     fn:d=>{const r=getRec(state.activeCat,d);const arr=r.ins.map(x=>parseFloat(x.dose)).filter(x=>!isNaN(x));return arr.length?parseFloat((arr.reduce((a,b)=>a+b)/arr.length).toFixed(1)):null}},
+  ];
+
+  defs.forEach(def=>{
     if(!gActive.has(def.k))return;
-    const data=def.days.map(def.fn);const labels=def.days.map(d=>d.slice(5));
+    const data=def.days?def.days.map(def.fn):days.map(def.fn);
+    const labels=days.map(d=>d.slice(5));
+    const hasData=data.some(v=>v!==null);
+
     const card=document.createElement('div');card.className='card';
-    card.innerHTML=`<div class="card-title">${def.label} (최근 ${def.days.length}일)</div><div class="chart-wrap" style="height:150px"><canvas id="gc_${def.k}"></canvas></div>`;
+    card.innerHTML=`<div class="card-title">${def.label}</div><div class="chart-wrap" style="height:160px"><canvas id="gc_${def.k}"></canvas></div>`;
     wrap.appendChild(card);
-    gInst.push(new Chart(document.getElementById('gc_'+def.k),{type:def.k==='kcal'?'bar':'line',data:{labels,datasets:[{data,borderColor:def.color,backgroundColor:def.color+'22',tension:.4,fill:def.k!=='kcal',pointRadius:4,pointBackgroundColor:def.color,spanGaps:false,borderRadius:def.k==='kcal'?5:0}]},options:opts()}));
+
+    const yOpts={grid:{color:gc},ticks:{color:tc,font:{size:10}}};
+    if(def.yMin!==undefined)yOpts.min=def.yMin;
+    if(def.yMax!==undefined)yOpts.max=def.yMax;
+    if(!hasData){yOpts.min=0;}
+
+    const datasets=[{data,borderColor:def.color,backgroundColor:def.color+'33',
+      tension:.35,fill:def.type==='line',pointRadius:days.length>60?2:4,
+      pointBackgroundColor:def.color,spanGaps:false,borderRadius:def.type==='bar'?4:0,borderWidth:2}];
+
+    // 참조선 추가
+    if(def.annotations){
+      def.annotations.forEach(ann=>{
+        datasets.push({data:days.map(()=>ann.value),borderColor:ann.color,borderWidth:1.5,
+          borderDash:[5,4],pointRadius:0,fill:false,tension:0});
+      });
+    }
+
+    const inst=new Chart(document.getElementById('gc_'+def.k),{
+      type:def.type||'line',
+      data:{labels,datasets},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>ctx.parsed.y!==null?`${ctx.parsed.y}`:''}}},
+        scales:{x:{grid:{color:gc},ticks:{color:tc,font:{size:10},maxTicksLimit:days.length>60?8:15}},y:yOpts}
+      }
+    });
+    gInst.push(inst);
   });
 }
 
