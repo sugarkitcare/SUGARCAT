@@ -1,0 +1,1316 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>당묘 케어 노트</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --teal:#1D9E75;--teal-l:#E1F5EE;--teal-d:#085041;
+  --amber:#BA7517;--amber-l:#FAEEDA;--amber-d:#633806;
+  --coral:#D85A30;--coral-l:#FAECE7;--coral-d:#712B13;
+  --blue:#185FA5;--blue-l:#E6F1FB;
+  --purple:#534AB7;--purple-l:#EEEDFE;--purple-d:#3C3489;
+  --green:#3B6D11;--green-l:#EAF3DE;
+  --bg:#fff;--bg2:#F1EFE8;--bg3:#F8F7F4;
+  --text:#2C2C2A;--text2:#888780;--text3:#B4B2A9;
+  --bd:rgba(0,0,0,0.1);
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#1e1e1c;--bg2:#2C2C2A;--bg3:#232321;
+  --text:#F1EFE8;--text2:#B4B2A9;--text3:#888780;
+  --bd:rgba(255,255,255,0.1);
+  --teal-l:#04342C;--amber-l:#412402;--coral-l:#4A1B0C;--blue-l:#042C53;--purple-l:#26215C;--green-l:#173404;
+}}
+html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(--text);min-height:100vh}
+.app{max-width:680px;margin:0 auto;padding:.75rem 1rem 4rem}
+
+/* 헤더 */
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:.75rem 0 .85rem;border-bottom:0.5px solid var(--bd);margin-bottom:1rem}
+.hdr-title{font-size:17px;font-weight:700;color:var(--teal)}
+.hdr-sub{font-size:11px;color:var(--text3);margin-top:2px}
+
+/* 고양이 탭 */
+.cat-bar{display:flex;gap:6px;margin-bottom:.85rem;overflow-x:auto;padding-bottom:2px}
+.cat-chip{padding:5px 14px;border-radius:20px;border:0.5px solid var(--bd);background:var(--bg);font-size:13px;color:var(--text2);cursor:pointer;white-space:nowrap;flex-shrink:0}
+.cat-chip.active{background:var(--teal);color:#fff;border-color:var(--teal)}
+.cat-chip.add{border-style:dashed;color:var(--teal);background:transparent}
+
+/* 내비 */
+.nav{display:flex;gap:3px;background:var(--bg2);border-radius:10px;padding:3px;margin-bottom:1rem}
+.nav-btn{flex:1;padding:7px 2px;border:none;background:transparent;border-radius:7px;font-size:11px;font-weight:500;color:var(--text2);cursor:pointer;font-family:inherit}
+.nav-btn.active{background:var(--bg);color:var(--teal);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+
+/* 섹션 */
+.sec{display:none}.sec.active{display:block}
+
+/* 카드 */
+.card{background:var(--bg);border:0.5px solid var(--bd);border-radius:12px;padding:.9rem 1rem;margin-bottom:.8rem}
+.card-title{font-size:12px;color:var(--text2);font-weight:500;margin-bottom:.65rem}
+
+/* 지표 */
+.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-bottom:.8rem}
+.metric{background:var(--bg2);border-radius:8px;padding:.6rem .4rem;text-align:center}
+.metric .mv{font-size:15px;font-weight:700;color:var(--teal)}
+.metric .ml{font-size:9px;color:var(--text3);margin-top:1px}
+.metric.warn .mv{color:var(--amber)}
+.metric.danger .mv{color:var(--coral)}
+.metric.purple .mv{color:var(--purple)}
+
+/* 입력 */
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.full{grid-column:1/-1}
+.ig{display:flex;flex-direction:column;gap:3px}
+.ig label{font-size:11px;color:var(--text2)}
+.ig input,.ig select{padding:7px 9px;border:0.5px solid var(--bd);border-radius:8px;font-size:13px;background:var(--bg2);color:var(--text);font-family:inherit}
+.ig input:focus,.ig select:focus{outline:none;border-color:var(--teal)}
+
+/* 버튼 */
+.btn{width:100%;padding:10px;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
+.btn-teal{background:var(--teal);color:#fff}
+.btn-purple{background:var(--purple);color:#fff}
+.btn-blue{background:var(--blue);color:#fff}
+.btn-amber{background:var(--amber);color:#fff}
+.btn-sm{width:auto;padding:5px 12px;font-size:12px;font-weight:500}
+
+/* 케톤 가이드 */
+.kg-row{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:.6rem}
+.kg{padding:3px 9px;border-radius:8px;font-size:11px;font-weight:500}
+.kg1{background:var(--teal-l);color:var(--teal-d)}
+.kg2{background:var(--amber-l);color:var(--amber-d)}
+.kg3{background:var(--coral-l);color:var(--coral-d)}
+
+/* 로그 */
+.log-list{display:flex;flex-direction:column;gap:5px}
+.log-item{display:flex;align-items:flex-start;gap:8px;padding:.6rem .8rem;background:var(--bg2);border-radius:8px}
+.log-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:3px}
+.ld-n{background:var(--teal)}.ld-w{background:var(--amber)}.ld-d{background:var(--coral)}.ld-wt{background:var(--purple)}.ld-m{background:var(--blue)}.ld-i{background:var(--amber)}
+.log-text{flex:1;font-size:12px;color:var(--text);line-height:1.5}
+
+/* 그래프 필터 */
+.g-filter{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:.75rem}
+.g-chip{padding:4px 11px;border-radius:14px;border:0.5px solid var(--bd);background:var(--bg);font-size:11px;color:var(--text2);cursor:pointer}
+.g-chip.active{background:var(--teal);color:#fff;border-color:var(--teal)}
+.chart-wrap{position:relative;width:100%}
+
+/* AI */
+.ai-chat{min-height:80px;margin-bottom:.75rem}
+.ai-msg{padding:.65rem .85rem;border-radius:10px;font-size:12px;line-height:1.7;margin-bottom:.5rem}
+.ai-msg.user{background:var(--teal-l);color:var(--teal-d);text-align:right}
+.ai-msg.bot{background:var(--bg2);color:var(--text)}
+.ai-typing{display:flex;gap:4px;padding:.65rem .85rem;background:var(--bg2);border-radius:10px;margin-bottom:.5rem}
+.ai-typing span{width:7px;height:7px;border-radius:50%;background:var(--teal);animation:bl 1.2s infinite}
+.ai-typing span:nth-child(2){animation-delay:.2s}
+.ai-typing span:nth-child(3){animation-delay:.4s}
+@keyframes bl{0%,80%,100%{opacity:.25}40%{opacity:1}}
+.ai-row{display:flex;gap:6px}
+.ai-row input{flex:1;padding:9px 10px;border:0.5px solid var(--bd);border-radius:9px;font-size:13px;background:var(--bg2);color:var(--text);font-family:inherit}
+.ai-row input:focus{outline:none;border-color:var(--teal)}
+.ai-send{padding:9px 14px;border:none;border-radius:9px;background:var(--teal);color:#fff;font-size:13px;cursor:pointer;font-weight:500}
+
+/* 업로드존 */
+.drop-zone{border:1.5px dashed var(--bd);border-radius:10px;padding:1.2rem;text-align:center;cursor:pointer;background:var(--bg2);margin-bottom:.75rem}
+.drop-zone:hover,.drop-zone.drag{border-color:var(--teal);background:var(--teal-l)}
+.drop-title{font-size:13px;font-weight:500;color:var(--text);margin-bottom:3px}
+.drop-sub{font-size:11px;color:var(--text2);margin-bottom:8px}
+.drop-lbl{display:inline-block;padding:6px 16px;background:var(--teal);color:#fff;border-radius:7px;font-size:12px;font-weight:500;cursor:pointer}
+.img-prev{width:100%;max-height:150px;object-fit:contain;border-radius:8px;border:0.5px solid var(--bd);margin:.5rem 0}
+
+/* 상태박스 */
+.sbox{border-radius:9px;padding:.7rem .9rem;margin:.5rem 0;font-size:12px;display:flex;align-items:center;gap:8px}
+.sbox.loading{background:var(--blue-l);color:var(--blue)}
+.sbox.ok{background:var(--teal-l);color:var(--teal-d)}
+.sbox.err{background:var(--coral-l);color:var(--coral-d)}
+.spin{width:13px;height:13px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:sp .8s linear infinite;flex-shrink:0}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* 혈검 테이블 */
+.bt{width:100%;border-collapse:collapse;font-size:12px}
+.bt th{padding:6px 8px;text-align:left;color:var(--text2);font-weight:500;font-size:10px;border-bottom:0.5px solid var(--bd)}
+.bt td{padding:6px 8px;border-bottom:0.5px solid var(--bd);color:var(--text)}
+.bt tr:last-child td{border:none}
+.bn{display:inline-block;padding:1px 7px;border-radius:8px;font-size:10px;background:var(--teal-l);color:var(--teal-d)}
+.bh{display:inline-block;padding:1px 7px;border-radius:8px;font-size:10px;background:var(--coral-l);color:var(--coral-d)}
+.bl{display:inline-block;padding:1px 7px;border-radius:8px;font-size:10px;background:var(--blue-l);color:var(--blue)}
+
+/* 사료 판정 */
+.verdict{border-radius:10px;padding:.85rem 1rem;margin-bottom:.75rem;display:flex;align-items:center;gap:12px}
+.verdict.best{background:var(--teal-l)}.verdict.good{background:var(--green-l)}.verdict.caution{background:var(--amber-l)}.verdict.bad{background:var(--coral-l)}
+.vi{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.vt{font-size:13px;font-weight:500;margin-bottom:2px}
+.vs{font-size:11px;line-height:1.5}
+.verdict.best .vt,.verdict.best .vs{color:var(--teal-d)}
+.verdict.good .vt,.verdict.good .vs{color:var(--green)}
+.verdict.caution .vt,.verdict.caution .vs{color:var(--amber-d)}
+.verdict.bad .vt,.verdict.bad .vs{color:var(--coral-d)}
+
+/* 영양 그리드 */
+.n-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:.75rem}
+.n-card{background:var(--bg2);border-radius:8px;padding:.6rem .7rem}
+.n-val{font-size:15px;font-weight:500;color:var(--text);margin-bottom:1px}
+.n-lbl{font-size:10px;color:var(--text2)}
+.n-dm{font-size:10px;color:var(--text3);margin-top:1px}
+.n-card.hl .n-val{color:var(--teal)}.n-card.wn .n-val{color:var(--amber)}.n-card.dg .n-val{color:var(--coral)}
+
+/* 스코어 */
+.sb-row{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.sb-lbl{font-size:11px;color:var(--text2);width:65px;flex-shrink:0}
+.sb-bg{flex:1;height:7px;background:var(--bg2);border-radius:4px;overflow:hidden}
+.sb-fill{height:100%;border-radius:4px}
+.sb-val{font-size:11px;font-weight:500;color:var(--text);width:34px;text-align:right;flex-shrink:0}
+
+/* 태그 */
+.tags{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:.6rem}
+.tag{padding:3px 9px;border-radius:9px;font-size:11px;background:var(--bg2);color:var(--text2)}
+.tag.p{background:var(--teal-l);color:var(--teal-d)}.tag.c{background:var(--amber-l);color:var(--amber-d)}
+
+/* 이력 */
+.h-item{display:flex;align-items:center;gap:8px;padding:.6rem .85rem;background:var(--bg);border:0.5px solid var(--bd);border-radius:9px;margin-bottom:5px;cursor:pointer}
+.h-item:hover{background:var(--bg2)}
+.h-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.h-name{flex:1;font-size:12px;color:var(--text)}
+.h-meta{font-size:10px;color:var(--text3);text-align:right;line-height:1.5}
+.sec-lbl{font-size:12px;font-weight:500;color:var(--text2);margin-bottom:.6rem;display:flex;align-items:center;justify-content:space-between}
+.clr-btn{font-size:11px;padding:3px 9px;border:0.5px solid var(--bd);border-radius:6px;background:transparent;color:var(--text2);cursor:pointer}
+.sep{height:0.5px;background:var(--bd);margin:1rem 0}
+.empty{text-align:center;padding:1.5rem;color:var(--text3);font-size:13px}
+
+/* 토스트 */
+.toast-el{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);color:#fff;padding:9px 18px;border-radius:18px;font-size:12px;z-index:9999;white-space:nowrap;font-family:'Noto Sans KR',sans-serif}
+
+/* CGM 추출 결과 테이블 */
+.cgm-table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:.75rem}
+.cgm-table th{padding:6px 8px;text-align:left;color:var(--text2);font-weight:500;font-size:10px;border-bottom:0.5px solid var(--bd)}
+.cgm-table td{padding:7px 8px;border-bottom:0.5px solid var(--bd);color:var(--text)}
+.cgm-table tr:last-child td{border:none}
+.cgm-table tr:hover td{background:var(--bg2)}
+.cgm-badge{display:inline-block;padding:1px 7px;border-radius:8px;font-size:10px}
+.cgm-ok{background:var(--teal-l);color:var(--teal-d)}
+.cgm-hi{background:var(--coral-l);color:var(--coral-d)}
+.cgm-lo{background:var(--blue-l);color:var(--blue)}
+.cgm-warn{background:var(--amber-l);color:var(--amber-d)}
+
+/* AI 분석 결과 블록 */
+.ai-analysis{background:var(--bg2);border-radius:12px;padding:1rem 1.1rem;margin-top:.75rem}
+.ai-analysis-title{font-size:11px;font-weight:500;color:var(--teal);margin-bottom:.6rem;display:flex;align-items:center;gap:5px}
+.ai-analysis-body{font-size:13px;color:var(--text);line-height:1.8;white-space:pre-wrap}
+.ai-analysis-section{margin-bottom:.75rem;padding-bottom:.75rem;border-bottom:0.5px solid var(--bd)}
+.ai-analysis-section:last-child{border:none;margin-bottom:0;padding-bottom:0}
+.ai-section-lbl{font-size:11px;font-weight:700;color:var(--text2);margin-bottom:.3rem}
+
+/* TIR 게이지 */
+.tir-wrap{background:var(--bg2);border-radius:10px;padding:.75rem 1rem;margin-bottom:.75rem}
+.tir-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem}
+.tir-label{font-size:11px;color:var(--text2);font-weight:500}
+.tir-val{font-size:18px;font-weight:700}
+.tir-bar{height:10px;border-radius:5px;background:var(--bg3);overflow:hidden;margin-bottom:.3rem}
+.tir-fill{height:100%;border-radius:5px;transition:width .6s ease}
+.tir-desc{font-size:10px;color:var(--text3)}
+.tir-target{font-size:10px;color:var(--teal);text-align:right}
+/* 추세 화살표 */
+.trend-arrow{font-size:22px;font-weight:700;margin-left:4px}
+.ta-up2{color:#D85A30}.ta-up1{color:#BA7517}.ta-flat{color:#1D9E75}.ta-dn1{color:#185FA5}.ta-dn2{color:#534AB7}
+/* 이벤트 마커 라인 */
+.event-list{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:.6rem}
+.event-tag{padding:2px 8px;border-radius:7px;font-size:10px;background:var(--purple-l);color:var(--purple-d)}
+
+/* 앱 선택 라디오 */
+.app-selector{display:flex;gap:8px;margin-bottom:.85rem;flex-wrap:wrap}
+.app-opt{flex:1;min-width:120px;border:1.5px solid var(--bd);border-radius:10px;padding:.65rem .75rem;cursor:pointer;display:flex;align-items:center;gap:8px;transition:.15s;background:var(--bg)}
+.app-opt:hover{border-color:var(--teal)}
+.app-opt.selected{border-color:var(--teal);background:var(--teal-l)}
+.app-opt-icon{width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.app-opt-text{font-size:12px;font-weight:500;color:var(--text);line-height:1.3}
+.app-opt-sub{font-size:10px;color:var(--text2);margin-top:1px}
+.app-opt.selected .app-opt-text{color:var(--teal-d)}
+
+/* 파스타 전용 지표 */
+.pasta-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:.75rem}
+.pasta-metric{background:var(--bg2);border-radius:8px;padding:.6rem .5rem;text-align:center}
+.pasta-metric .pm-val{font-size:14px;font-weight:700;color:var(--text)}
+.pasta-metric .pm-lbl{font-size:9px;color:var(--text3);margin-top:1px}
+.gmi-good{color:var(--teal)!important}
+.gmi-warn{color:var(--amber)!important}
+.gmi-bad{color:var(--coral)!important}
+.cgm-stat{background:var(--bg2);border-radius:8px;padding:.55rem .4rem;text-align:center}
+.cgm-stat .sv{font-size:14px;font-weight:700}
+.cgm-stat .sl{font-size:9px;color:var(--text3);margin-top:1px}
+.danger-banner{background:var(--coral-l);border:1px solid var(--coral);border-radius:10px;padding:.75rem 1rem;margin-bottom:.75rem;font-size:13px;color:var(--coral-d);font-weight:500}
+.warn-banner{background:var(--amber-l);border:1px solid var(--amber);border-radius:10px;padding:.75rem 1rem;margin-bottom:.75rem;font-size:13px;color:var(--amber-d)}
+.ok-banner{background:var(--teal-l);border:1px solid var(--teal);border-radius:10px;padding:.75rem 1rem;margin-bottom:.75rem;font-size:13px;color:var(--teal-d)}
+</style>
+</head>
+<body>
+<div class="app">
+<div class="hdr">
+  <div><div class="hdr-title">🐾 당묘 케어 노트</div><div class="hdr-sub">혈당·케톤·체중·혈검·사료 통합 관리</div></div>
+</div>
+<div class="cat-bar" id="catBar"></div>
+<div class="nav">
+  <button class="nav-btn active" data-tab="daily">오늘 기록</button>
+  <button class="nav-btn" data-tab="cgm">연속혈당</button>
+  <button class="nav-btn" data-tab="graph">그래프</button>
+  <button class="nav-btn" data-tab="history">히스토리</button>
+  <button class="nav-btn" data-tab="bloodtest">혈액검사</button>
+  <button class="nav-btn" data-tab="food">사료분석</button>
+  <button class="nav-btn" data-tab="ai">AI 해석</button>
+</div>
+
+<!-- ══ 오늘 기록 ══ -->
+<div class="sec active" id="tab-daily">
+  <div class="metrics" id="todayMetrics">
+    <div class="metric"><div class="mv" id="mBg">--</div><div class="ml">혈당 mg/dL</div></div>
+    <div class="metric"><div class="mv" id="mKet">--</div><div class="ml">케톤 mmol/L</div></div>
+    <div class="metric"><div class="mv" id="mIns">--</div><div class="ml">인슐린 U</div></div>
+    <div class="metric purple"><div class="mv" id="mWt">--</div><div class="ml">체중 kg</div></div>
+  </div>
+  <div class="card">
+    <div class="card-title">혈당 · 케톤</div>
+    <div class="kg-row"><span class="kg kg1">정상 &lt;0.5</span><span class="kg kg2">주의 0.5~2.3</span><span class="kg kg3">위험 ≥2.4</span></div>
+    <div class="row2">
+      <div class="ig"><label>혈당 (mg/dL)</label><input type="number" id="bgVal" placeholder="예: 250"></div>
+      <div class="ig"><label>케톤 (mmol/L)</label><input type="number" id="ketVal" placeholder="예: 0.3" step="0.1"></div>
+      <div class="ig"><label>측정 시각</label><input type="time" id="bgTime"></div>
+      <div class="ig"><label>식전/식후</label><select id="bgType"><option>식전</option><option>식후2h</option><option>식후4h</option><option>기타</option></select></div>
+      <div class="ig full"><label>메모</label><input type="text" id="bgNote" placeholder="식욕, 활동량, 특이사항"></div>
+    </div>
+    <button class="btn btn-teal" id="saveBg">혈당·케톤 저장</button>
+  </div>
+  <div class="card">
+    <div class="card-title">몸무게</div>
+    <div class="row2">
+      <div class="ig"><label>체중 (kg)</label><input type="number" id="wtVal" placeholder="예: 3.54" step="0.01"></div>
+      <div class="ig"><label>측정 시각</label><input type="time" id="wtTime"></div>
+      <div class="ig full"><label>메모</label><input type="text" id="wtNote" placeholder="식전 측정 등"></div>
+    </div>
+    <div id="wtDiff" style="font-size:12px;color:var(--text2);margin-bottom:8px;min-height:16px"></div>
+    <button class="btn btn-purple" id="saveWt">체중 저장</button>
+  </div>
+  <div class="card">
+    <div class="card-title">인슐린 투여</div>
+    <div class="row2">
+      <div class="ig"><label>종류</label><select id="insType"><option>프로진크</option><option>글라진</option><option>레버미어</option><option>NPH</option><option>레귤러</option><option>기타</option></select></div>
+      <div class="ig"><label>투여량 (U)</label><input type="number" id="insVal" placeholder="예: 1.5" step="0.5"></div>
+      <div class="ig"><label>투여 시각</label><input type="time" id="insTime"></div>
+      <div class="ig"><label>투여 전 혈당</label><input type="number" id="insPreBg" placeholder="mg/dL"></div>
+    </div>
+    <button class="btn btn-amber" id="saveIns">인슐린 저장</button>
+  </div>
+  <div class="card">
+    <div class="card-title">식사 · 칼로리</div>
+    <div class="row2">
+      <div class="ig"><label>사료명</label><input type="text" id="foodName" placeholder="예: 몬지 레날"></div>
+      <div class="ig"><label>급여량 (g)</label><input type="number" id="foodAmt" placeholder="g"></div>
+      <div class="ig"><label>칼로리 (kcal)</label><input type="number" id="foodKcal" placeholder="kcal"></div>
+      <div class="ig"><label>급여 시각</label><input type="time" id="foodTime"></div>
+    </div>
+    <button class="btn btn-blue" id="saveMeal">식사 저장</button>
+  </div>
+</div>
+
+<!-- ══ 연속혈당(CGM) ══ -->
+<div class="sec" id="tab-cgm">
+
+  <!-- 업로드 카드 -->
+  <div class="card">
+    <div class="card-title">📸 CGM 앱 스크린샷 → AI 혈당 데이터 자동 추출</div>
+
+    <!-- 앱 선택 -->
+    <div style="font-size:11px;color:var(--text2);margin-bottom:.6rem">어떤 앱 화면을 업로드할 건가요?</div>
+    <div class="app-selector" id="appSelector">
+      <label class="app-opt selected" id="optCaresens">
+        <div class="app-opt-icon" style="background:#E1F5EE">📊</div>
+        <div>
+          <div class="app-opt-text">케어센스 에어</div>
+          <div class="app-opt-sub">CareSens Air / 센스365</div>
+        </div>
+        <input type="radio" name="cgmApp" value="caresens" checked>
+      </label>
+      <label class="app-opt" id="optPasta">
+        <div class="app-opt-icon" style="background:#FFF3E0">🍝</div>
+        <div>
+          <div class="app-opt-text">파스타 (PASTA)</div>
+          <div class="app-opt-sub">카카오헬스케어</div>
+        </div>
+        <input type="radio" name="cgmApp" value="pasta">
+      </label>
+    </div>
+
+    <div id="cgmAppHint" style="font-size:11px;color:var(--text2);margin-bottom:.75rem;line-height:1.6;padding:.6rem .75rem;background:var(--bg2);border-radius:8px">
+      📊 <b>케어센스 에어</b> — 하루치 혈당 그래프 화면 캡처 (센스365 앱도 OK)<br>
+      5분 간격 측정 데이터, 변동 화살표, 목표범위 밴드를 읽어요.
+    </div>
+    <div class="drop-zone" id="cgmDrop">
+      <div class="drop-title" id="cgmDropTitle">케어센스 에어 스크린샷 업로드</div>
+      <div class="drop-sub">하루치 혈당 그래프 화면 캡처 · JPG/PNG</div>
+      <label class="drop-lbl" for="cgmFile">스크린샷 선택</label>
+      <input type="file" id="cgmFile" accept="image/*" style="display:none">
+    </div>
+    <img id="cgmPreview" class="img-prev" style="display:none">
+    <div class="row2" style="margin-bottom:.75rem">
+      <div class="ig"><label>측정 날짜</label><input type="date" id="cgmDate"></div>
+      <div class="ig"><label>고양이</label><input type="text" id="cgmCat" placeholder="케이"></div>
+    </div>
+    <div id="cgmStatus" style="display:none"></div>
+  </div>
+
+  <!-- 추출 결과 -->
+  <div id="cgmResultCard" style="display:none">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem">
+        <div class="card-title" style="margin:0">추출된 혈당 데이터</div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-teal btn-sm" id="cgmSaveBtn">그래프에 저장</button>
+          <button class="btn btn-sm" id="cgmAiBtn" style="background:var(--purple);color:#fff">AI 분석</button>
+        </div>
+      </div>
+
+      <!-- 통계 요약 -->
+      <div class="cgm-stats" id="cgmStats"></div>
+
+      <!-- 위험 배너 -->
+      <div id="cgmBanner" style="display:none"></div>
+
+      <!-- 하루 혈당 미니 그래프 -->
+      <div class="chart-wrap" style="height:170px;margin-bottom:.75rem">
+        <canvas id="cgmDayChart"></canvas>
+      </div>
+
+      <!-- 수치 테이블 (접기/펼치기) -->
+      <details style="margin-bottom:.5rem">
+        <summary style="font-size:12px;color:var(--text2);cursor:pointer;padding:.3rem 0">측정값 목록 보기</summary>
+        <div style="overflow-x:auto;margin-top:.5rem">
+          <table class="cgm-table"><thead><tr><th>시각</th><th>혈당</th><th>변화</th><th>판정</th></tr></thead>
+          <tbody id="cgmTableBody"></tbody></table>
+        </div>
+      </details>
+    </div>
+
+    <!-- AI 분석 결과 -->
+    <div id="cgmAiResult" style="display:none">
+      <div class="card">
+        <div class="card-title">🤖 AI 혈당 패턴 분석</div>
+        <div id="cgmAiBody" class="ai-analysis-body" style="font-size:13px;line-height:1.8;color:var(--text)"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 저장된 CGM 이력 그래프 -->
+  <div id="cgmHistory" style="display:none">
+    <div class="sep"></div>
+    <div class="sec-lbl">
+      <span>저장된 CGM 기록</span>
+      <button class="clr-btn" id="cgmClear">전체 삭제</button>
+    </div>
+    <!-- 날짜별 평균 추이 -->
+    <div class="card">
+      <div class="card-title">일별 평균 혈당 추이</div>
+      <div class="chart-wrap" style="height:160px">
+        <canvas id="cgmTrendChart"></canvas>
+      </div>
+    </div>
+    <div id="cgmHistList"></div>
+  </div>
+</div>
+
+<!-- ══ 그래프 ══ -->
+<div class="sec" id="tab-graph">
+  <div class="g-filter">
+    <div class="g-chip active" data-g="bg">혈당</div>
+    <div class="g-chip active" data-g="ket">케톤</div>
+    <div class="g-chip active" data-g="wt">체중</div>
+    <div class="g-chip active" data-g="kcal">칼로리</div>
+  </div>
+  <div id="chartsWrap"></div>
+</div>
+
+<!-- ══ 히스토리 ══ -->
+<div class="sec" id="tab-history">
+  <div class="card">
+    <div class="card-title">오늘 기록 타임라인</div>
+    <div class="log-list" id="logList"><div class="empty">오늘 기록이 없어요</div></div>
+  </div>
+</div>
+
+<!-- ══ 혈액검사 ══ -->
+<div class="sec" id="tab-bloodtest">
+  <div class="card">
+    <div class="card-title">혈액검사지 업로드 → AI 자동 추출 → 항목별 그래프</div>
+    <div class="drop-zone" id="btDrop">
+      <div class="drop-title">혈액검사지 업로드</div>
+      <div class="drop-sub">이미지(JPG·PNG) 또는 PDF</div>
+      <label class="drop-lbl" for="btFile">파일 선택</label>
+      <input type="file" id="btFile" accept="image/*,application/pdf" style="display:none">
+    </div>
+    <img id="btPreview" class="img-prev" style="display:none">
+    <div class="row2" style="margin-bottom:.75rem">
+      <div class="ig"><label>검사 날짜</label><input type="date" id="btDate"></div>
+      <div class="ig"><label>고양이</label><input type="text" id="btCat" placeholder="케이"></div>
+    </div>
+    <div id="btStatus" style="display:none"></div>
+    <div id="btResult" style="display:none">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
+        <span id="btResultLabel" style="font-size:12px;color:var(--text2)"></span>
+        <button class="btn btn-teal btn-sm" id="btSave">저장 및 그래프 추가</button>
+      </div>
+      <div style="overflow-x:auto"><table class="bt"><thead><tr><th>항목</th><th>수치</th><th>단위</th><th>정상범위</th><th>상태</th></tr></thead><tbody id="btBody"></tbody></table></div>
+    </div>
+  </div>
+  <div id="btGraphSection" style="display:none">
+    <div class="sep"></div>
+    <div class="sec-lbl"><span>항목별 추이</span><span id="btHistCount" style="font-size:11px;color:var(--text3)"></span></div>
+    <div class="g-filter" id="btCatFilter"></div>
+    <div id="btChartsWrap"></div>
+  </div>
+</div>
+
+<!-- ══ 사료분석 ══ -->
+<div class="sec" id="tab-food">
+  <div class="card">
+    <div class="card-title">성분표 사진 → AI 분석 → 당뇨 적합성 판정 (DM 기준)</div>
+    <div class="drop-zone" id="fdDrop">
+      <div class="drop-title">성분표 사진 업로드</div>
+      <div class="drop-sub">건식·습식 사료 성분표 이미지</div>
+      <label class="drop-lbl" for="fdFile">사진 선택</label>
+      <input type="file" id="fdFile" accept="image/*,application/pdf" style="display:none">
+    </div>
+    <img id="fdPreview" class="img-prev" style="display:none">
+    <div class="row2" style="margin-bottom:.75rem">
+      <div class="ig"><label>사료 종류</label><select id="fdType"><option value="wet">습식(캔/파우치)</option><option value="dry">건식</option></select></div>
+      <div class="ig"><label>사료명(선택)</label><input type="text" id="fdName" placeholder="예: 몬지 레날"></div>
+    </div>
+    <div id="fdStatus" style="display:none"></div>
+    <div id="fdResult"></div>
+  </div>
+  <div id="fdHistory" style="display:none">
+    <div class="sep"></div>
+    <div class="sec-lbl"><span>분석 이력</span><button class="clr-btn" id="fdClear">전체 삭제</button></div>
+    <div id="fdHistList"></div>
+  </div>
+</div>
+
+<!-- ══ AI 해석 ══ -->
+<div class="sec" id="tab-ai">
+  <div class="card">
+    <div class="card-title">AI 수치 해석 · 케어 질문</div>
+    <div class="ai-chat" id="aiChat">
+      <div class="ai-msg bot">안녕하세요! 혈당·케톤·체중·사료 관련 궁금한 점을 입력해주세요 🐾<br>오늘 기록을 바탕으로 분석해드릴게요.</div>
+    </div>
+    <button class="btn btn-teal" id="autoAnalyze" style="margin-bottom:.6rem">📊 오늘 기록 자동 분석</button>
+    <div class="ai-row">
+      <input type="text" id="aiInput" placeholder="예: 케톤이 올랐는데 어떻게 할까요?">
+      <button class="ai-send" id="aiSend">전송</button>
+    </div>
+  </div>
+</div>
+</div><!-- /app -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const SK='dangmyo_v2',SK_BT='bt_v2',SK_FD='fd_v2';
+let state={cats:['케이','달래'],activeCat:'케이',records:{}};
+let btData=[],fdData=[];
+try{const d=localStorage.getItem(SK);if(d)state=JSON.parse(d)}catch(e){}
+try{const d=localStorage.getItem(SK_BT);if(d)btData=JSON.parse(d)}catch(e){}
+try{const d=localStorage.getItem(SK_FD);if(d)fdData=JSON.parse(d)}catch(e){}
+const saveS=()=>{try{localStorage.setItem(SK,JSON.stringify(state))}catch(e){}};
+const saveBT=()=>{try{localStorage.setItem(SK_BT,JSON.stringify(btData))}catch(e){}};
+const saveFD=()=>{try{localStorage.setItem(SK_FD,JSON.stringify(fdData))}catch(e){}};
+const today=()=>new Date().toISOString().slice(0,10);
+const nowT=()=>new Date().toTimeString().slice(0,5);
+function getRec(cat,date){
+  if(!state.records[cat])state.records[cat]={};
+  if(!state.records[cat][date])state.records[cat][date]={bg:[],ins:[],meals:[],weights:[]};
+  if(!state.records[cat][date].weights)state.records[cat][date].weights=[];
+  return state.records[cat][date];
+}
+function toast(msg,c='#1D9E75'){
+  const t=document.createElement('div');t.className='toast-el';t.style.background=c;t.textContent=msg;
+  document.body.appendChild(t);setTimeout(()=>t.remove(),2200);
+}
+function toB64(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(file)})}
+function showStat(id,type,msg){
+  const b=document.getElementById(id);b.style.display='flex';b.className='sbox '+type;
+  b.innerHTML=type==='loading'?`<div class="spin"></div><span>${msg}</span>`:`<span>${msg}</span>`;
+}
+function hideStat(id){document.getElementById(id).style.display='none'}
+
+['bgTime','wtTime','insTime','foodTime'].forEach(id=>document.getElementById(id).value=nowT());
+document.getElementById('btDate').value=today();
+
+/* 고양이 바 */
+function renderCatBar(){
+  const bar=document.getElementById('catBar');bar.innerHTML='';
+  state.cats.forEach(c=>{
+    const ch=document.createElement('div');ch.className='cat-chip'+(c===state.activeCat?' active':'');ch.textContent=c;
+    ch.onclick=()=>{state.activeCat=c;renderCatBar();updateMetrics();updateWtDiff();saveS()};bar.appendChild(ch);
+  });
+  const add=document.createElement('div');add.className='cat-chip add';add.textContent='+ 추가';
+  add.onclick=()=>{const n=prompt('고양이 이름');if(n&&!state.cats.includes(n)){state.cats.push(n);state.activeCat=n;renderCatBar();saveS()}};
+  bar.appendChild(add);
+}
+renderCatBar();
+
+function bgSt(bg,ket){if(ket>=2.4||bg>=400)return'danger';if(ket>=0.5||bg>=300)return'warn';return'normal'}
+function updateMetrics(){
+  const rec=getRec(state.activeCat,today());
+  const lb=rec.bg.length?rec.bg[rec.bg.length-1]:null;
+  const li=rec.ins.length?rec.ins[rec.ins.length-1]:null;
+  const lw=rec.weights.length?rec.weights[rec.weights.length-1]:null;
+  if(lb){
+    document.getElementById('mBg').textContent=lb.bg||'--';
+    document.getElementById('mKet').textContent=lb.ketone!==''?lb.ketone:'--';
+    const st=bgSt(lb.bg,lb.ketone);
+    document.querySelector('#todayMetrics .metric:nth-child(1)').className='metric'+(st==='danger'?' danger':st==='warn'?' warn':'');
+    document.querySelector('#todayMetrics .metric:nth-child(2)').className='metric'+(lb.ketone>=2.4?' danger':lb.ketone>=0.5?' warn':'');
+  }else{document.getElementById('mBg').textContent='--';document.getElementById('mKet').textContent='--';}
+  document.getElementById('mIns').textContent=li?li.dose+'U':'--';
+  document.getElementById('mWt').textContent=lw?lw.weight+'kg':'--';
+}
+updateMetrics();
+
+function updateWtDiff(){
+  const cat=state.activeCat,recs=state.records[cat]||{};
+  const dates=Object.keys(recs).sort().reverse();
+  let prev=null;for(const d of dates){const ws=recs[d].weights||[];if(ws.length){prev=ws[ws.length-1].weight;break;}}
+  document.getElementById('wtDiff').textContent=prev?`이전 체중: ${prev}kg`:'첫 번째 체중을 입력해주세요';
+}
+updateWtDiff();
+
+document.getElementById('wtVal').oninput=function(){
+  const v=parseFloat(this.value);if(isNaN(v))return;
+  const cat=state.activeCat,recs=state.records[cat]||{};
+  const dates=Object.keys(recs).sort().reverse();
+  let prev=null;for(const d of dates){const ws=recs[d].weights||[];if(ws.length){prev=ws[ws.length-1].weight;break;}}
+  if(prev){const diff=(v-prev).toFixed(2);const sign=diff>0?'+':'';const arr=diff>0?'▲':diff<0?'▼':'━';
+    document.getElementById('wtDiff').innerHTML=`이전 ${prev}kg → ${v}kg &nbsp;<b style="color:${diff>0?'var(--coral)':diff<0?'var(--blue)':'var(--text2)'}">${arr}${sign}${diff}kg</b>`;}
+};
+
+document.getElementById('saveBg').onclick=()=>{
+  const bg=parseFloat(document.getElementById('bgVal').value),ket=parseFloat(document.getElementById('ketVal').value);
+  if(isNaN(bg)&&isNaN(ket)){toast('혈당 또는 케톤을 입력해주세요','#D85A30');return}
+  getRec(state.activeCat,today()).bg.push({bg:isNaN(bg)?'':bg,ketone:isNaN(ket)?'':ket,time:document.getElementById('bgTime').value,type:document.getElementById('bgType').value,note:document.getElementById('bgNote').value,ts:Date.now()});
+  saveS();updateMetrics();['bgVal','ketVal','bgNote'].forEach(id=>document.getElementById(id).value='');toast('혈당·케톤 저장 완료!');
+};
+document.getElementById('saveWt').onclick=()=>{
+  const w=parseFloat(document.getElementById('wtVal').value);if(isNaN(w)){toast('체중을 입력해주세요','#D85A30');return}
+  getRec(state.activeCat,today()).weights.push({weight:w,time:document.getElementById('wtTime').value,note:document.getElementById('wtNote').value,ts:Date.now()});
+  saveS();updateMetrics();updateWtDiff();['wtVal','wtNote'].forEach(id=>document.getElementById(id).value='');toast('체중 저장 완료!');
+};
+document.getElementById('saveIns').onclick=()=>{
+  const dose=parseFloat(document.getElementById('insVal').value);if(isNaN(dose)){toast('투여량을 입력해주세요','#D85A30');return}
+  getRec(state.activeCat,today()).ins.push({type:document.getElementById('insType').value,dose,time:document.getElementById('insTime').value,preBg:document.getElementById('insPreBg').value,ts:Date.now()});
+  saveS();updateMetrics();['insVal','insPreBg'].forEach(id=>document.getElementById(id).value='');toast('인슐린 저장 완료!');
+};
+document.getElementById('saveMeal').onclick=()=>{
+  const name=document.getElementById('foodName').value,amt=document.getElementById('foodAmt').value;
+  if(!name&&!amt){toast('사료명 또는 급여량을 입력해주세요','#D85A30');return}
+  getRec(state.activeCat,today()).meals.push({name,amt:parseFloat(amt)||0,kcal:parseFloat(document.getElementById('foodKcal').value)||0,time:document.getElementById('foodTime').value,ts:Date.now()});
+  saveS();['foodName','foodAmt','foodKcal'].forEach(id=>document.getElementById(id).value='');toast('식사 저장 완료!');
+};
+
+/* 탭 전환 */
+document.querySelectorAll('.nav-btn').forEach(b=>{
+  b.onclick=()=>{
+    document.querySelectorAll('.nav-btn').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.sec').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');const tab=b.dataset.tab;
+    document.getElementById('tab-'+tab).classList.add('active');
+    if(tab==='cgm'){renderCgmHistory();}
+    if(tab==='graph')renderGraphs();
+    if(tab==='history')renderHistory();
+    if(tab==='bloodtest')renderBTGraphs();
+    if(tab==='food')renderFdHistory();
+  };
+});
+
+/* 히스토리 */
+function renderHistory(){
+  const rec=getRec(state.activeCat,today());const list=document.getElementById('logList');
+  const all=[];
+  rec.bg.forEach(r=>all.push({ts:r.ts,type:'bg',d:r}));
+  rec.ins.forEach(r=>all.push({ts:r.ts,type:'ins',d:r}));
+  rec.meals.forEach(r=>all.push({ts:r.ts,type:'meal',d:r}));
+  (rec.weights||[]).forEach(r=>all.push({ts:r.ts,type:'wt',d:r}));
+  all.sort((a,b)=>b.ts-a.ts);
+  if(!all.length){list.innerHTML='<div class="empty">오늘 기록이 없어요</div>';return}
+  list.innerHTML='';
+  all.forEach(item=>{
+    const d=item.d;let dot='ld-n',txt='';
+    if(item.type==='bg'){const st=bgSt(d.bg,d.ketone);dot='ld-'+(st==='danger'?'d':st==='warn'?'w':'n');txt=`[혈당·케톤] ${d.time} ${d.type} | ${d.bg||'–'} mg/dL · 케톤 ${d.ketone||'–'} mmol/L${d.note?' · '+d.note:''}`;}
+    else if(item.type==='ins'){dot='ld-i';txt=`[인슐린] ${d.time} | ${d.type} ${d.dose}U${d.preBg?' (투여 전 '+d.preBg+')':''}`;}
+    else if(item.type==='meal'){dot='ld-m';txt=`[식사] ${d.time} | ${d.name||'–'} ${d.amt}g${d.kcal?' · '+d.kcal+'kcal':''}`;}
+    else if(item.type==='wt'){dot='ld-wt';txt=`[체중] ${d.time} | ${d.weight}kg${d.note?' · '+d.note:''}`;}
+    list.innerHTML+=`<div class="log-item"><div class="log-dot ${dot}"></div><div class="log-text">${txt}</div></div>`;
+  });
+}
+
+/* 그래프 */
+let gInst=[];const gActive=new Set(['bg','ket','wt','kcal']);
+document.querySelectorAll('.g-chip').forEach(c=>{
+  c.onclick=()=>{const k=c.dataset.g;
+    if(gActive.has(k)){if(gActive.size>1)gActive.delete(k);else return}else gActive.add(k);
+    c.classList.toggle('active',gActive.has(k));renderGraphs();
+  };
+});
+function getLast(n){const d=[];for(let i=n-1;i>=0;i--){const dt=new Date();dt.setDate(dt.getDate()-i);d.push(dt.toISOString().slice(0,10))}return d}
+function renderGraphs(){
+  gInst.forEach(c=>c.destroy());gInst=[];
+  const wrap=document.getElementById('chartsWrap');wrap.innerHTML='';
+  const isDark=matchMedia('(prefers-color-scheme:dark)').matches;
+  const gc=isDark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.05)';
+  const tc=isDark?'#B4B2A9':'#888780';
+  const opts=()=>({responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:gc},ticks:{color:tc,font:{size:10}}},y:{grid:{color:gc},ticks:{color:tc,font:{size:10}}}}});
+  const days7=getLast(7),days30=getLast(30);
+  [{k:'bg',label:'혈당 (mg/dL)',days:days7,color:'#1D9E75',fn:d=>{const r=getRec(state.activeCat,d);const arr=r.bg.filter(x=>x.bg!=='').map(x=>parseFloat(x.bg));return arr.length?Math.round(arr.reduce((a,b)=>a+b)/arr.length):null}},
+   {k:'ket',label:'케톤 (mmol/L)',days:days7,color:'#BA7517',fn:d=>{const r=getRec(state.activeCat,d);const arr=r.bg.filter(x=>x.ketone!=='').map(x=>parseFloat(x.ketone));return arr.length?parseFloat((arr.reduce((a,b)=>a+b)/arr.length).toFixed(2)):null}},
+   {k:'wt',label:'체중 (kg)',days:days30,color:'#534AB7',fn:d=>{const r=getRec(state.activeCat,d);const ws=r.weights||[];return ws.length?ws[ws.length-1].weight:null}},
+   {k:'kcal',label:'칼로리 (kcal)',days:days7,color:'#185FA5',fn:d=>{const r=getRec(state.activeCat,d);const s=r.meals.reduce((a,m)=>a+m.kcal,0);return s||null}},
+  ].forEach(def=>{
+    if(!gActive.has(def.k))return;
+    const data=def.days.map(def.fn);const labels=def.days.map(d=>d.slice(5));
+    const card=document.createElement('div');card.className='card';
+    card.innerHTML=`<div class="card-title">${def.label} (최근 ${def.days.length}일)</div><div class="chart-wrap" style="height:150px"><canvas id="gc_${def.k}"></canvas></div>`;
+    wrap.appendChild(card);
+    gInst.push(new Chart(document.getElementById('gc_'+def.k),{type:def.k==='kcal'?'bar':'line',data:{labels,datasets:[{data,borderColor:def.color,backgroundColor:def.color+'22',tension:.4,fill:def.k!=='kcal',pointRadius:4,pointBackgroundColor:def.color,spanGaps:false,borderRadius:def.k==='kcal'?5:0}]},options:opts()}));
+  });
+}
+
+/* 혈액검사 */
+let btEx=null;
+function setupDrop(dropId,fileId,fn){
+  const drop=document.getElementById(dropId),file=document.getElementById(fileId);
+  drop.ondragover=e=>{e.preventDefault();drop.classList.add('drag')};
+  drop.ondragleave=()=>drop.classList.remove('drag');
+  drop.ondrop=e=>{e.preventDefault();drop.classList.remove('drag');const f=e.dataTransfer.files[0];if(f)fn(f)};
+  file.onchange=e=>{if(e.target.files[0])fn(e.target.files[0])};
+}
+setupDrop('btDrop','btFile',async file=>{
+  if(file.type.startsWith('image/')){const url=URL.createObjectURL(file);document.getElementById('btPreview').src=url;document.getElementById('btPreview').style.display='block';}
+  else document.getElementById('btPreview').style.display='none';
+  document.getElementById('btResult').style.display='none';
+  showStat('btStatus','loading','AI가 혈액검사지를 읽고 있어요...');
+  const b64=await toB64(file);
+  const sys='혈액검사지에서 모든 항목을 추출하여 아래 JSON만 출력하세요.\n{"items":[{"name":"항목명","abbr":"약어","value":숫자,"unit":"단위","refLow":숫자or null,"refHigh":숫자or null,"category":"신장|간|혈구|전해질|혈당|췌장|갑상선|단백|지질|기타"}]}';
+  let mc=file.type.startsWith('image/')?[{type:'image',source:{type:'base64',media_type:file.type,data:b64}},{type:'text',text:'모든 항목을 추출해주세요.'}]:[{type:'document',source:{type:'base64',media_type:'application/pdf',data:b64}},{type:'text',text:'모든 항목을 추출해주세요.'}];
+  try{
+    const resp=await fetch('/api/proxy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,system:finalSys,messages:[{role:'user',content:mc}]})});
+    const data=await resp.json();
+    const parsed=JSON.parse(data.content[0].text.replace(/```json|```/g,'').trim());
+    btEx={items:parsed.items,date:document.getElementById('btDate').value,cat:document.getElementById('btCat').value||state.activeCat};
+    hideStat('btStatus');
+    const tbody=document.getElementById('btBody');tbody.innerHTML='';
+    parsed.items.forEach(item=>{
+      const s=item.refLow!==null&&item.value<item.refLow?'l':item.refHigh!==null&&item.value>item.refHigh?'h':'n';
+      const badge=s==='n'?'<span class="bn">정상</span>':s==='h'?'<span class="bh">높음</span>':'<span class="bl">낮음</span>';
+      const ref=item.refLow!==null||item.refHigh!==null?`${item.refLow??''}~${item.refHigh??''}`:'–';
+      tbody.innerHTML+=`<tr><td>${item.name}${item.abbr&&item.abbr!==item.name?` <span style="color:var(--text3);font-size:10px">(${item.abbr})</span>`:''}</td><td style="font-weight:500">${item.value}</td><td style="color:var(--text2)">${item.unit||'–'}</td><td style="color:var(--text2)">${ref}</td><td>${badge}</td></tr>`;
+    });
+    document.getElementById('btResultLabel').textContent=`${btEx.cat} · ${btEx.date} (${parsed.items.length}개 항목)`;
+    document.getElementById('btResult').style.display='block';
+  }catch(e){showStat('btStatus','err','분석 오류. 다시 시도해주세요.');}
+});
+document.getElementById('btSave').onclick=()=>{
+  if(!btEx)return;btData.push({...btEx,ts:Date.now()});saveBT();btEx=null;
+  document.getElementById('btResult').style.display='none';toast('혈액검사 저장 완료!');renderBTGraphs();
+};
+let btGI=[],btAC=new Set();
+function renderBTGraphs(){
+  if(!btData.length){document.getElementById('btGraphSection').style.display='none';return}
+  document.getElementById('btGraphSection').style.display='block';
+  document.getElementById('btHistCount').textContent=`${btData.length}회 기록`;
+  const map={};
+  btData.forEach(rec=>(rec.items||[]).forEach(item=>{
+    const k=item.abbr||item.name;
+    if(!map[k])map[k]={name:item.name,abbr:k,unit:item.unit,category:item.category,refLow:item.refLow,refHigh:item.refHigh,points:[]};
+    map[k].points.push({date:rec.date,cat:rec.cat,value:item.value});
+  }));
+  const cats=[...new Set(Object.values(map).map(v=>v.category))];
+  if(btAC.size===0)cats.forEach(c=>btAC.add(c));
+  const fd=document.getElementById('btCatFilter');fd.innerHTML='';
+  cats.forEach(cat=>{
+    const ch=document.createElement('div');ch.className='g-chip'+(btAC.has(cat)?' active':'');ch.textContent=cat;
+    ch.onclick=()=>{if(btAC.has(cat)){if(btAC.size>1)btAC.delete(cat);else return}else btAC.add(cat);ch.classList.toggle('active',btAC.has(cat));renderBTGraphs()};
+    fd.appendChild(ch);
+  });
+  btGI.forEach(c=>c.destroy());btGI=[];
+  const wrap=document.getElementById('btChartsWrap');wrap.innerHTML='';
+  const isDark=matchMedia('(prefers-color-scheme:dark)').matches;
+  const gc2=isDark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.05)';const tc2=isDark?'#B4B2A9':'#888780';
+  const allCats=[...new Set(btData.map(d=>d.cat))];
+  const pal=['#1D9E75','#185FA5','#D85A30','#534AB7','#BA7517'];
+  const cc={};allCats.forEach((c,i)=>{cc[c]=pal[i%pal.length]});
+  Object.values(map).filter(item=>btAC.has(item.category)).forEach((item,idx)=>{
+    const dates=[...new Set(item.points.map(p=>p.date))].sort();
+    const card=document.createElement('div');card.className='card';
+    const lv=item.points[item.points.length-1]?.value;
+    const st=item.refLow!==null&&lv<item.refLow?'l':item.refHigh!==null&&lv>item.refHigh?'h':'n';
+    const badge=st==='n'?'<span class="bn">정상</span>':st==='h'?'<span class="bh">높음</span>':'<span class="bl">낮음</span>';
+    card.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem"><span class="card-title" style="margin:0">${item.name}${item.abbr&&item.abbr!==item.name?` (${item.abbr})`:''} <span style="color:var(--text3);font-size:10px">${item.unit||''}</span></span>${badge}</div><div class="chart-wrap" style="height:${dates.length>1?140:80}px"><canvas id="btc_${idx}"></canvas></div>`;
+    wrap.appendChild(card);
+    const datasets=allCats.map(cat=>{const dm={};item.points.filter(p=>p.cat===cat).forEach(p=>{dm[p.date]=p.value});return{label:cat,data:dates.map(d=>dm[d]??null),borderColor:cc[cat],backgroundColor:cc[cat]+'22',tension:.4,fill:dates.length>1,pointRadius:4,pointBackgroundColor:cc[cat],spanGaps:false}}).filter(ds=>ds.data.some(v=>v!==null));
+    btGI.push(new Chart(document.getElementById(`btc_${idx}`),{type:dates.length>1?'line':'bar',data:{labels:dates.map(d=>d.slice(5)),datasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:allCats.length>1,labels:{font:{size:10},color:tc2,boxWidth:8,boxHeight:8}}},scales:{x:{grid:{color:gc2},ticks:{color:tc2,font:{size:10}}},y:{grid:{color:gc2},ticks:{color:tc2,font:{size:10}}}}}}));
+  });
+}
+
+/* 사료 분석 */
+const cDM=(v,m)=>v===null?null:parseFloat((v/(100-m)*100).toFixed(1));
+const estCarb=(p,f,fi,a,m)=>parseFloat(Math.max(0,100-p-f-fi-a-m).toFixed(1));
+const getLv=cdm=>cdm<=5?'best':cdm<=10?'good':cdm<=15?'caution':'bad';
+const lvColor=lv=>({best:'#1D9E75',good:'#3B6D11',caution:'#BA7517',bad:'#D85A30'})[lv];
+
+setupDrop('fdDrop','fdFile',async file=>{
+  if(file.type.startsWith('image/')){const url=URL.createObjectURL(file);document.getElementById('fdPreview').src=url;document.getElementById('fdPreview').style.display='block';}
+  else document.getElementById('fdPreview').style.display='none';
+  document.getElementById('fdResult').innerHTML='';
+  showStat('fdStatus','loading','AI가 성분표를 분석하고 있어요...');
+  const b64=await toB64(file);const isWet=document.getElementById('fdType').value==='wet';const fdNm=document.getElementById('fdName').value||'분석 사료';
+  const sys=`사료 성분표를 분석하여 아래 JSON만 출력하세요.\n{"name":"사료명","type":"${isWet?'wet':'dry'}","moisture":수분%,"protein_af":단백질%,"fat_af":지방%,"fiber_af":조섬유%,"ash_af":조회분%,"carb_af":탄수화물%or null,"kcal_per_100g":칼로리or null,"phosphorus_af":인%or null,"ingredients_top5":["원료1","원료2","원료3","원료4","원료5"],"grain_free":true/false,"main_protein_source":"주단백질원","special_notes":"특이사항or 빈문자열"}`;
+  let mc=file.type.startsWith('image/')?[{type:'image',source:{type:'base64',media_type:file.type,data:b64}},{type:'text',text:`${isWet?'습식':'건식'} 사료. 사료명: ${fdNm}`}]:[{type:'document',source:{type:'base64',media_type:'application/pdf',data:b64}},{type:'text',text:`${isWet?'습식':'건식'} 사료. 사료명: ${fdNm}`}];
+  try{
+    const resp=await fetch('/api/proxy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1200,system:sys,messages:[{role:'user',content:mc}]})});
+    const data=await resp.json();
+    const parsed=JSON.parse(data.content[0].text.replace(/```json|```/g,'').trim());
+    parsed.foodNameInput=fdNm;hideStat('fdStatus');renderFdResult(parsed);
+    fdData.unshift({ts:Date.now(),data:parsed,name:parsed.name||fdNm});
+    if(fdData.length>20)fdData=fdData.slice(0,20);saveFD();renderFdHistory();
+  }catch(e){showStat('fdStatus','err','분석 오류. 다시 시도해주세요.');}
+});
+
+function renderFdResult(d){
+  const m=d.moisture??75,p=d.protein_af??0,f=d.fat_af??0,fi=d.fiber_af??0,a=d.ash_af??(d.type==='wet'?2:7);
+  const carb=d.carb_af!==null&&d.carb_af!==undefined?d.carb_af:estCarb(p,f,fi,a,m);
+  const cdm=cDM(carb,m),pdm=cDM(p,m),fdm=cDM(f,m);
+  const kcal=d.kcal_per_100g??Math.round(p*3.5+f*8.5+carb*3.5);
+  const lv=getLv(cdm??999);const lc=lvColor(lv);
+  const isEstC=d.carb_af===null||d.carb_af===undefined,isEstK=d.kcal_per_100g===null;
+  const name=d.name&&d.name!=='분석 사료'?d.name:d.foodNameInput||'분석 사료';
+  const vi={best:{ic:'★',t:`${name} — 당뇨 최적`,s:`탄수화물 DM ${cdm?.toFixed(1)}% (≤5% 충족)`},good:{ic:'○',t:`${name} — 당뇨 적합`,s:`탄수화물 DM ${cdm?.toFixed(1)}% (≤10% 이내)`},caution:{ic:'△',t:`${name} — 주의`,s:`탄수화물 DM ${cdm?.toFixed(1)}% (기준치 초과)`},bad:{ic:'✕',t:`${name} — 부적합`,s:`탄수화물 DM ${cdm?.toFixed(1)}% (고탄수화물)`}}[lv];
+  const ps=Math.min(100,Math.round((pdm??0)/60*100));
+  const cs=cdm!==null?Math.max(0,Math.round((1-cdm/30)*100)):50;
+  const tags=(d.ingredients_top5||[]).map((ing,i)=>{const lw=ing.toLowerCase();const cls=i===0?'p':lw.includes('쌀')||lw.includes('옥수수')||lw.includes('밀')||lw.includes('전분')||lw.includes('rice')||lw.includes('corn')?'c':'';return`<span class="tag ${cls}">${ing}</span>`}).join('');
+  const area=document.getElementById('fdResult');
+  area.innerHTML=`
+<div class="verdict ${lv}"><div class="vi" style="background:${lc}22">${vi.ic}</div><div><div class="vt">${vi.t}</div><div class="vs">${vi.s}${d.grain_free?' · 그레인프리':''}</div></div></div>
+<div class="card" style="padding:.8rem 1rem">
+  <div class="sb-row"><span class="sb-lbl">단백질 점수</span><div class="sb-bg"><div class="sb-fill" style="width:${ps}%;background:#1D9E75"></div></div><span class="sb-val">${ps}점</span></div>
+  <div class="sb-row"><span class="sb-lbl">저탄수 점수</span><div class="sb-bg"><div class="sb-fill" style="width:${cs}%;background:${cs>=70?'#1D9E75':cs>=40?'#BA7517':'#D85A30'}"></div></div><span class="sb-val">${cs}점</span></div>
+</div>
+<div class="n-grid">
+  <div class="n-card ${pdm>=35?'hl':''}"><div class="n-val">${p.toFixed(1)}%</div><div class="n-lbl">단백질 as-fed</div><div class="n-dm">DM ${pdm?.toFixed(1)}%</div></div>
+  <div class="n-card"><div class="n-val">${f.toFixed(1)}%</div><div class="n-lbl">지방 as-fed</div><div class="n-dm">DM ${fdm?.toFixed(1)}%</div></div>
+  <div class="n-card ${cdm<=5?'hl':cdm<=10?'':cdm<=15?'wn':'dg'}"><div class="n-val">${carb.toFixed(1)}%${isEstC?' *':''}</div><div class="n-lbl">탄수화물${isEstC?' (추정)':''}</div><div class="n-dm">DM ${cdm?.toFixed(1)}%</div></div>
+  <div class="n-card"><div class="n-val">${m.toFixed(1)}%</div><div class="n-lbl">수분</div><div class="n-dm">${d.type==='wet'?'습식':'건식'}</div></div>
+  <div class="n-card hl"><div class="n-val">${kcal}${isEstK?' *':''}</div><div class="n-lbl">kcal/100g${isEstK?' (추정)':''}</div><div class="n-dm">칼로리</div></div>
+  ${d.phosphorus_af!==null&&d.phosphorus_af!==undefined?`<div class="n-card ${d.phosphorus_af>0.5?'wn':'hl'}"><div class="n-val">${d.phosphorus_af}%</div><div class="n-lbl">인 (P)</div><div class="n-dm">>0.5% 신장 주의</div></div>`:''}
+</div>
+${tags?`<div class="tags">${tags}</div><div style="font-size:10px;color:var(--text3);margin-bottom:.5rem">초록: 단백질원 · 주황: 탄수화물원</div>`:''}
+${d.special_notes?`<div style="font-size:12px;color:var(--text2);line-height:1.6">${d.special_notes}</div>`:''}
+${isEstC||isEstK?`<div style="font-size:10px;color:var(--text3);margin-top:.4rem">* 직접 표기 없어 추정한 값이에요</div>`:''}`;
+}
+
+function renderFdHistory(){
+  const hist=document.getElementById('fdHistory');const list=document.getElementById('fdHistList');
+  if(!fdData.length){hist.style.display='none';return}
+  hist.style.display='block';list.innerHTML='';
+  fdData.forEach(h=>{
+    const d=h.data;const m=d.moisture??75;const p=d.protein_af??0,f=d.fat_af??0,fi=d.fiber_af??0,a=d.ash_af??(d.type==='wet'?2:7);
+    const carb=d.carb_af??estCarb(p,f,fi,a,m);const cdm=cDM(carb,m);
+    const kcal=d.kcal_per_100g??Math.round(p*3.5+f*8.5+carb*3.5);
+    const lv=getLv(cdm??999);const lc=lvColor(lv);
+    const dt=new Date(h.ts).toLocaleDateString('ko-KR',{month:'short',day:'numeric'});
+    const item=document.createElement('div');item.className='h-item';
+    item.innerHTML=`<div class="h-dot" style="background:${lc}"></div><div class="h-name">${h.name} <span style="font-size:10px;color:var(--text3)">${d.type==='wet'?'습식':'건식'}</span></div><div class="h-meta">탄수 DM ${cdm?.toFixed(1)}%<br>${kcal}kcal · ${dt}</div>`;
+    item.onclick=()=>{renderFdResult(d);window.scrollTo({top:0,behavior:'smooth'})};
+    list.appendChild(item);
+  });
+}
+document.getElementById('fdClear').onclick=()=>{if(confirm('이력을 삭제할까요?')){fdData=[];saveFD();renderFdHistory()}};
+renderFdHistory();
+
+/* AI */
+function buildCtx(){
+  const rec=getRec(state.activeCat,today());
+  const lb=rec.bg.length?rec.bg[rec.bg.length-1]:null;
+  const li=rec.ins.length?rec.ins[rec.ins.length-1]:null;
+  const lw=rec.weights.length?rec.weights[rec.weights.length-1]:null;
+  const kcal=rec.meals.reduce((a,m)=>a+m.kcal,0);
+  let ctx=`고양이: ${state.activeCat}\n오늘: ${today()}\n`;
+  if(lb)ctx+=`최근 혈당: ${lb.bg}mg/dL, 케톤: ${lb.ketone}mmol/L (${lb.time} ${lb.type})\n`;
+  if(li)ctx+=`최근 인슐린: ${li.type} ${li.dose}U (${li.time})\n`;
+  if(lw)ctx+=`오늘 체중: ${lw.weight}kg\n`;
+  if(kcal)ctx+=`오늘 총 칼로리: ${kcal}kcal\n`;
+  if(fdData.length){const last=fdData[0].data;const m=last.moisture??75;const carb=last.carb_af??estCarb(last.protein_af??0,last.fat_af??0,last.fiber_af??0,last.ash_af??(last.type==='wet'?2:7),m);ctx+=`최근 분석 사료: ${fdData[0].name} (탄수 DM ${cDM(carb,m)}%)\n`;}
+  return ctx;
+}
+async function sendAI(msg){
+  const chat=document.getElementById('aiChat');
+  const ud=document.createElement('div');ud.className='ai-msg user';ud.textContent=msg;chat.appendChild(ud);
+  const typing=document.createElement('div');typing.className='ai-typing';typing.innerHTML='<span></span><span></span><span></span>';chat.appendChild(typing);
+  chat.scrollTop=chat.scrollHeight;
+  try{
+    const resp=await fetch('/api/proxy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:800,system:`당신은 고양이 당뇨 전문 케어 어시스턴트입니다.\n현재 기록:\n${buildCtx()}\n규칙: ACVIM/WSAVA 기반. 케톤≥2.4 또는 혈당≥400 → 즉시 병원 안내 최우선. 진단은 수의사 영역 명시. 한국어 200자 내외.`,messages:[{role:'user',content:msg}]})});
+    const data=await resp.json();typing.remove();
+    const bd=document.createElement('div');bd.className='ai-msg bot';bd.textContent=data.content&&data.content[0]?data.content[0].text:'응답을 받지 못했습니다.';chat.appendChild(bd);
+  }catch(e){typing.remove();const ed=document.createElement('div');ed.className='ai-msg bot';ed.textContent='오류가 발생했습니다.';chat.appendChild(ed);}
+  chat.scrollTop=chat.scrollHeight;
+}
+document.getElementById('aiSend').onclick=()=>{const inp=document.getElementById('aiInput');const msg=inp.value.trim();if(!msg)return;inp.value='';sendAI(msg)};
+document.getElementById('aiInput').onkeydown=e=>{if(e.key==='Enter')document.getElementById('aiSend').click()};
+document.getElementById('autoAnalyze').onclick=()=>sendAI(`오늘 기록 전체 분석:\n${buildCtx()}\n전반적 상태와 주의사항을 알려주세요.`);
+
+/* ══════════════════════════════
+   CGM 연속혈당 기능
+══════════════════════════════ */
+const SK_CGM='cgmData_v1';
+let cgmData=[];
+try{const d=localStorage.getItem(SK_CGM);if(d)cgmData=JSON.parse(d)}catch(e){}
+const saveCGM=()=>{try{localStorage.setItem(SK_CGM,JSON.stringify(cgmData))}catch(e){}};
+
+document.getElementById('cgmDate').value=today();
+document.getElementById('cgmCat').value=state.activeCat||'케이';
+
+/* 앱 선택 토글 */
+let selectedApp='caresens';
+const hintMap={
+  caresens:'📊 <b>케어센스 에어</b> — 하루치 혈당 그래프 화면 캡처 (센스365 앱도 OK)<br>5분 간격 측정, 변동 화살표, 목표범위 밴드 자동 인식.',
+  pasta:'🍝 <b>파스타 (PASTA)</b> — 다이어리 탭 혈당 그래프 또는 리포트 화면 캡처<br>GMI·TIR·CV%·식사/운동 이벤트 아이콘까지 자동 추출해요.'
+};
+document.querySelectorAll('input[name="cgmApp"]').forEach(radio=>{
+  radio.addEventListener('change',()=>{
+    selectedApp=radio.value;
+    document.querySelectorAll('.app-opt').forEach(el=>el.classList.remove('selected'));
+    radio.closest('.app-opt').classList.add('selected');
+    document.getElementById('cgmAppHint').innerHTML=hintMap[selectedApp];
+    document.getElementById('cgmDropTitle').textContent=
+      selectedApp==='pasta'?'파스타 앱 스크린샷 업로드':'케어센스 에어 스크린샷 업로드';
+  });
+});
+
+let cgmExtracted=null;
+let cgmDayInst=null;
+let cgmTrendInst=null;
+
+setupDrop('cgmDrop','cgmFile',async file=>{
+  if(!file.type.startsWith('image/')){toast('이미지 파일만 업로드 가능해요','#D85A30');return}
+  const url=URL.createObjectURL(file);
+  document.getElementById('cgmPreview').src=url;
+  document.getElementById('cgmPreview').style.display='block';
+  document.getElementById('cgmResultCard').style.display='none';
+  document.getElementById('cgmAiResult').style.display='none';
+  showStat('cgmStatus','loading','AI가 혈당 그래프를 읽고 있어요... (15~25초 소요)');
+
+  const b64=await toB64(file);
+  const cgmDate=document.getElementById('cgmDate').value;
+  const cgmCat=document.getElementById('cgmCat').value||state.activeCat;
+
+  const sys=`당신은 케어센스 에어(CareSens Air) CGM 앱 스크린샷에서 고양이 혈당 데이터를 정밀 추출하는 전문 AI입니다.
+
+【케어센스 에어 UI 특성 — 반드시 숙지】
+- 5분 간격 측정, 하루 최대 288포인트
+- 화면 하단 또는 상단에 현재 혈당 수치(큰 숫자)와 변동 화살표(↑↑ ↑ → ↓ ↓↓) 표시
+- 그래프 상 점(dot)을 누르면 해당 시각·수치 팝업 표시
+- 단위: mg/dL (한국 기본) 또는 mmol/L — 화면에서 단위 확인 후 mg/dL로 통일
+- mmol/L이면 ×18 하여 mg/dL로 변환
+- 목표범위(보통 초록색 밴드): 일반적으로 70~180 또는 80~200 사이
+- 초록색 구간 = 정상, 노란색/빨간색 구간 = 고혈당 또는 저혈당
+- 그래프 X축: 시간(00:00~23:59), Y축: 혈당(mg/dL)
+- 하루치 요약 화면에 평균혈당, TIR(목표범위내시간%), 최고/최저 표시되는 경우 있음
+- 센스365(Sens365) 앱 화면도 동일 구조
+
+【추출 지침】
+1. 그래프의 점들을 왼쪽(이른 시각)→오른쪽(늦은 시각) 순서로 읽는다
+2. 점의 Y축 위치로 수치를 추정한다 (Y축 눈금 기준)
+3. 화면에 숫자가 직접 표시된 경우 우선 사용
+4. 시각은 X축 눈금에서 보간하여 HH:MM 형식으로
+5. 데이터 누락 구간(센서 오류, ??? 표시)은 건너뜀
+6. 최소 10개 이상, 최대 288개까지 추출 시도
+
+아래 JSON 형식으로만 출력하세요. 다른 텍스트 없이 JSON만:
+{
+  "device": "CareSens Air",
+  "date": "${cgmDate}",
+  "unit": "mg/dL",
+  "readings": [
+    {"time": "HH:MM", "value": 숫자(mg/dL 정수)},
+    ...
+  ],
+  "avg": 평균값정수,
+  "min": 최솟값정수,
+  "max": 최댓값정수,
+  "time_in_range_pct": TIR퍼센트정수(화면에 표시된 경우 그 값, 없으면 자체계산: 80~200범위 포인트/전체×100),
+  "trend_arrow": "현재 추세 화살표(↑↑/↑/→/↓/↓↓, 화면에 없으면 null)",
+  "events": [{"time":"HH:MM","type":"식사/인슐린/이벤트","note":"내용"}],
+  "gap_periods": ["데이터 누락 시간대(예: 03:00~04:30), 없으면 빈배열"],
+  "notes": "고혈당·저혈당 구간, 급상승·급하강 패턴 등 관찰된 특이사항. 없으면 빈문자열"
+}`;
+
+  // 파스타(PASTA) 전용 추출 프롬프트
+  const pastaPrompt=`당신은 카카오헬스케어 파스타(PASTA) 앱 스크린샷에서 고양이 혈당 데이터를 정밀 추출하는 전문 AI입니다.
+
+【파스타 앱 UI 특성 — 반드시 숙지】
+- 케어센스 에어(CareSens Air) 또는 덱스콤 G7과 SDK 직접 연동, 5분 간격 측정
+- 메인 화면(다이어리 탭): 상단에 현재 혈당 + 변동 화살표, 아래에 하루치 그래프
+- 그래프 배경: 초록 밴드(목표범위, 보통 70~180 mg/dL), 빨간 상단/하단(위험범위)
+- 그래프 위 컬러 아이콘: 🍽 식사, 🏃 운동, 💊 복약/인슐린, 😴 수면 이벤트
+- 리포트 화면: GMI(혈당 관리 지표), TIR%, 평균혈당, 표준편차(SD), 변동계수(CV%), 고혈당비율, 저혈당비율 표시
+- GMI는 추정 당화혈색소 값 (예: 7.2%) — 고양이에게는 참고값으로만 활용
+- 단위: mg/dL 기본 (mmol/L이면 ×18 변환)
+- 카카오 특유의 밝은 UI, 오렌지/노란 강조색 사용
+- 파스타 커넥트(Pasta Connect) 웹 리포트 캡처도 동일하게 처리
+
+【추출 지침】
+1. 그래프 점들을 시간 순서대로 읽음 (X축: 시간, Y축: 혈당)
+2. 이벤트 아이콘 위치·종류를 정확히 기록
+3. 리포트 화면이면 GMI, TIR, SD, CV% 값 우선 추출
+4. 배경 밴드 경계로 목표범위 상/하한 추정
+5. 누락 구간(연결선 끊김, No Data) 기록
+
+아래 JSON 형식으로만 출력하세요. 다른 텍스트 없이 JSON만:
+{
+  "device": "PASTA",
+  "date": "${cgmDate}",
+  "unit": "mg/dL",
+  "readings": [
+    {"time": "HH:MM", "value": 숫자(mg/dL 정수)},
+    ...
+  ],
+  "avg": 평균값정수,
+  "min": 최솟값정수,
+  "max": 최댓값정수,
+  "time_in_range_pct": TIR퍼센트정수(화면 표시값 우선, 없으면 자체 계산),
+  "trend_arrow": "↑↑/↑/→/↓/↓↓ 또는 null",
+  "gmi": GMI수치(예:7.2, 없으면 null),
+  "cv_pct": CV%수치(없으면 null),
+  "sd": 표준편차수치(없으면 null),
+  "high_pct": 고혈당비율%(없으면 null),
+  "low_pct": 저혈당비율%(없으면 null),
+  "target_low": 목표범위하한정수(보통70또는80),
+  "target_high": 목표범위상한정수(보통180또는200),
+  "events": [{"time":"HH:MM","type":"식사/운동/인슐린/복약/수면","note":"내용"}],
+  "gap_periods": ["누락 시간대, 없으면 빈배열"],
+  "notes": "식사 후 혈당 스파이크, 이벤트 전후 패턴 등 특이사항. 없으면 빈문자열"
+}`;
+
+  const finalSys = selectedApp==='pasta' ? pastaPrompt : sys;
+  try{
+    const resp=await fetch('/api/proxy',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',max_tokens:2000,system:finalSys,
+        messages:[{role:'user',content:[
+          {type:'image',source:{type:'base64',media_type:file.type,data:b64}},
+          {type:'text',text:`이 ${selectedApp==='pasta'?'파스타(PASTA)':'케어센스 에어'} 앱 스크린샷에서 고양이 ${cgmCat}의 ${cgmDate} 혈당 데이터를 모두 추출해주세요.`}
+        ]}]
+      })
+    });
+    const data=await resp.json();
+    const parsed=JSON.parse(data.content[0].text.replace(/```json|```/g,'').trim());
+    parsed.cat=cgmCat;parsed.date=cgmDate;parsed.appType=selectedApp;
+    cgmExtracted=parsed;
+    hideStat('cgmStatus');
+    renderCgmExtracted(parsed);
+  }catch(e){
+    showStat('cgmStatus','err','추출 오류. 혈당 그래프가 잘 보이는 스크린샷으로 다시 시도해주세요.');
+    console.error(e);
+  }
+});
+
+function bgLabel(v){
+  if(v<60)return{cls:'cgm-lo',txt:'저혈당'};
+  if(v<80)return{cls:'cgm-warn',txt:'주의'};
+  if(v<=200)return{cls:'cgm-ok',txt:'정상'};
+  if(v<=300)return{cls:'cgm-warn',txt:'고혈당'};
+  return{cls:'cgm-hi',txt:'위험'};
+}
+
+function renderCgmExtracted(d){
+  const readings=d.readings||[];
+  const avg=d.avg||Math.round(readings.reduce((a,r)=>a+r.value,0)/Math.max(readings.length,1));
+  const min=d.min||Math.min(...readings.map(r=>r.value));
+  const max=d.max||Math.max(...readings.map(r=>r.value));
+  const tir=d.time_in_range_pct;
+  const dangerCount=readings.filter(r=>r.value>=400||r.value<60).length;
+  const highCount=readings.filter(r=>r.value>200&&r.value<400).length;
+
+  // 통계 카드 — 추세 화살표 포함
+  const arrowMap={'↑↑':'ta-up2 ↑↑','↑':'ta-up1 ↑','→':'ta-flat →','↓':'ta-dn1 ↓','↓↓':'ta-dn2 ↓↓'};
+  const arrowKey=d.trend_arrow;
+  const arrowHtml=arrowKey&&arrowMap[arrowKey]?`<span class="trend-arrow ${arrowMap[arrowKey].split(' ')[0]}">${arrowMap[arrowKey].split(' ')[1]}</span>`:'';
+  const avgCls=avg<=200?'var(--teal)':avg<=300?'var(--amber)':'var(--coral)';
+  document.getElementById('cgmStats').innerHTML=`
+    <div class="cgm-stat"><div class="sv" style="color:${avgCls}">${avg}${arrowHtml}</div><div class="sl">평균 mg/dL</div></div>
+    <div class="cgm-stat"><div class="sv" style="color:var(--blue)">${min}</div><div class="sl">최저</div></div>
+    <div class="cgm-stat"><div class="sv" style="color:var(--coral)">${max}</div><div class="sl">최고</div></div>
+    <div class="cgm-stat"><div class="sv" style="color:var(--teal)">${readings.length}</div><div class="sl">측정 횟수</div></div>`;
+
+  // 파스타 전용 GMI·CV%·SD 블록
+  let pastaMetEl=document.getElementById('cgmPastaMetrics');
+  if(!pastaMetEl){
+    pastaMetEl=document.createElement('div');pastaMetEl.id='cgmPastaMetrics';
+    document.getElementById('cgmStats').after(pastaMetEl);
+  }
+  if(d.appType==='pasta'&&(d.gmi||d.cv_pct||d.sd||d.high_pct!==null)){
+    const gmiVal=d.gmi;
+    const gmiCls=!gmiVal?'':(gmiVal<7?'gmi-good':gmiVal<8?'gmi-warn':'gmi-bad');
+    const gmiDesc=!gmiVal?'–':`${gmiVal}%`;
+    const cvVal=d.cv_pct;
+    const cvCls=!cvVal?'':(cvVal<=36?'gmi-good':cvVal<=50?'gmi-warn':'gmi-bad');
+    pastaMetEl.innerHTML=`
+    <div style="font-size:10px;color:var(--text3);margin-bottom:4px;margin-top:2px">📊 파스타 리포트 지표</div>
+    <div class="pasta-metrics">
+      <div class="pasta-metric"><div class="pm-val ${gmiCls}">${gmiDesc}</div><div class="pm-lbl">GMI (추정 HbA1c)</div></div>
+      <div class="pasta-metric"><div class="pm-val ${cvCls}">${cvVal!==null&&cvVal!==undefined?cvVal+'%':'–'}</div><div class="pm-lbl">변동계수 CV% (≤36 안정)</div></div>
+      <div class="pasta-metric"><div class="pm-val">${d.sd!==null&&d.sd!==undefined?d.sd:'–'}</div><div class="pm-lbl">표준편차 SD</div></div>
+      ${d.high_pct!==null&&d.high_pct!==undefined?`<div class="pasta-metric"><div class="pm-val" style="color:var(--coral)">${d.high_pct}%</div><div class="pm-lbl">고혈당 비율</div></div>`:''}
+      ${d.low_pct!==null&&d.low_pct!==undefined?`<div class="pasta-metric"><div class="pm-val" style="color:var(--blue)">${d.low_pct}%</div><div class="pm-lbl">저혈당 비율</div></div>`:''}
+    </div>`;
+  }else{pastaMetEl.innerHTML=''}
+
+  // TIR 게이지 삽입 (cgmBanner 앞에)
+  let tirEl=document.getElementById('cgmTirGauge');
+  if(!tirEl){tirEl=document.createElement('div');tirEl.id='cgmTirGauge';document.getElementById('cgmBanner').before(tirEl);}
+  if(tir!==null&&tir!==undefined){
+    const tirColor=tir>=70?'#1D9E75':tir>=50?'#BA7517':'#D85A30';
+    tirEl.innerHTML=`<div class="tir-wrap">
+      <div class="tir-header"><span class="tir-label">TIR 목표범위내시간 (80~200 mg/dL)</span><span class="tir-val" style="color:${tirColor}">${tir}%</span></div>
+      <div class="tir-bar"><div class="tir-fill" style="width:${tir}%;background:${tirColor}"></div></div>
+      <div style="display:flex;justify-content:space-between"><span class="tir-desc">${tir>=70?'목표 달성 ✓':tir>=50?'목표 미달 (목표: ≥70%)':'관리 필요 (목표: ≥70%)'}</span><span class="tir-target">목표 ≥70%</span></div>
+    </div>`;
+  }else{tirEl.innerHTML='';}
+
+  // 이벤트 마커
+  let evEl=document.getElementById('cgmEvents');
+  if(!evEl){evEl=document.createElement('div');evEl.id='cgmEvents';document.getElementById('cgmBanner').after(evEl);}
+  const events=d.events||[];
+  if(events.length){
+    evEl.innerHTML=`<div class="event-list">${events.map(e=>`<span class="event-tag">🔖 ${e.time} ${e.type}${e.note?' · '+e.note:''}</span>`).join('')}</div>`;
+  }else{evEl.innerHTML=''}
+
+  // 배너
+  const banner=document.getElementById('cgmBanner');
+  if(dangerCount>0){
+    banner.style.display='block';banner.className='danger-banner';
+    banner.innerHTML=`⚠️ 위험 수치 ${dangerCount}회 감지 — 케톤 즉시 측정, 혈당 400↑ 또는 저혈당 60↓ 확인 시 수의사 상담 필요`;
+  }else if(highCount>=5){
+    banner.style.display='block';banner.className='warn-banner';
+    banner.innerHTML=`△ 고혈당(200↑) ${highCount}회 — 인슐린 용량 또는 식이 점검 권장`;
+  }else if(avg<=200){
+    banner.style.display='block';banner.className='ok-banner';
+    banner.innerHTML=`✓ 전반적으로 안정적인 혈당 패턴이에요 (평균 ${avg} mg/dL)`;
+  }else{banner.style.display='none'}
+
+  // 하루 그래프
+  if(cgmDayInst)cgmDayInst.destroy();
+  const isDark=matchMedia('(prefers-color-scheme:dark)').matches;
+  const gc=isDark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.05)';
+  const tc=isDark?'#B4B2A9':'#888780';
+  const labels=readings.map(r=>r.time);
+  const values=readings.map(r=>r.value);
+  const ptColors=values.map(v=>v>=400||v<60?'#D85A30':v>200?'#BA7517':v<80?'#185FA5':'#1D9E75');
+  cgmDayInst=new Chart(document.getElementById('cgmDayChart'),{
+    type:'line',
+    data:{labels,datasets:[
+      {data:values,borderColor:'#1D9E75',backgroundColor:'rgba(29,158,117,0.08)',
+       tension:.35,fill:true,pointRadius:3,pointBackgroundColor:ptColors,pointBorderColor:ptColors,spanGaps:false},
+      // 정상범위 상한선
+      {data:values.map(()=>200),borderColor:'rgba(186,117,23,0.3)',borderDash:[4,3],
+       borderWidth:1,pointRadius:0,fill:false},
+      // 정상범위 하한선
+      {data:values.map(()=>80),borderColor:'rgba(24,95,165,0.3)',borderDash:[4,3],
+       borderWidth:1,pointRadius:0,fill:false},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.parsed.y} mg/dL`}}},
+      scales:{
+        x:{grid:{color:gc},ticks:{color:tc,font:{size:9},maxTicksLimit:8}},
+        y:{grid:{color:gc},ticks:{color:tc,font:{size:10}},
+           suggestedMin:40,suggestedMax:Math.max(300,max+30)}
+      }
+    }
+  });
+
+  // 테이블
+  const tbody=document.getElementById('cgmTableBody');tbody.innerHTML='';
+  readings.forEach((r,i)=>{
+    const prev=i>0?readings[i-1].value:null;
+    const diff=prev!==null?r.value-prev:null;
+    const diffStr=diff===null?'–':diff>0?`▲${diff}`:`▼${Math.abs(diff)}`;
+    const diffColor=diff===null?'var(--text3)':diff>20?'var(--coral)':diff<-20?'var(--blue)':'var(--text2)';
+    const lb=bgLabel(r.value);
+    tbody.innerHTML+=`<tr><td>${r.time}</td><td style="font-weight:500">${r.value} mg/dL</td><td style="color:${diffColor};font-size:11px">${diffStr}</td><td><span class="cgm-badge ${lb.cls}">${lb.txt}</span></td></tr>`;
+  });
+
+  document.getElementById('cgmResultCard').style.display='block';
+}
+
+// 저장
+document.getElementById('cgmSaveBtn').onclick=()=>{
+  if(!cgmExtracted)return;
+  cgmData.unshift({ts:Date.now(),...cgmExtracted});
+  if(cgmData.length>60)cgmData=cgmData.slice(0,60);
+  saveCGM();
+  // 오늘 기록에도 혈당 데이터 추가
+  const readings=cgmExtracted.readings||[];
+  readings.forEach(r=>{
+    getRec(cgmExtracted.cat,cgmExtracted.date).bg.push({
+      bg:r.value,ketone:'',time:r.time,type:'CGM',note:'CGM 자동입력',ts:Date.now()
+    });
+  });
+  saveS();
+  toast(`${readings.length}개 혈당 데이터 저장 완료!`);
+  renderCgmHistory();
+};
+
+// AI 분석
+document.getElementById('cgmAiBtn').onclick=async()=>{
+  if(!cgmExtracted)return;
+  const aiResult=document.getElementById('cgmAiResult');
+  const aiBody=document.getElementById('cgmAiBody');
+  aiResult.style.display='block';
+  aiBody.textContent='분석 중...';
+
+  const readings=cgmExtracted.readings||[];
+  const avg=cgmExtracted.avg||Math.round(readings.reduce((a,r)=>a+r.value,0)/Math.max(readings.length,1));
+  const min=cgmExtracted.min||Math.min(...readings.map(r=>r.value));
+  const max=cgmExtracted.max||Math.max(...readings.map(r=>r.value));
+  const highPts=readings.filter(r=>r.value>200).map(r=>`${r.time}(${r.value})`).join(', ');
+  const lowPts=readings.filter(r=>r.value<80).map(r=>`${r.time}(${r.value})`).join(', ');
+
+  const isPasta = cgmExtracted.appType==='pasta';
+
+  const sysBase=`당신은 고양이 당뇨 전문 수의학 AI 어시스턴트입니다.
+${isPasta?'카카오헬스케어 파스타(PASTA)':'케어센스 에어(CareSens Air)'} CGM 데이터를 기반으로 고양이 혈당 패턴을 분석합니다.
+
+【분석 기준 — ACVIM/WSAVA 가이드라인 기반】
+- 고양이 정상 혈당: 80~200 mg/dL (공복 기준 80~150)
+- 저혈당 경고: <80 mg/dL → 즉시 소량 급식
+- 저혈당 위험: <60 mg/dL → 포도당 투여 + 즉시 병원
+- 고혈당: >200 mg/dL / 위험: >400 mg/dL + 케톤 상승 → DKA 의심
+- TIR 목표: ≥70% (고양이 당뇨 관리 목표)
+- 급변동 기준: 15분 내 40 mg/dL 이상 변화
+- 인슐린 피크: 프로진크 4~8h / 글라진·레버미어 6~12h
+${isPasta?`- GMI 참고: 고양이 당화혈색소 직접 비교는 부정확하나 혈당 조절 경향 참고 가능
+- CV% 안정 기준: ≤36% (변동성 낮을수록 안정적 관리)
+- 파스타 이벤트(식사·운동·인슐린) 기록이 있으면 이벤트 전후 혈당 반응 반드시 분석`:''}
+
+분석은 아래 구조로 한국어로 작성하세요. 각 섹션 제목은 【】 형식 유지:
+
+【오늘 혈당 요약】
+평균, 최저, 최고, TIR${isPasta?', GMI, CV%':''} 포함한 전반적 조절 상태 2~3문장.
+
+【주목할 구간 및 패턴】
+시간대별 특이 패턴을 구체적 수치·시각과 함께 2~4가지 서술.
+${isPasta?'파스타 이벤트(식사·운동) 기록이 있으면 이벤트 직후 혈당 반응 반드시 포함.':''}
+
+【인슐린 작용 추정】
+혈당 하강 구간·피크로부터 인슐린 작용 시간 추정.
+(추론임을 명시. 투여 기록 없으면 "투여 기록 없어 추정 제한" 명시)
+
+【식이·생활 패턴 관찰】
+${isPasta?'파스타 식사 이벤트 타이밍과 혈당 스파이크 상관관계 분석.':''}식사 타이밍 추정 상승 구간, 공복 구간 특성 서술.
+
+【권고 사항】
+구체적·실행 가능한 조치 2~4가지.
+마지막에 반드시: "⚠️ 진단·치료 조정은 반드시 담당 수의사와 상담하세요."
+
+【응급 여부 판정】
+즉시 조치가 필요한 수치 있으면: ⚠️ [위험도] + 조치 내용
+없으면: "✓ 현재 즉각 응급 상황 없음"`;
+
+  const tir=cgmExtracted.time_in_range_pct;
+  const tirStr=tir!==null&&tir!==undefined?`TIR: ${tir}%`:'TIR: 미산출';
+  const arrowStr=cgmExtracted.trend_arrow?`현재 추세: ${cgmExtracted.trend_arrow}`:'';
+  const eventsStr=(cgmExtracted.events||[]).length?
+    `이벤트 기록: ${(cgmExtracted.events||[]).map(e=>`${e.time} ${e.type}(${e.note||''})`).join(', ')}`:'이벤트 기록 없음';
+  const gapStr=(cgmExtracted.gap_periods||[]).length?
+    `데이터 누락 구간: ${cgmExtracted.gap_periods.join(', ')}`:'데이터 누락 없음';
+
+  // 파스타 전용 지표 컨텍스트
+  const pastaCtx=isPasta?`
+GMI(추정 HbA1c): ${cgmExtracted.gmi!==null&&cgmExtracted.gmi!==undefined?cgmExtracted.gmi+'%':'미산출'}
+변동계수 CV%: ${cgmExtracted.cv_pct!==null&&cgmExtracted.cv_pct!==undefined?cgmExtracted.cv_pct+'%':'미산출'}
+표준편차 SD: ${cgmExtracted.sd!==null&&cgmExtracted.sd!==undefined?cgmExtracted.sd:'미산출'}
+고혈당 비율: ${cgmExtracted.high_pct!==null&&cgmExtracted.high_pct!==undefined?cgmExtracted.high_pct+'%':'미산출'}
+저혈당 비율: ${cgmExtracted.low_pct!==null&&cgmExtracted.low_pct!==undefined?cgmExtracted.low_pct+'%':'미산출'}
+목표범위: ${cgmExtracted.target_low||80}~${cgmExtracted.target_high||200} mg/dL`:'';
+
+  const userMsg=`【${isPasta?'파스타(PASTA)':'케어센스 에어'} CGM 데이터】
+고양이: ${cgmExtracted.cat} / 날짜: ${cgmExtracted.date}
+총 측정 횟수: ${readings.length}회 (5분 간격 기준 정상: 288회)
+평균혈당: ${avg} mg/dL / 최저: ${min} mg/dL / 최고: ${max} mg/dL
+${tirStr} / ${arrowStr}${pastaCtx}
+고혈당(>200) 구간: ${highPts||'없음'}
+저혈당(<80) 구간: ${lowPts||'없음'}
+위험 고혈당(>400): ${readings.filter(r=>r.value>400).map(r=>`${r.time}(${r.value})`).join(', ')||'없음'}
+위험 저혈당(<60): ${readings.filter(r=>r.value<60).map(r=>`${r.time}(${r.value})`).join(', ')||'없음'}
+${eventsStr}
+${gapStr}
+AI 추출 특이사항: ${cgmExtracted.notes||'없음'}
+오늘 기록 컨텍스트: ${buildCtx()}`;
+
+  try{
+    const resp=await fetch('/api/proxy',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1200,system:sysBase,
+        messages:[{role:'user',content:userMsg}]})
+    });
+    const data=await resp.json();
+    aiBody.textContent=data.content&&data.content[0]?data.content[0].text:'응답을 받지 못했습니다.';
+  }catch(e){aiBody.textContent='분석 오류가 발생했어요.';}
+};
+
+function renderCgmHistory(){
+  const hist=document.getElementById('cgmHistory');
+  const list=document.getElementById('cgmHistList');
+  if(!cgmData.length){hist.style.display='none';return}
+  hist.style.display='block';
+
+  // 추이 차트
+  if(cgmTrendInst)cgmTrendInst.destroy();
+  const isDark=matchMedia('(prefers-color-scheme:dark)').matches;
+  const gc=isDark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.05)';
+  const tc=isDark?'#B4B2A9':'#888780';
+  const sorted=[...cgmData].sort((a,b)=>a.date<b.date?-1:1);
+  const tLabels=sorted.map(d=>d.date.slice(5));
+  const tAvgs=sorted.map(d=>d.avg||Math.round((d.readings||[]).reduce((a,r)=>a+r.value,0)/Math.max((d.readings||[]).length,1)));
+  const tMins=sorted.map(d=>d.min||Math.min(...(d.readings||[]).map(r=>r.value)));
+  const tMaxs=sorted.map(d=>d.max||Math.max(...(d.readings||[]).map(r=>r.value)));
+  cgmTrendInst=new Chart(document.getElementById('cgmTrendChart'),{
+    type:'line',
+    data:{labels:tLabels,datasets:[
+      {label:'최고',data:tMaxs,borderColor:'rgba(216,90,48,0.5)',backgroundColor:'rgba(216,90,48,0.05)',tension:.4,fill:false,pointRadius:3,borderWidth:1.5},
+      {label:'평균',data:tAvgs,borderColor:'#1D9E75',backgroundColor:'rgba(29,158,117,0.1)',tension:.4,fill:true,pointRadius:4,borderWidth:2},
+      {label:'최저',data:tMins,borderColor:'rgba(24,95,165,0.5)',backgroundColor:'rgba(24,95,165,0.05)',tension:.4,fill:false,pointRadius:3,borderWidth:1.5},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:true,labels:{font:{size:10},color:tc,boxWidth:8,boxHeight:8}}},
+      scales:{x:{grid:{color:gc},ticks:{color:tc,font:{size:10}}},y:{grid:{color:gc},ticks:{color:tc,font:{size:10}},suggestedMin:40,suggestedMax:350}}
+    }
+  });
+
+  // 이력 리스트
+  list.innerHTML='';
+  cgmData.slice(0,10).forEach(d=>{
+    const avg=d.avg||Math.round((d.readings||[]).reduce((a,r)=>a+r.value,0)/Math.max((d.readings||[]).length,1));
+    const color=avg<=200?'#1D9E75':avg<=300?'#BA7517':'#D85A30';
+    const dt=d.date;
+    const item=document.createElement('div');item.className='h-item';
+    item.innerHTML=`<div class="h-dot" style="background:${color}"></div>
+      <div class="h-name">${d.cat} · ${dt}
+        <span style="font-size:10px;color:var(--text3)">${d.device||'CGM'} · ${(d.readings||[]).length}회</span>
+        ${d.appType==='pasta'?'<span style="font-size:9px;padding:1px 6px;border-radius:5px;background:var(--amber-l);color:var(--amber-d);margin-left:3px">파스타</span>':'<span style="font-size:9px;padding:1px 6px;border-radius:5px;background:var(--teal-l);color:var(--teal-d);margin-left:3px">케어센스</span>'}
+      </div>
+      <div class="h-meta">평균 ${avg}<br>최저 ${d.min||'?'} · 최고 ${d.max||'?'}</div>`;
+    item.onclick=()=>{cgmExtracted=d;renderCgmExtracted(d);window.scrollTo({top:0,behavior:'smooth'})};
+    list.appendChild(item);
+  });
+}
+document.getElementById('cgmClear').onclick=()=>{
+  if(confirm('CGM 이력을 모두 삭제할까요?')){cgmData=[];saveCGM();renderCgmHistory()}
+};
+</script>
+</body>
+</html>
