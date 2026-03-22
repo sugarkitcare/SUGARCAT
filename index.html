@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>당묘 케어 노트</title>
+<title>당뇨묘 케어 노트</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -25,7 +25,7 @@
   --teal-l:#04342C;--amber-l:#412402;--coral-l:#4A1B0C;--blue-l:#042C53;--purple-l:#26215C;--green-l:#173404;
 }}
 html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(--text);min-height:100vh}
-.app{max-width:100%;margin:0 auto;padding:.75rem .75rem 4rem;overflow-x:hidden}
+.app{max-width:680px;margin:0 auto;padding:.75rem 1rem 4rem}
 
 /* 헤더 */
 .hdr{display:flex;align-items:center;justify-content:space-between;padding:.75rem 0 .85rem;border-bottom:0.5px solid var(--bd);margin-bottom:1rem}
@@ -40,31 +40,31 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 
 /* 내비 */
 .nav{display:flex;gap:3px;background:var(--bg2);border-radius:10px;padding:3px;margin-bottom:1rem}
-.nav-btn{flex:1;padding:7px 2px;border:none;background:transparent;border-radius:7px;font-size:11px;font-weight:500;color:var(--text2);cursor:pointer;font-family:inherit}
+.nav-btn{flex:1;padding:6px 1px;border:none;background:transparent;border-radius:7px;font-size:10px;font-weight:500;color:var(--text2);cursor:pointer;font-family:inherit}
 .nav-btn.active{background:var(--bg);color:var(--teal);box-shadow:0 1px 3px rgba(0,0,0,.08)}
 
 /* 섹션 */
 .sec{display:none}.sec.active{display:block}
 
 /* 카드 */
-.card{background:var(--bg);border:0.5px solid var(--bd);border-radius:12px;padding:.9rem 1rem;margin-bottom:.8rem}
+.card{background:var(--bg);border:0.5px solid var(--bd);border-radius:12px;padding:.75rem .75rem;margin-bottom:.75rem}
 .card-title{font-size:12px;color:var(--text2);font-weight:500;margin-bottom:.65rem}
 
 /* 지표 */
 .metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-bottom:.8rem}
 .metric{background:var(--bg2);border-radius:8px;padding:.6rem .4rem;text-align:center}
-.metric .mv{font-size:15px;font-weight:700;color:var(--teal)}
+.metric .mv{font-size:13px;font-weight:700;color:var(--teal)}
 .metric .ml{font-size:9px;color:var(--text3);margin-top:1px}
 .metric.warn .mv{color:var(--amber)}
 .metric.danger .mv{color:var(--coral)}
 .metric.purple .mv{color:var(--purple)}
 
 /* 입력 */
-.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;width:100%}
 .full{grid-column:1/-1}
-.ig{display:flex;flex-direction:column;gap:3px}
+.ig{display:flex;flex-direction:column;gap:3px;min-width:0;overflow:hidden}
 .ig label{font-size:11px;color:var(--text2)}
-.ig input,.ig select{padding:7px 9px;border:0.5px solid var(--bd);border-radius:8px;font-size:13px;background:var(--bg2);color:var(--text);font-family:inherit}
+.ig input,.ig select{padding:6px 7px;border:0.5px solid var(--bd);border-radius:8px;font-size:12px;background:var(--bg2);color:var(--text);font-family:inherit;width:100%;min-width:0;box-sizing:border-box}
 .ig input:focus,.ig select:focus{outline:none;border-color:var(--teal)}
 
 /* 버튼 */
