@@ -510,7 +510,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script>
 const SK='dangmyo_v2',SK_BT='bt_v2',SK_FD='fd_v2';
-let state={cats:[],activeCat:'케이',records:{}};
+let state={cats:['케이','달래'],activeCat:'케이',records:{}};
 let btData=[],fdData=[];
 try{const d=localStorage.getItem(SK);if(d)state=JSON.parse(d)}catch(e){}
 try{const d=localStorage.getItem(SK_BT);if(d)btData=JSON.parse(d)}catch(e){}
@@ -544,8 +544,21 @@ document.getElementById('btDate').value=today();
 function renderCatBar(){
   const bar=document.getElementById('catBar');bar.innerHTML='';
   state.cats.forEach(c=>{
-    const ch=document.createElement('div');ch.className='cat-chip'+(c===state.activeCat?' active':'');ch.textContent=c;
-    ch.onclick=()=>{state.activeCat=c;renderCatBar();updateMetrics();updateWtDiff();saveS()};bar.appendChild(ch);
+    const ch=document.createElement('div');ch.className='cat-chip'+(c===state.activeCat?' active':'');
+    ch.style.cssText='display:flex;align-items:center;gap:5px';
+    const nameSpan=document.createElement('span');nameSpan.textContent=c;
+    nameSpan.onclick=()=>{state.activeCat=c;renderCatBar();updateMetrics();updateWtDiff();saveS()};
+    const delBtn=document.createElement('span');delBtn.textContent='×';
+    delBtn.style.cssText='font-size:14px;line-height:1;opacity:0.6;cursor:pointer;padding:0 2px';
+    delBtn.onclick=(e)=>{
+      e.stopPropagation();
+      if(!confirm(c+'를 삭제할까요? 해당 고양이의 모든 기록이 삭제돼요.')){return}
+      state.cats=state.cats.filter(x=>x!==c);
+      if(state.records[c])delete state.records[c];
+      if(state.activeCat===c)state.activeCat=state.cats[0]||'';
+      renderCatBar();updateMetrics();saveS();
+    };
+    ch.appendChild(nameSpan);ch.appendChild(delBtn);bar.appendChild(ch);
   });
   const add=document.createElement('div');add.className='cat-chip add';add.textContent='+ 추가';
   add.onclick=()=>{const n=prompt('고양이 이름');if(n&&!state.cats.includes(n)){state.cats.push(n);state.activeCat=n;renderCatBar();saveS()}};
