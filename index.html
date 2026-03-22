@@ -530,6 +530,82 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <!-- ══ 사료분석 ══ -->
 <div class="sec" id="tab-food">
   <div class="card">
+    <div class="card-title">🔢 고양이 일일 칼로리 계산기</div>
+    <div style="font-size:11px;color:var(--text2);margin-bottom:.75rem;line-height:1.6">
+      체중·나이·상태를 입력하면 WSAVA 기준 RER 기반으로 하루 필요 칼로리를 계산해줘요.
+    </div>
+
+    <div class="row2" style="margin-bottom:8px">
+      <div class="ig"><label>현재 체중 (kg)</label><input type="number" id="calcWt" placeholder="예: 3.5" step="0.1" oninput="calcCalorie()"></div>
+      <div class="ig"><label>목표 체중 (kg)</label><input type="number" id="calcTargetWt" placeholder="없으면 비워두세요" step="0.1" oninput="calcCalorie()"></div>
+    </div>
+    <div class="row2" style="margin-bottom:8px">
+      <div class="ig"><label>나이</label>
+        <select id="calcAge" onchange="calcCalorie()">
+          <option value="kitten">1세 미만 (키튼)</option>
+          <option value="young">1~6세 (성묘)</option>
+          <option value="senior" selected>7~10세 (시니어)</option>
+          <option value="geriatric">11세 이상 (노령)</option>
+        </select>
+      </div>
+      <div class="ig"><label>중성화</label>
+        <select id="calcNeuter" onchange="calcCalorie()">
+          <option value="yes" selected>중성화 O</option>
+          <option value="no">중성화 X</option>
+        </select>
+      </div>
+    </div>
+    <div class="row2" style="margin-bottom:8px">
+      <div class="ig"><label>활동량</label>
+        <select id="calcActivity" onchange="calcCalorie()">
+          <option value="low">낮음 (실내, 잘 안 움직임)</option>
+          <option value="normal" selected>보통</option>
+          <option value="high">높음 (활발)</option>
+        </select>
+      </div>
+      <div class="ig"><label>체형</label>
+        <select id="calcBCS" onchange="calcCalorie()">
+          <option value="thin">저체중 (BCS 1~3)</option>
+          <option value="ideal" selected>정상 (BCS 4~5)</option>
+          <option value="overweight">과체중 (BCS 6~7)</option>
+          <option value="obese">비만 (BCS 8~9)</option>
+        </select>
+      </div>
+    </div>
+    <div style="font-size:11px;color:var(--text2);margin-bottom:.4rem;font-weight:500">동반 질환</div>
+    <div class="routine-tags" id="calcDiseaseTags" style="margin-bottom:.75rem">
+      <div class="routine-tag" data-val="dm" onclick="toggleCalcDisease(this)">당뇨(DM)</div>
+      <div class="routine-tag" data-val="ckd" onclick="toggleCalcDisease(this)">신부전(CKD)</div>
+      <div class="routine-tag" data-val="panc" onclick="toggleCalcDisease(this)">췌장염</div>
+      <div class="routine-tag" data-val="hcm" onclick="toggleCalcDisease(this)">심근비대증(HCM)</div>
+      <div class="routine-tag" data-val="ibd" onclick="toggleCalcDisease(this)">IBD</div>
+      <div class="routine-tag" data-val="obese_tx" onclick="toggleCalcDisease(this)">비만 치료 중</div>
+      <div class="routine-tag" data-val="recovery" onclick="toggleCalcDisease(this)">회복기/저체중</div>
+    </div>
+
+    <!-- 결과 -->
+    <div id="calcResult" style="display:none;background:var(--teal-l);border-radius:10px;padding:.85rem 1rem;margin-bottom:.75rem">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
+        <span style="font-size:12px;font-weight:500;color:var(--teal-d)">하루 필요 칼로리</span>
+        <span id="calcRerBadge" style="font-size:10px;color:var(--teal);background:rgba(29,158,117,0.15);padding:2px 8px;border-radius:6px"></span>
+      </div>
+      <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:.4rem">
+        <span id="calcKcal" style="font-size:28px;font-weight:700;color:var(--teal-d)">--</span>
+        <span style="font-size:14px;color:var(--teal)">kcal/일</span>
+      </div>
+      <div id="calcRange" style="font-size:11px;color:var(--teal);margin-bottom:.5rem"></div>
+      <div id="calcNote" style="font-size:11px;color:var(--teal-d);line-height:1.6;padding-top:.4rem;border-top:0.5px solid rgba(29,158,117,0.2)"></div>
+    </div>
+
+    <!-- 사료별 급여량 -->
+    <div id="calcFoodSection" style="display:none">
+      <div style="font-size:11px;font-weight:500;color:var(--text2);margin-bottom:.5rem">📦 사료별 하루 급여량</div>
+      <div id="calcFoodList"></div>
+      <div style="font-size:10px;color:var(--text3);margin-top:.4rem">* 분석된 사료 기준. 사료분석 탭에서 먼저 분석하세요.</div>
+    </div>
+  </div>
+
+  <div class="card">
     <div class="card-title">성분표 사진 → AI 분석 → 당뇨 적합성 판정 (DM 기준)</div>
     <div class="drop-zone" id="fdDrop">
       <div class="drop-title">성분표 사진 업로드</div>
@@ -1142,6 +1218,109 @@ document.getElementById('saveRoutine').addEventListener('click',()=>{
   document.getElementById('routineMemo').value='';
   toast('투약·루틴 저장 완료!');
 });
+
+
+/* ── 칼로리 계산기 ── */
+const calcDiseases=new Set();
+function toggleCalcDisease(el){
+  const v=el.dataset.val;
+  if(calcDiseases.has(v)){calcDiseases.delete(v);el.classList.remove('selected')}
+  else{calcDiseases.add(v);el.classList.add('selected')}
+  calcCalorie();
+}
+
+function calcCalorie(){
+  const wt=parseFloat(document.getElementById('calcWt').value);
+  if(isNaN(wt)||wt<=0){document.getElementById('calcResult').style.display='none';return}
+
+  const targetWt=parseFloat(document.getElementById('calcTargetWt').value);
+  const age=document.getElementById('calcAge').value;
+  const neuter=document.getElementById('calcNeuter').value;
+  const activity=document.getElementById('calcActivity').value;
+  const bcs=document.getElementById('calcBCS').value;
+
+  // RER 계산 (WSAVA 기준)
+  // 비만 시 목표체중 또는 현재체중^0.75 사용
+  const calcWtBase=(bcs==='obese'||bcs==='overweight')&&!isNaN(targetWt)&&targetWt>0?targetWt:wt;
+  const rer=Math.round(70*Math.pow(calcWtBase,0.75));
+
+  // MER 계수 결정
+  let factor=1.2; // 기본 중성화 성묘
+  let notes=[];
+  let factorDesc='';
+
+  // 나이 기본값
+  if(age==='kitten'){factor=2.5;factorDesc='키튼 성장기'}
+  else if(age==='young'&&neuter==='no'){factor=1.4;factorDesc='비중성화 성묘'}
+  else if(age==='young'&&neuter==='yes'){factor=1.2;factorDesc='중성화 성묘'}
+  else if(age==='senior'){factor=1.1;factorDesc='시니어'}
+  else if(age==='geriatric'){factor=1.0;factorDesc='노령'}
+
+  // 활동량 보정
+  if(activity==='high')factor+=0.1;
+  else if(activity==='low')factor-=0.1;
+
+  // 체형 보정
+  if(bcs==='obese'){factor=Math.min(factor,1.0);notes.push('비만: 목표체중 기준으로 계산')}
+  else if(bcs==='overweight'){factor=Math.min(factor,1.1);notes.push('과체중: 감량 권장')}
+  else if(bcs==='thin'){factor=Math.max(factor,1.4);notes.push('저체중: 증량 필요')}
+
+  // 질환 보정
+  if(calcDiseases.has('dm')){
+    if(bcs==='obese'||bcs==='overweight'){factor=Math.min(factor,1.0);}
+    else factor=Math.max(factor,1.1);
+    notes.push('당뇨: 규칙적 식사량 유지 중요');
+  }
+  if(calcDiseases.has('ckd')){
+    notes.push('CKD: 인 제한 사료 권장, 충분한 수분 섭취');
+  }
+  if(calcDiseases.has('panc')){
+    factor=Math.min(factor,1.2);
+    notes.push('췌장염: 저지방 식이 권장');
+  }
+  if(calcDiseases.has('recovery')){
+    factor=Math.max(factor,1.4);
+    notes.push('회복기: 고칼로리 식이 필요');
+  }
+  if(calcDiseases.has('obese_tx')){
+    factor=Math.min(factor,1.0);
+    notes.push('비만 치료: 엄격한 칼로리 제한');
+  }
+
+  factor=Math.round(factor*100)/100;
+  const mer=Math.round(rer*factor);
+  const merMin=Math.round(rer*Math.max(factor-0.1,0.8));
+  const merMax=Math.round(rer*(factor+0.1));
+
+  document.getElementById('calcResult').style.display='block';
+  document.getElementById('calcKcal').textContent=mer;
+  document.getElementById('calcRerBadge').textContent=`RER ${rer} × ${factor} = ${factorDesc}`;
+  document.getElementById('calcRange').textContent=`권장 범위: ${merMin}~${merMax} kcal/일`;
+  document.getElementById('calcNote').innerHTML=notes.length?notes.map(n=>`• ${n}`).join('<br>')+'<br><small style="color:var(--teal);opacity:0.7">※ 참고용 수치입니다. 정확한 급여량은 수의사와 상담하세요.</small>':'<small style="color:var(--teal);opacity:0.7">※ 참고용 수치입니다. 정확한 급여량은 수의사와 상담하세요.</small>';
+
+  // 분석된 사료 목록과 연동
+  if(fdData.length){
+    document.getElementById('calcFoodSection').style.display='block';
+    const list=document.getElementById('calcFoodList');list.innerHTML='';
+    fdData.slice(0,5).forEach(h=>{
+      const d=h.data;
+      const kcalPer100=d.kcal_per_100g||Math.round((d.protein_af||0)*3.5+(d.fat_af||0)*8.5+((d.carb_af)||0)*3.5);
+      if(!kcalPer100)return;
+      const grams=Math.round(mer/kcalPer100*100);
+      const meals2=Math.round(grams/2);
+      const lv=getLv(cDM(d.carb_af||0,d.moisture||75)??999);
+      const lc=lvColor(lv);
+      list.innerHTML+=`<div style="display:flex;align-items:center;gap:8px;padding:.55rem .75rem;background:var(--bg2);border-radius:8px;margin-bottom:5px">
+        <div style="width:8px;height:8px;border-radius:50%;background:${lc};flex-shrink:0"></div>
+        <div style="flex:1;font-size:12px;color:var(--text)">${h.name}</div>
+        <div style="text-align:right;font-size:12px;font-weight:500;color:var(--text)">${grams}g/일</div>
+        <div style="font-size:10px;color:var(--text2)">1회 ${meals2}g×2</div>
+      </div>`;
+    });
+  }else{
+    document.getElementById('calcFoodSection').style.display='none';
+  }
+}
 
 /* ══════════════════════════════
    CGM 연속혈당 기능
