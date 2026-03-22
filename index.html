@@ -608,11 +608,18 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
       <div id="calcNote" style="font-size:11px;color:var(--teal-d);line-height:1.6;padding-top:.4rem;border-top:0.5px solid rgba(29,158,117,0.2)"></div>
     </div>
 
-    <!-- 사료별 급여량 -->
-    <div id="calcFoodSection" style="display:none">
-      <div style="font-size:11px;font-weight:500;color:var(--text2);margin-bottom:.5rem">📦 사료별 하루 급여량</div>
+    <!-- 사료 직접 입력 -->
+    <div id="calcManualFood" style="margin-top:.75rem">
+      <div style="font-size:11px;font-weight:500;color:var(--text2);margin-bottom:.5rem">📦 사료별 하루 급여량 계산</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:.5rem">사료 포장의 실제 칼로리 정보를 입력하세요</div>
+      <div id="calcManualList"></div>
+      <button onclick="addManualFood()" style="padding:5px 12px;border:0.5px dashed var(--teal);border-radius:8px;background:transparent;color:var(--teal);font-size:12px;cursor:pointer;margin-top:.4rem;font-family:inherit">+ 사료 추가</button>
+    </div>
+
+    <!-- 분석된 사료 연동 -->
+    <div id="calcFoodSection" style="display:none;margin-top:.5rem">
+      <div style="font-size:11px;color:var(--text3);margin-bottom:.3rem">▼ 분석된 사료 (사료분석 탭 기준)</div>
       <div id="calcFoodList"></div>
-      <div style="font-size:10px;color:var(--text3);margin-top:.4rem">* 분석된 사료 기준. 사료분석 탭에서 먼저 분석하세요.</div>
     </div>
   </div>
 
@@ -1288,22 +1295,22 @@ function calcCalorie(){
   else if(age==='young'&&neuter==='no'){factor=1.4;factorDesc='비중성화 성묘'}
   else if(age==='young'&&neuter==='yes'){factor=1.2;factorDesc='중성화 성묘'}
   else if(age==='senior'){factor=1.1;factorDesc='시니어'}
-  else if(age==='geriatric'){factor=1.0;factorDesc='노령'}
+  else if(age==='geriatric'){factor=0.9;factorDesc='노령'}
 
-  // 활동량 보정
+  // 활동량 보정 (낮음은 더 보수적으로)
   if(activity==='high')factor+=0.1;
-  else if(activity==='low')factor-=0.1;
+  else if(activity==='low')factor-=0.15;
 
   // 체형 보정
-  if(bcs==='obese'){factor=Math.min(factor,1.0);notes.push('비만: 목표체중 기준으로 계산')}
-  else if(bcs==='overweight'){factor=Math.min(factor,1.1);notes.push('과체중: 감량 권장')}
+  if(bcs==='obese'){factor=Math.min(factor,0.9);notes.push('비만: 목표체중 기준으로 계산, 엄격한 칼로리 제한')}
+  else if(bcs==='overweight'){factor=Math.min(factor,1.0);notes.push('과체중: 감량 필요, 현재 체중 유지 이하로 급여')}
   else if(bcs==='thin'){factor=Math.max(factor,1.4);notes.push('저체중: 증량 필요')}
 
   // 질환 보정
   if(calcDiseases.has('dm')){
-    if(bcs==='obese'||bcs==='overweight'){factor=Math.min(factor,1.0);}
-    else factor=Math.max(factor,1.1);
-    notes.push('당뇨: 규칙적 식사량 유지 중요');
+    if(bcs==='obese'||bcs==='overweight'){factor=Math.min(factor,0.9);}
+    else factor=Math.max(factor,1.0);
+    notes.push('당뇨: 규칙적 식사량 유지 중요, 갑작스런 증감 피하기');
   }
   if(calcDiseases.has('ckd')){
     notes.push('CKD: 인 제한 사료 권장, 충분한 수분 섭취');
@@ -1332,7 +1339,7 @@ function calcCalorie(){
   document.getElementById('calcRange').textContent=`권장 범위: ${merMin}~${merMax} kcal/일`;
   document.getElementById('calcNote').innerHTML=notes.length?notes.map(n=>`• ${n}`).join('<br>')+'<br><small style="color:var(--teal);opacity:0.7">※ 참고용 수치입니다. 정확한 급여량은 수의사와 상담하세요.</small>':'<small style="color:var(--teal);opacity:0.7">※ 참고용 수치입니다. 정확한 급여량은 수의사와 상담하세요.</small>';
 
-  // 분석된 사료 목록과 연동
+  // 분석된 사료 목록과 연동 (100g 기준 칼로리로 정확히 계산)
   if(fdData.length){
     document.getElementById('calcFoodSection').style.display='block';
     const list=document.getElementById('calcFoodList');list.innerHTML='';
@@ -1354,7 +1361,68 @@ function calcCalorie(){
   }else{
     document.getElementById('calcFoodSection').style.display='none';
   }
+
+  // 수동 입력 사료 다시 계산
+  updateManualFoodCalc(mer);
 }
+
+/* 수동 사료 입력 관리 */
+let manualFoods=[];
+try{const d=localStorage.getItem('manualFoods_v1');if(d)manualFoods=JSON.parse(d);}catch(e){}
+const saveManualFoods=()=>{try{localStorage.setItem('manualFoods_v1',JSON.stringify(manualFoods));}catch(e){}};
+
+function renderManualFoodList(){
+  const list=document.getElementById('calcManualList');
+  if(!list)return;
+  list.innerHTML='';
+  manualFoods.forEach((f,i)=>{
+    list.innerHTML+=`<div style="background:var(--bg2);border-radius:8px;padding:.6rem .75rem;margin-bottom:5px">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">
+        <input type="text" value="${f.name}" placeholder="사료명" oninput="manualFoods[${i}].name=this.value;saveManualFoods()"
+          style="flex:1;padding:5px 8px;border:0.5px solid var(--bd);border-radius:6px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit;min-width:0">
+        <button onclick="removeManualFood(${i})" style="padding:3px 8px;border:none;background:var(--coral-l);color:var(--coral-d);border-radius:6px;font-size:11px;cursor:pointer">삭제</button>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text2)">
+          <input type="number" value="${f.kcal}" placeholder="칼로리" oninput="manualFoods[${i}].kcal=parseFloat(this.value)||0;saveManualFoods();updateManualFoodCalc(currentMer)"
+            style="width:60px;padding:4px 6px;border:0.5px solid var(--bd);border-radius:6px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit">
+          kcal /
+          <input type="number" value="${f.per}" placeholder="g" oninput="manualFoods[${i}].per=parseFloat(this.value)||100;saveManualFoods();updateManualFoodCalc(currentMer)"
+            style="width:50px;padding:4px 6px;border:0.5px solid var(--bd);border-radius:6px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit">
+          g
+        </div>
+        <div style="font-size:11px;color:var(--text3)">(포장 기준 입력)</div>
+      </div>
+      <div id="manualResult_${i}" style="font-size:12px;font-weight:500;color:var(--teal);margin-top:4px"></div>
+    </div>`;
+  });
+}
+
+function addManualFood(){
+  manualFoods.push({name:'',kcal:60,per:85});
+  saveManualFoods();renderManualFoodList();
+}
+
+function removeManualFood(i){
+  manualFoods.splice(i,1);saveManualFoods();renderManualFoodList();
+}
+
+let currentMer=0;
+function updateManualFoodCalc(mer){
+  currentMer=mer;
+  manualFoods.forEach((f,i)=>{
+    const el=document.getElementById('manualResult_'+i);
+    if(!el||!f.kcal||!f.per)return;
+    const kcalPer100=f.kcal/f.per*100;
+    const totalG=Math.round(mer/kcalPer100*100);
+    const perMeal=Math.round(totalG/2);
+    const cans=f.per>0?(totalG/f.per).toFixed(1):'?';
+    el.textContent=`→ 하루 ${totalG}g (1회 ${perMeal}g×2끼) / 포장 ${cans}개 분량`;
+  });
+}
+
+// 초기 렌더
+renderManualFoodList();
 
 
 /* ── 혈액검사 AI 코멘트 ── */
