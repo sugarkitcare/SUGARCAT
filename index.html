@@ -934,7 +934,7 @@ setupDrop('btDrop','btFile',async file=>{
   const sys='혈액검사지에서 모든 항목을 추출하여 아래 JSON만 출력하세요.\n{"items":[{"name":"항목명","abbr":"약어","value":숫자,"unit":"단위","refLow":숫자or null,"refHigh":숫자or null,"category":"신장|간|혈구|전해질|혈당|췌장|갑상선|단백|지질|기타"}]}';
   let mc=file.type.startsWith('image/')?[{type:'image',source:{type:'base64',media_type:file.type,data:b64}},{type:'text',text:'모든 항목을 추출해주세요.'}]:[{type:'document',source:{type:'base64',media_type:'application/pdf',data:b64}},{type:'text',text:'모든 항목을 추출해주세요.'}];
   try{
-    const resp=await fetch('/api/proxy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,system:sys,messages:[{role:'user',content:mc}]})});
+    const resp=await fetch('/api/proxy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:4000,system:sys,messages:[{role:'user',content:mc}]})});
     const data=await resp.json();
     if(data.error){throw new Error(data.error.message||JSON.stringify(data.error));}
     if(!data.content||!data.content[0]){throw new Error('응답 없음: '+JSON.stringify(data));}
@@ -948,9 +948,32 @@ setupDrop('btDrop','btFile',async file=>{
       throw new Error('응답 형식 오류');
     }
     const cleaned=rawText.replace(/```json|```/g,'').trim();
-    const jsonMatch=cleaned.match(/\{[\s\S]*\}/);
+    const jsonMatch=cleaned.match(/\{[\s\S]*/);
     if(!jsonMatch)throw new Error('JSON 파싱 실패');
-    const parsed=JSON.parse(jsonMatch[0]);
+    let jsonStr=jsonMatch[0];
+    // JSON이 잘린 경우 복구 시도
+    try{
+      JSON.parse(jsonStr);
+    }catch(e){
+      // items 배열이 잘린 경우 마지막 불완전 항목 제거 후 닫기
+      const lastComplete=jsonStr.lastIndexOf('}');
+      if(lastComplete>0){
+        jsonStr=jsonStr.slice(0,lastComplete+1);
+        // items 배열 닫기
+        if(!jsonStr.includes(']}'))jsonStr=jsonStr+']}';
+        if(!jsonStr.endsWith('}'))jsonStr=jsonStr+'}';
+      }
+    }
+    let parsed;
+    try{parsed=JSON.parse(jsonStr);}
+    catch(e){
+      // 최후 수단: items만 추출
+      const itemsMatch=rawText.match(/"items"\s*:\s*(\[[\s\S]*?\])/);
+      if(itemsMatch){
+        try{parsed={items:JSON.parse(itemsMatch[1])};}
+        catch(e2){throw new Error('JSON 파싱 실패: '+e.message);}
+      }else{throw new Error('JSON 파싱 실패: '+e.message);}
+    }
     if(!parsed.items||!Array.isArray(parsed.items))throw new Error('items 없음');
     btEx={items:parsed.items,date:document.getElementById('btDate').value,cat:document.getElementById('btCat').value||state.activeCat};
     hideStat('btStatus');
