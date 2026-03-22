@@ -764,7 +764,7 @@ setupDrop('btDrop','btFile',async file=>{
   const sys='혈액검사지에서 모든 항목을 추출하여 아래 JSON만 출력하세요.\n{"items":[{"name":"항목명","abbr":"약어","value":숫자,"unit":"단위","refLow":숫자or null,"refHigh":숫자or null,"category":"신장|간|혈구|전해질|혈당|췌장|갑상선|단백|지질|기타"}]}';
   let mc=file.type.startsWith('image/')?[{type:'image',source:{type:'base64',media_type:file.type,data:b64}},{type:'text',text:'모든 항목을 추출해주세요.'}]:[{type:'document',source:{type:'base64',media_type:'application/pdf',data:b64}},{type:'text',text:'모든 항목을 추출해주세요.'}];
   try{
-    const resp=await fetch('/api/proxy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,system:finalSys,messages:[{role:'user',content:mc}]})});
+    const resp=await fetch('/api/proxy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,system:sys,messages:[{role:'user',content:mc}]})});
     const data=await resp.json();
     if(data.error){throw new Error(data.error.message||JSON.stringify(data.error));}
     if(!data.content||!data.content[0]){throw new Error('응답 없음: '+JSON.stringify(data));}
