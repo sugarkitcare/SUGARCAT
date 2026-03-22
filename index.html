@@ -766,7 +766,22 @@ setupDrop('btDrop','btFile',async file=>{
   try{
     const resp=await fetch('/api/proxy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,system:finalSys,messages:[{role:'user',content:mc}]})});
     const data=await resp.json();
-    const parsed=JSON.parse(data.content[0].text.replace(/```json|```/g,'').trim());
+    if(data.error){throw new Error(data.error.message||JSON.stringify(data.error));}
+    if(!data.content||!data.content[0]){throw new Error('응답 없음: '+JSON.stringify(data));}
+    // 응답 파싱 강화
+    let rawText='';
+    if(data.content&&data.content[0]&&data.content[0].text){
+      rawText=data.content[0].text;
+    }else if(data.error){
+      throw new Error(data.error.message||'API 오류');
+    }else{
+      throw new Error('응답 형식 오류');
+    }
+    const cleaned=rawText.replace(/```json|```/g,'').trim();
+    const jsonMatch=cleaned.match(/\{[\s\S]*\}/);
+    if(!jsonMatch)throw new Error('JSON 파싱 실패');
+    const parsed=JSON.parse(jsonMatch[0]);
+    if(!parsed.items||!Array.isArray(parsed.items))throw new Error('items 없음');
     btEx={items:parsed.items,date:document.getElementById('btDate').value,cat:document.getElementById('btCat').value||state.activeCat};
     hideStat('btStatus');
     const tbody=document.getElementById('btBody');tbody.innerHTML='';
@@ -778,7 +793,10 @@ setupDrop('btDrop','btFile',async file=>{
     });
     document.getElementById('btResultLabel').textContent=`${btEx.cat} · ${btEx.date} (${parsed.items.length}개 항목)`;
     document.getElementById('btResult').style.display='block';
-  }catch(e){showStat('btStatus','err','분석 오류. 다시 시도해주세요.');}
+  }catch(e){
+    console.error('BT error:',e);
+    showStat('btStatus','err','분석 오류: '+e.message);
+  }
 });
 document.getElementById('btSave').onclick=()=>{
   if(!btEx)return;btData.push({...btEx,ts:Date.now()});saveBT();btEx=null;
@@ -840,11 +858,23 @@ setupDrop('fdDrop','fdFile',async file=>{
   try{
     const resp=await fetch('/api/proxy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1200,system:sys,messages:[{role:'user',content:mc}]})});
     const data=await resp.json();
-    const parsed=JSON.parse(data.content[0].text.replace(/```json|```/g,'').trim());
+    let rawText2='';
+    if(data.content&&data.content[0]&&data.content[0].text){
+      rawText2=data.content[0].text;
+    }else if(data.error){
+      throw new Error(data.error.message||'API 오류');
+    }else{throw new Error('응답 형식 오류');}
+    const cleaned2=rawText2.replace(/```json|```/g,'').trim();
+    const jsonMatch2=cleaned2.match(/\{[\s\S]*\}/);
+    if(!jsonMatch2)throw new Error('JSON 파싱 실패');
+    const parsed=JSON.parse(jsonMatch2[0]);
     parsed.foodNameInput=fdNm;hideStat('fdStatus');renderFdResult(parsed);
     fdData.unshift({ts:Date.now(),data:parsed,name:parsed.name||fdNm});
     if(fdData.length>20)fdData=fdData.slice(0,20);saveFD();renderFdHistory();
-  }catch(e){showStat('fdStatus','err','분석 오류. 다시 시도해주세요.');}
+  }catch(e){
+    console.error('FD error:',e);
+    showStat('fdStatus','err','분석 오류: '+e.message);
+  }
 });
 
 function renderFdResult(d){
@@ -1176,13 +1206,23 @@ setupDrop('cgmDrop','cgmFile',async file=>{
       })
     });
     const data=await resp.json();
-    const parsed=JSON.parse(data.content[0].text.replace(/```json|```/g,'').trim());
+    let rawText3='';
+    if(data.content&&data.content[0]&&data.content[0].text){
+      rawText3=data.content[0].text;
+    }else if(data.error){
+      throw new Error(data.error.message||'API 오류');
+    }else{throw new Error('응답 형식 오류');}
+    const cleaned3=rawText3.replace(/```json|```/g,'').trim();
+    const jsonMatch3=cleaned3.match(/\{[\s\S]*\}/);
+    if(!jsonMatch3)throw new Error('JSON 파싱 실패');
+    const parsed=JSON.parse(jsonMatch3[0]);
     parsed.cat=cgmCat;parsed.date=cgmDate;parsed.appType=selectedApp;
     cgmExtracted=parsed;
     hideStat('cgmStatus');
     renderCgmExtracted(parsed);
   }catch(e){
-    showStat('cgmStatus','err','추출 오류. 혈당 그래프가 잘 보이는 스크린샷으로 다시 시도해주세요.');
+    showStat('cgmStatus','err','추출 오류: '+e.message);
+    console.error('CGM error:',e);
     console.error(e);
   }
 });
