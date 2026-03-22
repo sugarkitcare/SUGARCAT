@@ -177,6 +177,26 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 .sep{height:0.5px;background:var(--bd);margin:1rem 0}
 .empty{text-align:center;padding:1.5rem;color:var(--text3);font-size:13px}
 
+
+.routine-tags{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:.6rem}
+.routine-tag{padding:4px 10px;border-radius:14px;font-size:12px;cursor:pointer;border:0.5px solid var(--bd);background:var(--bg2);color:var(--text2);transition:.12s;user-select:none}
+.routine-tag.selected{background:var(--teal);color:#fff;border-color:var(--teal)}
+.routine-tag.med{border-color:var(--purple)}
+.routine-tag.med.selected{background:var(--purple);border-color:var(--purple)}
+.routine-tag.food{border-color:var(--amber)}
+.routine-tag.food.selected{background:var(--amber);color:#fff;border-color:var(--amber)}
+.routine-log-item{display:flex;align-items:flex-start;gap:8px;padding:.6rem .8rem;background:var(--bg2);border-radius:8px;margin-bottom:5px}
+
+
+.routine-edit-row{display:flex;gap:5px;margin-bottom:.5rem;align-items:center}
+.routine-edit-row input{flex:1;padding:6px 9px;border:0.5px solid var(--bd);border-radius:8px;font-size:12px;background:var(--bg2);color:var(--text);font-family:inherit;min-width:0}
+.routine-edit-row select{padding:6px 9px;border:0.5px solid var(--bd);border-radius:8px;font-size:12px;background:var(--bg2);color:var(--text);font-family:inherit}
+.routine-edit-row button{padding:6px 10px;border:none;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;white-space:nowrap}
+.routine-item-row{display:flex;align-items:center;gap:6px;padding:5px 8px;background:var(--bg2);border-radius:7px;margin-bottom:4px}
+.routine-item-name{flex:1;font-size:12px;color:var(--text)}
+.routine-item-cat{font-size:10px;padding:1px 7px;border-radius:6px;color:#fff}
+.routine-item-del{font-size:14px;color:var(--text3);cursor:pointer;padding:0 3px;background:none;border:none}
+
 /* 토스트 */
 .toast-el{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);color:#fff;padding:9px 18px;border-radius:18px;font-size:12px;z-index:9999;white-space:nowrap;font-family:'Noto Sans KR',sans-serif}
 
@@ -308,6 +328,38 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     </div>
     <button class="btn btn-blue" id="saveMeal">식사 저장</button>
   </div>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem">
+      <div class="card-title" style="margin:0">💊 투약 · 보조제 · 루틴</div>
+      <button id="toggleEditRoutine" style="padding:4px 10px;border:0.5px solid var(--bd);border-radius:7px;background:transparent;color:var(--teal);font-size:11px;cursor:pointer;font-family:inherit">+ 목록 편집</button>
+    </div>
+
+    <!-- 편집 패널 (기본 숨김) -->
+    <div id="routineEditPanel" style="display:none;background:var(--bg2);border-radius:10px;padding:.75rem;margin-bottom:.75rem">
+      <div style="font-size:11px;font-weight:500;color:var(--text2);margin-bottom:.5rem">항목 추가</div>
+      <div class="routine-edit-row">
+        <input type="text" id="newRoutineName" placeholder="항목명 입력 (예: 코발라민)">
+        <select id="newRoutineCat">
+          <option value="med">약·보조제</option>
+          <option value="food">간식·음수</option>
+          <option value="other">기타루틴</option>
+        </select>
+        <button onclick="addRoutineItem()" style="background:var(--teal);color:#fff;border-radius:8px">추가</button>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:.4rem">등록된 항목</div>
+      <div id="routineItemList"></div>
+    </div>
+
+    <!-- 태그 선택 영역 -->
+    <div id="routineTagArea"></div>
+
+    <div class="row2" style="margin-bottom:8px">
+      <div class="ig"><label>시각</label><input type="time" id="routineTime"></div>
+      <div class="ig"><label>직접 입력</label><input type="text" id="routineCustom" placeholder="예: 코발라민 0.5ml"></div>
+    </div>
+    <div class="ig" style="margin-bottom:8px"><label>메모</label><input type="text" id="routineMemo" placeholder="용량, 특이사항 등"></div>
+    <button class="btn" id="saveRoutine" style="background:var(--purple);color:#fff;width:100%">투약·루틴 저장</button>
+  </div>
 </div>
 
 <!-- ══ 연속혈당(CGM) ══ -->
@@ -413,6 +465,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     </div>
     <div id="cgmHistList"></div>
   </div>
+
 </div>
 
 <!-- ══ 그래프 ══ -->
@@ -647,6 +700,7 @@ function renderHistory(){
   rec.ins.forEach(r=>all.push({ts:r.ts,type:'ins',d:r}));
   rec.meals.forEach(r=>all.push({ts:r.ts,type:'meal',d:r}));
   (rec.weights||[]).forEach(r=>all.push({ts:r.ts,type:'wt',d:r}));
+    (rec.routines||[]).forEach(r=>all.push({ts:r.ts,type:'routine',d:r}));
   all.sort((a,b)=>b.ts-a.ts);
   if(!all.length){list.innerHTML='<div class="empty">오늘 기록이 없어요</div>';return}
   list.innerHTML='';
@@ -656,6 +710,7 @@ function renderHistory(){
     else if(item.type==='ins'){dot='ld-i';txt=`[인슐린] ${d.time} | ${d.type} ${d.dose}U${d.preBg?' (투여 전 '+d.preBg+')':''}`;}
     else if(item.type==='meal'){dot='ld-m';txt=`[식사] ${d.time} | ${d.name||'–'} ${d.amt}g${d.kcal?' · '+d.kcal+'kcal':''}`;}
     else if(item.type==='wt'){dot='ld-wt';txt=`[체중] ${d.time} | ${d.weight}kg${d.note?' · '+d.note:''}`;}
+    else if(item.type==='routine'){dot='ld-m';txt=`[투약·루틴] ${d.time} | ${d.items.join(', ')}${d.memo?' · '+d.memo:''}`;}
     list.innerHTML+=`<div class="log-item"><div class="log-dot ${dot}"></div><div class="log-text">${txt}</div></div>`;
   });
 }
@@ -873,6 +928,107 @@ async function sendAI(msg){
 document.getElementById('aiSend').onclick=()=>{const inp=document.getElementById('aiInput');const msg=inp.value.trim();if(!msg)return;inp.value='';sendAI(msg)};
 document.getElementById('aiInput').onkeydown=e=>{if(e.key==='Enter')document.getElementById('aiSend').click()};
 document.getElementById('autoAnalyze').onclick=()=>sendAI(`오늘 기록 전체 분석:\n${buildCtx()}\n전반적 상태와 주의사항을 알려주세요.`);
+
+
+/* ── 루틴/투약 ── */
+const SK_RT='routineItems_v1';
+const defaultItems=[
+  {name:'레나딜',cat:'med'},{name:'레나메진',cat:'med'},{name:'오메가3',cat:'med'},
+  {name:'유산균',cat:'med'},{name:'사메탑',cat:'med'},{name:'항생제',cat:'med'},
+  {name:'세레니아',cat:'med'},{name:'미르타자핀',cat:'med'},{name:'피하수액',cat:'med'},
+  {name:'간식',cat:'food'},{name:'황금푸딩',cat:'food'},{name:'물 섭취',cat:'food'},
+  {name:'병원 방문',cat:'other'},{name:'배변 확인',cat:'other'},{name:'구토',cat:'other'}
+];
+let routineItems=defaultItems;
+try{const d=localStorage.getItem(SK_RT);if(d)routineItems=JSON.parse(d)}catch(e){}
+const saveRT=()=>{try{localStorage.setItem(SK_RT,JSON.stringify(routineItems))}catch(e){}};
+const catColor={med:'#534AB7',food:'#BA7517',other:'#1D9E75'};
+const catLabel={med:'약·보조제',food:'간식·음수',other:'기타루틴'};
+const routineSelected=new Set();
+
+function renderRoutineTags(){
+  const area=document.getElementById('routineTagArea');
+  const cats=['med','food','other'];
+  let html='';
+  cats.forEach(cat=>{
+    const items=routineItems.filter(i=>i.cat===cat);
+    if(!items.length)return;
+    html+=`<div style="font-size:10px;color:var(--text3);margin-bottom:.25rem">${catLabel[cat]}</div>`;
+    html+=`<div class="routine-tags" style="margin-bottom:.5rem">`;
+    items.forEach(item=>{
+      const sel=routineSelected.has(item.name)?'selected':'';
+      html+=`<div class="routine-tag ${cat} ${sel}" data-val="${item.name}" onclick="toggleRT(this,'${item.name}')">${item.name}</div>`;
+    });
+    html+='</div>';
+  });
+  area.innerHTML=html;
+}
+
+function toggleRT(el,v){
+  if(routineSelected.has(v)){routineSelected.delete(v);el.classList.remove('selected')}
+  else{routineSelected.add(v);el.classList.add('selected')}
+}
+
+function renderRoutineEditList(){
+  const list=document.getElementById('routineItemList');
+  if(!list)return;
+  list.innerHTML='';
+  routineItems.forEach((item,i)=>{
+    const row=document.createElement('div');row.className='routine-item-row';
+    row.innerHTML=`<span class="routine-item-name">${item.name}</span>
+      <span class="routine-item-cat" style="background:${catColor[item.cat]}">${catLabel[item.cat]}</span>
+      <button class="routine-item-del" onclick="deleteRoutineItem(${i})">×</button>`;
+    list.appendChild(row);
+  });
+}
+
+function addRoutineItem(){
+  const name=document.getElementById('newRoutineName').value.trim();
+  const cat=document.getElementById('newRoutineCat').value;
+  if(!name){toast('항목명을 입력해주세요','#D85A30');return}
+  if(routineItems.find(i=>i.name===name)){toast('이미 있는 항목이에요','#BA7517');return}
+  routineItems.push({name,cat});saveRT();
+  document.getElementById('newRoutineName').value='';
+  renderRoutineTags();renderRoutineEditList();
+  toast(name+' 추가 완료!');
+}
+
+function deleteRoutineItem(idx){
+  const item=routineItems[idx];
+  if(!confirm(item.name+'을(를) 삭제할까요?'))return;
+  routineItems.splice(idx,1);saveRT();
+  routineSelected.delete(item.name);
+  renderRoutineTags();renderRoutineEditList();
+}
+
+document.getElementById('toggleEditRoutine').addEventListener('click',()=>{
+  const panel=document.getElementById('routineEditPanel');
+  const btn=document.getElementById('toggleEditRoutine');
+  const isOpen=panel.style.display!=='none';
+  panel.style.display=isOpen?'none':'block';
+  btn.textContent=isOpen?'+ 목록 편집':'✕ 편집 닫기';
+  if(!isOpen)renderRoutineEditList();
+});
+
+document.getElementById('routineTime').value=nowT();
+renderRoutineTags();
+
+document.getElementById('saveRoutine').addEventListener('click',()=>{
+  const items=[...routineSelected];
+  const custom=document.getElementById('routineCustom').value.trim();
+  if(custom)items.push(custom);
+  if(!items.length){toast('항목을 선택하거나 직접 입력해주세요','#D85A30');return}
+  const memo=document.getElementById('routineMemo').value;
+  const time=document.getElementById('routineTime').value;
+  if(!getRec(state.activeCat,today()).routines)getRec(state.activeCat,today()).routines=[];
+  getRec(state.activeCat,today()).routines.push({items,memo,time,ts:Date.now()});
+  saveS();
+  routineSelected.clear();
+  renderRoutineTags();
+  document.getElementById('routineCustom').value='';
+  document.getElementById('routineMemo').value='';
+  toast('투약·루틴 저장 완료!');
+});
 
 /* ══════════════════════════════
    CGM 연속혈당 기능
