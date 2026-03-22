@@ -510,7 +510,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script>
 const SK='dangmyo_v2',SK_BT='bt_v2',SK_FD='fd_v2';
-let state={cats:['케이','달래'],activeCat:'케이',records:{}};
+let state={cats:[],activeCat:'케이',records:{}};
 let btData=[],fdData=[];
 try{const d=localStorage.getItem(SK);if(d)state=JSON.parse(d)}catch(e){}
 try{const d=localStorage.getItem(SK_BT);if(d)btData=JSON.parse(d)}catch(e){}
