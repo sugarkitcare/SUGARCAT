@@ -512,11 +512,22 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     </div>
     <div id="btStatus" style="display:none"></div>
     <div id="btResult" style="display:none">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;flex-wrap:wrap;gap:6px">
         <span id="btResultLabel" style="font-size:12px;color:var(--text2)"></span>
-        <button class="btn btn-teal btn-sm" id="btSave">저장 및 그래프 추가</button>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-teal btn-sm" id="btSave">저장 및 그래프 추가</button>
+          <button class="btn btn-sm" id="btAiComment" style="background:var(--purple);color:#fff">🤖 AI 분석</button>
+        </div>
       </div>
       <div style="overflow-x:auto"><table class="bt"><thead><tr><th>항목</th><th>수치</th><th>단위</th><th>정상범위</th><th>상태</th></tr></thead><tbody id="btBody"></tbody></table></div>
+    </div>
+    <!-- AI 코멘트 영역 -->
+    <div id="btAiCommentArea" style="display:none;margin-top:.75rem">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:.5rem">
+        <span style="font-size:12px;font-weight:500;color:var(--purple)">🤖 AI 혈액검사 분석</span>
+        <span id="btAiSpinner" style="display:none" class="spin" style="border-color:var(--purple);border-top-color:transparent"></span>
+      </div>
+      <div id="btAiCommentBody" style="font-size:13px;color:var(--text);line-height:1.85;background:var(--bg2);border-radius:10px;padding:.85rem 1rem;white-space:pre-wrap"></div>
     </div>
   </div>
   <div id="btGraphSection" style="display:none">
@@ -1321,6 +1332,99 @@ function calcCalorie(){
     document.getElementById('calcFoodSection').style.display='none';
   }
 }
+
+
+/* ── 혈액검사 AI 코멘트 ── */
+document.getElementById('btAiComment').addEventListener('click', async () => {
+  if(!btEx && !btData.length){toast('먼저 혈액검사를 업로드해주세요','#D85A30');return}
+
+  const target = btEx || btData[0];
+  const items = target.items || [];
+  if(!items.length){toast('분석된 항목이 없어요','#D85A30');return}
+
+  const area = document.getElementById('btAiCommentArea');
+  const body = document.getElementById('btAiCommentBody');
+  const spinner = document.getElementById('btAiSpinner');
+  area.style.display = 'block';
+  spinner.style.display = 'inline-block';
+  body.textContent = '분석 중...';
+
+  // 이상 수치 정리
+  const highItems = items.filter(i=>i.refHigh!==null&&i.value>i.refHigh);
+  const lowItems = items.filter(i=>i.refLow!==null&&i.value<i.refLow);
+  const normalItems = items.filter(i=>{
+    const h=i.refHigh!==null&&i.value>i.refHigh;
+    const l=i.refLow!==null&&i.value<i.refLow;
+    return !h&&!l;
+  });
+
+  const itemSummary = items.map(i=>{
+    const st=i.refHigh!==null&&i.value>i.refHigh?'↑높음':i.refLow!==null&&i.value<i.refLow?'↓낮음':'정상';
+    return `${i.name}(${i.abbr||i.name}): ${i.value}${i.unit||''} [${i.refLow??''}~${i.refHigh??''}] ${st}`;
+  }).join('\n');
+
+  const sys = `당신은 고양이 혈액검사 결과를 보호자에게 쉽게 설명해주는 수의학 AI 어시스턴트입니다.
+
+【역할】
+- 대상: 고양이 당뇨·신부전·심장병 등을 처음 접하는 초보 보호자
+- 언어: 전문 용어 최소화, 쉬운 한국어로 설명
+- 길이: 500자 내외로 핵심만 간결하게
+
+【출력 형식 — 반드시 이 구조로】
+
+🔴 주의가 필요한 수치
+이상 수치마다 1~2줄: "○○(항목명)이 높아요/낮아요. → 이게 뭘 의미하는지 쉽게 설명. 어떻게 해야 하는지."
+
+🟢 정상 수치
+정상인 주요 항목들 한 줄로 간략히
+
+📋 전체 요약
+2~3줄: 지금 고양이 상태를 전체적으로 쉽게 설명. 보호자가 지금 당장 해야 할 행동 포함.
+
+⚠️ 주의사항
+"이 내용은 참고용이며, 정확한 진단과 치료는 반드시 담당 수의사와 상담하세요."
+
+【설명 가이드】
+- BUN/Creatinine/SDMA 높음 → "신장이 노폐물을 잘 걸러내지 못하고 있어요"
+- ALT/AST 높음 → "간세포가 손상되어 있을 수 있어요"
+- 혈당 높음 → "혈액 속 당이 너무 많아요, 당뇨 관리가 필요해요"
+- HCT/Hb 낮음 → "빈혈이 있어요, 피가 부족한 상태예요"
+- Phosphorus 높음 → "인 수치가 높아요, 신장에 부담을 줄 수 있어요"
+- Potassium 낮음 → "칼륨이 부족해요, 근육 약화나 무기력증이 올 수 있어요"
+- FPL 높음 → "췌장에 염증이 있을 수 있어요 (췌장염)"
+- FSAA 높음 → "간 기능 이상 또는 당뇨 관련 지표가 높아요"
+- T4 낮음 → "갑상선 기능이 저하되어 있을 수 있어요"`;
+
+  const userMsg = `고양이: ${target.cat} / 검사일: ${target.date}
+
+【전체 검사 결과】
+${itemSummary}
+
+이상 수치 ${highItems.length+lowItems.length}개, 정상 ${normalItems.length}개`;
+
+  try {
+    const resp = await fetch('/api/proxy', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: sys,
+        messages: [{role: 'user', content: userMsg}]
+      })
+    });
+    const data = await resp.json();
+    spinner.style.display = 'none';
+    if(data.content && data.content[0]){
+      body.textContent = data.content[0].text;
+    } else if(data.error){
+      body.textContent = '오류: ' + (data.error.message || '알 수 없는 오류');
+    }
+  } catch(e) {
+    spinner.style.display = 'none';
+    body.textContent = '분석 오류가 발생했어요. 다시 시도해주세요.';
+  }
+});
 
 /* ══════════════════════════════
    CGM 연속혈당 기능
