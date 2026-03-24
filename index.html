@@ -771,9 +771,56 @@ function renderCatBar(){
     });
     ch.appendChild(nameSpan);ch.appendChild(infoBtn);ch.appendChild(delBtn);bar.appendChild(ch);
   });
-  const add=document.createElement('div');add.className='cat-chip add';add.textContent='+ 추가';
-  add.onclick=()=>{const n=prompt('고양이 이름');if(n&&!state.cats.includes(n)){state.cats.push(n);state.activeCat=n;renderCatBar();saveS()}};
-  bar.appendChild(add);
+  // + 추가 버튼 (인라인 입력 방식 - iOS PWA 호환)
+  const addWrap=document.createElement('div');
+  addWrap.style.cssText='display:flex;align-items:center;gap:4px';
+  
+  const addBtn=document.createElement('div');
+  addBtn.className='cat-chip add';
+  addBtn.textContent='+ 추가';
+  addBtn.style.cssText='cursor:pointer';
+  addBtn.onclick=()=>{
+    // 인라인 입력창 표시
+    addBtn.style.display='none';
+    inlineInput.style.display='flex';
+    inlineInput.querySelector('input').focus();
+  };
+  
+  const inlineInput=document.createElement('div');
+  inlineInput.style.cssText='display:none;align-items:center;gap:4px';
+  inlineInput.innerHTML=`
+    <input type="text" placeholder="이름 입력" maxlength="10"
+      style="padding:5px 8px;border:1px solid var(--teal);border-radius:8px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit;width:80px;outline:none">
+    <button type="button" style="padding:5px 10px;background:var(--teal);color:#fff;border:none;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit">확인</button>
+    <button type="button" style="padding:5px 8px;background:var(--bg2);color:var(--text2);border:0.5px solid var(--bd);border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit">취소</button>
+  `;
+  
+  const inp=inlineInput.querySelector('input');
+  const confirmBtn=inlineInput.querySelectorAll('button')[0];
+  const cancelBtn=inlineInput.querySelectorAll('button')[1];
+  
+  const doAdd=()=>{
+    const n=inp.value.trim();
+    if(n&&!state.cats.includes(n)){
+      state.cats.push(n);state.activeCat=n;saveS();
+    }
+    inp.value='';
+    inlineInput.style.display='none';
+    addBtn.style.display='';
+    renderCatBar();
+  };
+  
+  confirmBtn.onclick=doAdd;
+  cancelBtn.onclick=()=>{
+    inp.value='';
+    inlineInput.style.display='none';
+    addBtn.style.display='';
+  };
+  inp.onkeydown=(e)=>{if(e.key==='Enter')doAdd();};
+  
+  addWrap.appendChild(addBtn);
+  addWrap.appendChild(inlineInput);
+  bar.appendChild(addWrap);
 }
 renderCatBar();
 
