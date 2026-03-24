@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>설탕묘 케어 노트</title>
+<title>케어마스터즈</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -265,7 +265,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <body>
 <div class="app">
 <div class="hdr">
-  <div><div class="hdr-title">🐾 설탕묘 케어 노트</div><div class="hdr-sub">혈당·케톤·체중·혈검·사료 통합 관리</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈</div><div class="hdr-sub">혈당·케톤·체중·혈검·사료 통합 관리</div></div>
 </div>
 <div class="cat-bar" id="catBar"></div>
 <div class="nav">
@@ -286,8 +286,21 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     <div class="metric"><div class="mv" id="mIns">--</div><div class="ml">인슐린 U</div></div>
     <div class="metric purple"><div class="mv" id="mWt">--</div><div class="ml">체중 kg</div></div>
   </div>
+
+  <!-- 8번: 인슐린 투여 예정 표시 -->
+  <div id="insulinNextBanner" style="display:none;background:var(--amber-l);border-radius:10px;padding:.65rem 1rem;margin-bottom:.75rem;font-size:12px;color:var(--amber-d)">
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:16px">💉</span>
+      <div id="insulinNextText" style="line-height:1.5"></div>
+    </div>
+  </div>
+
   <div class="card">
-    <div class="card-title">혈당 · 케톤</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.65rem;cursor:pointer" onclick="toggleCard('bgCard',this)">
+      <span style="font-size:12px;font-weight:500;color:var(--text2)">혈당 · 케톤</span>
+      <span style="font-size:11px;color:var(--teal)">▲ 접기</span>
+    </div>
+    <div id="bgCard">
     <div class="kg-row"><span class="kg kg1">정상 &lt;0.5</span><span class="kg kg2">주의 0.5~2.3</span><span class="kg kg3">위험 ≥2.4</span></div>
     <div class="row2">
       <div class="ig"><label>혈당 (mg/dL)</label><input type="number" id="bgVal" placeholder="예: 250"></div>
@@ -297,9 +310,14 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
       <div class="ig full"><label>메모</label><input type="text" id="bgNote" placeholder="식욕, 활동량, 특이사항"></div>
     </div>
     <button class="btn btn-teal" id="saveBg">혈당·케톤 저장</button>
+    </div>
   </div>
   <div class="card">
-    <div class="card-title">몸무게</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.65rem;cursor:pointer" onclick="toggleCard('wtCard',this)">
+      <span style="font-size:12px;font-weight:500;color:var(--text2)">몸무게</span>
+      <span style="font-size:11px;color:var(--teal)">▲ 접기</span>
+    </div>
+    <div id="wtCard">
     <div class="row2">
       <div class="ig"><label>체중 (kg)</label><input type="number" id="wtVal" placeholder="예: 3.54" step="0.01"></div>
       <div class="ig"><label>측정 시각</label><input type="time" id="wtTime"></div>
@@ -307,9 +325,14 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     </div>
     <div id="wtDiff" style="font-size:12px;color:var(--text2);margin-bottom:8px;min-height:16px"></div>
     <button class="btn btn-purple" id="saveWt">체중 저장</button>
+    </div>
   </div>
   <div class="card">
-    <div class="card-title">인슐린 투여</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.65rem;cursor:pointer" onclick="toggleCard('insCard',this)">
+      <span style="font-size:12px;font-weight:500;color:var(--text2)">인슐린 투여</span>
+      <span style="font-size:11px;color:var(--teal)">▲ 접기</span>
+    </div>
+    <div id="insCard">
     <div class="row2">
       <div class="ig"><label>종류</label><select id="insType"><option>프로진크</option><option>글라진</option><option>레버미어</option><option>NPH</option><option>레귤러</option><option>기타</option></select></div>
       <div class="ig"><label>투여량 (U)</label><input type="number" id="insVal" placeholder="예: 1.5" step="0.5"></div>
@@ -317,9 +340,14 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
       <div class="ig"><label>투여 전 혈당</label><input type="number" id="insPreBg" placeholder="mg/dL"></div>
     </div>
     <button class="btn btn-amber" id="saveIns">인슐린 저장</button>
+    </div>
   </div>
   <div class="card">
-    <div class="card-title">식사 · 칼로리</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.65rem;cursor:pointer" onclick="toggleCard('mealCard',this)">
+      <span style="font-size:12px;font-weight:500;color:var(--text2)">식사 · 칼로리</span>
+      <span style="font-size:11px;color:var(--teal)">▲ 접기</span>
+    </div>
+    <div id="mealCard">
     <div class="row2">
       <div class="ig"><label>사료명</label><input type="text" id="foodName" placeholder="예: 몬지 레날"></div>
       <div class="ig"><label>급여량 (g)</label><input type="number" id="foodAmt" placeholder="g"></div>
@@ -327,9 +355,10 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
       <div class="ig"><label>급여 시각</label><input type="time" id="foodTime"></div>
     </div>
     <button class="btn btn-blue" id="saveMeal">식사 저장</button>
+    </div>
   </div>
   <div class="card">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem;cursor:pointer" onclick="toggleCard('routineCard',this)">
       <div class="card-title" style="margin:0">💊 투약 · 보조제 · 루틴</div>
       <button id="toggleEditRoutine" style="padding:4px 10px;border:0.5px solid var(--bd);border-radius:7px;background:transparent;color:var(--teal);font-size:11px;cursor:pointer;font-family:inherit">+ 목록 편집</button>
     </div>
@@ -489,7 +518,10 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 
 <!-- ══ 히스토리 ══ -->
 <div class="sec" id="tab-history">
-  <div class="card">
+  <div style="display:flex;justify-content:flex-end;margin-bottom:.5rem">
+      <button onclick="exportCSV()" style="padding:5px 14px;border:0.5px solid var(--teal);border-radius:8px;background:transparent;color:var(--teal);font-size:12px;cursor:pointer;font-family:inherit">📥 CSV 내보내기</button>
+    </div>
+    <div class="card">
     <div class="card-title">오늘 기록 타임라인</div>
     <div class="log-list" id="logList"><div class="empty">오늘 기록이 없어요</div></div>
   </div>
@@ -519,7 +551,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
           <button class="btn btn-sm" id="btAiComment" style="background:var(--purple);color:#fff">🤖 AI 분석</button>
         </div>
       </div>
-      <div style="overflow-x:auto"><table class="bt"><thead><tr><th>항목</th><th>수치</th><th>단위</th><th>정상범위</th><th>상태</th></tr></thead><tbody id="btBody"></tbody></table></div>
+      <div style="overflow-x:auto"><table class="bt"><thead><tr><th>항목</th><th>수치</th><th>단위</th><th>정상범위</th><th>상태</th><th>변화</th></tr></thead><tbody id="btBody"></tbody></table></div>
     </div>
     <!-- AI 코멘트 영역 -->
     <div id="btAiCommentArea" style="display:none;margin-top:.75rem">
@@ -671,6 +703,54 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     </div>
   </div>
 </div>
+
+
+<!-- 6번: 고양이 기본정보 모달 -->
+<div id="catProfileModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9998;align-items:center;justify-content:center;padding:1rem">
+  <div style="background:var(--bg);border-radius:16px;padding:1.25rem;max-width:360px;width:100%;max-height:90vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+      <div style="font-size:15px;font-weight:500;color:var(--text)" id="catProfileTitle">고양이 기본 정보</div>
+      <button onclick="document.getElementById('catProfileModal').style.display='none'" style="border:none;background:none;font-size:18px;cursor:pointer;color:var(--text2)">✕</button>
+    </div>
+    <div class="ig" style="margin-bottom:8px"><label>품종</label><input type="text" id="cpBreed" placeholder="예: 코리안숏헤어"></div>
+    <div class="row2" style="margin-bottom:8px">
+      <div class="ig"><label>생년월일</label><input type="date" id="cpBirth"></div>
+      <div class="ig"><label>성별</label>
+        <select id="cpGender"><option value="">선택</option><option value="수컷">수컷</option><option value="암컷">암컷</option></select>
+      </div>
+    </div>
+    <div class="row2" style="margin-bottom:8px">
+      <div class="ig"><label>중성화</label>
+        <select id="cpNeuter"><option value="">선택</option><option value="yes">했어요</option><option value="no">안했어요</option></select>
+      </div>
+      <div class="ig"><label>인슐린 종류</label>
+        <select id="cpInsulin"><option value="">없음</option><option value="프로진크">프로진크</option><option value="글라진">글라진</option><option value="레버미어">레버미어</option><option value="NPH">NPH</option></select>
+      </div>
+    </div>
+    <div style="font-size:11px;font-weight:500;color:var(--text2);margin-bottom:.4rem">동반 질환</div>
+    <div class="routine-tags" id="cpDiseaseTags" style="margin-bottom:.75rem">
+      <div class="routine-tag" data-val="당뇨(DM)">당뇨(DM)</div>
+      <div class="routine-tag" data-val="신부전(CKD)">신부전(CKD)</div>
+      <div class="routine-tag" data-val="심근비대증(HCM)">심근비대증(HCM)</div>
+      <div class="routine-tag" data-val="췌장염">췌장염</div>
+      <div class="routine-tag" data-val="IBD">IBD</div>
+      <div class="routine-tag" data-val="방광염">방광염</div>
+    </div>
+    <div class="ig" style="margin-bottom:.75rem"><label>메모</label><input type="text" id="cpMemo" placeholder="특이사항, 알레르기 등"></div>
+    <button onclick="saveCatProfile()" class="btn btn-teal">저장</button>
+  </div>
+</div>
+<!-- 9번: 케톤 위험 팝업 -->
+<div id="ketoneAlertModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999;align-items:center;justify-content:center;padding:1rem">
+  <div style="background:var(--bg);border-radius:16px;padding:1.25rem;max-width:360px;width:100%">
+    <div style="font-size:18px;font-weight:700;color:var(--coral);margin-bottom:.5rem" id="ketoneAlertTitle">⚠️ 케톤 위험 수치</div>
+    <div style="font-size:13px;color:var(--text);line-height:1.75;margin-bottom:1rem" id="ketoneAlertBody"></div>
+    <button onclick="document.getElementById('ketoneAlertModal').style.display='none'" 
+      style="width:100%;padding:10px;background:var(--coral);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">
+      확인했어요
+    </button>
+  </div>
+</div>
 </div><!-- /app -->
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
@@ -713,7 +793,11 @@ function renderCatBar(){
     const ch=document.createElement('div');ch.className='cat-chip'+(c===state.activeCat?' active':'');
     ch.style.cssText='display:flex;align-items:center;gap:5px';
     const nameSpan=document.createElement('span');nameSpan.textContent=c;
-    nameSpan.onclick=()=>{state.activeCat=c;renderCatBar();updateMetrics();updateWtDiff();saveS()};
+    nameSpan.onclick=()=>{state.activeCat=c;renderCatBar();updateMetrics();updateWtDiff();updateInsulinNext();saveS()};
+    const infoBtn=document.createElement('span');infoBtn.textContent='⚙';
+    infoBtn.style.cssText='font-size:11px;opacity:0.5;cursor:pointer;padding:0 1px';
+    infoBtn.title='기본 정보 설정';
+    infoBtn.onclick=(e)=>{e.stopPropagation();openCatProfile(c);};
     const delBtn=document.createElement('span');delBtn.textContent='×';
     delBtn.style.cssText='font-size:14px;line-height:1;opacity:0.6;cursor:pointer;padding:0 2px';
     delBtn.onclick=(e)=>{
@@ -724,7 +808,7 @@ function renderCatBar(){
       if(state.activeCat===c)state.activeCat=state.cats[0]||'';
       renderCatBar();updateMetrics();saveS();
     };
-    ch.appendChild(nameSpan);ch.appendChild(delBtn);bar.appendChild(ch);
+    ch.appendChild(nameSpan);ch.appendChild(infoBtn);ch.appendChild(delBtn);bar.appendChild(ch);
   });
   const add=document.createElement('div');add.className='cat-chip add';add.textContent='+ 추가';
   add.onclick=()=>{const n=prompt('고양이 이름');if(n&&!state.cats.includes(n)){state.cats.push(n);state.activeCat=n;renderCatBar();saveS()}};
@@ -771,7 +855,9 @@ document.getElementById('saveBg').onclick=()=>{
   const bg=parseFloat(document.getElementById('bgVal').value),ket=parseFloat(document.getElementById('ketVal').value);
   if(isNaN(bg)&&isNaN(ket)){toast('혈당 또는 케톤을 입력해주세요','#D85A30');return}
   getRec(state.activeCat,today()).bg.push({bg:isNaN(bg)?'':bg,ketone:isNaN(ket)?'':ket,time:document.getElementById('bgTime').value,type:document.getElementById('bgType').value,note:document.getElementById('bgNote').value,ts:Date.now()});
-  saveS();updateMetrics();['bgVal','ketVal','bgNote'].forEach(id=>document.getElementById(id).value='');toast('혈당·케톤 저장 완료!');
+  saveS();updateMetrics();updateInsulinNext();
+  checkKetoneAlert(ket, bg);
+  ['bgVal','ketVal','bgNote'].forEach(id=>document.getElementById(id).value='');toast('혈당·케톤 저장 완료!');
 };
 document.getElementById('saveWt').onclick=()=>{
   const w=parseFloat(document.getElementById('wtVal').value);if(isNaN(w)){toast('체중을 입력해주세요','#D85A30');return}
@@ -781,7 +867,7 @@ document.getElementById('saveWt').onclick=()=>{
 document.getElementById('saveIns').onclick=()=>{
   const dose=parseFloat(document.getElementById('insVal').value);if(isNaN(dose)){toast('투여량을 입력해주세요','#D85A30');return}
   getRec(state.activeCat,today()).ins.push({type:document.getElementById('insType').value,dose,time:document.getElementById('insTime').value,preBg:document.getElementById('insPreBg').value,ts:Date.now()});
-  saveS();updateMetrics();['insVal','insPreBg'].forEach(id=>document.getElementById(id).value='');toast('인슐린 저장 완료!');
+  saveS();updateMetrics();updateInsulinNext();['insVal','insPreBg'].forEach(id=>document.getElementById(id).value='');toast('인슐린 저장 완료!');
 };
 document.getElementById('saveMeal').onclick=()=>{
   const name=document.getElementById('foodName').value,amt=document.getElementById('foodAmt').value;
@@ -993,14 +1079,27 @@ setupDrop('btDrop','btFile',async file=>{
       }else{throw new Error('JSON 파싱 실패: '+e.message);}
     }
     if(!parsed.items||!Array.isArray(parsed.items))throw new Error('items 없음');
-    btEx={items:parsed.items,date:document.getElementById('btDate').value,cat:document.getElementById('btCat').value||state.activeCat};
+        const btDate=document.getElementById('btDate').value;
+    const btCatVal=document.getElementById('btCat').value||state.activeCat;
+    btEx={items:parsed.items,date:btDate,cat:btCatVal};
     hideStat('btStatus');
+    const prevRec=btData.filter(d=>d.cat===btCatVal&&d.date<btDate).sort((a,b)=>b.date<a.date?-1:1)[0];
     const tbody=document.getElementById('btBody');tbody.innerHTML='';
     parsed.items.forEach(item=>{
       const s=item.refLow!==null&&item.value<item.refLow?'l':item.refHigh!==null&&item.value>item.refHigh?'h':'n';
       const badge=s==='n'?'<span class="bn">정상</span>':s==='h'?'<span class="bh">높음</span>':'<span class="bl">낮음</span>';
       const ref=item.refLow!==null||item.refHigh!==null?`${item.refLow??''}~${item.refHigh??''}`:'–';
-      tbody.innerHTML+=`<tr><td>${item.name}${item.abbr&&item.abbr!==item.name?` <span style="color:var(--text3);font-size:10px">(${item.abbr})</span>`:''}</td><td style="font-weight:500">${item.value}</td><td style="color:var(--text2)">${item.unit||'–'}</td><td style="color:var(--text2)">${ref}</td><td>${badge}</td></tr>`;
+      let changeTd='<td style="color:var(--text3);font-size:11px">–</td>';
+      if(prevRec){
+        const prevItem=prevRec.items.find(i=>(i.abbr||i.name)===(item.abbr||item.name));
+        if(prevItem&&prevItem.value!==null){
+          const diff=parseFloat((item.value-prevItem.value).toFixed(2));
+          const arrow=diff>0?'▲':diff<0?'▼':'━';
+          const color=diff>0?'var(--coral)':diff<0?'var(--blue)':'var(--text3)';
+          changeTd=`<td style="font-size:11px;color:${color};white-space:nowrap">${arrow}${Math.abs(diff)}</td>`;
+        }
+      }
+      tbody.innerHTML+=`<tr><td>${item.name}${item.abbr&&item.abbr!==item.name?` <span style="color:var(--text3);font-size:10px">(${item.abbr})</span>`:''}</td><td style="font-weight:500">${item.value}</td><td style="color:var(--text2)">${item.unit||'–'}</td><td style="color:var(--text2)">${ref}</td><td>${badge}</td>${changeTd}</tr>`;
     });
     document.getElementById('btResultLabel').textContent=`${btEx.cat} · ${btEx.date} (${parsed.items.length}개 항목)`;
     document.getElementById('btResult').style.display='block';
@@ -1131,7 +1230,14 @@ function renderFdHistory(){
     const lv=getLv(cdm??999);const lc=lvColor(lv);
     const dt=new Date(h.ts).toLocaleDateString('ko-KR',{month:'short',day:'numeric'});
     const item=document.createElement('div');item.className='h-item';
-    item.innerHTML=`<div class="h-dot" style="background:${lc}"></div><div class="h-name">${h.name} <span style="font-size:10px;color:var(--text3)">${d.type==='wet'?'습식':'건식'}</span></div><div class="h-meta">탄수 DM ${cdm?.toFixed(1)}%<br>${kcal}kcal · ${dt}</div>`;
+    const isFav=favFoods.includes(h.name);
+    item.innerHTML=`<div class="h-dot" style="background:${lc}"></div>
+      <div class="h-name">${h.name} <span style="font-size:10px;color:var(--text3)">${d.type==='wet'?'습식':'건식'}</span></div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <div class="h-meta">탄수 DM ${cdm?.toFixed(1)}%<br>${kcal}kcal · ${dt}</div>
+        <span onclick="event.stopPropagation();toggleFavFood('${h.name.replace(/'/g,"\\'")}',this)" 
+          style="font-size:18px;cursor:pointer;flex-shrink:0">${isFav?'⭐':'☆'}</span>
+      </div>`;
     item.onclick=()=>{renderFdResult(d);window.scrollTo({top:0,behavior:'smooth'})};
     list.appendChild(item);
   });
@@ -1988,6 +2094,191 @@ function renderCgmHistory(){
 document.getElementById('cgmClear').onclick=()=>{
   if(confirm('CGM 이력을 모두 삭제할까요?')){cgmData=[];saveCGM();renderCgmHistory()}
 };
+
+/* ── 5번: 카드 접기/펼치기 ── */
+function toggleCard(id, header) {
+  const card = document.getElementById(id);
+  const btn = header.querySelector('span:last-child');
+  if(!card) return;
+  if(card.style.display === 'none') {
+    card.style.display = 'block';
+    if(btn) btn.textContent = '▲ 접기';
+  } else {
+    card.style.display = 'none';
+    if(btn) btn.textContent = '▼ 펼치기';
+  }
+}
+
+/* ── 7번: 빈 그래프 안내 ── */
+function checkEmptyGraph(wrap, days, dataFn) {
+  const hasData = days.some(d => dataFn(d) !== null);
+  if(!hasData) {
+    wrap.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text3);font-size:13px">아직 기록이 없어요<br><span style="font-size:11px">오늘 기록 탭에서 입력하면 그래프가 그려져요</span></div>';
+    return true;
+  }
+  return false;
+}
+
+/* ── 8번: 인슐린 투여 예정 표시 ── */
+function updateInsulinNext() {
+  const rec = getRec(state.activeCat, today());
+  const banner = document.getElementById('insulinNextBanner');
+  const text = document.getElementById('insulinNextText');
+  if(!banner || !text) return;
+  
+  if(!rec.ins || !rec.ins.length) {
+    banner.style.display = 'none';
+    return;
+  }
+  
+  const last = rec.ins[rec.ins.length - 1];
+  const lastTime = last.time;
+  if(!lastTime) { banner.style.display = 'none'; return; }
+  
+  const [h, m] = lastTime.split(':').map(Number);
+  const lastDt = new Date();
+  lastDt.setHours(h, m, 0, 0);
+  const nextDt = new Date(lastDt.getTime() + 12 * 60 * 60 * 1000);
+  const now = new Date();
+  const diffMs = nextDt - now;
+  const diffH = Math.floor(Math.abs(diffMs) / 3600000);
+  const diffM = Math.floor((Math.abs(diffMs) % 3600000) / 60000);
+  
+  const nextStr = `${String(nextDt.getHours()).padStart(2,'0')}:${String(nextDt.getMinutes()).padStart(2,'0')}`;
+  
+  banner.style.display = 'block';
+  if(diffMs < 0) {
+    text.innerHTML = `<b>💉 인슐린 투여 시각이 지났어요!</b><br>마지막 투여: ${lastTime} (${last.type} ${last.dose}U) → 다음 예정: ${nextStr}`;
+    banner.style.background = 'var(--coral-l)';
+    banner.style.color = 'var(--coral-d)';
+  } else if(diffMs < 60 * 60 * 1000) {
+    text.innerHTML = `<b>💉 인슐린 투여 ${diffH}시간 ${diffM}분 후 예정</b><br>마지막: ${lastTime} (${last.type} ${last.dose}U) → 다음: ${nextStr}`;
+    banner.style.background = 'var(--amber-l)';
+    banner.style.color = 'var(--amber-d)';
+  } else {
+    text.innerHTML = `💉 다음 인슐린 투여: <b>${nextStr}</b> (${diffH}시간 ${diffM}분 후)<br>마지막: ${lastTime} (${last.type} ${last.dose}U)`;
+    banner.style.background = 'var(--teal-l)';
+    banner.style.color = 'var(--teal-d)';
+  }
+}
+
+// 1분마다 갱신
+setInterval(updateInsulinNext, 60000);
+
+/* ── 9번: 케톤 위험 팝업 ── */
+function checkKetoneAlert(ket, bg) {
+  const modal = document.getElementById('ketoneAlertModal');
+  const title = document.getElementById('ketoneAlertTitle');
+  const body = document.getElementById('ketoneAlertBody');
+  if(!modal) return;
+  
+  if(ket >= 3.0) {
+    title.textContent = '🚨 DKA 응급 위험!';
+    body.innerHTML = `케톤 <b>${ket} mmol/L</b> — 즉각 응급 처치가 필요해요.<br><br>
+<b>지금 바로 해야 할 일:</b><br>
+1. 즉시 동물병원 응급실로 이동<br>
+2. 이동 중 고양이 체온 유지<br>
+3. 음식/물 억지로 먹이지 마세요<br>
+4. 주치의에게 연락<br><br>
+<span style="color:var(--coral)">케톤 3.0↑ = DKA 고위험. 지체 없이 병원으로!</span>`;
+    modal.style.display = 'flex';
+  } else if(ket >= 2.4) {
+    title.textContent = '⚠️ 케톤 위험 수치';
+    body.innerHTML = `케톤 <b>${ket} mmol/L</b> — 즉시 병원 상담이 필요해요.<br><br>
+<b>지금 해야 할 일:</b><br>
+1. 담당 수의사에게 즉시 연락<br>
+2. 식욕·구토·무기력증 여부 확인<br>
+3. 혈당 함께 체크 (현재: ${bg||'미측정'} mg/dL)<br>
+4. 수분 섭취 유도<br><br>
+<span style="color:var(--amber-d)">케톤 2.4↑ = 입원 치료 필요 가능성 높음</span>`;
+    modal.style.display = 'flex';
+  } else if(ket >= 0.5) {
+    // 주의 수준은 팝업 없이 색상만
+  }
+}
+
+/* ── 12번: CSV 내보내기 ── */
+function exportCSV() {
+  const cat = state.activeCat;
+  const recs = state.records[cat] || {};
+  const rows = [['날짜','시각','종류','혈당(mg/dL)','케톤(mmol/L)','체중(kg)','인슐린종류','인슐린용량(U)','사료명','칼로리(kcal)','메모']];
+  
+  Object.keys(recs).sort().forEach(date => {
+    const rec = recs[date];
+    rec.bg.forEach(r => rows.push([date, r.time, '혈당·케톤', r.bg||'', r.ketone||'', '', '', '', '', '', r.note||'']));
+    (rec.weights||[]).forEach(r => rows.push([date, r.time, '체중', '', '', r.weight||'', '', '', '', '', r.note||'']));
+    rec.ins.forEach(r => rows.push([date, r.time, '인슐린', r.preBg||'', '', '', r.type||'', r.dose||'', '', '', '']));
+    rec.meals.forEach(r => rows.push([date, r.time, '식사', '', '', '', '', '', r.name||'', r.kcal||'', '']));
+    (rec.routines||[]).forEach(r => rows.push([date, r.time, '투약·루틴', '', '', '', '', '', '', '', (r.items||[]).join('/')+' '+( r.memo||'')]));
+  });
+  
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `${cat}_케어기록_${today()}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+  toast('CSV 다운로드 완료!');
+}
+
+
+
+/* ── 6번: 고양이 기본정보 ── */
+let currentProfileCat='';
+function openCatProfile(cat) {
+  currentProfileCat=cat;
+  const profile=(state.catProfiles||{})[cat]||{};
+  document.getElementById('catProfileTitle').textContent=cat+' 기본 정보';
+  document.getElementById('cpBreed').value=profile.breed||'';
+  document.getElementById('cpBirth').value=profile.birth||'';
+  document.getElementById('cpGender').value=profile.gender||'';
+  document.getElementById('cpNeuter').value=profile.neuter||'';
+  document.getElementById('cpInsulin').value=profile.insulin||'';
+  document.getElementById('cpMemo').value=profile.memo||'';
+  // 질환 태그
+  const diseases=profile.diseases||[];
+  document.querySelectorAll('#cpDiseaseTags .routine-tag').forEach(tag=>{
+    tag.classList.toggle('selected', diseases.includes(tag.dataset.val));
+    tag.onclick=()=>tag.classList.toggle('selected');
+  });
+  document.getElementById('catProfileModal').style.display='flex';
+}
+
+function saveCatProfile() {
+  if(!state.catProfiles)state.catProfiles={};
+  const diseases=[...document.querySelectorAll('#cpDiseaseTags .routine-tag.selected')].map(t=>t.dataset.val);
+  state.catProfiles[currentProfileCat]={
+    breed:document.getElementById('cpBreed').value,
+    birth:document.getElementById('cpBirth').value,
+    gender:document.getElementById('cpGender').value,
+    neuter:document.getElementById('cpNeuter').value,
+    insulin:document.getElementById('cpInsulin').value,
+    memo:document.getElementById('cpMemo').value,
+    diseases
+  };
+  saveS();
+  document.getElementById('catProfileModal').style.display='none';
+  // 인슐린 종류 자동 반영
+  const ins=state.catProfiles[currentProfileCat].insulin;
+  if(ins)document.getElementById('insType').value=ins;
+  toast(currentProfileCat+' 기본 정보 저장 완료!');
+}
+
+/* ── 11번: 사료 즐겨찾기 ── */
+let favFoods=[];
+try{const d=localStorage.getItem('favFoods_v1');if(d)favFoods=JSON.parse(d);}catch(e){}
+const saveFavFoods=()=>{try{localStorage.setItem('favFoods_v1',JSON.stringify(favFoods));}catch(e){}};
+
+function toggleFavFood(name, el) {
+  const idx=favFoods.indexOf(name);
+  if(idx>-1){favFoods.splice(idx,1);el.textContent='☆';}
+  else{favFoods.push(name);el.textContent='⭐';}
+  saveFavFoods();
+  toast(idx>-1?`${name} 즐겨찾기 해제`:`${name} 즐겨찾기 추가!`);
+}
+
+// 초기 실행
+updateInsulinNext();
 </script>
 </body>
 </html>
