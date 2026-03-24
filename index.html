@@ -1250,7 +1250,40 @@ function renderFdResult(d){
 </div>
 ${tags?`<div class="tags">${tags}</div><div style="font-size:10px;color:var(--text3);margin-bottom:.5rem">초록: 단백질원 · 주황: 탄수화물원</div>`:''}
 ${d.special_notes?`<div style="font-size:12px;color:var(--text2);line-height:1.6">${d.special_notes}</div>`:''}
-${isEstC||isEstK?`<div style="font-size:10px;color:var(--text3);margin-top:.4rem">* 직접 표기 없어 추정한 값이에요</div>`:''}`;
+${isEstC||isEstK?`<div style="font-size:10px;color:var(--text3);margin-top:.4rem">* 직접 표기 없어 추정한 값이에요</div>`:''}\`;
+
+  // 포장 단위 계산기
+  const calcDiv=document.createElement('div');
+  calcDiv.style.cssText='background:var(--bg2);border-radius:10px;padding:.75rem 1rem;margin-top:.5rem';
+  const k100=kcal;
+  calcDiv.innerHTML='<div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:.4rem">📦 포장 단위로 급여량 계산</div>'
+    +'<div style="font-size:11px;color:var(--text3);margin-bottom:.5rem">AI가 추출한 칼로리는 <b>100g 기준 '+k100+'kcal</b>이에요. 실제 포장 용량을 입력하면 정확한 급여량을 계산해줘요.</div>'
+    +'<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:.5rem">'
+    +'<input type="number" id="fdPackSize" placeholder="포장 용량(g)" style="width:110px;padding:6px 8px;border:0.5px solid var(--bd);border-radius:8px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit" oninput="calcFdPortion('+k100+')">'
+    +'<span style="font-size:11px;color:var(--text2)">g /</span>'
+    +'<input type="number" id="fdPackKcal" placeholder="포장 칼로리(kcal)" style="width:130px;padding:6px 8px;border:0.5px solid var(--bd);border-radius:8px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit" oninput="calcFdPortion('+k100+')">'
+    +'<span style="font-size:11px;color:var(--text2)">kcal</span>'
+    +'</div>'
+    +'<div id="fdPortionResult" style="font-size:12px;color:var(--teal);font-weight:500;line-height:1.6"></div>';
+  area.appendChild(calcDiv);
+}
+
+function calcFdPortion(kcalPer100){
+  const size=parseFloat(document.getElementById('fdPackSize')?.value);
+  const packKcal=parseFloat(document.getElementById('fdPackKcal')?.value);
+  const result=document.getElementById('fdPortionResult');
+  if(!result)return;
+  let actualKcalPer100=kcalPer100;
+  if(!isNaN(size)&&!isNaN(packKcal)&&size>0){
+    actualKcalPer100=packKcal/size*100;
+  }else if(!isNaN(size)&&size>0){
+    actualKcalPer100=kcalPer100;
+  }else{result.textContent='';return;}
+  const mer=currentMer||200;
+  const totalG=Math.round(mer/actualKcalPer100*100);
+  const perMeal=Math.round(totalG/2);
+  const packs=!isNaN(size)&&size>0?(totalG/size).toFixed(1):'?';
+  result.innerHTML='→ 하루 <b>'+totalG+'g</b> (1회 <b>'+perMeal+'g</b> × 2끼) / 포장 <b>'+packs+'개</b> 분량 <span style="font-size:10px;color:var(--text3)">(칼로리 계산기 기준 '+mer+'kcal/일)</span>';
 }
 
 function renderFdHistory(){
@@ -1265,13 +1298,13 @@ function renderFdHistory(){
     const dt=new Date(h.ts).toLocaleDateString('ko-KR',{month:'short',day:'numeric'});
     const item=document.createElement('div');item.className='h-item';
     const isFav=favFoods.includes(h.name);
-    item.innerHTML=`<div class="h-dot" style="background:${lc}"></div>
-      <div class="h-name">${h.name} <span style="font-size:10px;color:var(--text3)">${d.type==='wet'?'습식':'건식'}</span></div>
-      <div style="display:flex;align-items:center;gap:6px">
-        <div class="h-meta">탄수 DM ${cdm?.toFixed(1)}%<br>${kcal}kcal · ${dt}</div>
-        <span onclick="event.stopPropagation();toggleFavFood('${h.name.replace(/'/g,"\\'")}',this)" 
-          style="font-size:18px;cursor:pointer;flex-shrink:0">${isFav?'⭐':'☆'}</span>
-      </div>`;
+    item.innerHTML='<div class="h-dot" style="background:'+lc+'"></div>'
+      +'<div class="h-name">'+h.name+' <span style="font-size:10px;color:var(--text3)">'+(d.type==='wet'?'습식':'건식')+'</span></div>'
+      +'<div style="display:flex;align-items:center;gap:6px">'
+      +'<div class="h-meta">탄수 DM '+(cdm?.toFixed(1)||'?')+'%<br>'+kcal+'kcal · '+dt+'</div>'
+      +'<span onclick="event.stopPropagation();toggleFavFood(this.dataset.name,this)" data-name="'+h.name.replace(/"/g,'&quot;')+'"'
+      +' style="font-size:18px;cursor:pointer;flex-shrink:0">'+(isFav?'⭐':'☆')+'</span>'
+      +'</div>';
     item.onclick=()=>{renderFdResult(d);window.scrollTo({top:0,behavior:'smooth'})};
     list.appendChild(item);
   });
