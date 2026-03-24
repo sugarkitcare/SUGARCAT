@@ -825,9 +825,7 @@ function renderCatBar(){
 renderCatBar();
 
 // 페이지 로드 시 body 스타일 초기화 (iOS 모달 버그 방지)
-document.body.style.overflow='';
-document.body.style.position='';
-document.body.style.width='';
+
 
 function bgSt(bg,ket){if(ket>=2.4||bg>=400)return'danger';if(ket>=0.5||bg>=300)return'warn';return'normal'}
 function updateMetrics(){
@@ -2263,9 +2261,6 @@ function openCatProfile(cat) {
   });
   profileModal.style.display='block';
   profileModal.style.zIndex='99999';
-  document.body.style.overflow='hidden';
-  document.body.style.position='fixed';
-  document.body.style.width='100%';
   profileModal.scrollTop=0;
 }
 
@@ -2306,9 +2301,6 @@ function toggleFavFood(name, el) {
 function closeModal(id){
   const m=document.getElementById(id);
   if(m)m.style.display='none';
-  document.body.style.overflow='';
-  document.body.style.position='';
-  document.body.style.width='';
 }
 // 초기 실행
 updateInsulinNext();
@@ -2317,7 +2309,7 @@ updateInsulinNext();
 
 
 <!-- 6번: 고양이 기본정보 모달 -->
-<div id="catProfileModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:99999;overflow-y:scroll;-webkit-overflow-scrolling:touch">
+<div id="catProfileModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.75);z-index:99999;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:20px 16px">
   <div style="background:var(--bg);border-radius:16px;padding:1.25rem;max-width:360px;width:calc(100% - 2rem);margin:2rem auto 4rem">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
       <div style="font-size:15px;font-weight:500;color:var(--text)" id="catProfileTitle">고양이 기본 정보</div>
