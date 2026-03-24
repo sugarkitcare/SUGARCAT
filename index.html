@@ -777,6 +777,11 @@ function renderCatBar(){
 }
 renderCatBar();
 
+// 페이지 로드 시 body 스타일 초기화 (iOS 모달 버그 방지)
+document.body.style.overflow='';
+document.body.style.position='';
+document.body.style.width='';
+
 function bgSt(bg,ket){if(ket>=2.4||bg>=400)return'danger';if(ket>=0.5||bg>=300)return'warn';return'normal'}
 function updateMetrics(){
   const rec=getRec(state.activeCat,today());
