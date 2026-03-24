@@ -1,7 +1,7 @@
 {
-  "name": "당묘 케어 노트",
+  "name": "케어마스터",
   "short_name": "당묘케어",
-  "description": "고양이 당뇨 통합 관리 앱",
+  "description": "케어마스터즈",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#F8F7F4",
