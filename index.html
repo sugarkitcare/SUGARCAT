@@ -2245,8 +2245,8 @@ function openCatProfile(cat) {
   currentProfileCat=cat;
   if(!state.catProfiles)state.catProfiles={};
   const profile=state.catProfiles[cat]||{};
-  const profileModal=document.getElementById('catProfileModal');
-  if(!profileModal)return;
+  const page=document.getElementById('catProfilePage');
+  if(!page)return;
   document.getElementById('catProfileTitle').textContent=cat+' 기본 정보';
   document.getElementById('cpBreed').value=profile.breed||'';
   document.getElementById('cpBirth').value=profile.birth||'';
@@ -2259,9 +2259,8 @@ function openCatProfile(cat) {
     tag.classList.toggle('selected', diseases.includes(tag.dataset.val));
     tag.onclick=()=>tag.classList.toggle('selected');
   });
-  profileModal.style.display='block';
-  profileModal.style.zIndex='99999';
-  profileModal.scrollTop=0;
+  page.style.display='block';
+  page.scrollTop=0;
 }
 
 function saveCatProfile() {
@@ -2277,7 +2276,7 @@ function saveCatProfile() {
     diseases
   };
   saveS();
-  closeModal('catProfileModal');
+  closeModal('catProfilePage');
   // 인슐린 종류 자동 반영
   const ins=state.catProfiles[currentProfileCat].insulin;
   if(ins)document.getElementById('insType').value=ins;
@@ -2308,42 +2307,40 @@ updateInsulinNext();
 
 
 
-<!-- 6번: 고양이 기본정보 모달 -->
-<div id="catProfileModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.75);z-index:99999;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:20px 16px">
-  <div style="background:var(--bg);border-radius:16px;padding:1.25rem;max-width:360px;width:calc(100% - 2rem);margin:2rem auto 4rem">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
-      <div style="font-size:15px;font-weight:500;color:var(--text)" id="catProfileTitle">고양이 기본 정보</div>
-      <button onclick="closeModal('catProfileModal')" style="border:none;background:none;font-size:18px;cursor:pointer;color:var(--text2)">✕</button>
-    </div>
-    <div class="ig" style="margin-bottom:8px"><label>품종</label><input type="text" id="cpBreed" placeholder="예: 코리안숏헤어"></div>
-    <div class="row2" style="margin-bottom:8px">
-      <div class="ig"><label>생년월일</label><input type="date" id="cpBirth"></div>
-      <div class="ig"><label>성별</label>
-        <select id="cpGender"><option value="">선택</option><option value="수컷">수컷</option><option value="암컷">암컷</option></select>
-      </div>
-    </div>
-    <div class="row2" style="margin-bottom:8px">
-      <div class="ig"><label>중성화</label>
-        <select id="cpNeuter"><option value="">선택</option><option value="yes">했어요</option><option value="no">안했어요</option></select>
-      </div>
-      <div class="ig"><label>인슐린 종류</label>
-        <select id="cpInsulin"><option value="">없음</option><option value="프로진크">프로진크</option><option value="글라진">글라진</option><option value="레버미어">레버미어</option><option value="NPH">NPH</option></select>
-      </div>
-    </div>
-    <div style="font-size:11px;font-weight:500;color:var(--text2);margin-bottom:.4rem">동반 질환</div>
-    <div class="routine-tags" id="cpDiseaseTags" style="margin-bottom:.75rem">
-      <div class="routine-tag" data-val="당뇨(DM)">당뇨(DM)</div>
-      <div class="routine-tag" data-val="신부전(CKD)">신부전(CKD)</div>
-      <div class="routine-tag" data-val="심근비대증(HCM)">심근비대증(HCM)</div>
-      <div class="routine-tag" data-val="췌장염">췌장염</div>
-      <div class="routine-tag" data-val="IBD">IBD</div>
-      <div class="routine-tag" data-val="방광염">방광염</div>
-    </div>
-    <div class="ig" style="margin-bottom:.75rem"><label>메모</label><input type="text" id="cpMemo" placeholder="특이사항, 알레르기 등"></div>
-    <button onclick="saveCatProfile()" class="btn btn-teal">저장</button>
+<!-- 6번: 고양이 기본정보 - 풀페이지 슬라이드 방식 -->
+<div id="catProfilePage" style="display:none;position:absolute;top:0;left:0;width:100%;min-height:100%;background:var(--bg);z-index:9999;padding:1rem;box-sizing:border-box;overflow-y:auto">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:1.25rem">
+    <button onclick="closeModal('catProfilePage')" type="button"
+      style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--teal);padding:4px;line-height:1">←</button>
+    <div id="catProfileTitle" style="font-size:16px;font-weight:600;color:var(--text)">고양이 기본 정보</div>
   </div>
+  <div class="ig" style="margin-bottom:10px"><label>품종</label><input type="text" id="cpBreed" placeholder="예: 코리안숏헤어"></div>
+  <div class="row2" style="margin-bottom:10px">
+    <div class="ig"><label>생년월일</label><input type="date" id="cpBirth"></div>
+    <div class="ig"><label>성별</label>
+      <select id="cpGender"><option value="">선택</option><option value="수컷">수컷</option><option value="암컷">암컷</option></select>
+    </div>
+  </div>
+  <div class="row2" style="margin-bottom:10px">
+    <div class="ig"><label>중성화</label>
+      <select id="cpNeuter"><option value="">선택</option><option value="yes">했어요</option><option value="no">안했어요</option></select>
+    </div>
+    <div class="ig"><label>인슐린 종류</label>
+      <select id="cpInsulin"><option value="">없음</option><option value="프로진크">프로진크</option><option value="글라진">글라진</option><option value="레버미어">레버미어</option><option value="NPH">NPH</option></select>
+    </div>
+  </div>
+  <div style="font-size:11px;font-weight:500;color:var(--text2);margin-bottom:.4rem">동반 질환</div>
+  <div class="routine-tags" id="cpDiseaseTags" style="margin-bottom:.75rem">
+    <div class="routine-tag" data-val="당뇨(DM)">당뇨(DM)</div>
+    <div class="routine-tag" data-val="신부전(CKD)">신부전(CKD)</div>
+    <div class="routine-tag" data-val="심근비대증(HCM)">심근비대증(HCM)</div>
+    <div class="routine-tag" data-val="췌장염">췌장염</div>
+    <div class="routine-tag" data-val="IBD">IBD</div>
+    <div class="routine-tag" data-val="방광염">방광염</div>
+  </div>
+  <div class="ig" style="margin-bottom:1rem"><label>메모</label><input type="text" id="cpMemo" placeholder="특이사항, 알레르기 등"></div>
+  <button onclick="saveCatProfile()" class="btn btn-teal" style="width:100%">저장</button>
 </div>
-
 <!-- 9번: 케톤 위험 팝업 -->
 <div id="ketoneAlertModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9999;overflow-y:scroll;-webkit-overflow-scrolling:touch">
   <div style="background:var(--bg);border-radius:16px;padding:1.25rem;max-width:360px;width:calc(100% - 2rem);margin:2rem auto">
