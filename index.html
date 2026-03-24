@@ -2246,7 +2246,7 @@ function openCatProfile(cat) {
   if(!state.catProfiles)state.catProfiles={};
   const profile=state.catProfiles[cat]||{};
   const page=document.getElementById('catProfilePage');
-  if(!page)return;
+  if(!page){alert('오류');return;}
   document.getElementById('catProfileTitle').textContent=cat+' 기본 정보';
   document.getElementById('cpBreed').value=profile.breed||'';
   document.getElementById('cpBirth').value=profile.birth||'';
@@ -2256,10 +2256,10 @@ function openCatProfile(cat) {
   document.getElementById('cpMemo').value=profile.memo||'';
   const diseases=profile.diseases||[];
   document.querySelectorAll('#cpDiseaseTags .routine-tag').forEach(tag=>{
-    tag.classList.toggle('selected', diseases.includes(tag.dataset.val));
+    tag.classList.toggle('selected',diseases.includes(tag.dataset.val));
     tag.onclick=()=>tag.classList.toggle('selected');
   });
-  page.style.display='block';
+  page.style.cssText='display:block;position:fixed;top:0;left:0;width:100vw;height:100vh;background:var(--bg);z-index:999999;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:20px 16px 40px;box-sizing:border-box';
   page.scrollTop=0;
 }
 
@@ -2307,11 +2307,23 @@ updateInsulinNext();
 
 
 
-<!-- 6번: 고양이 기본정보 - 풀페이지 슬라이드 방식 -->
-<div id="catProfilePage" style="display:none;position:absolute;top:0;left:0;width:100%;min-height:100%;background:var(--bg);z-index:9999;padding:1rem;box-sizing:border-box;overflow-y:auto">
-  <div style="display:flex;align-items:center;gap:10px;margin-bottom:1.25rem">
+<!-- 9번: 케톤 위험 팝업 -->
+<div id="ketoneAlertModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9999;overflow-y:scroll;-webkit-overflow-scrolling:touch">
+  <div style="background:var(--bg);border-radius:16px;padding:1.25rem;max-width:360px;width:calc(100% - 2rem);margin:2rem auto">
+    <div style="font-size:18px;font-weight:700;color:var(--coral);margin-bottom:.5rem" id="ketoneAlertTitle">⚠️ 케톤 위험 수치</div>
+    <div style="font-size:13px;color:var(--text);line-height:1.75;margin-bottom:1rem" id="ketoneAlertBody"></div>
+    <button onclick="closeModal('ketoneAlertModal')" 
+      style="width:100%;padding:10px;background:var(--coral);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">
+      확인했어요
+    </button>
+  </div>
+</div>
+
+<!-- 고양이 기본정보 페이지 (PWA 호환) -->
+<div id="catProfilePage" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:var(--bg);z-index:999999;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:20px 16px 40px;box-sizing:border-box">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:1.25rem;padding-top:8px">
     <button onclick="closeModal('catProfilePage')" type="button"
-      style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--teal);padding:4px;line-height:1">←</button>
+      style="background:var(--bg2);border:none;font-size:16px;cursor:pointer;color:var(--teal);padding:8px 14px;line-height:1;border-radius:10px;font-family:inherit">← 뒤로</button>
     <div id="catProfileTitle" style="font-size:16px;font-weight:600;color:var(--text)">고양이 기본 정보</div>
   </div>
   <div class="ig" style="margin-bottom:10px"><label>품종</label><input type="text" id="cpBreed" placeholder="예: 코리안숏헤어"></div>
@@ -2339,19 +2351,7 @@ updateInsulinNext();
     <div class="routine-tag" data-val="방광염">방광염</div>
   </div>
   <div class="ig" style="margin-bottom:1rem"><label>메모</label><input type="text" id="cpMemo" placeholder="특이사항, 알레르기 등"></div>
-  <button onclick="saveCatProfile()" class="btn btn-teal" style="width:100%">저장</button>
+  <button onclick="saveCatProfile()" class="btn btn-teal" style="width:100%;padding:14px">저장</button>
 </div>
-<!-- 9번: 케톤 위험 팝업 -->
-<div id="ketoneAlertModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9999;overflow-y:scroll;-webkit-overflow-scrolling:touch">
-  <div style="background:var(--bg);border-radius:16px;padding:1.25rem;max-width:360px;width:calc(100% - 2rem);margin:2rem auto">
-    <div style="font-size:18px;font-weight:700;color:var(--coral);margin-bottom:.5rem" id="ketoneAlertTitle">⚠️ 케톤 위험 수치</div>
-    <div style="font-size:13px;color:var(--text);line-height:1.75;margin-bottom:1rem" id="ketoneAlertBody"></div>
-    <button onclick="closeModal('ketoneAlertModal')" 
-      style="width:100%;padding:10px;background:var(--coral);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">
-      확인했어요
-    </button>
-  </div>
-</div>
-
 </body>
 </html>
