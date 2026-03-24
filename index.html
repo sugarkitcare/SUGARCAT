@@ -263,7 +263,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 </style>
 </head>
 <body>
-<div class="app">
+<div class="app" id="app">
 <div class="hdr">
   <div><div class="hdr-title">🐾 케어마스터즈</div><div class="hdr-sub">혈당·케톤·체중·혈검·사료 통합 관리</div></div>
 </div>
@@ -2276,7 +2276,7 @@ function openCatProfile(cat) {
     tag.classList.toggle('selected',diseases.includes(tag.dataset.val));
     tag.onclick=()=>tag.classList.toggle('selected');
   });
-  document.getElementById('app').style.display='none';
+  const appEl=document.getElementById('app');if(appEl)appEl.style.display='none';
   page.style.display='block';
   window.scrollTo(0,0);
 }
@@ -2319,7 +2319,7 @@ function closeModal(id){
   const m=document.getElementById(id);
   if(m)m.style.display='none';
   if(id==='catProfilePage'){
-    document.getElementById('app').style.display='block';
+    const appEl2=document.getElementById('app');if(appEl2)appEl2.style.display='block';
     window.scrollTo(0,0);
   }
 }
