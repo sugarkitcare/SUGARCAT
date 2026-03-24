@@ -2247,10 +2247,8 @@ function openCatProfile(cat) {
   currentProfileCat=cat;
   if(!state.catProfiles)state.catProfiles={};
   const profile=state.catProfiles[cat]||{};
-  const modal=document.getElementById('catProfileModal');
-  if(!modal){toast('오류: 페이지를 새로고침해주세요','#D85A30');return;}
-  const modal=document.getElementById('catProfileModal');
-  if(!modal){alert('설정 창을 찾을 수 없어요. 페이지를 새로고침해주세요.');return;}
+  const profileModal=document.getElementById('catProfileModal');
+  if(!profileModal)return;
   document.getElementById('catProfileTitle').textContent=cat+' 기본 정보';
   document.getElementById('cpBreed').value=profile.breed||'';
   document.getElementById('cpBirth').value=profile.birth||'';
@@ -2258,18 +2256,17 @@ function openCatProfile(cat) {
   document.getElementById('cpNeuter').value=profile.neuter||'';
   document.getElementById('cpInsulin').value=profile.insulin||'';
   document.getElementById('cpMemo').value=profile.memo||'';
-  // 질환 태그
   const diseases=profile.diseases||[];
   document.querySelectorAll('#cpDiseaseTags .routine-tag').forEach(tag=>{
     tag.classList.toggle('selected', diseases.includes(tag.dataset.val));
     tag.onclick=()=>tag.classList.toggle('selected');
   });
-  modal.style.display='block';
-  modal.style.zIndex='99999';
+  profileModal.style.display='block';
+  profileModal.style.zIndex='99999';
   document.body.style.overflow='hidden';
   document.body.style.position='fixed';
   document.body.style.width='100%';
-  modal.scrollTop=0;
+  profileModal.scrollTop=0;
 }
 
 function saveCatProfile() {
