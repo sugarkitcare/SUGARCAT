@@ -1073,6 +1073,7 @@ setupDrop('btDrop','btFile',async file=>{
   try{
     const resp=await fetch('/api/proxy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:4000,system:sys,messages:[{role:'user',content:mc}]})});
     const data=await resp.json();
+    if(response.status===429){throw new Error(data.message||'요청이 너무 많아요. 잠시 후 다시 시도해주세요.');}
     if(data.error){throw new Error(data.error.message||JSON.stringify(data.error));}
     if(!data.content||!data.content[0]){throw new Error('응답 없음: '+JSON.stringify(data));}
     // 응답 파싱 강화
