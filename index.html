@@ -746,81 +746,98 @@ document.getElementById('btDate').value=today();
 
 /* 고양이 바 */
 function renderCatBar(){
-  const bar=document.getElementById('catBar');bar.innerHTML='';
+  const bar=document.getElementById('catBar');
+  bar.innerHTML='';
   state.cats.forEach(c=>{
-    const ch=document.createElement('div');ch.className='cat-chip'+(c===state.activeCat?' active':'');
-    ch.style.cssText='display:flex;align-items:center;gap:5px';
-    const nameSpan=document.createElement('span');nameSpan.textContent=c;
-    nameSpan.onclick=()=>{state.activeCat=c;renderCatBar();updateMetrics();updateWtDiff();updateInsulinNext();saveS()};
+    const ch=document.createElement('div');
+    ch.className='cat-chip'+(c===state.activeCat?' active':'');
+    ch.style.cssText='display:flex;align-items:center;gap:4px;padding:5px 10px';
+
+    // 이름
+    const nameSpan=document.createElement('span');
+    nameSpan.textContent=c;
+    nameSpan.style.cursor='pointer';
+    nameSpan.addEventListener('click',()=>{
+      state.activeCat=c;
+      renderCatBar();updateMetrics();updateWtDiff();updateInsulinNext();saveS();
+      const prof=(state.catProfiles||{})[c];
+      if(prof&&prof.insulin){const el=document.getElementById('insType');if(el)el.value=prof.insulin;}
+    });
+
+    // 설정 버튼
     const infoBtn=document.createElement('button');
     infoBtn.textContent='⚙';
     infoBtn.type='button';
-    infoBtn.style.cssText='font-size:14px;background:none;border:none;cursor:pointer;padding:3px 6px;min-width:28px;min-height:28px;color:inherit;opacity:0.7;-webkit-tap-highlight-color:rgba(0,0,0,0)';
-    infoBtn.addEventListener('click',(e)=>{e.stopPropagation();e.preventDefault();openCatProfile(c);});
+    infoBtn.style.cssText='font-size:14px;background:none;border:none;cursor:pointer;padding:2px 5px;min-width:26px;min-height:26px;color:inherit;opacity:0.7';
+    infoBtn.addEventListener('click',(e)=>{e.stopPropagation();openCatProfile(c);});
+
+    // 삭제 버튼
     const delBtn=document.createElement('button');
     delBtn.textContent='×';
     delBtn.type='button';
-    delBtn.style.cssText='font-size:15px;background:none;border:none;cursor:pointer;padding:3px 6px;min-width:28px;min-height:28px;color:inherit;opacity:0.6;-webkit-tap-highlight-color:rgba(0,0,0,0)';
+    delBtn.style.cssText='font-size:15px;background:none;border:none;cursor:pointer;padding:2px 5px;min-width:26px;min-height:26px;color:inherit;opacity:0.6';
     delBtn.addEventListener('click',(e)=>{
-      e.stopPropagation();e.preventDefault();
-      if(!confirm(c+'를 삭제할까요? 해당 고양이의 모든 기록이 삭제돼요.')){return}
+      e.stopPropagation();
+      if(!confirm(c+'를 삭제할까요? 모든 기록이 삭제돼요.'))return;
       state.cats=state.cats.filter(x=>x!==c);
       if(state.records[c])delete state.records[c];
       if(state.activeCat===c)state.activeCat=state.cats[0]||'';
       renderCatBar();updateMetrics();saveS();
     });
-    ch.appendChild(nameSpan);ch.appendChild(infoBtn);ch.appendChild(delBtn);bar.appendChild(ch);
+
+    ch.appendChild(nameSpan);ch.appendChild(infoBtn);ch.appendChild(delBtn);
+    bar.appendChild(ch);
   });
-  // + 추가 버튼 (인라인 입력 방식 - iOS PWA 호환)
-  const addWrap=document.createElement('div');
-  addWrap.style.cssText='display:flex;align-items:center;gap:4px';
-  
+
+  // + 추가 버튼 (인라인 입력)
   const addBtn=document.createElement('div');
   addBtn.className='cat-chip add';
   addBtn.textContent='+ 추가';
-  addBtn.style.cssText='cursor:pointer';
-  addBtn.onclick=()=>{
-    // 인라인 입력창 표시
-    addBtn.style.display='none';
-    inlineInput.style.display='flex';
-    inlineInput.querySelector('input').focus();
-  };
-  
-  const inlineInput=document.createElement('div');
-  inlineInput.style.cssText='display:none;align-items:center;gap:4px';
-  inlineInput.innerHTML=`
-    <input type="text" placeholder="이름 입력" maxlength="10"
-      style="padding:5px 8px;border:1px solid var(--teal);border-radius:8px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit;width:80px;outline:none">
-    <button type="button" style="padding:5px 10px;background:var(--teal);color:#fff;border:none;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit">확인</button>
-    <button type="button" style="padding:5px 8px;background:var(--bg2);color:var(--text2);border:0.5px solid var(--bd);border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit">취소</button>
-  `;
-  
-  const inp=inlineInput.querySelector('input');
-  const confirmBtn=inlineInput.querySelectorAll('button')[0];
-  const cancelBtn=inlineInput.querySelectorAll('button')[1];
-  
+  addBtn.style.cursor='pointer';
+
+  const inputWrap=document.createElement('div');
+  inputWrap.style.cssText='display:none;align-items:center;gap:4px';
+
+  const nameInput=document.createElement('input');
+  nameInput.type='text';
+  nameInput.placeholder='이름 입력';
+  nameInput.maxLength=10;
+  nameInput.style.cssText='padding:5px 8px;border:1px solid var(--teal);border-radius:8px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit;width:80px;outline:none';
+
+  const okBtn=document.createElement('button');
+  okBtn.type='button';
+  okBtn.textContent='확인';
+  okBtn.style.cssText='padding:5px 10px;background:var(--teal);color:#fff;border:none;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit';
+
+  const cancelBtn=document.createElement('button');
+  cancelBtn.type='button';
+  cancelBtn.textContent='취소';
+  cancelBtn.style.cssText='padding:5px 8px;background:var(--bg2);color:var(--text2);border:0.5px solid var(--bd);border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit';
+
   const doAdd=()=>{
-    const n=inp.value.trim();
-    if(n&&!state.cats.includes(n)){
-      state.cats.push(n);state.activeCat=n;saveS();
-    }
-    inp.value='';
-    inlineInput.style.display='none';
-    addBtn.style.display='';
+    const n=nameInput.value.trim();
+    if(n&&!state.cats.includes(n)){state.cats.push(n);state.activeCat=n;saveS();}
     renderCatBar();
   };
-  
-  confirmBtn.onclick=doAdd;
-  cancelBtn.onclick=()=>{
-    inp.value='';
-    inlineInput.style.display='none';
-    addBtn.style.display='';
-  };
-  inp.onkeydown=(e)=>{if(e.key==='Enter')doAdd();};
-  
-  addWrap.appendChild(addBtn);
-  addWrap.appendChild(inlineInput);
-  bar.appendChild(addWrap);
+
+  addBtn.addEventListener('click',()=>{
+    addBtn.style.display='none';
+    inputWrap.style.display='flex';
+    nameInput.focus();
+  });
+  okBtn.addEventListener('click',doAdd);
+  cancelBtn.addEventListener('click',()=>renderCatBar());
+  nameInput.addEventListener('keydown',(e)=>{if(e.key==='Enter')doAdd();});
+
+  inputWrap.appendChild(nameInput);
+  inputWrap.appendChild(okBtn);
+  inputWrap.appendChild(cancelBtn);
+
+  const wrap=document.createElement('div');
+  wrap.style.cssText='display:flex;align-items:center;gap:4px';
+  wrap.appendChild(addBtn);
+  wrap.appendChild(inputWrap);
+  bar.appendChild(wrap);
 }
 renderCatBar();
 
