@@ -2259,8 +2259,9 @@ function openCatProfile(cat) {
     tag.classList.toggle('selected',diseases.includes(tag.dataset.val));
     tag.onclick=()=>tag.classList.toggle('selected');
   });
-  page.style.cssText='display:block;position:fixed;top:0;left:0;width:100vw;height:100vh;background:var(--bg);z-index:999999;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:20px 16px 40px;box-sizing:border-box';
-  page.scrollTop=0;
+  document.getElementById('app').style.display='none';
+  page.style.display='block';
+  window.scrollTo(0,0);
 }
 
 function saveCatProfile() {
@@ -2300,6 +2301,10 @@ function toggleFavFood(name, el) {
 function closeModal(id){
   const m=document.getElementById(id);
   if(m)m.style.display='none';
+  if(id==='catProfilePage'){
+    document.getElementById('app').style.display='block';
+    window.scrollTo(0,0);
+  }
 }
 // 초기 실행
 updateInsulinNext();
@@ -2320,7 +2325,7 @@ updateInsulinNext();
 </div>
 
 <!-- 고양이 기본정보 페이지 (PWA 호환) -->
-<div id="catProfilePage" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:var(--bg);z-index:999999;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:20px 16px 40px;box-sizing:border-box">
+<div id="catProfilePage" style="display:none;width:100%;min-height:100vh;background:var(--bg);padding:20px 16px 40px;box-sizing:border-box">
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:1.25rem;padding-top:8px">
     <button onclick="closeModal('catProfilePage')" type="button"
       style="background:var(--bg2);border:none;font-size:16px;cursor:pointer;color:var(--teal);padding:8px 14px;line-height:1;border-radius:10px;font-family:inherit">← 뒤로</button>
