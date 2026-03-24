@@ -518,8 +518,15 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 
 <!-- ══ 히스토리 ══ -->
 <div class="sec" id="tab-history">
-  <div style="display:flex;justify-content:flex-end;margin-bottom:.5rem">
-      <button onclick="exportCSV()" style="padding:5px 14px;border:0.5px solid var(--teal);border-radius:8px;background:transparent;color:var(--teal);font-size:12px;cursor:pointer;font-family:inherit">📥 CSV 내보내기</button>
+  <div style="background:var(--teal-l);border-radius:10px;padding:.75rem 1rem;margin-bottom:.75rem">
+      <div style="font-size:12px;font-weight:500;color:var(--teal-d);margin-bottom:.3rem">📋 기록 내보내기</div>
+      <div style="font-size:11px;color:var(--teal);line-height:1.7;margin-bottom:.6rem">
+        혈당·케톤·체중·인슐린·식사·투약 기록을 CSV 파일로 저장해요.<br>
+        • 병원 진료 시 수의사에게 참고 자료로 제출할 수 있어요<br>
+        • 이메일·카카오톡으로 공유해서 원격 상담에도 활용 가능해요<br>
+        • 엑셀·구글 스프레드시트에서 바로 열 수 있어요
+      </div>
+      <button onclick="exportCSV()" style="padding:6px 16px;background:var(--teal);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit">📥 CSV 파일 다운로드</button>
     </div>
     <div class="card">
     <div class="card-title">오늘 기록 타임라인</div>
