@@ -270,7 +270,8 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
   <div style="text-align:center;margin-bottom:2rem;padding-top:3rem">
     <div style="font-size:2rem;margin-bottom:.5rem">🐾</div>
     <div style="font-size:22px;font-weight:700;color:var(--teal)">케어마스터즈</div>
-    <div style="font-size:13px;color:var(--text2);margin-top:.3rem">고양이 질환 통합 관리</div>
+    <div style="font-size:13px;color:var(--text2);margin-top:.3rem">환묘 보호자를 위한 질환 통합 관리</div>
+  <div style="font-size:11px;color:var(--text3);margin-top:.3rem">당뇨 · 신부전 · 심근비대증 · 복합질환</div>
   </div>
 
   <!-- 탭 -->
@@ -301,20 +302,95 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     로그인하면 기기가 바뀌어도 데이터가 유지돼요
   </div>
 </div>
+
+<!-- 온보딩 화면 -->
+<div id="onboardingPage" style="display:none;min-height:100vh;background:var(--bg);padding:1.5rem 1rem;box-sizing:border-box;max-width:420px;margin:0 auto">
+  <div style="text-align:center;padding-top:2rem;margin-bottom:2rem">
+    <div style="font-size:2.5rem;margin-bottom:.5rem">🐾</div>
+    <div style="font-size:22px;font-weight:700;color:var(--teal)">케어마스터즈에 오신 걸 환영해요!</div>
+    <div style="font-size:13px;color:var(--text2);margin-top:.5rem;line-height:1.6">환묘 보호자를 위한 질환 통합 관리 앱이에요</div>
+  </div>
+
+  <!-- 이 앱이 도움이 되는 경우 -->
+  <div class="card" style="margin-bottom:1rem">
+    <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:.75rem">이런 고양이 보호자분께 맞아요</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg2);border-radius:8px">
+        <span style="font-size:18px">🩺</span>
+        <div>
+          <div style="font-size:12px;font-weight:500;color:var(--text)">당뇨 고양이</div>
+          <div style="font-size:11px;color:var(--text2)">혈당·케톤·인슐린 기록 + 혈당 커브 분석</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg2);border-radius:8px">
+        <span style="font-size:18px">🫘</span>
+        <div>
+          <div style="font-size:12px;font-weight:500;color:var(--text)">신부전(CKD) 고양이</div>
+          <div style="font-size:11px;color:var(--text2)">IRIS 스테이지별 사료 인·단백질 분석</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg2);border-radius:8px">
+        <span style="font-size:18px">🫀</span>
+        <div>
+          <div style="font-size:12px;font-weight:500;color:var(--text)">심근비대증(HCM) 고양이</div>
+          <div style="font-size:11px;color:var(--text2)">ACVIM 스테이지별 식이 체크리스트</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg2);border-radius:8px">
+        <span style="font-size:18px">🔀</span>
+        <div>
+          <div style="font-size:12px;font-weight:500;color:var(--text)">복합 질환 고양이</div>
+          <div style="font-size:11px;color:var(--text2)">당뇨+신부전, HCM+신부전 동시 관리</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 주요 기능 -->
+  <div class="card" style="margin-bottom:1rem">
+    <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:.75rem">주요 기능</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+      <div style="padding:8px 10px;background:var(--bg2);border-radius:8px;font-size:11px;color:var(--text2)">📊 혈당·케톤 기록</div>
+      <div style="padding:8px 10px;background:var(--bg2);border-radius:8px;font-size:11px;color:var(--text2)">🩸 혈액검사 AI 분석</div>
+      <div style="padding:8px 10px;background:var(--bg2);border-radius:8px;font-size:11px;color:var(--text2)">🥫 사료 성분 분석</div>
+      <div style="padding:8px 10px;background:var(--bg2);border-radius:8px;font-size:11px;color:var(--text2)">📈 날짜별 추이 그래프</div>
+      <div style="padding:8px 10px;background:var(--bg2);border-radius:8px;font-size:11px;color:var(--text2)">💉 CGM 연속혈당 분석</div>
+      <div style="padding:8px 10px;background:var(--bg2);border-radius:8px;font-size:11px;color:var(--text2)">☁️ 기기간 데이터 동기화</div>
+    </div>
+  </div>
+
+  <!-- 주의사항 -->
+  <div style="background:rgba(186,117,23,0.08);border:1px solid rgba(186,117,23,0.25);border-radius:10px;padding:.75rem 1rem;margin-bottom:1.5rem">
+    <div style="font-size:12px;font-weight:600;color:#BA7517;margin-bottom:.3rem">⚠️ 꼭 읽어주세요</div>
+    <div style="font-size:11px;color:var(--text2);line-height:1.7">
+      이 앱의 모든 분석과 정보는 <b>참고용</b>이에요.<br>
+      진단·처방·치료 결정은 반드시 <b>수의사와 상담</b>하세요.<br>
+      AI 분석 결과에 오류가 있을 수 있어요.
+    </div>
+  </div>
+
+  <!-- 시작 버튼 -->
+  <button type="button" onclick="finishOnboarding()"
+    style="width:100%;padding:14px;background:var(--teal);color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:600;cursor:pointer;font-family:inherit;margin-bottom:.75rem">
+    시작하기 →
+  </button>
+  <div style="text-align:center;font-size:11px;color:var(--text3)">다시 보려면 설정에서 확인할 수 있어요</div>
+</div>
+
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈</div><div class="hdr-sub">혈당·케톤·체중·혈검·사료 통합 관리</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA</span></div><div class="hdr-sub">혈당·케톤·체중·혈검·사료 통합 관리</div></div>
   <button id="logoutBtn" onclick="handleLogout()" type="button"
     style="display:none;padding:5px 12px;border:0.5px solid var(--bd);border-radius:8px;background:transparent;color:var(--text2);font-size:11px;cursor:pointer;font-family:inherit;margin-top:4px">로그아웃</button>
 </div>
 </div>
 <div class="cat-bar" id="catBar"></div>
 <div class="nav">
-  <button class="nav-btn active" data-tab="daily">오늘 기록</button>
-  <button class="nav-btn" data-tab="cgm">연속혈당</button>
+  <button class="nav-btn active" data-tab="daily">오늘기록</button>
+  <button class="nav-btn" data-tab="cgm">CGM</button>
   <button class="nav-btn" data-tab="graph">그래프</button>
-  <button class="nav-btn" data-tab="history">히스토리</button>
+  <button class="nav-btn" data-tab="history">기록조회</button>
   <button class="nav-btn" data-tab="bloodtest">혈액검사</button>
   <button class="nav-btn" data-tab="food">사료분석</button>
   <button class="nav-btn" data-tab="ai">AI 해석</button>
@@ -752,6 +828,9 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 
   <div class="card">
     <div class="card-title">성분표 사진 → AI 분석 → 적합성 판정</div>
+    <div style="background:rgba(29,158,117,0.08);border-radius:8px;padding:.5rem .75rem;margin-bottom:.75rem;font-size:11px;color:var(--text2);line-height:1.6">
+      💡 먼저 아래에서 <b>고양이 질환 유형</b>을 선택하세요. 질환에 맞는 기준으로 분석해드려요.
+    </div>
 
     <!-- 분석 모드 선택 -->
     <div style="margin-bottom:.75rem">
@@ -940,6 +1019,10 @@ document.getElementById('btDate').value=today();
 function renderCatBar(){
   const bar=document.getElementById('catBar');
   bar.innerHTML='';
+  // 고양이 없을 때 안내
+  if(!state.cats.length){
+    bar.innerHTML='<div style="font-size:12px;color:var(--text2);padding:6px 4px">👆 + 추가 버튼을 눌러 첫 번째 고양이를 등록해보세요!</div>';
+  }
   state.cats.forEach(c=>{
     const ch=document.createElement('div');
     ch.className='cat-chip'+(c===state.activeCat?' active':'');
@@ -1388,7 +1471,7 @@ setupDrop('btDrop','btFile',async file=>{
     document.getElementById('btResult').style.display='block';
   }catch(e){
     console.error('BT error:',e);
-    showStat('btStatus','err','분석 오류: '+e.message);
+    showStat('btStatus','err','분석 중 오류가 발생했어요: '+e.message+'\n잠시 후 다시 시도해주세요. 반복되면 이미지 용량을 줄여보세요.');
   }
 });
 document.getElementById('btSave').onclick=()=>{
@@ -1504,7 +1587,7 @@ setupDrop('fdDrop','fdFile',async file=>{
     if(fdData.length>20)fdData=fdData.slice(0,20);saveFD();renderFdHistory();
   }catch(e){
     console.error('FD error:',e);
-    showStat('fdStatus','err','분석 오류: '+e.message);
+    showStat('fdStatus','err','분석 중 오류가 발생했어요: '+e.message+'\n잠시 후 다시 시도하거나, 성분표가 잘 보이는 사진으로 다시 시도해주세요.');
   }
 });
 
@@ -3397,7 +3480,13 @@ async function initSupabase() {
         const { data: { session } } = await sbClient.auth.getSession();
         if(session) {
           currentUser = session.user;
-          showApp();
+          // 온보딩 완료 여부 확인
+          const onboarded = localStorage.getItem('cm_onboarded');
+          if(onboarded) {
+            showApp();
+          } else {
+            showOnboarding();
+          }
         } else {
           showLogin();
         }
@@ -3416,11 +3505,23 @@ function showLogin() {
 
 function showApp() {
   document.getElementById('loginPage').style.display = 'none';
+  document.getElementById('onboardingPage').style.display = 'none';
   document.getElementById('app').style.display = 'block';
   if(currentUser) {
     document.getElementById('logoutBtn').style.display = 'block';
     syncFromDB();
   }
+}
+
+function showOnboarding() {
+  document.getElementById('loginPage').style.display = 'none';
+  document.getElementById('onboardingPage').style.display = 'block';
+  document.getElementById('app').style.display = 'none';
+}
+
+function finishOnboarding() {
+  try { localStorage.setItem('cm_onboarded', '1'); } catch(e) {}
+  showApp();
 }
 
 function switchAuthTab(mode) {
@@ -3710,6 +3811,13 @@ initSupabase();
   </div>
   <div class="ig" style="margin-bottom:1rem"><label>메모</label><input type="text" id="cpMemo" placeholder="특이사항, 알레르기 등"></div>
   <button onclick="saveCatProfile()" class="btn btn-teal" style="width:100%;padding:14px">저장</button>
+</div>
+
+<!-- 면책고지 -->
+<div style="text-align:center;padding:1.5rem 1rem;font-size:10px;color:var(--text3);line-height:1.8;max-width:420px;margin:0 auto">
+  케어마스터즈의 모든 분석 결과는 <b>참고용</b>이며 수의학적 진단·처방을 대체하지 않아요.<br>
+  치료 결정은 반드시 담당 수의사와 상담하세요.<br>
+  © 2025 케어마스터즈 BETA · <a href="mailto:realimkit@gmail.com" style="color:var(--teal);text-decoration:none">피드백 보내기</a>
 </div>
 </body>
 </html>
