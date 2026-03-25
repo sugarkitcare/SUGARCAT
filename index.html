@@ -3125,11 +3125,16 @@ async function handleLogout() {
 /* ── DB 동기화 ── */
 async function syncFromDB() {
   if(!sbClient || !currentUser) return;
+  toast('☁️ 동기화 중...', '#534AB7');
   try {
-    // 고양이 목록 불러오기
-    const { data: cats } = await sbClient.from('cats')
+    // 1. 고양이 목록 불러오기
+    const { data: cats, error: catsErr } = await sbClient.from('cats')
       .select('*').eq('user_id', currentUser.id).order('created_at');
+
+    if(catsErr) throw catsErr;
+
     if(cats && cats.length > 0) {
+      // DB에 고양이 있으면 DB 기준으로 덮어씌우기
       state.cats = cats.map(c => c.name);
       state.activeCat = state.cats[0];
       state.catProfiles = {};
@@ -3140,22 +3145,49 @@ async function syncFromDB() {
           diseases: c.diseases || [], memo: c.memo, dbId: c.id
         };
       });
-      // localStorage에도 반영
       try{localStorage.setItem(SK, JSON.stringify(state));}catch(e){}
     } else {
       // DB에 고양이 없으면 로컬 고양이들을 DB에 등록
-      for(const cat of state.cats) {
-        await upsertCatToDB(cat);
+      if(state.cats.length > 0) {
+        for(const cat of state.cats) {
+          await upsertCatToDB(cat);
+        }
+        // 등록 후 다시 불러오기
+        const { data: newCats } = await sbClient.from('cats')
+          .select('*').eq('user_id', currentUser.id).order('created_at');
+        if(newCats) {
+          state.catProfiles = {};
+          newCats.forEach(c => {
+            state.catProfiles[c.name] = {
+              breed: c.breed, birth: c.birth_date, gender: c.gender,
+              neuter: c.neutered?'yes':'no', insulin: c.insulin_type,
+              diseases: c.diseases||[], memo: c.memo, dbId: c.id
+            };
+          });
+          try{localStorage.setItem(SK, JSON.stringify(state));}catch(e){}
+        }
       }
     }
-    // 기록 불러오기
+
+    // 2. 일일 기록 불러오기
+    state.records = {};
     await loadDailyRecords();
+
+    // 3. 혈액검사 불러오기
+    btData = [];
     await loadBloodTests();
-    renderCatBar(); updateMetrics(); updateWtDiff(); updateInsulinNext();
-    toast('☁️ 데이터 동기화 완료!');
+
+    renderCatBar();
+    updateMetrics();
+    updateWtDiff();
+    updateInsulinNext();
+    renderBTHistoryList();
+    renderBTGraphs();
+
+    toast('☁️ 동기화 완료! 고양이 '+(state.cats.length)+'마리, 기록 불러옴');
   } catch(e) {
     console.error('DB 동기화 오류:', e);
-    toast('동기화 실패 - 로컬 데이터로 사용 중', '#D85A30');
+    toast('⚠️ 동기화 실패: '+e.message, '#D85A30');
   }
 }
 
@@ -3192,21 +3224,22 @@ async function saveToDB() {
   if(!sbClient || !currentUser) return;
   try {
     const cat = state.activeCat;
-    const profile = (state.catProfiles || {})[cat];
-    // 고양이가 DB에 없으면 먼저 등록
+    let profile = (state.catProfiles || {})[cat];
+    // 고양이가 DB에 없으면 먼저 등록 후 재시도
     if(!profile?.dbId) {
       await upsertCatToDB(cat);
-      return;
+      profile = (state.catProfiles || {})[cat];
+      if(!profile?.dbId) return; // 여전히 없으면 포기
     }
-    // 오늘 기록 저장
     const rec = getRec(cat, today());
-    await sbClient.from('daily_records').upsert({
+    const { error } = await sbClient.from('daily_records').upsert({
       cat_id: profile.dbId,
       user_id: currentUser.id,
       record_date: today(),
       data: rec,
       updated_at: new Date().toISOString()
     }, { onConflict: 'cat_id,record_date' });
+    if(error) console.error('daily_records upsert 오류:', error);
   } catch(e) {
     console.error('DB 저장 오류:', e);
   }
