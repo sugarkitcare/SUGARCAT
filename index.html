@@ -3741,8 +3741,11 @@ async function syncFromDB() {
 
     // 로컬에 DB에 없는 기록이 있으면 자동 마이그레이션
     const localDates = Object.keys(state.records?.[state.activeCat] || {});
-    if(localDates.length > 0 && cats && cats.length > 0) {
-      setTimeout(()=>migrateLocalToDB(), 2000);
+    if((localDates.length > 0 || btData.length > 0) && cats && cats.length > 0) {
+      setTimeout(async ()=>{
+        await migrateLocalToDB();
+        await migrateBloodTestsToDB();
+      }, 2000);
     }
 
     toast('☁️ 동기화 완료! 고양이 '+(state.cats.length)+'마리');
@@ -3908,17 +3911,52 @@ async function upsertCatToDB(catName) {
 async function saveBloodTestToDB(btItem) {
   if(!sbClient || !currentUser || !btItem) return;
   try {
-    const profile = (state.catProfiles || {})[btItem.cat];
-    if(!profile?.dbId) return;
-    await sbClient.from('blood_tests').upsert({
+    let profile = (state.catProfiles || {})[btItem.cat];
+    // cat_id 없으면 먼저 고양이 DB 등록 후 재시도
+    if(!profile?.dbId && btItem.cat) {
+      await upsertCatToDB(btItem.cat);
+      profile = (state.catProfiles || {})[btItem.cat];
+    }
+    if(!profile?.dbId) {
+      console.warn('혈액검사 저장 실패: 고양이 DB ID 없음', btItem.cat);
+      return;
+    }
+    const { error } = await sbClient.from('blood_tests').upsert({
       cat_id: profile.dbId,
       user_id: currentUser.id,
       test_date: btItem.date,
       items: btItem.items
     }, { onConflict: 'cat_id,test_date' });
+    if(error) console.error('blood_tests upsert 오류:', error);
   } catch(e) {
     console.error('혈액검사 DB 저장 오류:', e);
   }
+}
+
+// 로컬 btData 전체를 DB에 마이그레이션
+async function migrateBloodTestsToDB() {
+  if(!sbClient || !currentUser || !btData.length) return;
+  let count = 0;
+  for(const bt of btData) {
+    if(!bt.items?.length) continue;
+    try {
+      let profile = (state.catProfiles || {})[bt.cat];
+      if(!profile?.dbId && bt.cat) {
+        await upsertCatToDB(bt.cat);
+        profile = (state.catProfiles || {})[bt.cat];
+      }
+      if(!profile?.dbId) continue;
+      const { error } = await sbClient.from('blood_tests').upsert({
+        cat_id: profile.dbId,
+        user_id: currentUser.id,
+        test_date: bt.date,
+        items: bt.items
+      }, { onConflict: 'cat_id,test_date' });
+      if(!error) count++;
+    } catch(e) {}
+  }
+  if(count > 0) toast(`☁️ 혈액검사 ${count}건 DB 업로드 완료!`);
+  return count;
 }
 
 
