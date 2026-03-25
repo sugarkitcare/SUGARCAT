@@ -791,7 +791,15 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
   <div class="card" style="margin-top:.5rem">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem">
       <div class="card-title" style="margin:0">📋 저장된 검사 이력</div>
-      <button type="button" onclick="if(confirm('전체 혈액검사 이력을 삭제할까요?')){btData=[];saveBT();renderBTHistoryList();renderBTGraphs();toast('전체 삭제됐어요');}"
+      <button type="button" onclick="if(confirm('전체 혈액검사 이력을 삭제할까요?')){btData=[];saveBT();
+      // DB에서도 전체 삭제
+      if(sbClient&&currentUser){
+        sbClient.from('blood_tests').delete().eq('user_id',currentUser.id)
+          .then(({error})=>{if(error)console.error('전체삭제오류:',error);});
+      }
+      const cc2=document.getElementById('btCatCards');if(cc2)cc2.innerHTML='';
+      const br2=document.getElementById('btResult');if(br2)br2.style.display='none';
+      renderBTHistoryList();renderBTGraphs();renderBTTrend();toast('전체 삭제됐어요');}"
         style="padding:4px 10px;border:0.5px solid var(--bd);border-radius:7px;background:transparent;color:var(--text3);font-size:11px;cursor:pointer;font-family:inherit">전체 삭제</button>
     </div>
     <div id="btHistoryList"><div class="empty">저장된 혈액검사 이력이 없어요</div></div>
@@ -1624,6 +1632,8 @@ document.getElementById('btSave').onclick=()=>{
   saveBloodTestToDB(btEx);
   btEx=null;
   document.getElementById('btResult').style.display='none';
+  const cc=document.getElementById('btCatCards');if(cc)cc.innerHTML='';
+  const tw=document.querySelector('#btResult div[style*="overflow"]');if(tw)tw.style.display='';
   toast('혈액검사 저장 완료! ☁️');
   renderBTGraphs();
   renderBTHistoryList();
@@ -1631,7 +1641,13 @@ document.getElementById('btSave').onclick=()=>{
 };
 let btGI=[],btAC=new Set();
 function renderBTGraphs(){
-  if(!btData.length){document.getElementById('btGraphSection').style.display='none';return}
+  if(!btData.length){
+    document.getElementById('btGraphSection').style.display='none';
+    // btCatCards, btResult 초기화
+    const cc=document.getElementById('btCatCards');if(cc)cc.innerHTML='';
+    const br=document.getElementById('btResult');if(br)br.style.display='none';
+    return;
+  }
   document.getElementById('btGraphSection').style.display='block';
   document.getElementById('btHistCount').textContent=`${btData.length}회 기록`;
   const map={};
@@ -3434,8 +3450,30 @@ function renderBTHistoryList() {
       if(!confirm(bt.date+' 혈액검사 기록을 삭제할까요?')) return;
       const idx = btData.indexOf(bt);
       if(idx > -1) {
-        btData.splice(idx, 1);
-        saveBT(); renderBTHistoryList(); renderBTGraphs();
+        const deletedItem = btData.splice(idx, 1)[0];
+        saveBT();
+        // DB에서도 삭제
+        if(sbClient && currentUser && deletedItem) {
+          const prof = (state.catProfiles||{})[deletedItem.cat];
+          if(prof?.dbId) {
+            sbClient.from('blood_tests')
+              .delete()
+              .eq('user_id', currentUser.id)
+              .eq('cat_id', prof.dbId)
+              .eq('test_date', deletedItem.date)
+              .then(({error}) => { if(error) console.error('혈액검사 DB 삭제 오류:', error); });
+          }
+        }
+        // UI 전체 초기화
+        const cc = document.getElementById('btCatCards');
+        if(cc) cc.innerHTML = '';
+        const br = document.getElementById('btResult');
+        if(br) br.style.display = 'none';
+        const tw = document.querySelector('div[style*="overflow-x"]');
+        if(tw) tw.style.display = '';
+        renderBTHistoryList();
+        renderBTGraphs();
+        renderBTTrend();
         toast('삭제됐어요');
       }
     });
