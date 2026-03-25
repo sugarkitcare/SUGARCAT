@@ -320,7 +320,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     <div style="font-size:2.5rem;margin-bottom:.5rem">🐾</div>
     <div style="font-size:22px;font-weight:700;color:var(--teal)">케어마스터즈</div>
     <div style="font-size:13px;font-weight:500;color:var(--text);margin-top:.4rem">수치로 관리하는 환묘 질환 케어</div>
-    <div style="font-size:12px;color:var(--text2);margin-top:.3rem;line-height:1.6">혈액검사·혈당·사료 성분을 데이터로 관리하는<br>환묘 질환 통합 케어 앱이에요</div>
+    <div style="font-size:12px;color:var(--text2);margin-top:.3rem;line-height:1.6">혈액검사, 혈당·사료 성분을 데이터로 관리하는<br>환묘 질환 통합 케어 앱이에요</div>
   </div>
 
   <!-- 이 앱이 도움이 되는 경우 -->
@@ -331,7 +331,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
         <span style="font-size:18px">🩺</span>
         <div>
           <div style="font-size:12px;font-weight:500;color:var(--text)">당뇨 고양이</div>
-          <div style="font-size:11px;color:var(--text2)">혈당·케톤인슐린 기록 + 혈당 커브 분석</div>
+          <div style="font-size:11px;color:var(--text2)">혈당·케톤·인슐린 기록 + 혈당 커브 분석</div>
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg2);border-radius:8px">
@@ -376,7 +376,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     <div style="font-size:12px;font-weight:600;color:#BA7517;margin-bottom:.3rem">⚠️ 꼭 읽어주세요</div>
     <div style="font-size:11px;color:var(--text2);line-height:1.7">
       이 앱의 모든 분석과 정보는 <b>참고용</b>이에요.<br>
-      진단·처방치료 결정은 반드시 <b>수의사와 상담</b>하세요.<br>
+      진단·처방을 대체하지 않아요. 치료 결정은 반드시 <b>수의사와 상담</b>하세요.<br>
       AI 분석 결과에 오류가 있을 수 있어요.
     </div>
   </div>
@@ -403,7 +403,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     💬 피드백
   </a>
   <button id="logoutBtn" onclick="handleLogout()" type="button"
-    style="display:none;padding:5px 12px;border:0.5px solid var(--bd);border-radius:8px;background:transparent;color:var(--text2);font-size:11px;cursor:pointer;font-family:inherit;">로·아웃</button>
+    style="display:none;padding:5px 12px;border:0.5px solid var(--bd);border-radius:8px;background:transparent;color:var(--text2);font-size:11px;cursor:pointer;font-family:inherit;">로그아웃</button>
 </div>
 </div>
 </div>
@@ -476,7 +476,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     </div>
     <div id="insCard">
     <div class="row2">
-      <div class="ig"><label>종류</label><select id="insType"><option>프로징크</option><option>글라진</option><option>레버미어</option><option>NPH</option><option>레·러</option><option>기타</option></select></div>
+      <div class="ig"><label>종류</label><select id="insType"><option>프로징크</option><option>글라진</option><option>레버미어</option><option>NPH</option><option>핸들러</option><option>기타</option></select></div>
       <div class="ig"><label>투여량 (U)</label><input type="number" id="insVal" placeholder="예: 1.5" step="0.5"></div>
       <div class="ig"><label>날짜</label><input type="date" id="insDate"></div>
       <div class="ig"><label>투여 시각</label><input type="time" id="insTime"></div>
@@ -513,8 +513,8 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
       <div class="routine-edit-row">
         <input type="text" id="newRoutineName" placeholder="항목명 입력 (예: 코발라민)">
         <select id="newRoutineCat">
-          <option value="med">약·보조제</option>
-          <option value="food">간식·음수</option>
+          <option value="med">약 및 보조제</option>
+          <option value="food">간식 및 음수</option>
           <option value="other">기타루틴</option>
         </select>
         <button onclick="addRoutineItem()" style="background:var(--teal);color:#fff;border-radius:8px">추가</button>
@@ -697,10 +697,10 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
   <div style="background:var(--teal-l);border-radius:10px;padding:.75rem 1rem;margin-bottom:.75rem">
       <div style="font-size:12px;font-weight:500;color:var(--teal-d);margin-bottom:.3rem">📋 기록 내보내기</div>
       <div style="font-size:11px;color:var(--teal);line-height:1.7;margin-bottom:.6rem">
-        혈당·케톤·체중인슐린·식사·투약 기록을 CSV 파일로 저장해요.<br>
+        혈당·케톤·체중·인슐린·식사·투약 기록을 CSV 파일로 저장해요.<br>
         • 병원 진료 시 수의사에게 참고 자료로 제출할 수 있어요<br>
-        • 이메일·카카오톡으로 공유해서 원격 상담에도 활용 가능해요<br>
-        • 엑셀·구글 스프레드시트에서 바로 열 수 있어요
+        • 이메일 또는 카카오톡으로 공유해서 원격 상담에도 활용 가능해요<br>
+        • 엑셀 또는 구글 스프레드시트에서 바로 열 수 있어요
       </div>
       <button onclick="exportCSV()" style="padding:6px 16px;background:var(--teal);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit">📥 CSV 파일 다운로드</button>
     </div>
@@ -962,7 +962,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
         <div>✅ <b>포장지 실물 촬영</b> — ·면 보증분석치 표 부분만 클로즈업 <span style="color:var(--teal);font-weight:500">(가장 정확)</span></div>
         <div>✅ <b>성분표 부분만 크롭</b> — 상세페이지에서 영양성분 표만 잘라서 캡처</div>
         <div>⚠️ <b>상세페이지 전체 캡처</b> — 마케팅 텍스트가 섞여 오류 가능</div>
-        <div>❌ <b>카카오톡·앱 화면 캡처</b> — 정확도 매우 낮음</div>
+        <div>❌ <b>카카오톡 앱 화면 캡처</b> — 정확도 매우 낮음</div>
       </div>
     </div>
 
@@ -1685,7 +1685,7 @@ const HCM_CRITERIA = {
       {icon:'✅', text:'충분한 단백질 유지 — ·육 손실 예방 핵심', ok:true},
       {icon:'✅', text:'타우린 함유 확인 (필수 아미노산)', ok:true},
       {icon:'ℹ️', text:'오메가3(EPA/DHA) 보충 고려 — 항염 효과', ok:null},
-      {icon:'🚫', text:'고나트륨 간식·사람 음식 금지', ok:false},
+      {icon:'🚫', text:'고나트륨 간식 및 사람 음식 금지', ok:false},
     ],
     note:'※ B1은 식이 제한보다 영양 ·형이 핵심. 식욕 유지가 중요해요.'
   },
@@ -1698,9 +1698,9 @@ const HCM_CRITERIA = {
       {icon:'✅', text:'충분한 단백질 유지 (·육 손실 예방)', ok:true},
       {icon:'✅', text:'타우린 함유 확인', ok:true},
       {icon:'✅', text:'오메가3(EPA/DHA) 보충 권장', ok:true},
-      {icon:'🚫', text:'고나트륨 간식·사람 음식 금지', ok:false},
+      {icon:'🚫', text:'고나트륨 간식 및 사람 음식 금지', ok:false},
     ],
-    note:'※ B2부터 약물 치료(클로피도·렐 등) 시작 단계. 식이와 병행 중요.'
+    note:'※ B2부터 약물 치료(클로피도그렐 등) 시작 단계. 식이와 병행 중요.'
   },
   'C': {
     color: '#D85A30',
@@ -1956,7 +1956,7 @@ function getCkdJudge(d) {
 
   // 수분/습식 판정
   const wetReq = c.wetRequired;
-  if(d.type === 'wet') goods.push('습식 ✅ (수분 섭·에 유리, CKD 관리 핵심)');
+  if(d.type === 'wet') goods.push('습식 ✅ (수분 섭취에 유리, CKD 관리 핵심)');
   else if(wetReq) issues.push('건식 ❌ Stage ' + ckdStage + '은 습식 필수 — 수분 섭· 부족 위험');
   else issues.push('건식 ⚠️ 습식 병행 또는 물 섭· 적· 유도 필요');
 
@@ -2237,7 +2237,7 @@ let routineItems=defaultItems;
 try{const d=localStorage.getItem(SK_RT);if(d)routineItems=JSON.parse(d)}catch(e){}
 const saveRT=()=>{try{localStorage.setItem(SK_RT,JSON.stringify(routineItems))}catch(e){}};
 const catColor={med:'#534AB7',food:'#BA7517',other:'#1D9E75'};
-const catLabel={med:'약·보조제',food:'간식·음수',other:'기타루틴'};
+const catLabel={med:'약 및 보조제',food:'간식 및 음수',other:'기타루틴'};
 const routineSelected=new Set();
 
 function renderRoutineTags(){
@@ -2627,7 +2627,7 @@ setupDrop('cgmDrop','cgmFile',async file=>{
   const cgmDate=document.getElementById('cgmDate').value;
   const cgmCat=document.getElementById('cgmCat').value||state.activeCat;
 
-  const sys=`당신은 케어센스 에어(CareSens Air) CGM 앱 스크린·에서 고양이 혈당 데이터를 정밀 추출하는 전문 AI입니다.
+  const sys=`당신은 케어센스 에어(CareSens Air) CGM 앱 스크린샷에서 고양이 혈당 데이터를 정밀 추출하는 전문 AI입니다.
 
 【케어센스 에어 UI 특성 — 반드시 숙지】
 - 5분 간격 측정, 하루 최대 288포인트
@@ -2638,7 +2638,7 @@ setupDrop('cgmDrop','cgmFile',async file=>{
 - 목표범위(보통 초록색 밴드): 일반적으로 70~180 또는 80~200 사이
 - 초록색 구간 = 정상, 노란색/빨간색 구간 = 고혈당 또는 저혈당
 - 그래프 X축: 시간(00:00~23:59), Y축: 혈당(mg/dL)
-- 하루치 요약 화면에 평·혈당, TIR(목표범위내시간%), 최고/최저 표시되는 경우 있음
+- 하루치 요약 화면에 평균혈당, TIR(목표범위내시간%), 최고/최저 표시되는 경우 있음
 - 센스365(Sens365) 앱 화면도 동일 구조
 
 【추출 지침】
@@ -2658,7 +2658,7 @@ setupDrop('cgmDrop','cgmFile',async file=>{
     {"time": "HH:MM", "value": 숫자(mg/dL 정수)},
     ...
   ],
-  "avg": 평·값정수,
+  "avg": 평균값정수,
   "min": 최소값정수,
   "max": 최대값정수,
   "time_in_range_pct": TIR퍼센트정수(화면에 표시된 경우 · 값, 없으면 자체계산: 80~200범위 포인트/전체×100),
@@ -2669,14 +2669,14 @@ setupDrop('cgmDrop','cgmFile',async file=>{
 }`;
 
   // 파스타(PASTA) 전용 추출 프롬프트
-  const pastaPrompt=`당신은 카카오헬스케어 파스타(PASTA) 앱 스크린·에서 고양이 혈당 데이터를 정밀 추출하는 전문 AI입니다.
+  const pastaPrompt=`당신은 카카오헬스케어 파스타(PASTA) 앱 스크린샷에서 고양이 혈당 데이터를 정밀 추출하는 전문 AI입니다.
 
 【파스타 앱 UI 특성 — 반드시 숙지】
 - 케어센스 에어(CareSens Air) 또는 덱스콤 G7과 SDK 직접 연동, 5분 간격 측정
 - 메인 화면(다이어리 탭): 상단에 현재 혈당 + 변동 화살표, 아래에 하루치 그래프
 - 그래프 배경: 초록 밴드(목표범위, 보통 70~180 mg/dL), 빨간 상단/하단(위험범위)
 - 그래프 위 컬러 아이콘: 🍽 식사, 🏃 운동, 💊 복약/인슐린, 😴 수면 이벤트
-- 리포트 화면: GMI(혈당 관리 지표), TIR%, 평·혈당, 표준편차(SD), 변동계수(CV%), 고혈당비율, 저혈당비율 표시
+- 리포트 화면: GMI(혈당 관리 지표), TIR%, 평균혈당, 표준편차(SD), 변동계수(CV%), 고혈당비율, 저혈당비율 표시
 - GMI는 추정 당화혈색소 값 (예: 7.2%) — 고양이에게는 참고값으로만 활용
 - 단위: mg/dL 기본 (mmol/L이면 ×18 변환)
 - 카카오 특유의 밝은 UI, 오렌지/노란 강조색 사용
@@ -2698,7 +2698,7 @@ setupDrop('cgmDrop','cgmFile',async file=>{
     {"time": "HH:MM", "value": 숫자(mg/dL 정수)},
     ...
   ],
-  "avg": 평·값정수,
+  "avg": 평균값정수,
   "min": 최소값정수,
   "max": 최대값정수,
   "time_in_range_pct": TIR퍼센트정수(화면 표시값 우선, 없으면 자체 계산),
@@ -2723,7 +2723,7 @@ setupDrop('cgmDrop','cgmFile',async file=>{
         model:'claude-sonnet-4-20250514',max_tokens:2000,system:finalSys,
         messages:[{role:'user',content:[
           {type:'image',source:{type:'base64',media_type:file.type,data:b64}},
-          {type:'text',text:`이 ${selectedApp==='pasta'?'파스타(PASTA)':'케어센스 에어'} 앱 스크린·에서 고양이 ${cgmCat}의 ${cgmDate} 혈당 데이터를 모두 추출해주세요.`}
+          {type:'text',text:`이 ${selectedApp==='pasta'?'파스타(PASTA)':'케어센스 에어'} 앱 스크린샷에서 고양이 ${cgmCat}의 ${cgmDate} 혈당 데이터를 모두 추출해주세요.`}
         ]}]
       })
     });
@@ -2971,7 +2971,7 @@ GMI(추정 HbA1c): ${cgmExtracted.gmi!==null&&cgmExtracted.gmi!==undefined?cgmEx
   const userMsg=`【${isPasta?'파스타(PASTA)':'케어센스 에어'} CGM 데이터】
 고양이: ${cgmExtracted.cat} / 날짜: ${cgmExtracted.date}
 총 측정 횟수: ${readings.length}회 (5분 간격 기준 정상: 288회)
-평·혈당: ${avg} mg/dL / 최저: ${min} mg/dL / 최고: ${max} mg/dL
+평균혈당: ${avg} mg/dL / 최저: ${min} mg/dL / 최고: ${max} mg/dL
 ${tirStr} / ${arrowStr}${pastaCtx}
 고혈당(>200) 구간: ${highPts||'없음'}
 저혈당(<80) 구간: ${lowPts||'없음'}
