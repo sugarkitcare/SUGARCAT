@@ -1244,10 +1244,39 @@ function renderBTGraphs(){
     const lv=item.points[item.points.length-1]?.value;
     const st=item.refLow!==null&&lv<item.refLow?'l':item.refHigh!==null&&lv>item.refHigh?'h':'n';
     const badge=st==='n'?'<span class="bn">정상</span>':st==='h'?'<span class="bh">높음</span>':'<span class="bl">낮음</span>';
-    card.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem"><span class="card-title" style="margin:0">${item.name}${item.abbr&&item.abbr!==item.name?` (${item.abbr})`:''} <span style="color:var(--text3);font-size:10px">${item.unit||''}</span></span>${badge}</div><div class="chart-wrap" style="height:${dates.length>1?140:80}px"><canvas id="btc_${idx}"></canvas></div>`;
+    card.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem"><span class="card-title" style="margin:0">${item.name}${item.abbr&&item.abbr!==item.name?` (${item.abbr})`:''} <span style="color:var(--text3);font-size:10px">${item.unit||''}</span></span>${badge}</div><div class="chart-wrap" style="height:160px"><canvas id="btc_${idx}"></canvas></div>`;
     wrap.appendChild(card);
     const datasets=allCats.map(cat=>{const dm={};item.points.filter(p=>p.cat===cat).forEach(p=>{dm[p.date]=p.value});return{label:cat,data:dates.map(d=>dm[d]??null),borderColor:cc[cat],backgroundColor:cc[cat]+'22',tension:.4,fill:dates.length>1,pointRadius:4,pointBackgroundColor:cc[cat],spanGaps:false}}).filter(ds=>ds.data.some(v=>v!==null));
-    btGI.push(new Chart(document.getElementById(`btc_${idx}`),{type:dates.length>1?'line':'bar',data:{labels:dates.map(d=>d.slice(5)),datasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:allCats.length>1,labels:{font:{size:10},color:tc2,boxWidth:8,boxHeight:8}}},scales:{x:{grid:{color:gc2},ticks:{color:tc2,font:{size:10}}},y:{grid:{color:gc2},ticks:{color:tc2,font:{size:10}}}}}}));
+    // Y축 범위 계산 - 정상범위 참조선 포함
+    const allVals=item.points.map(p=>p.value).filter(v=>v!==null);
+    const minV=Math.min(...allVals,item.refLow??Infinity);
+    const maxV=Math.max(...allVals,item.refHigh??-Infinity);
+    const pad=(maxV-minV)*0.3||1;
+    const yMin=Math.max(0,parseFloat((minV-pad).toFixed(1)));
+    const yMax=parseFloat((maxV+pad).toFixed(1));
+
+    // 정상범위 표시선
+    const refDatasets=[];
+    if(item.refLow!==null)refDatasets.push({label:'최솟값',data:dates.map(()=>item.refLow),borderColor:'rgba(24,95,165,0.4)',borderWidth:1.5,borderDash:[5,4],pointRadius:0,fill:false,tension:0});
+    if(item.refHigh!==null)refDatasets.push({label:'최댓값',data:dates.map(()=>item.refHigh),borderColor:'rgba(216,90,48,0.4)',borderWidth:1.5,borderDash:[5,4],pointRadius:0,fill:false,tension:0});
+
+    btGI.push(new Chart(document.getElementById(`btc_${idx}`),{
+      type:'line',
+      data:{labels:dates.map(d=>d.slice(5)),datasets:[...datasets,...refDatasets]},
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        plugins:{
+          legend:{display:allCats.length>1||refDatasets.length>0,
+            labels:{font:{size:10},color:tc2,boxWidth:8,boxHeight:8,
+              filter:(item)=>!['최솟값','최댓값'].includes(item.text)||dates.length>1}
+          }
+        },
+        scales:{
+          x:{grid:{color:gc2},ticks:{color:tc2,font:{size:10}}},
+          y:{grid:{color:gc2},ticks:{color:tc2,font:{size:10}},min:yMin,max:yMax}
+        }
+      }
+    }));
   });
 }
 
