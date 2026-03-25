@@ -773,7 +773,47 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
           style="padding:6px 14px;border-radius:20px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit">
           🫀 심근비대증(HCM)
         </button>
+        <button type="button" id="modeHCMCKD" onclick="setFdMode('hcmckd')"
+          style="padding:6px 14px;border-radius:20px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit">
+          🫀+🫘 HCM+신부전
+        </button>
       </div>
+    </div>
+    <!-- HCM+CKD 복합 스테이지 선택 -->
+    <div id="hcmCkdWrap" style="display:none;margin-bottom:.75rem">
+      <div style="background:rgba(216,90,48,0.08);border:1px solid rgba(216,90,48,0.3);border-radius:8px;padding:.6rem .8rem;margin-bottom:.75rem">
+        <div style="font-size:12px;font-weight:600;color:#D85A30;margin-bottom:.3rem">⚠️ 복합 질환 — 식이 충돌 주의</div>
+        <div style="font-size:11px;color:var(--text2);line-height:1.6">단백질 항목에서 CKD(제한)와 HCM(유지)이 충돌해요. 혈액검사 수치(BUN·알부민·근육 상태)를 기반으로 <b>수의사와 상의 후</b> 결정하세요.</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div style="flex:1;min-width:120px">
+          <div style="font-size:11px;font-weight:500;color:var(--text2);margin-bottom:.4rem">🫘 CKD 스테이지</div>
+          <div style="display:flex;gap:4px;flex-wrap:wrap">
+            <button type="button" class="hcmckd-ckd-btn active" data-val="1" onclick="setHcmCkdStage('ckd',1,this)"
+              style="padding:4px 10px;border-radius:7px;border:1.5px solid var(--blue);background:var(--blue);color:#fff;font-size:11px;cursor:pointer;font-family:inherit">1</button>
+            <button type="button" class="hcmckd-ckd-btn" data-val="2" onclick="setHcmCkdStage('ckd',2,this)"
+              style="padding:4px 10px;border-radius:7px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:11px;cursor:pointer;font-family:inherit">2</button>
+            <button type="button" class="hcmckd-ckd-btn" data-val="3" onclick="setHcmCkdStage('ckd',3,this)"
+              style="padding:4px 10px;border-radius:7px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:11px;cursor:pointer;font-family:inherit">3</button>
+            <button type="button" class="hcmckd-ckd-btn" data-val="4" onclick="setHcmCkdStage('ckd',4,this)"
+              style="padding:4px 10px;border-radius:7px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:11px;cursor:pointer;font-family:inherit">4</button>
+          </div>
+        </div>
+        <div style="flex:1;min-width:120px">
+          <div style="font-size:11px;font-weight:500;color:var(--text2);margin-bottom:.4rem">🫀 HCM 스테이지</div>
+          <div style="display:flex;gap:4px;flex-wrap:wrap">
+            <button type="button" class="hcmckd-hcm-btn active" data-val="B1" onclick="setHcmCkdStage('hcm','B1',this)"
+              style="padding:4px 10px;border-radius:7px;border:1.5px solid var(--teal);background:var(--teal);color:#fff;font-size:11px;cursor:pointer;font-family:inherit">B1</button>
+            <button type="button" class="hcmckd-hcm-btn" data-val="B2" onclick="setHcmCkdStage('hcm','B2',this)"
+              style="padding:4px 10px;border-radius:7px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:11px;cursor:pointer;font-family:inherit">B2</button>
+            <button type="button" class="hcmckd-hcm-btn" data-val="C" onclick="setHcmCkdStage('hcm','C',this)"
+              style="padding:4px 10px;border-radius:7px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:11px;cursor:pointer;font-family:inherit">C</button>
+            <button type="button" class="hcmckd-hcm-btn" data-val="D" onclick="setHcmCkdStage('hcm','D',this)"
+              style="padding:4px 10px;border-radius:7px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:11px;cursor:pointer;font-family:inherit">D</button>
+          </div>
+        </div>
+      </div>
+      <div id="hcmCkdDesc" style="font-size:11px;color:var(--text2);margin-top:.5rem;line-height:1.6"></div>
     </div>
     <!-- HCM 스테이지 선택 -->
     <div id="hcmStageWrap" style="display:none;margin-bottom:.75rem">
@@ -1508,8 +1548,8 @@ const CKD_CRITERIA = {
 
 function setFdMode(mode) {
   fdMode = mode;
-  const modeColors = {dm:'var(--teal)', ckd:'var(--blue)', both:'var(--purple)', hcm:'var(--coral)'};
-  ['dm','ckd','both','hcm'].forEach(m => {
+  const modeColors = {dm:'var(--teal)', ckd:'var(--blue)', both:'var(--purple)', hcm:'var(--coral)', hcmckd:'#8B4513'};
+  ['dm','ckd','both','hcm','hcmckd'].forEach(m => {
     const btn = document.getElementById('mode'+m.toUpperCase());
     if(!btn) return;
     const isActive = m === mode;
@@ -1522,8 +1562,11 @@ function setFdMode(mode) {
   if(ckdWrap) ckdWrap.style.display = (mode === 'ckd' || mode === 'both') ? 'block' : 'none';
   const hcmWrap = document.getElementById('hcmStageWrap');
   if(hcmWrap) hcmWrap.style.display = mode === 'hcm' ? 'block' : 'none';
+  const hcmCkdWrap = document.getElementById('hcmCkdWrap');
+  if(hcmCkdWrap) hcmCkdWrap.style.display = mode === 'hcmckd' ? 'block' : 'none';
   updateCkdDesc();
   updateHcmDesc();
+  updateHcmCkdDesc();
 }
 
 let hcmStage = 'B1';
@@ -1598,6 +1641,135 @@ function updateHcmDesc() {
   if(!desc || fdMode !== 'hcm') return;
   const c = HCM_CRITERIA[hcmStage];
   desc.innerHTML = '<b style="color:'+c.color+'">'+c.label+'</b><br>'+c.desc;
+}
+
+
+/* ── HCM + CKD 복합 모드 ── */
+let hcmCkdCkdStage = 1;
+let hcmCkdHcmStage = 'B1';
+
+function setHcmCkdStage(type, val, el) {
+  if(type === 'ckd') {
+    hcmCkdCkdStage = val;
+    document.querySelectorAll('.hcmckd-ckd-btn').forEach(b => {
+      const active = parseInt(b.dataset.val) === val;
+      b.style.background = active ? 'var(--blue)' : 'transparent';
+      b.style.color = active ? '#fff' : 'var(--text2)';
+      b.style.borderColor = active ? 'var(--blue)' : 'var(--bd)';
+    });
+  } else {
+    hcmCkdHcmStage = val;
+    document.querySelectorAll('.hcmckd-hcm-btn').forEach(b => {
+      const active = b.dataset.val === val;
+      b.style.background = active ? 'var(--teal)' : 'transparent';
+      b.style.color = active ? '#fff' : 'var(--text2)';
+      b.style.borderColor = active ? 'var(--teal)' : 'var(--bd)';
+    });
+  }
+  updateHcmCkdDesc();
+}
+
+function updateHcmCkdDesc() {
+  const desc = document.getElementById('hcmCkdDesc');
+  if(!desc || fdMode !== 'hcmckd') return;
+  const ckd = CKD_CRITERIA[hcmCkdCkdStage];
+  const hcm = HCM_CRITERIA[hcmCkdHcmStage];
+  desc.innerHTML =
+    '<b style="color:var(--blue)">CKD Stage '+hcmCkdCkdStage+'</b>: 인 DM '+ckd.p+'% 이하 · 단백질 '+ckd.protein[0]+'~'+ckd.protein[1]+'% · 나트륨 '+ckd.na+'%'
+    +(ckd.wetRequired?' · <b style="color:#D85A30">습식 필수</b>':'')
+    +'<br><b style="color:var(--coral)">HCM '+hcmCkdHcmStage+'</b>: '+hcm.desc;
+}
+
+function renderHcmCkdResult(d, area) {
+  const ckd = CKD_CRITERIA[hcmCkdCkdStage];
+  const hcm = HCM_CRITERIA[hcmCkdHcmStage];
+  const m = d.moisture ?? 75;
+  const pDM = d.protein_af !== null ? parseFloat((d.protein_af/(100-m)*100).toFixed(1)) : null;
+  const phosDM = d.phosphorus_af !== null ? parseFloat((d.phosphorus_af/(100-m)*100).toFixed(1)) : null;
+
+  let html = '';
+
+  // 헤더
+  html += '<div style="background:rgba(139,69,19,0.1);border:1.5px solid rgba(139,69,19,0.4);border-radius:12px;padding:.85rem 1rem;margin-bottom:.75rem">'
+    +'<div style="font-size:14px;font-weight:700;color:#8B4513;margin-bottom:.3rem">🫀+🫘 HCM '+hcmCkdHcmStage+' + CKD Stage '+hcmCkdCkdStage+' 복합 분석</div>'
+    +'<div style="font-size:11px;color:var(--text2)">ACVIM 2020 + IRIS 2023 기준 동시 적용 · 충돌 항목 별도 표시</div>'
+    +'</div>';
+
+  // 수치 카드 3개 (인·단백질·수분)
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:.75rem">';
+
+  // 인(P) - CKD 기준
+  const phosOk = phosDM !== null && phosDM <= ckd.p;
+  html += '<div style="background:var(--bg2);border-radius:10px;padding:.65rem .75rem;border:1.5px solid '
+    +(phosDM===null?'var(--bd)':phosOk?'#1D9E75':'#D85A30')+'">'
+    +'<div style="font-size:18px;font-weight:700;color:'+(phosDM===null?'var(--text3)':phosOk?'#1D9E75':'#D85A30')+'">'
+    +(phosDM!==null?phosDM+'%':'미표기')+'</div>'
+    +'<div style="font-size:10px;color:var(--text2)">인(P) DM</div>'
+    +'<div style="font-size:9px;color:var(--text3)">CKD 기준 '+ckd.p+'% 이하</div>'
+    +'</div>';
+
+  // 단백질 - 충돌 표시
+  const pCkdOk = pDM !== null && pDM >= ckd.protein[0] && pDM <= ckd.protein[1];
+  const pHcmOk = pDM !== null && pDM >= 28; // HCM은 충분한 단백질 필요
+  const pConflict = pDM !== null && !pCkdOk && pHcmOk; // CKD는 낮지만 HCM엔 좋은 경우
+  html += '<div style="background:var(--bg2);border-radius:10px;padding:.65rem .75rem;border:1.5px solid '
+    +(pDM===null?'var(--bd)':pConflict?'#BA7517':pCkdOk?'#1D9E75':'#D85A30')+'">'
+    +'<div style="font-size:18px;font-weight:700;color:'+(pDM===null?'var(--text3)':pConflict?'#BA7517':pCkdOk?'#1D9E75':'#D85A30')+'">'
+    +(pDM!==null?pDM+'%':'미표기')+'</div>'
+    +'<div style="font-size:10px;color:var(--text2)">단백질 DM</div>'
+    +'<div style="font-size:9px;color:'+(pConflict?'#BA7517':'var(--text3)')+'">'+
+    (pConflict?'⚠️ 충돌':'CKD '+ckd.protein[0]+'~'+ckd.protein[1]+'%')+'</div>'
+    +'</div>';
+
+  // 수분/습식
+  const wetOk = d.type === 'wet';
+  html += '<div style="background:var(--bg2);border-radius:10px;padding:.65rem .75rem;border:1.5px solid '+(wetOk?'#1D9E75':'#D85A30')+'">'
+    +'<div style="font-size:18px;font-weight:700;color:'+(wetOk?'#1D9E75':'#D85A30')+'">'+(d.moisture??'?')+'%</div>'
+    +'<div style="font-size:10px;color:var(--text2)">수분</div>'
+    +'<div style="font-size:9px;color:var(--text3)">'+(wetOk?'습식 ✅':'건식 ⚠️')+'</div>'
+    +'</div>';
+  html += '</div>';
+
+  // 충돌 항목 경고
+  if(pConflict) {
+    html += '<div style="background:rgba(186,117,23,0.1);border:1.5px solid rgba(186,117,23,0.4);border-radius:8px;padding:.65rem .85rem;margin-bottom:.5rem">'
+      +'<div style="font-size:12px;font-weight:600;color:#BA7517;margin-bottom:.3rem">⚠️ 단백질 충돌 — 수의사 상담 필요</div>'
+      +'<div style="font-size:11px;color:var(--text2);line-height:1.6">'
+      +'CKD Stage '+hcmCkdCkdStage+' 기준: 단백질 DM '+ckd.protein[0]+'~'+ckd.protein[1]+'% 권장<br>'
+      +'HCM '+hcmCkdHcmStage+' 기준: 단백질 충분히 유지 (근육 손실 방지)<br>'
+      +'→ BUN·알부민·근육 상태 수치 기반으로 개별 결정 필요'
+      +'</div>'
+      +'</div>';
+  }
+
+  // CKD 체크 결과
+  html += '<div style="background:rgba(24,95,165,0.06);border-radius:8px;padding:.6rem .85rem;margin-bottom:.5rem">'
+    +'<div style="font-size:11px;font-weight:600;color:var(--blue);margin-bottom:.4rem">🫘 CKD Stage '+hcmCkdCkdStage+' 체크</div>';
+  const ckdJudge = getCkdJudge(d);
+  ckdJudge.goods.forEach(g=>{ html+='<div style="font-size:11px;color:#1D9E75;margin-bottom:2px">'+g+'</div>'; });
+  ckdJudge.issues.forEach(i=>{ html+='<div style="font-size:11px;color:#D85A30;margin-bottom:2px">'+i+'</div>'; });
+  html += '</div>';
+
+  // HCM 체크 결과
+  html += '<div style="background:rgba(216,90,48,0.06);border-radius:8px;padding:.6rem .85rem;margin-bottom:.5rem">'
+    +'<div style="font-size:11px;font-weight:600;color:var(--coral);margin-bottom:.4rem">🫀 HCM '+hcmCkdHcmStage+' 체크리스트</div>';
+  hcm.checklist.forEach(item=>{
+    const bg = item.ok===true?'rgba(29,158,117,0.08)':item.ok===false?'rgba(216,90,48,0.08)':'rgba(186,117,23,0.08)';
+    html += '<div style="display:flex;gap:6px;padding:4px 6px;border-radius:6px;background:'+bg+';margin-bottom:3px">'
+      +'<span style="font-size:13px;flex-shrink:0">'+item.icon+'</span>'
+      +'<span style="font-size:11px;color:var(--text);line-height:1.4">'+item.text+'</span>'
+      +'</div>';
+  });
+  html += '</div>';
+
+  // 공통 권장사항
+  html += '<div style="background:var(--bg2);border-radius:8px;padding:.6rem .85rem;font-size:11px;color:var(--text2);line-height:1.7">'
+    +'💡 <b>공통 권장:</b> 인 제한(CKD 기준) · 나트륨 '+ckd.na+'% DM 이하 · 습식'+(ckd.wetRequired?' 필수':' 권장')+' · 오메가3 보충 · 타우린 확인<br>'
+    +'⚠️ 단백질은 수의사와 혈액 수치 기반으로 결정하세요<br>'
+    +'<span style="font-size:10px;color:var(--text3)">※ ACVIM 2020 고양이 심근병증 가이드라인 + IRIS 2023 CKD 치료 권고안 기반</span>'
+    +'</div>';
+
+  area.innerHTML = html;
 }
 
 function renderHcmResult(area) {
@@ -1767,6 +1939,28 @@ function renderFdResult(d){
   const cs=cdm!==null?Math.max(0,Math.round((1-cdm/30)*100)):50;
   const tags=(d.ingredients_top5||[]).map((ing,i)=>{const lw=ing.toLowerCase();const cls=i===0?'p':lw.includes('쌀')||lw.includes('옥수수')||lw.includes('밀')||lw.includes('전분')||lw.includes('rice')||lw.includes('corn')?'c':'';return`<span class="tag ${cls}">${ing}</span>`}).join('');
   const area=document.getElementById('fdResult');
+  // HCM+CKD 복합 모드
+  if(fdMode === 'hcmckd') {
+    area.innerHTML = '';
+    const hcmCkdDiv = document.createElement('div');
+    renderHcmCkdResult(d, hcmCkdDiv);
+    area.appendChild(hcmCkdDiv);
+    // 포장 단위 계산기도 추가
+    const calcDiv3 = document.createElement('div');
+    calcDiv3.style.cssText='background:var(--bg2);border-radius:10px;padding:.75rem 1rem;margin-top:.5rem';
+    const k100b=kcal;
+    calcDiv3.innerHTML='<div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:.4rem">📦 포장 단위로 급여량 계산</div>'
+      +'<div style="font-size:11px;color:var(--text3);margin-bottom:.5rem">100g 기준 '+k100b+'kcal</div>'
+      +'<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:.5rem">'
+      +'<input type="number" id="fdPackSize" placeholder="포장 용량(g)" style="width:110px;padding:6px 8px;border:0.5px solid var(--bd);border-radius:8px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit" oninput="calcFdPortion('+k100b+')">'
+      +'<span style="font-size:11px;color:var(--text2)">g /</span>'
+      +'<input type="number" id="fdPackKcal" placeholder="포장 칼로리(kcal)" style="width:130px;padding:6px 8px;border:0.5px solid var(--bd);border-radius:8px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit" oninput="calcFdPortion('+k100b+')">'
+      +'<span style="font-size:11px;color:var(--text2)">kcal</span>'
+      +'</div>'
+      +'<div id="fdPortionResult" style="font-size:12px;color:var(--teal);font-weight:500;line-height:1.6"></div>';
+    area.appendChild(calcDiv3);
+    return;
+  }
   // HCM 전용 모드
   if(fdMode === 'hcm') {
     area.innerHTML = '';
