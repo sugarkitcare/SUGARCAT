@@ -376,7 +376,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     </div>
     <div id="insCard">
     <div class="row2">
-      <div class="ig"><label>종류</label><select id="insType"><option>프로진크</option><option>글라진</option><option>레버미어</option><option>NPH</option><option>레귤러</option><option>기타</option></select></div>
+      <div class="ig"><label>종류</label><select id="insType"><option>프로징크</option><option>글라진</option><option>레버미어</option><option>NPH</option><option>레귤러</option><option>기타</option></select></div>
       <div class="ig"><label>투여량 (U)</label><input type="number" id="insVal" placeholder="예: 1.5" step="0.5"></div>
       <div class="ig"><label>투여 시각</label><input type="time" id="insTime"></div>
       <div class="ig"><label>투여 전 혈당</label><input type="number" id="insPreBg" placeholder="mg/dL"></div>
@@ -1354,8 +1354,8 @@ function renderBTGraphs(){
 
     // 정상범위 표시선
     const refDatasets=[];
-    if(item.refLow!==null)refDatasets.push({label:'최솟값',data:dates.map(()=>item.refLow),borderColor:'rgba(24,95,165,0.4)',borderWidth:1.5,borderDash:[5,4],pointRadius:0,fill:false,tension:0});
-    if(item.refHigh!==null)refDatasets.push({label:'최댓값',data:dates.map(()=>item.refHigh),borderColor:'rgba(216,90,48,0.4)',borderWidth:1.5,borderDash:[5,4],pointRadius:0,fill:false,tension:0});
+    if(item.refLow!==null)refDatasets.push({label:'최소값',data:dates.map(()=>item.refLow),borderColor:'rgba(24,95,165,0.4)',borderWidth:1.5,borderDash:[5,4],pointRadius:0,fill:false,tension:0});
+    if(item.refHigh!==null)refDatasets.push({label:'최대값',data:dates.map(()=>item.refHigh),borderColor:'rgba(216,90,48,0.4)',borderWidth:1.5,borderDash:[5,4],pointRadius:0,fill:false,tension:0});
 
     btGI.push(new Chart(document.getElementById(`btc_${idx}`),{
       type:'line',
@@ -1365,7 +1365,7 @@ function renderBTGraphs(){
         plugins:{
           legend:{display:allCats.length>1||refDatasets.length>0,
             labels:{font:{size:10},color:tc2,boxWidth:8,boxHeight:8,
-              filter:(item)=>!['최솟값','최댓값'].includes(item.text)||dates.length>1}
+              filter:(item)=>!['최소값','최대값'].includes(item.text)||dates.length>1}
           }
         },
         scales:{
@@ -2194,8 +2194,8 @@ setupDrop('cgmDrop','cgmFile',async file=>{
     ...
   ],
   "avg": 평균값정수,
-  "min": 최솟값정수,
-  "max": 최댓값정수,
+  "min": 최소값정수,
+  "max": 최대값정수,
   "time_in_range_pct": TIR퍼센트정수(화면에 표시된 경우 그 값, 없으면 자체계산: 80~200범위 포인트/전체×100),
   "trend_arrow": "현재 추세 화살표(↑↑/↑/→/↓/↓↓, 화면에 없으면 null)",
   "events": [{"time":"HH:MM","type":"식사/인슐린/이벤트","note":"내용"}],
@@ -2234,8 +2234,8 @@ setupDrop('cgmDrop','cgmFile',async file=>{
     ...
   ],
   "avg": 평균값정수,
-  "min": 최솟값정수,
-  "max": 최댓값정수,
+  "min": 최소값정수,
+  "max": 최대값정수,
   "time_in_range_pct": TIR퍼센트정수(화면 표시값 우선, 없으면 자체 계산),
   "trend_arrow": "↑↑/↑/→/↓/↓↓ 또는 null",
   "gmi": GMI수치(예:7.2, 없으면 null),
@@ -2457,7 +2457,7 @@ ${isPasta?'카카오헬스케어 파스타(PASTA)':'케어센스 에어(CareSens
 - 고혈당: >200 mg/dL / 위험: >400 mg/dL + 케톤 상승 → DKA 의심
 - TIR 목표: ≥70% (고양이 당뇨 관리 목표)
 - 급변동 기준: 15분 내 40 mg/dL 이상 변화
-- 인슐린 피크: 프로진크 4~8h / 글라진·레버미어 6~12h
+- 인슐린 피크: 프로징크 4~8h / 글라진·레버미어 6~12h
 ${isPasta?`- GMI 참고: 고양이 당화혈색소 직접 비교는 부정확하나 혈당 조절 경향 참고 가능
 - CV% 안정 기준: ≤36% (변동성 낮을수록 안정적 관리)
 - 파스타 이벤트(식사·운동·인슐린) 기록이 있으면 이벤트 전후 혈당 반응 반드시 분석`:''}
@@ -3335,7 +3335,7 @@ initSupabase();
       <select id="cpNeuter"><option value="">선택</option><option value="yes">했어요</option><option value="no">안했어요</option></select>
     </div>
     <div class="ig"><label>인슐린 종류</label>
-      <select id="cpInsulin"><option value="">없음</option><option value="프로진크">프로진크</option><option value="글라진">글라진</option><option value="레버미어">레버미어</option><option value="NPH">NPH</option></select>
+      <select id="cpInsulin"><option value="">없음</option><option value="프로징크">프로징크</option><option value="글라진">글라진</option><option value="레버미어">레버미어</option><option value="NPH">NPH</option></select>
     </div>
   </div>
   <div style="font-size:11px;font-weight:500;color:var(--text2);margin-bottom:.4rem">동반 질환</div>
