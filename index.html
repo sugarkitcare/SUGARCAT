@@ -1237,7 +1237,7 @@ document.querySelectorAll('.nav-btn').forEach(b=>{
     if(tab==='cgm'){renderCgmHistory();}
     if(tab==='graph'){renderGraphs();renderBTTrend();}
     if(tab==='history')renderHistory();
-    if(tab==='bloodtest')renderBTGraphs();
+    if(tab==='bloodtest'){renderBTGraphs();renderBTHistoryList();}
     if(tab==='food')renderFdHistory();
   };
 });
@@ -3126,7 +3126,7 @@ function renderBTTrend(){
   if(!wrap||!filter)return;
 
   // 현재 고양이 기준 데이터만
-  const myData=btData.filter(d=>d.cat===state.activeCat);
+  const myData=btData.filter(d=>d.cat===state.activeCat || (!d.cat && btData.length > 0));
   if(!myData.length){
     wrap.innerHTML='';filter.innerHTML='';
     if(empty)empty.style.display='block';
@@ -3754,13 +3754,17 @@ async function syncFromDB() {
 
 async function loadDailyRecords() {
   if(!sbClient || !currentUser) return;
+  // cats JOIN
   const { data } = await sbClient.from('daily_records')
-    .select('*').eq('user_id', currentUser.id);
+    .select('*, cats(name)')
+    .eq('user_id', currentUser.id);
   if(data) {
     data.forEach(r => {
-      const cat = r.cat_id ? Object.keys(state.catProfiles).find(
-        k => state.catProfiles[k]?.dbId === r.cat_id
-      ) : null;
+      // JOIN 결과 우선, 없으면 catProfiles에서 매핑
+      const cat = r.cats?.name ||
+        (r.cat_id ? Object.keys(state.catProfiles).find(
+          k => state.catProfiles[k]?.dbId === r.cat_id
+        ) : null);
       if(cat) {
         if(!state.records[cat]) state.records[cat] = {};
         state.records[cat][r.record_date] = r.data;
@@ -3771,12 +3775,29 @@ async function loadDailyRecords() {
 
 async function loadBloodTests() {
   if(!sbClient || !currentUser) return;
-  const { data } = await sbClient.from('blood_tests')
-    .select('*').eq('user_id', currentUser.id).order('created_at', {ascending: false});
-  if(data && data.length > 0) {
-    btData = data.map(r => ({
-      cat: Object.keys(state.catProfiles).find(k => state.catProfiles[k]?.dbId === r.cat_id) || '',
-      date: r.test_date, items: r.items, ts: new Date(r.created_at).getTime()
+  // cats 테이블과 JOIN해서 고양이 이름 직접 가져오기
+  const { data, error } = await sbClient.from('blood_tests')
+    .select('*, cats(name)')
+    .eq('user_id', currentUser.id)
+    .order('created_at', {ascending: false});
+  
+  // JOIN 실패 시 단순 조회로 폴백
+  let btRaw = data;
+  if(error || !data) {
+    const { data: plain } = await sbClient.from('blood_tests')
+      .select('*').eq('user_id', currentUser.id)
+      .order('created_at', {ascending: false});
+    btRaw = plain;
+  }
+  
+  if(btRaw && btRaw.length > 0) {
+    btData = btRaw.map(r => ({
+      cat: r.cats?.name ||
+        Object.keys(state.catProfiles).find(k => state.catProfiles[k]?.dbId === r.cat_id) ||
+        state.activeCat || '',
+      date: r.test_date,
+      items: r.items,
+      ts: new Date(r.created_at).getTime()
     }));
   }
 }
