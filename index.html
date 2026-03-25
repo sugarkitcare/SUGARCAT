@@ -294,8 +294,9 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
   </div>
 
   <div class="ig" style="margin-bottom:10px"><label>이메일</label>
-    <input type="email" id="authEmail" placeholder="이메일 입력"
+    <input type="email" id="authEmail" placeholder="이메일 입력 (예: cat@gmail.com)"
       style="padding:10px 12px;border:0.5px solid var(--bd);border-radius:10px;font-size:14px;background:var(--bg);color:var(--text);font-family:inherit;width:100%;box-sizing:border-box">
+    <div style="font-size:10px;color:var(--text3);margin-top:4px">Gmail, Naver, Kakao 등 일반 이메일 사용 가능</div>
   </div>
   <div class="ig" style="margin-bottom:1.5rem"><label>비밀번호</label>
     <input type="password" id="authPassword" placeholder="비밀번호 입력 (6자 이상)"
@@ -1014,7 +1015,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <script>
 
 const SK='dangmyo_v2',SK_BT='bt_v2',SK_FD='fd_v2';
-let state={cats:['케이','달래'],activeCat:'케이',records:{},catProfiles:{}};
+let state={cats:[],activeCat:'',records:{},catProfiles:{}};
 let btData=[],fdData=[];
 try{const d=localStorage.getItem(SK);if(d)state=JSON.parse(d)}catch(e){}
 try{const d=localStorage.getItem(SK_BT);if(d)btData=JSON.parse(d)}catch(e){}
@@ -3634,10 +3635,24 @@ async function handleAuth() {
     }
 
     if(result.error) {
-      msg.textContent = result.error.message.includes('Invalid') ? '이메일 또는 비밀번호가 틀렸어요' :
-        result.error.message.includes('already') ? '이미 가입된 이메일이에요' :
-        result.error.message.includes('confirm') ? '이메일 인증 후 로그인해주세요' :
-        result.error.message;
+      const errMsg = result.error.message || '';
+      let friendlyMsg = '';
+      if(errMsg.includes('Invalid login') || errMsg.includes('invalid_credentials')) {
+        friendlyMsg = '이메일 또는 비밀번호가 틀렸어요';
+      } else if(errMsg.includes('already registered') || errMsg.includes('already been registered')) {
+        friendlyMsg = '이미 가입된 이메일이에요. 로그인 탭에서 로그인해주세요';
+      } else if(errMsg.includes('Email not confirmed') || errMsg.includes('confirm')) {
+        friendlyMsg = '이메일 인증이 필요해요. 가입 시 받은 인증 메일을 확인해주세요';
+      } else if(errMsg.includes('Password') || errMsg.includes('password')) {
+        friendlyMsg = '비밀번호는 6자 이상이어야 해요';
+      } else if(errMsg.includes('valid email') || errMsg.includes('email')) {
+        friendlyMsg = '올바른 이메일 형식을 입력해주세요 (예: cat@gmail.com)';
+      } else if(errMsg.includes('rate limit') || errMsg.includes('too many')) {
+        friendlyMsg = '요청이 너무 많아요. 잠시 후 다시 시도해주세요';
+      } else {
+        friendlyMsg = '오류가 발생했어요: ' + errMsg;
+      }
+      msg.textContent = friendlyMsg;
       msg.style.color = 'var(--coral)';
     } else if(authMode === 'signup' && !result.data?.session) {
       msg.textContent = '✅ 가입 완료! 이메일 인증 후 로그인해주세요';
@@ -3674,8 +3689,8 @@ async function syncFromDB() {
     if(catsErr) throw catsErr;
 
     if(cats && cats.length > 0) {
-      // DB에 고양이 있으면 DB 기준으로 덮어씌우기
-      state.cats = cats.map(c => c.name);
+      // DB 기준으로 완전 덮어씌우기 (로컬 중복 제거)
+      state.cats = [...new Set(cats.map(c => c.name))]; // 중복 제거
       state.activeCat = state.cats[0];
       state.catProfiles = {};
       cats.forEach(c => {
@@ -3844,6 +3859,16 @@ async function upsertCatToDB(catName) {
       // 기존 고양이 수정
       result = await sbClient.from('cats').update(payload).eq('id', profile.dbId);
     } else {
+      // 같은 이름이 이미 DB에 있는지 확인 (중복 방지)
+      const { data: existing } = await sbClient.from('cats')
+        .select('id').eq('user_id', currentUser.id).eq('name', catName).single();
+      if(existing?.id) {
+        // 이미 있으면 dbId만 저장
+        if(!state.catProfiles[catName]) state.catProfiles[catName] = {};
+        state.catProfiles[catName].dbId = existing.id;
+        try{localStorage.setItem(SK, JSON.stringify(state));}catch(e){}
+        return;
+      }
       // 새 고양이 등록
       result = await sbClient.from('cats').insert(payload).select().single();
       if(result.data?.id) {
