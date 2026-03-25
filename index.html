@@ -630,9 +630,9 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
       <span>저장된 CGM 기록</span>
       <button class="clr-btn" id="cgmClear">전체 삭제</button>
     </div>
-    <!-- 날짜별 평· 추이 -->
+    <!-- 날짜별 평균 추이 -->
     <div class="card">
-      <div class="card-title">일별 평· 혈당 추이</div>
+      <div class="card-title">일별 평균 혈당 추이</div>
       <div class="chart-wrap" style="height:160px">
         <canvas id="cgmTrendChart"></canvas>
       </div>
@@ -812,7 +812,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     <div class="routine-tags" id="calcDiseaseTags" style="margin-bottom:.75rem">
       <div class="routine-tag" data-val="dm" onclick="toggleCalcDisease(this)">당뇨(DM)</div>
       <div class="routine-tag" data-val="ckd" onclick="toggleCalcDisease(this)">신부전(CKD)</div>
-      <div class="routine-tag" data-val="panc" onclick="toggleCalcDisease(this)">·장염</div>
+      <div class="routine-tag" data-val="panc" onclick="toggleCalcDisease(this)">췌장염</div>
       <div class="routine-tag" data-val="hcm" onclick="toggleCalcDisease(this)">심비대증(HCM)</div>
       <div class="routine-tag" data-val="ibd" onclick="toggleCalcDisease(this)">IBD</div>
       <div class="routine-tag" data-val="obese_tx" onclick="toggleCalcDisease(this)">비만 치료 중</div>
@@ -884,7 +884,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     <div id="hcmCkdWrap" style="display:none;margin-bottom:.75rem">
       <div style="background:rgba(216,90,48,0.08);border:1px solid rgba(216,90,48,0.3);border-radius:8px;padding:.6rem .8rem;margin-bottom:.75rem">
         <div style="font-size:12px;font-weight:600;color:#D85A30;margin-bottom:.3rem">⚠️ 복합 질환 — 식이 충돌 주의</div>
-        <div style="font-size:11px;color:var(--text2);line-height:1.6">단백질 항목에서 CKD(제한)와 HCM(유지)이 충돌해요. 혈액검사 수치(BUN·알부민··육 상태)를 기반으로 <b>수의사와 상의 후</b> 결정하세요.</div>
+        <div style="font-size:11px;color:var(--text2);line-height:1.6">단백질 항목에서 CKD(제한)와 HCM(유지)이 충돌해요. 혈액검사 수치(BUN·알부민·근육 상태)를 기반으로 <b>수의사와 상의 후</b> 결정하세요.</div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <div style="flex:1;min-width:120px">
@@ -1108,7 +1108,7 @@ function renderCatBar(){
 
   const cancelBtn=document.createElement('button');
   cancelBtn.type='button';
-  cancelBtn.textContent='·소';
+  cancelBtn.textContent='취소';
   cancelBtn.style.cssText='padding:5px 8px;background:var(--bg2);color:var(--text2);border:0.5px solid var(--bd);border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit';
 
   const doAdd=()=>{
@@ -1401,7 +1401,7 @@ setupDrop('btDrop','btFile',async file=>{
   const b64=await toB64(file);
   const sys='혈액검사지에서 날짜별로 모든 항목을 추출하여 아래 JSON만 출력하세요.\n'+
 '날짜가 여러 개이면 날짜별로 각각 분리해서 추출하세요.\n'+
-'{"results":[{"date":"YYYY-MM-DD","items":[{"name":"항목명","abbr":"약어","value":숫자,"unit":"단위","refLow":숫자or null,"refHigh":숫자or null,"category":"신장|간|혈구|전해질|혈당|·장|갑상선|단백|지질|기타"}]}]}\n'+
+'{"results":[{"date":"YYYY-MM-DD","items":[{"name":"항목명","abbr":"약어","value":숫자,"unit":"단위","refLow":숫자or null,"refHigh":숫자or null,"category":"신장|간|혈구|전해질|혈당|췌장|갑상선|단백|지질|기타"}]}]}\n'+
 '날짜를 모르면 date를 null로 설정하세요.';
   let mc=file.type.startsWith('image/')?[{type:'image',source:{type:'base64',media_type:file.type,data:b64}},{type:'text',text:'모든 항목을 추출해주세요.'}]:[{type:'document',source:{type:'base64',media_type:'application/pdf',data:b64}},{type:'text',text:'모든 항목을 추출해주세요.'}];
   try{
@@ -1626,7 +1626,7 @@ const CKD_CRITERIA = {
     protein: [28, 40],
     na: 0.4,
     wetRequired: false,
-    desc: 'Stage 1 — 신장 손상 초기 (Creatinine <140 μmol/L). 인 제한 시작 권고, 수분 섭· 중요. 단백질은 고품질 유지.'
+    desc: 'Stage 1 — 신장 손상 초기 (Creatinine <140 μmol/L). 인 제한 시작 권고, 수분 섭취 중요. 단백질은 고품질 유지.'
   },
   2: {
     p: 0.5,
@@ -1682,7 +1682,7 @@ const HCM_CRITERIA = {
     desc: '심장 변화는 있으나 심부전 위험 낮음. 식이 제한보다 ·형 잡힌 영양 유지가 우선.',
     checklist: [
       {icon:'✅', text:'나트륨 DM 0.4% 이하 사료 권장 (고나트륨 회피)', ok:true},
-      {icon:'✅', text:'충분한 단백질 유지 — ·육 손실 예방 핵심', ok:true},
+      {icon:'✅', text:'충분한 단백질 유지 — 근육 손실 예방 핵심', ok:true},
       {icon:'✅', text:'타우린 함유 확인 (필수 아미노산)', ok:true},
       {icon:'ℹ️', text:'오메가3(EPA/DHA) 보충 고려 — 항염 효과', ok:null},
       {icon:'🚫', text:'고나트륨 간식 및 사람 음식 금지', ok:false},
@@ -1695,7 +1695,7 @@ const HCM_CRITERIA = {
     desc: '심부전·혈전 위험 증가. 나트륨 제한 시작, 고품질 단백질 유지.',
     checklist: [
       {icon:'✅', text:'나트륨 DM 0.4% 이하 엄수', ok:true},
-      {icon:'✅', text:'충분한 단백질 유지 (·육 손실 예방)', ok:true},
+      {icon:'✅', text:'충분한 단백질 유지 (근육 손실 예방)', ok:true},
       {icon:'✅', text:'타우린 함유 확인', ok:true},
       {icon:'✅', text:'오메가3(EPA/DHA) 보충 권장', ok:true},
       {icon:'🚫', text:'고나트륨 간식 및 사람 음식 금지', ok:false},
@@ -1841,8 +1841,8 @@ function renderHcmCkdResult(d, area) {
       +'<div style="font-size:12px;font-weight:600;color:#BA7517;margin-bottom:.3rem">⚠️ 단백질 충돌 — 수의사 상담 필요</div>'
       +'<div style="font-size:11px;color:var(--text2);line-height:1.6">'
       +'CKD Stage '+hcmCkdCkdStage+' 기준: 단백질 DM '+ckd.protein[0]+'~'+ckd.protein[1]+'% 권장<br>'
-      +'HCM '+hcmCkdHcmStage+' 기준: 단백질 충분히 유지 (·육 손실 방지)<br>'
-      +'→ BUN·알부민··육 상태 수치 기반으로 개별 결정 필요'
+      +'HCM '+hcmCkdHcmStage+' 기준: 단백질 충분히 유지 (근육 손실 방지)<br>'
+      +'→ BUN·알부민·근육 상태 수치 기반으로 개별 결정 필요'
       +'</div>'
       +'</div>';
   }
@@ -1957,8 +1957,8 @@ function getCkdJudge(d) {
   // 수분/습식 판정
   const wetReq = c.wetRequired;
   if(d.type === 'wet') goods.push('습식 ✅ (수분 섭취에 유리, CKD 관리 핵심)');
-  else if(wetReq) issues.push('건식 ❌ Stage ' + ckdStage + '은 습식 필수 — 수분 섭· 부족 위험');
-  else issues.push('건식 ⚠️ 습식 병행 또는 물 섭· 적· 유도 필요');
+  else if(wetReq) issues.push('건식 ❌ Stage ' + ckdStage + '은 습식 필수 — 수분 섭취 부족 위험');
+  else issues.push('건식 ⚠️ 습식 병행 또는 물 섭취 적극 유도 필요');
 
   // 종합 판정
   const score = issues.length === 0 ? 'best' : issues.length === 1 ? 'good' : issues.length === 2 ? 'caution' : 'bad';
@@ -2023,7 +2023,7 @@ function renderCkdResult(d, area) {
 
   // CKD 주의사항
   html += '<div style="background:var(--bg2);border-radius:8px;padding:.6rem .8rem;font-size:11px;color:var(--text2);line-height:1.7">'
-    + '💧 수분 섭· 늘리기 · 습식 비율 높이기<br>'
+    + '💧 수분 섭취 늘리기 · 습식 비율 높이기<br>'
     + '🚫 인 함량 높은 사료, 단백질 과다 사료 주의<br>'
     + '⚠️ 이 분석은 참고용이며 정확한 식이 처방은 수의사와 상담하세요'
     + '</div>';
@@ -2228,9 +2228,9 @@ document.getElementById('autoAnalyze').onclick=()=>sendAI(`오늘 기록 전체 
 const SK_RT='routineItems_v1';
 const defaultItems=[
   {name:'레나딜',cat:'med'},{name:'레나메진',cat:'med'},{name:'오메가3',cat:'med'},
-  {name:'유산·',cat:'med'},{name:'사메탑',cat:'med'},{name:'항생제',cat:'med'},
+  {name:'유산균',cat:'med'},{name:'사메탑',cat:'med'},{name:'항생제',cat:'med'},
   {name:'세레니아',cat:'med'},{name:'미르타자핀',cat:'med'},{name:'피하수액',cat:'med'},
-  {name:'간식',cat:'food'},{name:'황금푸딩',cat:'food'},{name:'물 섭·',cat:'food'},
+  {name:'간식',cat:'food'},{name:'황금푸딩',cat:'food'},{name:'물 섭취',cat:'food'},
   {name:'병원 방문',cat:'other'},{name:'배변 확인',cat:'other'},{name:'구토',cat:'other'}
 ];
 let routineItems=defaultItems;
@@ -2378,11 +2378,11 @@ function calcCalorie(){
     notes.push('당뇨: ·칙적 식사량 유지 중요, 갑작스런 증감 피하기');
   }
   if(calcDiseases.has('ckd')){
-    notes.push('CKD: 인 제한 사료 권장, 충분한 수분 섭·');
+    notes.push('CKD: 인 제한 사료 권장, 충분한 수분 섭취');
   }
   if(calcDiseases.has('panc')){
     factor=Math.min(factor,1.2);
-    notes.push('·장염: 저지방 식이 권장');
+    notes.push('췌장염: 저지방 식이 권장');
   }
   if(calcDiseases.has('recovery')){
     factor=Math.max(factor,1.4);
@@ -2546,8 +2546,8 @@ document.getElementById('btAiComment').addEventListener('click', async () => {
 - 혈당 높음 → "혈액 속 당이 너무 많아요, 당뇨 관리가 필요해요"
 - HCT/Hb 낮음 → "빈혈이 있어요, 피가 부족한 상태예요"
 - Phosphorus 높음 → "인 수치가 높아요, 신장에 부담을 줄 수 있어요"
-- Potassium 낮음 → "칼륨이 부족해요, ·육 약화나 무기력증이 올 수 있어요"
-- FPL 높음 → "·장에 염증이 있을 수 있어요 (·장염)"
+- Potassium 낮음 → "칼륨이 부족해요, 근육 약화나 무기력증이 올 수 있어요"
+- FPL 높음 → "장에 염증이 있을 수 있어요 (췌장염)"
 - FSAA 높음 → "간 기능 이상 또는 당뇨 관련 지표가 높아요"
 - T4 낮음 → "갑상선 기능이 저하되어 있을 수 있어요"`;
 
@@ -2772,7 +2772,7 @@ function renderCgmExtracted(d){
   const arrowHtml=arrowKey&&arrowMap[arrowKey]?`<span class="trend-arrow ${arrowMap[arrowKey].split(' ')[0]}">${arrowMap[arrowKey].split(' ')[1]}</span>`:'';
   const avgCls=avg<=200?'var(--teal)':avg<=300?'var(--amber)':'var(--coral)';
   document.getElementById('cgmStats').innerHTML=`
-    <div class="cgm-stat"><div class="sv" style="color:${avgCls}">${avg}${arrowHtml}</div><div class="sl">평· mg/dL</div></div>
+    <div class="cgm-stat"><div class="sv" style="color:${avgCls}">${avg}${arrowHtml}</div><div class="sl">평균 mg/dL</div></div>
     <div class="cgm-stat"><div class="sv" style="color:var(--blue)">${min}</div><div class="sl">최저</div></div>
     <div class="cgm-stat"><div class="sv" style="color:var(--coral)">${max}</div><div class="sl">최고</div></div>
     <div class="cgm-stat"><div class="sv" style="color:var(--teal)">${readings.length}</div><div class="sl">측정 횟수</div></div>`;
@@ -2830,7 +2830,7 @@ function renderCgmExtracted(d){
     banner.innerHTML=`△ 고혈당(200↑) ${highCount}회 — 인슐린 용량 또는 식이 점검 권장`;
   }else if(avg<=200){
     banner.style.display='block';banner.className='ok-banner';
-    banner.innerHTML=`✓ 전반적으로 안정적인 혈당 패턴이에요 (평· ${avg} mg/dL)`;
+    banner.innerHTML=`✓ 전반적으로 안정적인 혈당 패턴이에요 (평균 ${avg} mg/dL)`;
   }else{banner.style.display='none'}
 
   // 하루 그래프
@@ -2930,7 +2930,7 @@ ${isPasta?`- GMI 참고: 고양이 당화혈색소 직접 비교는 부정확하
 분석은 아래 구조로 한국어로 작성하세요. 각 섹션 제목은 【】 형식 유지:
 
 【오늘 혈당 요약】
-평·, 최저, 최고, TIR${isPasta?', GMI, CV%':''} 포함한 전반적 조절 상태 2~3문장.
+평균, 최저, 최고, TIR${isPasta?', GMI, CV%':''} 포함한 전반적 조절 상태 2~3문장.
 
 【주목할 구간 및 패턴】
 시간대별 특이 패턴을 구체적 수치·시각과 함께 2~4가지 서술.
@@ -3013,7 +3013,7 @@ function renderCgmHistory(){
     type:'line',
     data:{labels:tLabels,datasets:[
       {label:'최고',data:tMaxs,borderColor:'rgba(216,90,48,0.5)',backgroundColor:'rgba(216,90,48,0.05)',tension:.4,fill:false,pointRadius:3,borderWidth:1.5},
-      {label:'평·',data:tAvgs,borderColor:'#1D9E75',backgroundColor:'rgba(29,158,117,0.1)',tension:.4,fill:true,pointRadius:4,borderWidth:2},
+      {label:'평균',data:tAvgs,borderColor:'#1D9E75',backgroundColor:'rgba(29,158,117,0.1)',tension:.4,fill:true,pointRadius:4,borderWidth:2},
       {label:'최저',data:tMins,borderColor:'rgba(24,95,165,0.5)',backgroundColor:'rgba(24,95,165,0.05)',tension:.4,fill:false,pointRadius:3,borderWidth:1.5},
     ]},
     options:{responsive:true,maintainAspectRatio:false,
@@ -3034,7 +3034,7 @@ function renderCgmHistory(){
         <span style="font-size:10px;color:var(--text3)">${d.device||'CGM'} · ${(d.readings||[]).length}회</span>
         ${d.appType==='pasta'?'<span style="font-size:9px;padding:1px 6px;border-radius:5px;background:var(--amber-l);color:var(--amber-d);margin-left:3px">파스타</span>':'<span style="font-size:9px;padding:1px 6px;border-radius:5px;background:var(--teal-l);color:var(--teal-d);margin-left:3px">케어센스</span>'}
       </div>
-      <div class="h-meta">평· ${avg}<br>최저 ${d.min||'?'} · 최고 ${d.max||'?'}</div>`;
+      <div class="h-meta">평균 ${avg}<br>최저 ${d.min||'?'} · 최고 ${d.max||'?'}</div>`;
     // 삭제 버튼
     const cgmDelBtn=document.createElement('button');
     cgmDelBtn.type='button';
@@ -3374,7 +3374,7 @@ function checkKetoneAlert(ket, bg) {
 1. 담당 수의사에게 즉시 연락<br>
 2. 식욕·구토·무기력증 여부 확인<br>
 3. 혈당 함께 체크 (현재: ${bg||'미측정'} mg/dL)<br>
-4. 수분 섭· 유도<br><br>
+4. 수분 섭취 유도<br><br>
 <span style="color:var(--amber-d)">케톤 2.4↑ = 입원 치료 필요 가능성 높음</span>`;
     modal.style.display = 'flex';
   } else if(ket >= 0.5) {
@@ -3811,7 +3811,7 @@ initSupabase();
   <div class="row2" style="margin-bottom:10px">
     <div class="ig"><label>생년월일</label><input type="date" id="cpBirth"></div>
     <div class="ig"><label>성별</label>
-      <select id="cpGender"><option value="">선택</option><option value="수·">수·</option><option value="암·">암·</option></select>
+      <select id="cpGender"><option value="">선택</option><option value="수컷">수컷</option><option value="암컷">암컷</option></select>
     </div>
   </div>
   <div class="row2" style="margin-bottom:10px">
@@ -3827,7 +3827,7 @@ initSupabase();
     <div class="routine-tag" data-val="당뇨(DM)">당뇨(DM)</div>
     <div class="routine-tag" data-val="신부전(CKD)">신부전(CKD)</div>
     <div class="routine-tag" data-val="심비대증(HCM)">심비대증(HCM)</div>
-    <div class="routine-tag" data-val="·장염">·장염</div>
+    <div class="routine-tag" data-val="췌장염">췌장염</div>
     <div class="routine-tag" data-val="IBD">IBD</div>
     <div class="routine-tag" data-val="방광염">방광염</div>
   </div>
