@@ -295,7 +295,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 
   <div class="ig" style="margin-bottom:10px"><label>이메일</label>
     <input type="text" id="authEmail" placeholder="이메일 입력 (예: cat@gmail.com)"
-      inputmode="email" autocomplete="email" autocapitalize="none"
+      inputmode="email" autocomplete="off" autocapitalize="none" spellcheck="false"
       style="padding:10px 12px;border:0.5px solid var(--bd);border-radius:10px;font-size:14px;background:var(--bg);color:var(--text);font-family:inherit;width:100%;box-sizing:border-box">
     <div style="font-size:10px;color:var(--text3);margin-top:4px">Gmail, Naver, Kakao 등 일반 이메일 사용 가능 (언더바_ 포함 가능)</div>
   </div>
@@ -1124,9 +1124,18 @@ function renderCatBar(){
     delBtn.addEventListener('click',(e)=>{
       e.stopPropagation();
       if(!confirm(c+'를 삭제할까요? 모든 기록이 삭제돼요.'))return;
+      const delProfile = (state.catProfiles||{})[c];
       state.cats=state.cats.filter(x=>x!==c);
       if(state.records[c])delete state.records[c];
+      if(state.catProfiles[c])delete state.catProfiles[c];
       if(state.activeCat===c)state.activeCat=state.cats[0]||'';
+      // DB에서도 삭제
+      if(sbClient && currentUser && delProfile?.dbId) {
+        sbClient.from('daily_records').delete().eq('cat_id', delProfile.dbId)
+          .then(()=>sbClient.from('blood_tests').delete().eq('cat_id', delProfile.dbId))
+          .then(()=>sbClient.from('cats').delete().eq('id', delProfile.dbId)
+            .then(({error})=>{ if(error) console.error('고양이 DB 삭제 오류:', error); }));
+      }
       renderCatBar();updateMetrics();saveS();
     });
 
@@ -2453,7 +2462,7 @@ document.getElementById('saveRoutine').addEventListener('click',()=>{
   const routineD=document.getElementById('routineDate').value||today();
   if(!getRec(state.activeCat,routineD).routines)getRec(state.activeCat,routineD).routines=[];
   getRec(state.activeCat,routineD).routines.push({items,memo,time,ts:Date.now()});
-  saveS();
+  saveS(routineD);
   routineSelected.clear();
   renderRoutineTags();
   document.getElementById('routineCustom').value='';
@@ -3618,7 +3627,20 @@ function openCatProfile(cat) {
   const page=document.getElementById('catProfilePage');
   if(!page){alert('오류');return;}
   document.getElementById('catProfileTitle').textContent=cat+' 기본 정보';
-  document.getElementById('cpBreed').value=profile.breed||'';
+  document.getElementById('cpCatName').value=currentProfileCat||'';
+  // 품종 셀렉박스 설정
+  const breedVal = profile.breed||'';
+  const breedSel = document.getElementById('cpBreed');
+  const breedCustom = document.getElementById('cpBreedCustom');
+  const knownBreeds = [...breedSel.options].map(o=>o.value);
+  if(!breedVal || knownBreeds.includes(breedVal)) {
+    breedSel.value = breedVal;
+    breedCustom.style.display = 'none';
+  } else {
+    breedSel.value = '직접입력';
+    breedCustom.style.display = 'block';
+    breedCustom.value = breedVal;
+  }
   document.getElementById('cpBirth').value=profile.birth||'';
   document.getElementById('cpGender').value=profile.gender||'';
   document.getElementById('cpNeuter').value=profile.neuter||'';
@@ -3634,11 +3656,40 @@ function openCatProfile(cat) {
   window.scrollTo(0,0);
 }
 
+// 품종 직접입력 처리
+document.getElementById('cpBreed')?.addEventListener('change', function() {
+  const custom = document.getElementById('cpBreedCustom');
+  if(this.value === '직접입력') {
+    custom.style.display = 'block';
+    custom.focus();
+  } else {
+    custom.style.display = 'none';
+  }
+});
+
 function saveCatProfile() {
   if(!state.catProfiles)state.catProfiles={};
   const diseases=[...document.querySelectorAll('#cpDiseaseTags .routine-tag.selected')].map(t=>t.dataset.val);
+  // 이름 변경 처리
+  const newName = document.getElementById('cpCatName').value.trim();
+  if(newName && newName !== currentProfileCat) {
+    // 기존 이름 데이터를 새 이름으로 이전
+    state.catProfiles[newName] = state.catProfiles[currentProfileCat] || {};
+    if(state.records[currentProfileCat]) state.records[newName] = state.records[currentProfileCat];
+    delete state.catProfiles[currentProfileCat];
+    delete state.records[currentProfileCat];
+    const idx = state.cats.indexOf(currentProfileCat);
+    if(idx > -1) state.cats[idx] = newName;
+    if(state.activeCat === currentProfileCat) state.activeCat = newName;
+    currentProfileCat = newName;
+  }
+  // 품종 값 (직접입력이면 커스텀 값 사용)
+  const breedSel2 = document.getElementById('cpBreed');
+  const breedFinal = breedSel2.value === '직접입력'
+    ? document.getElementById('cpBreedCustom').value.trim()
+    : breedSel2.value;
   state.catProfiles[currentProfileCat]={
-    breed:document.getElementById('cpBreed').value,
+    breed: breedFinal,
     birth:document.getElementById('cpBirth').value,
     gender:document.getElementById('cpGender').value,
     neuter:document.getElementById('cpNeuter').value,
@@ -3806,26 +3857,55 @@ function finishOnboarding() {
 }
 
 function showCatAddPrompt() {
-  // 고양이 추가 안내 모달
+  if(document.getElementById('catAddPrompt')) return;
   const modal = document.createElement('div');
   modal.id = 'catAddPrompt';
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem';
-  modal.innerHTML = '<div style="background:var(--bg);border-radius:16px;padding:1.5rem;max-width:340px;width:100%;text-align:center">'
-    + '<div style="font-size:2rem;margin-bottom:.5rem">🐾</div>'
-    + '<div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:.5rem">첫 번째 고양이를 등록해요!</div>'
-    + '<div style="font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:1.25rem">'
-    + '고양이 이름을 등록하면<br>혈당·체중·사료 기록을 시작할 수 있어요</div>'
-    + '<input type="text" id="firstCatName" placeholder="고양이 이름 입력" maxlength="10"'
-    + ' style="width:100%;padding:10px 12px;border:1.5px solid var(--teal);border-radius:10px;font-size:15px;background:var(--bg);color:var(--text);font-family:inherit;box-sizing:border-box;margin-bottom:.75rem;text-align:center">'
-    + '<button type="button" onclick="registerFirstCat()"'
-    + ' style="width:100%;padding:12px;background:var(--teal);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;margin-bottom:.5rem">'
-    + '등록하기</button>'
-    + '<button type="button" onclick="closeCatPrompt()"'
-    + ' style="width:100%;padding:10px;background:transparent;color:var(--text3);border:none;font-size:13px;cursor:pointer;font-family:inherit">'
-    + '나중에 할게요</button>'
-    + '</div>';
+
+  const box = document.createElement('div');
+  box.style.cssText = 'background:var(--bg);border-radius:16px;padding:1.5rem;max-width:340px;width:100%;text-align:center';
+
+  const icon = document.createElement('div');
+  icon.style.cssText = 'font-size:2rem;margin-bottom:.5rem';
+  icon.textContent = '🐾';
+
+  const title = document.createElement('div');
+  title.style.cssText = 'font-size:16px;font-weight:700;color:var(--text);margin-bottom:.5rem';
+  title.textContent = '첫 번째 고양이를 등록해요!';
+
+  const desc = document.createElement('div');
+  desc.style.cssText = 'font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:1.25rem';
+  desc.innerHTML = '고양이 이름을 등록하면<br>혈당·체중·사료 기록을 시작할 수 있어요';
+
+  const nameInput = document.createElement('input');
+  nameInput.type = 'text';
+  nameInput.id = 'firstCatName';
+  nameInput.placeholder = '고양이 이름 입력';
+  nameInput.maxLength = 10;
+  nameInput.style.cssText = 'width:100%;padding:10px 12px;border:1.5px solid var(--teal);border-radius:10px;font-size:15px;background:var(--bg);color:var(--text);font-family:inherit;box-sizing:border-box;margin-bottom:.75rem;text-align:center';
+  nameInput.addEventListener('keydown', e => { if(e.key==='Enter') registerFirstCat(); });
+
+  const regBtn = document.createElement('button');
+  regBtn.type = 'button';
+  regBtn.textContent = '등록하기';
+  regBtn.style.cssText = 'width:100%;padding:12px;background:var(--teal);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;margin-bottom:.5rem';
+  regBtn.onclick = registerFirstCat;
+
+  const skipBtn = document.createElement('button');
+  skipBtn.type = 'button';
+  skipBtn.textContent = '나중에 할게요';
+  skipBtn.style.cssText = 'width:100%;padding:10px;background:transparent;color:var(--text3);border:none;font-size:13px;cursor:pointer;font-family:inherit';
+  skipBtn.onclick = closeCatPrompt;
+
+  box.appendChild(icon);
+  box.appendChild(title);
+  box.appendChild(desc);
+  box.appendChild(nameInput);
+  box.appendChild(regBtn);
+  box.appendChild(skipBtn);
+  modal.appendChild(box);
   document.body.appendChild(modal);
-  setTimeout(() => document.getElementById('firstCatName')?.focus(), 100);
+  setTimeout(() => nameInput.focus(), 150);
 }
 
 function closeCatPrompt() {
@@ -3888,16 +3968,18 @@ async function handleAuth() {
         friendlyMsg = '이메일 또는 비밀번호가 틀렸어요';
       } else if(errMsg.includes('already registered') || errMsg.includes('already been registered')) {
         friendlyMsg = '이미 가입된 이메일이에요. 로그인 탭에서 로그인해주세요';
-      } else if(errMsg.includes('Email not confirmed') || errMsg.includes('confirm')) {
-        friendlyMsg = '이메일 인증이 필요해요. 가입 시 받은 인증 메일을 확인해주세요';
+      } else if(errMsg.includes('not confirmed') || errMsg.includes('Email not confirmed')) {
+        friendlyMsg = '이메일 인증이 필요해요. 가입 시 받은 인증 메일을 확인해주세요 (스팸함도 확인)';
+      } else if(errMsg.includes('Signups not allowed') || errMsg.includes('signup')) {
+        friendlyMsg = '현재 회원가입이 비활성화되어 있어요. 잠시 후 다시 시도해주세요';
       } else if(errMsg.includes('Password') || errMsg.includes('password')) {
         friendlyMsg = '비밀번호는 6자 이상이어야 해요';
-      } else if(errMsg.includes('valid email') || errMsg.includes('email')) {
-        friendlyMsg = '올바른 이메일 형식을 입력해주세요 (예: cat@gmail.com)';
       } else if(errMsg.includes('rate limit') || errMsg.includes('too many')) {
         friendlyMsg = '요청이 너무 많아요. 잠시 후 다시 시도해주세요';
+      } else if(errMsg.includes('User already registered')) {
+        friendlyMsg = '이미 가입된 이메일이에요. 로그인 탭에서 로그인해주세요';
       } else {
-        friendlyMsg = '오류가 발생했어요: ' + errMsg;
+        friendlyMsg = '오류: ' + errMsg;
       }
       msg.textContent = friendlyMsg;
       msg.style.color = 'var(--coral)';
@@ -4084,30 +4166,36 @@ async function saveToDB(targetDate) {
 // 전체 로컬 기록을 DB에 일괄 업로드 (초기 마이그레이션용)
 async function migrateLocalToDB() {
   if(!sbClient || !currentUser) return;
-  const cat = state.activeCat;
-  const profile = (state.catProfiles || {})[cat];
-  if(!profile?.dbId) return;
-  const records = state.records?.[cat] || {};
-  const dates = Object.keys(records);
-  if(!dates.length) return;
-  let count = 0;
-  for(const date of dates) {
-    const rec = records[date];
-    if(!rec) continue;
-    const hasData = (rec.bg?.length||0)+(rec.ins?.length||0)+(rec.meals?.length||0)+(rec.weights?.length||0) > 0;
-    if(!hasData) continue;
-    try {
-      await sbClient.from('daily_records').upsert({
-        cat_id: profile.dbId,
-        user_id: currentUser.id,
-        record_date: date,
-        data: rec,
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'cat_id,record_date' });
-      count++;
-    } catch(e) {}
+  let totalCount = 0;
+  for(const cat of (state.cats || [])) {
+    let profile = (state.catProfiles || {})[cat];
+    if(!profile?.dbId) {
+      await upsertCatToDB(cat);
+      profile = (state.catProfiles || {})[cat];
+    }
+    if(!profile?.dbId) continue;
+    const records = state.records?.[cat] || {};
+    const dates = Object.keys(records);
+    for(const date of dates) {
+      const rec = records[date];
+      if(!rec) continue;
+      const hasData = (rec.bg?.length||0)+(rec.ins?.length||0)
+        +(rec.meals?.length||0)+(rec.weights?.length||0)+(rec.routines?.length||0) > 0;
+      if(!hasData) continue;
+      try {
+        await sbClient.from('daily_records').upsert({
+          cat_id: profile.dbId,
+          user_id: currentUser.id,
+          record_date: date,
+          data: rec,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'cat_id,record_date' });
+        totalCount++;
+      } catch(e) {}
+    }
   }
-  toast(`☁️ 로컬 기록 ${count}일치 DB 업로드 완료!`);
+  toast(`☁️ 로컬 기록 ${totalCount}일치 DB 업로드 완료!`);
+  return totalCount;
 }
 
 // 고양이 DB 등록/수정
@@ -4233,7 +4321,31 @@ initSupabase();
       style="background:var(--bg2);border:none;font-size:16px;cursor:pointer;color:var(--teal);padding:8px 14px;line-height:1;border-radius:10px;font-family:inherit">← 뒤로</button>
     <div id="catProfileTitle" style="font-size:16px;font-weight:600;color:var(--text)">고양이 기본 정보</div>
   </div>
-  <div class="ig" style="margin-bottom:10px"><label>품종</label><input type="text" id="cpBreed" placeholder="예: 코리안숏헤어"></div>
+  <div class="ig" style="margin-bottom:10px"><label>이름 수정</label><input type="text" id="cpCatName" placeholder="예: 케이"
+      style="padding:10px 12px;border:0.5px solid var(--bd);border-radius:9px;font-size:14px;background:var(--bg);color:var(--text);font-family:inherit;width:100%;box-sizing:border-box">
+  </div>
+  <div class="ig">
+    <label>품종</label>
+    <select id="cpBreed" style="padding:10px 12px;border:0.5px solid var(--bd);border-radius:9px;font-size:14px;background:var(--bg);color:var(--text);font-family:inherit;width:100%;box-sizing:border-box">
+      <option value="">선택 안 함</option>
+      <option value="코리안숏헤어">코리안숏헤어 (한국 고양이)</option>
+      <option value="러시안블루">러시안블루</option>
+      <option value="스코티시폴드">스코티시폴드</option>
+      <option value="브리티시숏헤어">브리티시숏헤어</option>
+      <option value="페르시안">페르시안</option>
+      <option value="메인쿤">메인쿤</option>
+      <option value="노르웨이숲">노르웨이숲</option>
+      <option value="샴">샴</option>
+      <option value="아비시니안">아비시니안</option>
+      <option value="벵갈">벵갈</option>
+      <option value="먼치킨">먼치킨</option>
+      <option value="스핑크스">스핑크스</option>
+      <option value="터키쉬앙고라">터키쉬앙고라</option>
+      <option value="버만">버만</option>
+      <option value="라가머핀">라가머핀</option>
+      <option value="직접입력">직접 입력...</option>
+    </select>
+    <input type="text" id="cpBreedCustom" placeholder="품종 직접 입력" style="display:none;margin-top:6px;padding:10px 12px;border:0.5px solid var(--bd);border-radius:9px;font-size:14px;background:var(--bg);color:var(--text);font-family:inherit;width:100%;box-sizing:border-box"></div>
   <div class="row2" style="margin-bottom:10px">
     <div class="ig"><label>생년월일</label><input type="date" id="cpBirth"></div>
     <div class="ig"><label>성별</label>
