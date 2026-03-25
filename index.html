@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>케어마스터즈</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -45,7 +48,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 .nav-btn.active{background:var(--bg);color:var(--teal);box-shadow:0 1px 3px rgba(0,0,0,.08)}
 
 /* 섹션 */
-.sec{display:none}.sec.active{display:block}
+.sec{display:none !important}.sec.active{display:block !important}
 
 /* 카드 */
 .card{background:var(--bg);border:0.5px solid var(--bd);border-radius:12px;padding:.75rem .75rem;margin-bottom:.75rem}
@@ -423,7 +426,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.26</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
   <a href="https://open.kakao.com/o/sjseVrVe" target="_blank"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;text-decoration:none;white-space:nowrap">
@@ -528,37 +531,50 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     <button class="btn btn-blue" id="saveMeal">식사 저장</button>
     </div>
   </div>
-  <div class="card">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem;cursor:pointer" onclick="toggleCard('routineCard',this)">
-      <div class="card-title" style="margin:0">💊 투약 · 보조제 · 루틴</div>
-      <button id="toggleEditRoutine" style="padding:4px 10px;border:0.5px solid var(--bd);border-radius:7px;background:transparent;color:var(--teal);font-size:11px;cursor:pointer;font-family:inherit">+ 목록 편집</button>
+  <div class="card" id="routineCard">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
+    <div class="card-title">💊 투약·보조제·루틴</div>
+    <div style="display:flex;gap:6px">
+      <button type="button" id="toggleEditRoutine"
+        style="font-size:11px;color:var(--teal);background:none;border:0.5px solid var(--teal);border-radius:8px;padding:3px 10px;cursor:pointer;font-family:inherit">
+        + 목록 편집
+      </button>
     </div>
+  </div>
 
-    <!-- 편집 패널 (기본 숨김) -->
-    <div id="routineEditPanel" style="display:none;background:var(--bg2);border-radius:10px;padding:.75rem;margin-bottom:.75rem">
-      <div style="font-size:11px;font-weight:500;color:var(--text2);margin-bottom:.5rem">항목 추가</div>
-      <div class="routine-edit-row">
-        <input type="text" id="newRoutineName" placeholder="항목명 입력 (예: 코발라민)">
-        <select id="newRoutineCat">
-          <option value="med">약 및 보조제</option>
-          <option value="food">간식 및 음수</option>
-          <option value="other">기타루틴</option>
-        </select>
-        <button onclick="addRoutineItem()" style="background:var(--teal);color:#fff;border-radius:8px">추가</button>
-      </div>
-      <div style="font-size:11px;color:var(--text3);margin-bottom:.4rem">등록된 항목</div>
-      <div id="routineItemList"></div>
+  <!-- 목록 편집 패널 -->
+  <div id="routineEditPanel" style="display:none;background:var(--bg2);border-radius:10px;padding:.75rem;margin-bottom:.75rem">
+    <div style="font-size:11px;color:var(--text2);margin-bottom:.5rem">항목 추가/삭제</div>
+    <div style="display:flex;gap:6px;margin-bottom:.5rem">
+      <input type="text" id="newRoutineName" placeholder="항목명 (예: 오메가3)"
+        style="flex:1;padding:7px 10px;border:0.5px solid var(--bd);border-radius:8px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit">
+      <select id="newRoutineCat" style="padding:7px 8px;border:0.5px solid var(--bd);border-radius:8px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit">
+        <option value="med">💊 약</option>
+        <option value="food">🍖 간식</option>
+        <option value="other">📋 기타</option>
+      </select>
+      <button onclick="addRoutineItem()" style="padding:7px 12px;background:var(--teal);color:#fff;border:none;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit">추가</button>
     </div>
+    <div id="routineItemList"></div>
+  </div>
 
-    <!-- 태· 선택 영역 -->
-    <div id="routineTagArea"></div>
+  <!-- 오늘 루틴 체크리스트 -->
+  <div id="routineChecklist"></div>
 
-    <div class="row2" style="margin-bottom:8px">
-      <div class="ig"><label>날짜</label><input type="date" id="routineDate"></div>
-      <div class="ig"><label>시각</label><input type="time" id="routineTime"></div>
-      <div class="ig"><label>직접 입력</label><input type="text" id="routineCustom" placeholder="예: 코발라민 0.5ml"></div>
+  <!-- 메모/시각/저장 -->
+  <div style="margin-top:.75rem;padding-top:.75rem;border-top:0.5px solid var(--bd)">
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+      <div class="ig" style="flex:1"><label>날짜</label><input type="date" id="routineDate"></div>
+      <div class="ig" style="flex:1"><label>시각</label><input type="time" id="routineTime"></div>
     </div>
-    <div class="ig" style="margin-bottom:8px"><label>메모</label><input type="text" id="routineMemo" placeholder="용량, 특이사항 등"></div>
+    <div class="ig" style="margin-bottom:8px">
+      <label>직접 입력 (추가 항목)</label>
+      <input type="text" id="routineCustom" placeholder="예: 코발라민 0.5ml">
+    </div>
+    <div class="ig" style="margin-bottom:8px">
+      <label>메모</label>
+      <input type="text" id="routineMemo" placeholder="용량, 특이사항 등">
+    </div>
     <button class="btn" id="saveRoutine" style="background:var(--purple);color:#fff;width:100%">투약·루틴 저장</button>
   </div>
 </div>
@@ -717,6 +733,15 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 
 <!-- ══ 히스토리 ══ -->
 <div class="sec" id="tab-history">
+  <!-- 루틴 스케줄표 -->
+  <div class="card" style="margin-bottom:.75rem">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
+      <div class="card-title" style="margin:0">📋 오늘 루틴 스케줄</div>
+      <div style="font-size:11px;color:var(--text3)" id="routineScheduleDate"></div>
+    </div>
+    <div id="routineScheduleList"></div>
+  </div>
+
   <!-- 날짜 네비게이션 -->
   <div style="display:flex;align-items:center;gap:8px;margin-bottom:.75rem;background:var(--bg2);border-radius:10px;padding:.5rem .75rem">
     <button type="button" onclick="histNavDate(-1)"
@@ -1058,7 +1083,8 @@ const saveS=(date)=>{try{localStorage.setItem(SK,JSON.stringify(state))}catch(e)
 const saveBT=()=>{try{localStorage.setItem(SK_BT,JSON.stringify(btData))}catch(e){};if(document.getElementById('tab-graph')?.classList.contains('active'))renderBTTrend();renderBTHistoryList();};
 const saveFD=()=>{try{localStorage.setItem(SK_FD,JSON.stringify(fdData))}catch(e){}};
 const today=()=>new Date().toISOString().slice(0,10);
-const nowT=()=>new Date().toTimeString().slice(0,5);
+function nowTime(){const n=new Date();return String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');}
+const nowT=nowTime;
 function getRec(cat,date){
   if(!state.records[cat])state.records[cat]={};
   if(!state.records[cat][date])state.records[cat][date]={bg:[],ins:[],meals:[],weights:[],routines:[]};
@@ -1081,7 +1107,7 @@ function showStat(id,type,msg){
 }
 function hideStat(id){document.getElementById(id).style.display='none'}
 
-['bgTime','wtTime','insTime','foodTime'].forEach(id=>document.getElementById(id).value=nowT());
+['bgTime','wtTime','insTime','foodTime'].forEach(id=>document.getElementById(id).value=nowTime());
 ['bgDate','wtDate','insDate','foodDate','routineDate'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=today();});
 document.getElementById('btDate').value=today();
 
@@ -1129,14 +1155,23 @@ function renderCatBar(){
       if(state.records[c])delete state.records[c];
       if(state.catProfiles[c])delete state.catProfiles[c];
       if(state.activeCat===c)state.activeCat=state.cats[0]||'';
-      // DB에서도 삭제
+      // 로컬 즉시 저장
+      saveS();
+      renderCatBar();updateMetrics();
+      // DB에서도 삭제 (async)
       if(sbClient && currentUser && delProfile?.dbId) {
-        sbClient.from('daily_records').delete().eq('cat_id', delProfile.dbId)
-          .then(()=>sbClient.from('blood_tests').delete().eq('cat_id', delProfile.dbId))
-          .then(()=>sbClient.from('cats').delete().eq('id', delProfile.dbId)
-            .then(({error})=>{ if(error) console.error('고양이 DB 삭제 오류:', error); }));
+        (async()=>{
+          try {
+            await sbClient.from('daily_records').delete().eq('cat_id', delProfile.dbId);
+            await sbClient.from('blood_tests').delete().eq('cat_id', delProfile.dbId);
+            const {error} = await sbClient.from('cats').delete().eq('id', delProfile.dbId);
+            if(error) { console.error('고양이 DB 삭제 오류:', error); toast('DB 삭제 오류: '+error.message, '#D85A30'); }
+            else { toast(c+' 삭제 완료 ✅'); }
+          } catch(e) { console.error(e); }
+        })();
+      } else {
+        toast(c+' 삭제됐어요');
       }
-      renderCatBar();updateMetrics();saveS();
     });
 
     ch.appendChild(nameSpan);ch.appendChild(infoBtn);ch.appendChild(delBtn);
@@ -1273,15 +1308,20 @@ document.getElementById('saveMeal').onclick=()=>{
 /* 탭 전환 */
 document.querySelectorAll('.nav-btn').forEach(b=>{
   b.onclick=()=>{
-    document.querySelectorAll('.nav-btn').forEach(x=>x.classList.remove('active'));
-    document.querySelectorAll('.sec').forEach(x=>x.classList.remove('active'));
-    b.classList.add('active');const tab=b.dataset.tab;
-    document.getElementById('tab-'+tab).classList.add('active');
-    if(tab==='cgm'){renderCgmHistory();}
-    if(tab==='graph'){renderGraphs();renderBTTrend();}
-    if(tab==='history')renderHistory();
-    if(tab==='bloodtest'){renderBTGraphs();renderBTHistoryList();}
-    if(tab==='food')renderFdHistory();
+    try{
+      document.querySelectorAll('.nav-btn').forEach(x=>x.classList.remove('active'));
+      document.querySelectorAll('.sec').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');const tab=b.dataset.tab;
+      const tabEl=document.getElementById('tab-'+tab);
+      if(!tabEl){console.error('탭 요소 없음: tab-'+tab);return;}
+      tabEl.classList.add('active');
+      if(tab==='cgm'){renderCgmHistory();}
+      if(tab==='graph'){renderGraphs();renderBTTrend();}
+      if(tab==='history'){renderHistory();renderRoutineSchedule();}
+      if(tab==='bloodtest'){renderBTGraphs();renderBTHistoryList();}
+      if(tab==='food')renderFdHistory();
+      if(tab==='daily'){updateMetrics();updateWtDiff();updateInsulinNext();renderRoutineChecklist();}
+    }catch(e){console.error('탭 전환 오류:',e);}
   };
 });
 
@@ -1294,7 +1334,99 @@ function histNavDate(delta){
   d.setDate(d.getDate()+delta);
   picker.value=d.toISOString().slice(0,10);
   renderHistory();
+  renderRoutineSchedule();
 }
+
+
+/* ── 루틴 스케줄표 ── */
+function renderRoutineSchedule(date) {
+  const schedDate = date || document.getElementById('histDatePicker')?.value || today();
+  const el = document.getElementById('routineScheduleList');
+  const dateEl = document.getElementById('routineScheduleDate');
+  if(!el) return;
+  if(dateEl) dateEl.textContent = schedDate;
+
+  const rec = getRec(state.activeCat, schedDate);
+  const doneItems = new Set((rec.routines||[]).flatMap(r=>r.items||[]));
+
+  const catLabel2 = {med:'💊 약·보조제', food:'🍖 간식·음수', other:'📋 기타루틴'};
+  const catOrder = ['med','food','other'];
+
+  let html = '';
+  let totalDone = 0, totalAll = 0;
+
+  catOrder.forEach(cat => {
+    const items = routineItems.filter(i=>i.cat===cat);
+    if(!items.length) return;
+    totalAll += items.length;
+    const doneCount = items.filter(i=>doneItems.has(i.name)).length;
+    totalDone += doneCount;
+
+    html += '<div style="margin-bottom:.75rem">';
+    html += '<div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:.4rem;display:flex;justify-content:space-between">';
+    html += '<span>'+catLabel2[cat]+'</span>';
+    html += '<span style="color:'+(doneCount===items.length?'var(--teal)':'var(--text3)')+'">'+doneCount+'/'+items.length+'</span>';
+    html += '</div>';
+    html += '<div style="display:flex;flex-direction:column;gap:5px">';
+
+    items.forEach(item => {
+      const done = doneItems.has(item.name);
+      html += '<div onclick="toggleScheduleCheck(this)" data-item="'+item.name+'" data-date="'+schedDate+'"'
+        + ' style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;cursor:pointer;'
+        + 'background:'+(done?'rgba(29,158,117,0.1)':'var(--bg2)')+';'
+        + 'border:1.5px solid '+(done?'var(--teal)':'transparent')+'">';
+      // 체크 원형
+      html += '<div style="width:22px;height:22px;border-radius:50%;flex-shrink:0;'
+        + 'background:'+(done?'var(--teal)':'transparent')+';'
+        + 'border:2px solid '+(done?'var(--teal)':'var(--bd)')+';'
+        + 'display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff">'
+        + (done?'✓':'')+'</div>';
+      // 항목명
+      html += '<span style="flex:1;font-size:13px;font-weight:'+(done?'600':'400')+';color:'+(done?'var(--teal)':'var(--text)')+'">'
+        + item.name+'</span>';
+      // 완료 시각
+      if(done) {
+        const doneRec = (rec.routines||[]).find(r=>r.items?.includes(item.name));
+        if(doneRec?.time) html += '<span style="font-size:11px;color:var(--text3)">'+doneRec.time+'</span>';
+      }
+      html += '</div>';
+    });
+    html += '</div></div>';
+  });
+
+  // 진행률 바
+  const pct = totalAll ? Math.round(totalDone/totalAll*100) : 0;
+  const progressBar = '<div style="margin-bottom:.75rem">'
+    + '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:.3rem">'
+    + '<span>오늘 완료율</span><span style="font-weight:600;color:'+(pct===100?'var(--teal)':'var(--text)')+'">'+pct+'% ('+totalDone+'/'+totalAll+')</span></div>'
+    + '<div style="height:6px;background:var(--bg2);border-radius:3px;overflow:hidden">'
+    + '<div style="height:100%;width:'+pct+'%;background:var(--teal);border-radius:3px;transition:width .3s"></div>'
+    + '</div></div>';
+
+  if(!totalAll) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--text3);text-align:center;padding:.75rem">'
+      + '오늘기록 탭 → 투약·루틴 섹션에서 항목을 추가하세요</div>';
+  } else {
+    el.innerHTML = progressBar + html;
+  }
+}
+
+function toggleScheduleCheck(el) {
+  const itemName = el.dataset.item;
+  const date = el.dataset.date;
+  const rec = getRec(state.activeCat, date);
+  if(!rec.routines) rec.routines = [];
+  const existIdx = rec.routines.findIndex(r=>r.items?.length===1 && r.items[0]===itemName);
+  if(existIdx > -1) {
+    rec.routines.splice(existIdx, 1);
+  } else {
+    rec.routines.push({items:[itemName], memo:'', time:nowTime(), ts:Date.now()});
+  }
+  saveS(date);
+  renderRoutineSchedule(date);
+  renderHistory();
+}
+
 
 function renderHistory(){
   const histDate=document.getElementById('histDatePicker')?.value||today();
@@ -2386,22 +2518,61 @@ const catLabel={med:'약 및 보조제',food:'간식 및 음수',other:'기타�
 const routineSelected=new Set();
 
 function renderRoutineTags(){
-  const area=document.getElementById('routineTagArea');
-  const cats=['med','food','other'];
-  let html='';
-  cats.forEach(cat=>{
-    const items=routineItems.filter(i=>i.cat===cat);
-    if(!items.length)return;
-    html+=`<div style="font-size:10px;color:var(--text3);margin-bottom:.25rem">${catLabel[cat]}</div>`;
-    html+=`<div class="routine-tags" style="margin-bottom:.5rem">`;
-    items.forEach(item=>{
-      const sel=routineSelected.has(item.name)?'selected':'';
-      html+=`<div class="routine-tag ${cat} ${sel}" data-val="${item.name}" onclick="toggleRT(this,'${item.name}')">${item.name}</div>`;
-    });
-    html+='</div>';
-  });
-  area.innerHTML=html;
+  renderRoutineChecklist();
 }
+
+function renderRoutineChecklist(){
+  const cl = document.getElementById('routineChecklist');
+  if(!cl) return;
+  const today_date = document.getElementById('routineDate')?.value || today();
+  const rec = getRec(state.activeCat, today_date);
+  const doneItems = new Set((rec.routines||[]).flatMap(r=>r.items||[]));
+  const catLabel2 = {med:'💊 약 및 보조제', food:'🍖 간식 및 음수', other:'📋 기타루틴'};
+  const cats2 = ['med','food','other'];
+  let html = '';
+  cats2.forEach(cat=>{
+    const items = routineItems.filter(i=>i.cat===cat);
+    if(!items.length) return;
+    html += '<div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:.4rem;margin-top:.5rem">'+catLabel2[cat]+'</div>';
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:.25rem">';
+    items.forEach(item=>{
+      const done = doneItems.has(item.name);
+      const bg = done ? 'rgba(29,158,117,0.12)' : 'var(--bg2)';
+      const border = done ? '1.5px solid var(--teal)' : '1.5px solid transparent';
+      const circBg = done ? 'var(--teal)' : 'transparent';
+      const circBorder = done ? 'var(--teal)' : 'var(--bd)';
+      const txtColor = done ? 'var(--teal)' : 'var(--text)';
+      const txtWeight = done ? '600' : '400';
+      html += '<div onclick="toggleRoutineCheck(\'' + item.name + '\')" style="display:flex;align-items:center;gap:7px;padding:8px 10px;border-radius:10px;cursor:pointer;background:'+bg+';border:'+border+'">';
+      html += '<div style="width:18px;height:18px;border-radius:50%;flex-shrink:0;background:'+circBg+';border:2px solid '+circBorder+';display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff">'+(done?'✓':'')+'</div>';
+      html += '<span style="font-size:12px;color:'+txtColor+';font-weight:'+txtWeight+'">'+item.name+'</span>';
+      html += '</div>';
+    });
+    html += '</div>';
+  });
+  if(!html) html = '<div style="font-size:12px;color:var(--text3);text-align:center;padding:.75rem">+ 목록 편집에서 항목을 추가해보세요</div>';
+  cl.innerHTML = html;
+}
+
+
+function toggleRoutineCheck(itemName){
+  const today_date = document.getElementById('routineDate')?.value || today();
+  const rec = getRec(state.activeCat, today_date);
+  if(!rec.routines) rec.routines = [];
+  // 이미 단일 체크 기록이 있는지 확인
+  const existIdx = rec.routines.findIndex(r=>r.items?.length===1 && r.items[0]===itemName);
+  if(existIdx > -1){
+    // 체크 해제
+    rec.routines.splice(existIdx, 1);
+  } else {
+    // 체크
+    rec.routines.push({items:[itemName], memo:'', time:nowTime(), ts:Date.now()});
+  }
+  saveS(today_date);
+  renderRoutineChecklist();
+  renderHistory();
+}
+
 
 function toggleRT(el,v){
   if(routineSelected.has(v)){routineSelected.delete(v);el.classList.remove('selected')}
@@ -2428,7 +2599,7 @@ function addRoutineItem(){
   if(routineItems.find(i=>i.name===name)){toast('이미 있는 항목이에요','#BA7517');return}
   routineItems.push({name,cat});saveRT();
   document.getElementById('newRoutineName').value='';
-  renderRoutineTags();renderRoutineEditList();
+  renderRoutineChecklist();renderRoutineEditList();
   toast(name+' 추가 완료!');
 }
 
@@ -2437,7 +2608,7 @@ function deleteRoutineItem(idx){
   if(!confirm(item.name+'을(를) 삭제할까요?'))return;
   routineItems.splice(idx,1);saveRT();
   routineSelected.delete(item.name);
-  renderRoutineTags();renderRoutineEditList();
+  renderRoutineChecklist();renderRoutineEditList();
 }
 
 document.getElementById('toggleEditRoutine').addEventListener('click',()=>{
@@ -2449,7 +2620,7 @@ document.getElementById('toggleEditRoutine').addEventListener('click',()=>{
   if(!isOpen)renderRoutineEditList();
 });
 
-document.getElementById('routineTime').value=nowT();
+document.getElementById('routineTime').value=nowTime();
 renderRoutineTags();
 
 document.getElementById('saveRoutine').addEventListener('click',()=>{
@@ -2464,7 +2635,8 @@ document.getElementById('saveRoutine').addEventListener('click',()=>{
   getRec(state.activeCat,routineD).routines.push({items,memo,time,ts:Date.now()});
   saveS(routineD);
   routineSelected.clear();
-  renderRoutineTags();
+  renderRoutineChecklist();
+  renderHistory();
   document.getElementById('routineCustom').value='';
   document.getElementById('routineMemo').value='';
   toast('투약·루틴 저장 완료!');
