@@ -724,7 +724,50 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
   </div>
 
   <div class="card">
-    <div class="card-title">성분표 사진 → AI 분석 → 당뇨 적합성 판정 (DM 기준)</div>
+    <div class="card-title">성분표 사진 → AI 분석 → 적합성 판정</div>
+
+    <!-- 분석 모드 선택 -->
+    <div style="margin-bottom:.75rem">
+      <div style="font-size:11px;font-weight:500;color:var(--text2);margin-bottom:.4rem">분석 모드</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button type="button" id="modeDM" onclick="setFdMode('dm')"
+          style="padding:6px 14px;border-radius:20px;border:1.5px solid var(--teal);background:var(--teal);color:#fff;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit">
+          🩺 당뇨(DM)
+        </button>
+        <button type="button" id="modeCKD" onclick="setFdMode('ckd')"
+          style="padding:6px 14px;border-radius:20px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit">
+          🫘 신부전(CKD)
+        </button>
+        <button type="button" id="modeBOTH" onclick="setFdMode('both')"
+          style="padding:6px 14px;border-radius:20px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit">
+          🔀 당뇨+신부전
+        </button>
+      </div>
+    </div>
+
+    <!-- CKD 스테이지 선택 (CKD/복합 모드일 때만 표시) -->
+    <div id="ckdStageWrap" style="display:none;margin-bottom:.75rem">
+      <div style="font-size:11px;font-weight:500;color:var(--text2);margin-bottom:.4rem">IRIS CKD 스테이지</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button type="button" class="ckd-stage-btn active" data-stage="1" onclick="setCkdStage(1,this)"
+          style="padding:5px 12px;border-radius:8px;border:1.5px solid var(--blue);background:var(--blue);color:#fff;font-size:12px;cursor:pointer;font-family:inherit">
+          Stage 1
+        </button>
+        <button type="button" class="ckd-stage-btn" data-stage="2" onclick="setCkdStage(2,this)"
+          style="padding:5px 12px;border-radius:8px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:12px;cursor:pointer;font-family:inherit">
+          Stage 2
+        </button>
+        <button type="button" class="ckd-stage-btn" data-stage="3" onclick="setCkdStage(3,this)"
+          style="padding:5px 12px;border-radius:8px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:12px;cursor:pointer;font-family:inherit">
+          Stage 3
+        </button>
+        <button type="button" class="ckd-stage-btn" data-stage="4" onclick="setCkdStage(4,this)"
+          style="padding:5px 12px;border-radius:8px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:12px;cursor:pointer;font-family:inherit">
+          Stage 4
+        </button>
+      </div>
+      <div id="ckdStageDesc" style="font-size:11px;color:var(--blue);margin-top:.4rem;line-height:1.6"></div>
+    </div>
     <!-- 촬영 안내 -->
     <div style="background:var(--blue-l);border-radius:10px;padding:.75rem 1rem;margin-bottom:.75rem;font-size:12px;color:var(--blue);line-height:1.7">
       <div style="font-weight:500;margin-bottom:.3rem">📷 정확한 분석을 위한 촬영 가이드</div>
@@ -1325,7 +1368,7 @@ setupDrop('fdDrop','fdFile',async file=>{
   document.getElementById('fdResult').innerHTML='';
   showStat('fdStatus','loading','AI가 성분표를 분석하고 있어요...');
   const b64=await toB64(file);const isWet=document.getElementById('fdType').value==='wet';const fdNm=document.getElementById('fdName').value||'분석 사료';
-  const sys=`사료 성분표를 분석하여 아래 JSON만 출력하세요.\n{"name":"사료명","type":"${isWet?'wet':'dry'}","moisture":수분%,"protein_af":단백질%,"fat_af":지방%,"fiber_af":조섬유%,"ash_af":조회분%,"carb_af":탄수화물%or null,"kcal_per_100g":칼로리or null,"phosphorus_af":인%or null,"ingredients_top5":["원료1","원료2","원료3","원료4","원료5"],"grain_free":true/false,"main_protein_source":"주단백질원","special_notes":"특이사항or 빈문자열"}`;
+  const sys=`사료 성분표를 분석하여 아래 JSON만 출력하세요.\n{"name":"사료명","type":"${isWet?'wet':'dry'}","moisture":수분%,"protein_af":단백질%,"fat_af":지방%,"fiber_af":조섬유%,"ash_af":조회분%,"carb_af":탄수화물%or null,"kcal_per_100g":칼로리or null,"phosphorus_af":인%or null,"sodium_af":나트륨%or null,"potassium_af":칼륨%or null,"ingredients_top5":["원료1","원료2","원료3","원료4","원료5"],"grain_free":true/false,"main_protein_source":"주단백질원","special_notes":"특이사항or 빈문자열"}`;
   let mc=file.type.startsWith('image/')?[{type:'image',source:{type:'base64',media_type:file.type,data:b64}},{type:'text',text:`${isWet?'습식':'건식'} 사료. 사료명: ${fdNm}`}]:[{type:'document',source:{type:'base64',media_type:'application/pdf',data:b64}},{type:'text',text:`${isWet?'습식':'건식'} 사료. 사료명: ${fdNm}`}];
   try{
     const resp=await fetch('/api/proxy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1200,system:sys,messages:[{role:'user',content:mc}]})});
@@ -1349,6 +1392,161 @@ setupDrop('fdDrop','fdFile',async file=>{
   }
 });
 
+
+/* ── CKD 사료 분석 ── */
+let fdMode = 'dm'; // dm | ckd | both
+let ckdStage = 1;
+
+// IRIS 스테이지별 기준
+const CKD_CRITERIA = {
+  1: { p: 0.5,  protein: [28, 40], na: 0.4, desc: 'Stage 1 — 신장 손상 초기. 인 제한 시작, 수분 섭취 중요' },
+  2: { p: 0.5,  protein: [28, 35], na: 0.4, desc: 'Stage 2 — 경도 신부전. 인 0.5% 이하, 고품질 단백질 권장' },
+  3: { p: 0.4,  protein: [20, 32], na: 0.3, desc: 'Stage 3 — 중등도 신부전. 인 0.4% 이하, 단백질 제한 시작, 습식 필수' },
+  4: { p: 0.3,  protein: [16, 28], na: 0.3, desc: 'Stage 4 — 중증 신부전. 인 0.3% 이하, 단백질 엄격 제한, 습식 필수' }
+};
+
+function setFdMode(mode) {
+  fdMode = mode;
+  // 버튼 스타일
+  ['dm','ckd','both'].forEach(m => {
+    const btn = document.getElementById('mode'+m.toUpperCase());
+    if(!btn) return;
+    const isActive = m === mode;
+    const color = m==='dm' ? 'var(--teal)' : m==='ckd' ? 'var(--blue)' : 'var(--purple)';
+    btn.style.background = isActive ? color : 'transparent';
+    btn.style.color = isActive ? '#fff' : 'var(--text2)';
+    btn.style.borderColor = isActive ? color : 'var(--bd)';
+  });
+  // CKD 스테이지 표시
+  const wrap = document.getElementById('ckdStageWrap');
+  if(wrap) wrap.style.display = (mode === 'ckd' || mode === 'both') ? 'block' : 'none';
+  updateCkdDesc();
+}
+
+function setCkdStage(stage, el) {
+  ckdStage = stage;
+  document.querySelectorAll('.ckd-stage-btn').forEach(btn => {
+    const isActive = parseInt(btn.dataset.stage) === stage;
+    btn.style.background = isActive ? 'var(--blue)' : 'transparent';
+    btn.style.color = isActive ? '#fff' : 'var(--text2)';
+    btn.style.borderColor = isActive ? 'var(--blue)' : 'var(--bd)';
+  });
+  updateCkdDesc();
+}
+
+function updateCkdDesc() {
+  const desc = document.getElementById('ckdStageDesc');
+  if(!desc) return;
+  if(fdMode === 'dm') { desc.textContent = ''; return; }
+  const c = CKD_CRITERIA[ckdStage];
+  desc.innerHTML = c.desc + '<br>'
+    + '<b>인(P)</b> DM ' + c.p + '% 이하 · '
+    + '<b>단백질</b> DM ' + c.protein[0] + '~' + c.protein[1] + '% · '
+    + '<b>나트륨</b> ' + c.na + '% 이하';
+}
+
+// CKD 판정 함수
+function getCkdJudge(d) {
+  const c = CKD_CRITERIA[ckdStage];
+  const m = d.moisture ?? 75;
+  const pDM = d.protein_af !== null ? parseFloat((d.protein_af / (100-m) * 100).toFixed(1)) : null;
+  const phosDM = d.phosphorus_af !== null ? parseFloat((d.phosphorus_af / (100-m) * 100).toFixed(1)) : null;
+
+  const issues = [];
+  const goods = [];
+
+  // 인 판정
+  if(phosDM !== null) {
+    if(phosDM <= c.p) goods.push('인 DM ' + phosDM + '% ✅ (' + c.p + '% 이하 충족)');
+    else issues.push('인 DM ' + phosDM + '% ❌ (기준: ' + c.p + '% 이하)');
+  } else {
+    issues.push('인(P) 수치 미표기 — 제조사 문의 필요');
+  }
+
+  // 단백질 판정
+  if(pDM !== null) {
+    const [pMin, pMax] = c.protein;
+    if(pDM >= pMin && pDM <= pMax) goods.push('단백질 DM ' + pDM + '% ✅ (' + pMin + '~' + pMax + '% 적정)');
+    else if(pDM < pMin) issues.push('단백질 DM ' + pDM + '% ⚠️ (너무 낮음, ' + pMin + '% 이상 권장)');
+    else issues.push('단백질 DM ' + pDM + '% ⚠️ (너무 높음, ' + pMax + '% 이하 권장)');
+  }
+
+  // 수분/습식 판정
+  if(d.type === 'wet') goods.push('습식 ✅ (수분 섭취에 유리)');
+  else if(ckdStage >= 3) issues.push('건식 ❌ (Stage ' + ckdStage + '은 습식 강력 권장)');
+  else issues.push('건식 ⚠️ (수분 보충 필요)');
+
+  // 종합 판정
+  const score = issues.length === 0 ? 'best' : issues.length === 1 ? 'good' : issues.length === 2 ? 'caution' : 'bad';
+  return { score, issues, goods, pDM, phosDM };
+}
+
+// CKD 결과 렌더링
+function renderCkdResult(d, area) {
+  const judge = getCkdJudge(d);
+  const c = CKD_CRITERIA[ckdStage];
+  const m = d.moisture ?? 75;
+  const colors = { best:'#1D9E75', good:'#3B6D11', caution:'#BA7517', bad:'#D85A30' };
+  const labels = { best:'CKD Stage'+ckdStage+' 적합 ✅', good:'CKD Stage'+ckdStage+' 조건부 적합', caution:'CKD Stage'+ckdStage+' 주의 ⚠️', bad:'CKD Stage'+ckdStage+' 부적합 ❌' };
+  const lc = colors[judge.score];
+
+  let html = '<div style="background:'+lc+'15;border:1.5px solid '+lc+';border-radius:12px;padding:.85rem 1rem;margin-bottom:.75rem">'
+    + '<div style="font-size:14px;font-weight:700;color:'+lc+';margin-bottom:.4rem">🫘 '+labels[judge.score]+'</div>'
+    + '<div style="font-size:12px;color:var(--text2)">IRIS CKD Stage '+ckdStage+' 기준 · 인 '+c.p+'% 이하 · 단백질 '+c.protein[0]+'~'+c.protein[1]+'%</div>'
+    + '</div>';
+
+  // 수치 카드들
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:.75rem">';
+  
+  // 인(P)
+  const phosDM = judge.phosDM;
+  const phosOk = phosDM !== null && phosDM <= c.p;
+  html += '<div style="background:var(--bg2);border-radius:10px;padding:.65rem .75rem;border:1.5px solid '+(phosDM===null?'var(--bd)':phosOk?'#1D9E75':'#D85A30')+'">'
+    + '<div style="font-size:18px;font-weight:700;color:'+(phosDM===null?'var(--text3)':phosOk?'#1D9E75':'#D85A30')+'">'+(phosDM !== null ? phosDM+'%' : '미표기')+'</div>'
+    + '<div style="font-size:10px;color:var(--text2)">인(P) DM</div>'
+    + '<div style="font-size:9px;color:var(--text3)">기준 '+c.p+'% 이하</div>'
+    + '</div>';
+
+  // 단백질
+  const pDM = judge.pDM;
+  const pOk = pDM !== null && pDM >= c.protein[0] && pDM <= c.protein[1];
+  html += '<div style="background:var(--bg2);border-radius:10px;padding:.65rem .75rem;border:1.5px solid '+(pDM===null?'var(--bd)':pOk?'#1D9E75':'#BA7517')+'">'
+    + '<div style="font-size:18px;font-weight:700;color:'+(pDM===null?'var(--text3)':pOk?'#1D9E75':'#BA7517')+'">'+(pDM !== null ? pDM+'%' : '미표기')+'</div>'
+    + '<div style="font-size:10px;color:var(--text2)">단백질 DM</div>'
+    + '<div style="font-size:9px;color:var(--text3)">'+c.protein[0]+'~'+c.protein[1]+'%</div>'
+    + '</div>';
+
+  // 수분/습식
+  const wetOk = d.type === 'wet';
+  html += '<div style="background:var(--bg2);border-radius:10px;padding:.65rem .75rem;border:1.5px solid '+(wetOk?'#1D9E75':'#BA7517')+'">'
+    + '<div style="font-size:18px;font-weight:700;color:'+(wetOk?'#1D9E75':'#BA7517')+'">'+(d.moisture??'?')+'%</div>'
+    + '<div style="font-size:10px;color:var(--text2)">수분</div>'
+    + '<div style="font-size:9px;color:var(--text3)">'+(wetOk?'습식 ✅':'건식 ⚠️')+'</div>'
+    + '</div>';
+  html += '</div>';
+
+  // 판정 내용
+  if(judge.goods.length) {
+    html += '<div style="background:rgba(29,158,117,0.08);border-radius:8px;padding:.6rem .8rem;margin-bottom:.5rem">';
+    judge.goods.forEach(g => { html += '<div style="font-size:12px;color:#1D9E75;margin-bottom:2px">'+g+'</div>'; });
+    html += '</div>';
+  }
+  if(judge.issues.length) {
+    html += '<div style="background:rgba(216,90,48,0.08);border-radius:8px;padding:.6rem .8rem;margin-bottom:.5rem">';
+    judge.issues.forEach(i => { html += '<div style="font-size:12px;color:#D85A30;margin-bottom:2px">'+i+'</div>'; });
+    html += '</div>';
+  }
+
+  // CKD 주의사항
+  html += '<div style="background:var(--bg2);border-radius:8px;padding:.6rem .8rem;font-size:11px;color:var(--text2);line-height:1.7">'
+    + '💧 수분 섭취 늘리기 · 습식 비율 높이기<br>'
+    + '🚫 인 함량 높은 사료, 단백질 과다 사료 주의<br>'
+    + '⚠️ 이 분석은 참고용이며 정확한 식이 처방은 수의사와 상담하세요'
+    + '</div>';
+
+  area.innerHTML = html;
+}
+
 function renderFdResult(d){
   const m=d.moisture??75,p=d.protein_af??0,f=d.fat_af??0,fi=d.fiber_af??0,a=d.ash_af??(d.type==='wet'?2:7);
   const carb=d.carb_af!==null&&d.carb_af!==undefined?d.carb_af:estCarb(p,f,fi,a,m);
@@ -1362,6 +1560,38 @@ function renderFdResult(d){
   const cs=cdm!==null?Math.max(0,Math.round((1-cdm/30)*100)):50;
   const tags=(d.ingredients_top5||[]).map((ing,i)=>{const lw=ing.toLowerCase();const cls=i===0?'p':lw.includes('쌀')||lw.includes('옥수수')||lw.includes('밀')||lw.includes('전분')||lw.includes('rice')||lw.includes('corn')?'c':'';return`<span class="tag ${cls}">${ing}</span>`}).join('');
   const area=document.getElementById('fdResult');
+  // CKD 전용 모드일 때 당뇨 verdict 숨기기
+  if(fdMode === 'ckd') {
+    area.innerHTML = '';
+    // 기본 수치 카드만 표시
+    const basicDiv = document.createElement('div');
+    basicDiv.innerHTML = '<div class="n-grid">'
+      + '<div class="n-card '+(pdm>=35?'hl':'')+'"><div class="n-val">'+p.toFixed(1)+'%</div><div class="n-lbl">단백질 as-fed</div><div class="n-dm">DM '+pdm?.toFixed(1)+'%</div></div>'
+      + '<div class="n-card"><div class="n-val">'+f.toFixed(1)+'%</div><div class="n-lbl">지방 as-fed</div><div class="n-dm">DM '+fdm?.toFixed(1)+'%</div></div>'
+      + '<div class="n-card"><div class="n-val">'+m.toFixed(1)+'%</div><div class="n-lbl">수분</div><div class="n-dm">'+(d.type==='wet'?'습식':'건식')+'</div></div>'
+      + (d.phosphorus_af!==null?'<div class="n-card '+(d.phosphorus_af>0.5?'wn':'hl')+'"><div class="n-val">'+d.phosphorus_af+'%</div><div class="n-lbl">인(P) as-fed</div><div class="n-dm">DM '+cDM(d.phosphorus_af,m)+'%</div></div>':'')
+      + (d.sodium_af?'<div class="n-card"><div class="n-val">'+d.sodium_af+'%</div><div class="n-lbl">나트륨 as-fed</div></div>':'')
+      + '</div>';
+    area.appendChild(basicDiv);
+    const ckdDiv = document.createElement('div');
+    ckdDiv.style.marginTop = '.5rem';
+    renderCkdResult(d, ckdDiv);
+    area.appendChild(ckdDiv);
+    const calcDiv2 = document.createElement('div');
+    calcDiv2.style.cssText='background:var(--bg2);border-radius:10px;padding:.75rem 1rem;margin-top:.5rem';
+    const k100=kcal;
+    calcDiv2.innerHTML='<div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:.4rem">📦 포장 단위로 급여량 계산</div>'
+      +'<div style="font-size:11px;color:var(--text3);margin-bottom:.5rem">100g 기준 '+k100+'kcal</div>'
+      +'<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:.5rem">'
+      +'<input type="number" id="fdPackSize" placeholder="포장 용량(g)" style="width:110px;padding:6px 8px;border:0.5px solid var(--bd);border-radius:8px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit" oninput="calcFdPortion('+k100+')">'
+      +'<span style="font-size:11px;color:var(--text2)">g /</span>'
+      +'<input type="number" id="fdPackKcal" placeholder="포장 칼로리(kcal)" style="width:130px;padding:6px 8px;border:0.5px solid var(--bd);border-radius:8px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit" oninput="calcFdPortion('+k100+')">'
+      +'<span style="font-size:11px;color:var(--text2)">kcal</span>'
+      +'</div>'
+      +'<div id="fdPortionResult" style="font-size:12px;color:var(--teal);font-weight:500;line-height:1.6"></div>';
+    area.appendChild(calcDiv2);
+    return;
+  }
   area.innerHTML=`
 <div class="verdict ${lv}"><div class="vi" style="background:${lc}22">${vi.ic}</div><div><div class="vt">${vi.t}</div><div class="vs">${vi.s}${d.grain_free?' · 그레인프리':''}</div></div></div>
 <div class="card" style="padding:.8rem 1rem">
@@ -1394,6 +1624,14 @@ ${isEstC||isEstK?`<div style="font-size:10px;color:var(--text3);margin-top:.4rem
     +'</div>'
     +'<div id="fdPortionResult" style="font-size:12px;color:var(--teal);font-weight:500;line-height:1.6"></div>';
   area.appendChild(calcDiv);
+
+  // CKD 또는 복합 모드일 때 CKD 결과 추가
+  if(fdMode === 'ckd' || fdMode === 'both') {
+    const ckdDiv = document.createElement('div');
+    ckdDiv.style.marginTop = '.5rem';
+    renderCkdResult(d, ckdDiv);
+    area.appendChild(ckdDiv);
+  }
 }
 
 function calcFdPortion(kcalPer100){
