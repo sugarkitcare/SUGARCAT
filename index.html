@@ -1019,16 +1019,21 @@ let btData=[],fdData=[];
 try{const d=localStorage.getItem(SK);if(d)state=JSON.parse(d)}catch(e){}
 try{const d=localStorage.getItem(SK_BT);if(d)btData=JSON.parse(d)}catch(e){}
 try{const d=localStorage.getItem(SK_FD);if(d)fdData=JSON.parse(d)}catch(e){}
-const saveS=()=>{try{localStorage.setItem(SK,JSON.stringify(state))}catch(e){}; if(typeof saveToDB==='function'){saveToDB();}};
+const saveS=(date)=>{try{localStorage.setItem(SK,JSON.stringify(state))}catch(e){}; if(typeof saveToDB==='function'){saveToDB(date);}};
 const saveBT=()=>{try{localStorage.setItem(SK_BT,JSON.stringify(btData))}catch(e){};if(document.getElementById('tab-graph')?.classList.contains('active'))renderBTTrend();renderBTHistoryList();};
 const saveFD=()=>{try{localStorage.setItem(SK_FD,JSON.stringify(fdData))}catch(e){}};
 const today=()=>new Date().toISOString().slice(0,10);
 const nowT=()=>new Date().toTimeString().slice(0,5);
 function getRec(cat,date){
   if(!state.records[cat])state.records[cat]={};
-  if(!state.records[cat][date])state.records[cat][date]={bg:[],ins:[],meals:[],weights:[]};
-  if(!state.records[cat][date].weights)state.records[cat][date].weights=[];
-  return state.records[cat][date];
+  if(!state.records[cat][date])state.records[cat][date]={bg:[],ins:[],meals:[],weights:[],routines:[]};
+  const r=state.records[cat][date];
+  if(!r.weights)r.weights=[];
+  if(!r.routines)r.routines=[];
+  if(!r.ins)r.ins=[];
+  if(!r.meals)r.meals=[];
+  if(!r.bg)r.bg=[];
+  return r;
 }
 function toast(msg,c='#1D9E75'){
   const t=document.createElement('div');t.className='toast-el';t.style.background=c;t.textContent=msg;
@@ -1194,7 +1199,7 @@ document.getElementById('saveBg').onclick=()=>{
   const bg=parseFloat(document.getElementById('bgVal').value),ket=parseFloat(document.getElementById('ketVal').value);
   if(isNaN(bg)&&isNaN(ket)){toast('혈당 또는 케톤을 입력해주세요','#D85A30');return}
   getRec(state.activeCat,today()).bg.push({bg:isNaN(bg)?'':bg,ketone:isNaN(ket)?'':ket,time:document.getElementById('bgTime').value,type:document.getElementById('bgType').value,note:document.getElementById('bgNote').value,ts:Date.now()});
-  saveS();updateMetrics();updateInsulinNext();
+  saveS(bgD);updateMetrics();updateInsulinNext();
   checkKetoneAlert(ket, bg);
   ['bgVal','ketVal','bgNote'].forEach(id=>document.getElementById(id).value='');toast('혈당·케톤 저장 완료!');
 };
@@ -1202,14 +1207,14 @@ document.getElementById('saveWt').onclick=()=>{
   const w=parseFloat(document.getElementById('wtVal').value);if(isNaN(w)){toast('체중을 입력해주세요','#D85A30');return}
   const wtD=document.getElementById('wtDate').value||today();
   getRec(state.activeCat,wtD).weights.push({weight:w,time:document.getElementById('wtTime').value,note:document.getElementById('wtNote').value,ts:Date.now()});
-  saveS();updateMetrics();updateWtDiff();['wtVal','wtNote'].forEach(id=>document.getElementById(id).value='');
+  saveS(wtD);updateMetrics();updateWtDiff();['wtVal','wtNote'].forEach(id=>document.getElementById(id).value='');
   toast(wtD!==today()?wtD+' 날짜로 저장됐어요':'체중 저장 완료!');
 };
 document.getElementById('saveIns').onclick=()=>{
   const dose=parseFloat(document.getElementById('insVal').value);if(isNaN(dose)){toast('투여량을 입력해주세요','#D85A30');return}
   const insD=document.getElementById('insDate').value||today();
   getRec(state.activeCat,insD).ins.push({type:document.getElementById('insType').value,dose,time:document.getElementById('insTime').value,preBg:document.getElementById('insPreBg').value,ts:Date.now()});
-  saveS();updateMetrics();updateInsulinNext();['insVal','insPreBg'].forEach(id=>document.getElementById(id).value='');
+  saveS(insD);updateMetrics();updateInsulinNext();['insVal','insPreBg'].forEach(id=>document.getElementById(id).value='');
   toast(insD!==today()?insD+' 날짜로 저장됐어요':'인슐린 저장 완료!');
 };
 document.getElementById('saveMeal').onclick=()=>{
@@ -3719,7 +3724,13 @@ async function syncFromDB() {
     renderBTHistoryList();
     renderBTGraphs();
 
-    toast('☁️ 동기화 완료! 고양이 '+(state.cats.length)+'마리, 기록 불러옴');
+    // 로컬에 DB에 없는 기록이 있으면 자동 마이그레이션
+    const localDates = Object.keys(state.records?.[state.activeCat] || {});
+    if(localDates.length > 0 && cats && cats.length > 0) {
+      setTimeout(()=>migrateLocalToDB(), 2000);
+    }
+
+    toast('☁️ 동기화 완료! 고양이 '+(state.cats.length)+'마리');
   } catch(e) {
     console.error('DB 동기화 오류:', e);
     toast('⚠️ 동기화 실패: '+e.message, '#D85A30');
@@ -3755,29 +3766,61 @@ async function loadBloodTests() {
   }
 }
 
-async function saveToDB() {
+async function saveToDB(targetDate) {
   if(!sbClient || !currentUser) return;
   try {
     const cat = state.activeCat;
     let profile = (state.catProfiles || {})[cat];
-    // 고양이가 DB에 없으면 먼저 등록 후 재시도
     if(!profile?.dbId) {
       await upsertCatToDB(cat);
       profile = (state.catProfiles || {})[cat];
-      if(!profile?.dbId) return; // 여전히 없으면 포기
+      if(!profile?.dbId) return;
     }
-    const rec = getRec(cat, today());
-    const { error } = await sbClient.from('daily_records').upsert({
-      cat_id: profile.dbId,
-      user_id: currentUser.id,
-      record_date: today(),
-      data: rec,
-      updated_at: new Date().toISOString()
-    }, { onConflict: 'cat_id,record_date' });
-    if(error) console.error('daily_records upsert 오류:', error);
+    // 특정 날짜 지정 없으면 오늘 저장
+    const dates = targetDate ? [targetDate] : [today()];
+    for(const date of dates) {
+      const rec = getRec(cat, date);
+      const { error } = await sbClient.from('daily_records').upsert({
+        cat_id: profile.dbId,
+        user_id: currentUser.id,
+        record_date: date,
+        data: rec,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'cat_id,record_date' });
+      if(error) console.error('daily_records upsert 오류:', error);
+    }
   } catch(e) {
     console.error('DB 저장 오류:', e);
   }
+}
+
+// 전체 로컬 기록을 DB에 일괄 업로드 (초기 마이그레이션용)
+async function migrateLocalToDB() {
+  if(!sbClient || !currentUser) return;
+  const cat = state.activeCat;
+  const profile = (state.catProfiles || {})[cat];
+  if(!profile?.dbId) return;
+  const records = state.records?.[cat] || {};
+  const dates = Object.keys(records);
+  if(!dates.length) return;
+  let count = 0;
+  for(const date of dates) {
+    const rec = records[date];
+    if(!rec) continue;
+    const hasData = (rec.bg?.length||0)+(rec.ins?.length||0)+(rec.meals?.length||0)+(rec.weights?.length||0) > 0;
+    if(!hasData) continue;
+    try {
+      await sbClient.from('daily_records').upsert({
+        cat_id: profile.dbId,
+        user_id: currentUser.id,
+        record_date: date,
+        data: rec,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'cat_id,record_date' });
+      count++;
+    } catch(e) {}
+  }
+  toast(`☁️ 로컬 기록 ${count}일치 DB 업로드 완료!`);
 }
 
 // 고양이 DB 등록/수정
@@ -3884,6 +3927,28 @@ initSupabase();
   </div>
   <div class="ig" style="margin-bottom:1rem"><label>메모</label><input type="text" id="cpMemo" placeholder="특이사항, 알레르기 등"></div>
   <button onclick="saveCatProfile()" class="btn btn-teal" style="width:100%;padding:14px">저장</button>
+
+  <!-- 데이터 관리 -->
+  <div style="margin-top:1.5rem;padding-top:1rem;border-top:0.5px solid var(--bd)">
+    <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:.75rem">⚙️ 데이터 관리</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button type="button" onclick="syncFromDB()"
+        style="padding:10px;border:0.5px solid var(--teal);border-radius:9px;background:transparent;color:var(--teal);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit">
+        ☁️ 서버에서 데이터 다시 불러오기
+      </button>
+      <button type="button" onclick="migrateLocalToDB()"
+        style="padding:10px;border:0.5px solid var(--blue);border-radius:9px;background:transparent;color:var(--blue);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit">
+        📤 로컬 데이터 서버에 업로드
+      </button>
+      <button type="button" onclick="exportCSV()"
+        style="padding:10px;border:0.5px solid var(--bd);border-radius:9px;background:transparent;color:var(--text2);font-size:12px;cursor:pointer;font-family:inherit">
+        📊 CSV로 내보내기
+      </button>
+    </div>
+    <div style="font-size:10px;color:var(--text3);margin-top:.5rem;line-height:1.6">
+      기기를 바꾸거나 데이터가 안 보일 때 "다시 불러오기"를 눌러주세요.
+    </div>
+  </div>
 </div>
 
 <!-- 면책고지 -->
