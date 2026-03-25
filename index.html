@@ -556,6 +556,25 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     <div class="g-chip" data-g="ins">인슐린</div>
   </div>
   <div id="chartsWrap"></div>
+
+  <!-- 혈액검사 추이 카드 -->
+  <div class="card" style="margin-top:.5rem">
+    <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="toggleCard('btTrendCard',this)">
+      <div style="font-size:13px;font-weight:500;color:var(--text)">🩸 혈액검사 항목별 추이</div>
+      <span style="font-size:11px;color:var(--teal)">▲ 접기</span>
+    </div>
+    <div id="btTrendCard">
+      <div style="font-size:11px;color:var(--text3);margin:.5rem 0">혈액검사 탭에서 저장한 결과의 날짜별 변화를 볼 수 있어요</div>
+      <!-- 카테고리 필터 -->
+      <div id="btTrendFilter" class="g-filter" style="margin-bottom:.75rem"></div>
+      <!-- 차트 영역 -->
+      <div id="btTrendWrap"></div>
+      <div id="btTrendEmpty" style="text-align:center;padding:1.5rem;color:var(--text3);font-size:12px;display:none">
+        아직 혈액검사 기록이 없어요<br>
+        <span style="font-size:11px">혈액검사 탭에서 검사지를 업로드하고 저장해보세요</span>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- ══ 히스토리 ══ -->
@@ -763,7 +782,7 @@ try{const d=localStorage.getItem(SK);if(d)state=JSON.parse(d)}catch(e){}
 try{const d=localStorage.getItem(SK_BT);if(d)btData=JSON.parse(d)}catch(e){}
 try{const d=localStorage.getItem(SK_FD);if(d)fdData=JSON.parse(d)}catch(e){}
 const saveS=()=>{try{localStorage.setItem(SK,JSON.stringify(state))}catch(e){}; if(typeof saveToDB==='function'){saveToDB();}};
-const saveBT=()=>{try{localStorage.setItem(SK_BT,JSON.stringify(btData))}catch(e){}};
+const saveBT=()=>{try{localStorage.setItem(SK_BT,JSON.stringify(btData))}catch(e){};if(document.getElementById('tab-graph')?.classList.contains('active'))renderBTTrend();};
 const saveFD=()=>{try{localStorage.setItem(SK_FD,JSON.stringify(fdData))}catch(e){}};
 const today=()=>new Date().toISOString().slice(0,10);
 const nowT=()=>new Date().toTimeString().slice(0,5);
@@ -961,7 +980,7 @@ document.querySelectorAll('.nav-btn').forEach(b=>{
     b.classList.add('active');const tab=b.dataset.tab;
     document.getElementById('tab-'+tab).classList.add('active');
     if(tab==='cgm'){renderCgmHistory();}
-    if(tab==='graph')renderGraphs();
+    if(tab==='graph'){renderGraphs();renderBTTrend();}
     if(tab==='history')renderHistory();
     if(tab==='bloodtest')renderBTGraphs();
     if(tab==='food')renderFdHistory();
@@ -2270,6 +2289,145 @@ function renderCgmHistory(){
 document.getElementById('cgmClear').onclick=()=>{
   if(confirm('CGM 이력을 모두 삭제할까요?')){cgmData=[];saveCGM();renderCgmHistory()}
 };
+
+
+/* ── 그래프 탭 혈액검사 추이 ── */
+let btTrendInst=[];
+const btTrendAC=new Set();
+
+function renderBTTrend(){
+  btTrendInst.forEach(c=>c.destroy()); btTrendInst=[];
+  const wrap=document.getElementById('btTrendWrap');
+  const filter=document.getElementById('btTrendFilter');
+  const empty=document.getElementById('btTrendEmpty');
+  if(!wrap||!filter)return;
+
+  // 현재 고양이 기준 데이터만
+  const myData=btData.filter(d=>d.cat===state.activeCat);
+  if(!myData.length){
+    wrap.innerHTML='';filter.innerHTML='';
+    if(empty)empty.style.display='block';
+    return;
+  }
+  if(empty)empty.style.display='none';
+
+  // 항목별 날짜 데이터 집계
+  const map={};
+  myData.forEach(rec=>(rec.items||[]).forEach(item=>{
+    const k=item.abbr||item.name;
+    if(!map[k])map[k]={name:item.name,abbr:k,unit:item.unit,
+      category:item.category,refLow:item.refLow,refHigh:item.refHigh,points:[]};
+    if(!map[k].points.find(p=>p.date===rec.date)){
+      map[k].points.push({date:rec.date,value:item.value});
+    }
+  }));
+
+  // 카테고리 필터
+  const cats=[...new Set(Object.values(map).map(v=>v.category).filter(Boolean))];
+  if(btTrendAC.size===0) cats.forEach(c=>btTrendAC.add(c));
+
+  filter.innerHTML='';
+  cats.forEach(cat=>{
+    const ch=document.createElement('div');
+    ch.className='g-chip'+(btTrendAC.has(cat)?' active':'');
+    ch.textContent=cat;
+    ch.onclick=()=>{
+      if(btTrendAC.has(cat)){if(btTrendAC.size>1)btTrendAC.delete(cat);else return;}
+      else btTrendAC.add(cat);
+      ch.classList.toggle('active',btTrendAC.has(cat));
+      renderBTTrend();
+    };
+    filter.appendChild(ch);
+  });
+
+  wrap.innerHTML='';
+  const isDark=matchMedia('(prefers-color-scheme:dark)').matches;
+  const gc=isDark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.05)';
+  const tc=isDark?'#B4B2A9':'#888780';
+
+  Object.values(map)
+    .filter(item=>btTrendAC.has(item.category))
+    .forEach((item,i)=>{
+      const pts=item.points.sort((a,b)=>a.date>b.date?1:-1);
+      if(!pts.length)return;
+
+      const dates=pts.map(p=>p.date);
+      const vals=pts.map(p=>p.value);
+      const lastVal=vals[vals.length-1];
+      const st=item.refLow!==null&&lastVal<item.refLow?'l':
+        item.refHigh!==null&&lastVal>item.refHigh?'h':'n';
+      const badge=st==='n'?'<span class="bn">정상</span>':
+        st==='h'?'<span class="bh">높음</span>':'<span class="bl">낮음</span>';
+
+      // Y축 범위
+      const allV=[...vals,item.refLow,item.refHigh].filter(v=>v!==null);
+      const minV=Math.min(...allV);
+      const maxV=Math.max(...allV);
+      const pad=(maxV-minV)*0.3||1;
+
+      const card=document.createElement('div');
+      card.className='card';
+      card.style.marginBottom='.6rem';
+      card.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">'
+        +'<span style="font-size:12px;font-weight:500;color:var(--text)">'+item.name
+        +(item.abbr&&item.abbr!==item.name?' ('+item.abbr+')':'')
+        +' <span style="color:var(--text3);font-size:10px">'+( item.unit||'')+'</span></span>'
+        +badge+'</div>'
+        +'<div class="chart-wrap" style="height:130px"><canvas id="btt_'+i+'"></canvas></div>';
+      wrap.appendChild(card);
+
+      const datasets=[{
+        data:vals,
+        borderColor:'#1D9E75',
+        backgroundColor:'rgba(29,158,117,0.1)',
+        tension:.35,fill:true,
+        pointRadius:dates.length===1?6:4,
+        pointBackgroundColor:vals.map(v=>
+          item.refHigh!==null&&v>item.refHigh?'#D85A30':
+          item.refLow!==null&&v<item.refLow?'#185FA5':'#1D9E75'
+        ),
+        borderWidth:2,spanGaps:false
+      }];
+
+      // 정상범위 참조선
+      if(item.refHigh!==null)datasets.push({
+        data:dates.map(()=>item.refHigh),
+        borderColor:'rgba(216,90,48,0.4)',borderWidth:1.5,
+        borderDash:[5,4],pointRadius:0,fill:false,tension:0
+      });
+      if(item.refLow!==null)datasets.push({
+        data:dates.map(()=>item.refLow),
+        borderColor:'rgba(24,95,165,0.4)',borderWidth:1.5,
+        borderDash:[5,4],pointRadius:0,fill:false,tension:0
+      });
+
+      const inst=new Chart(document.getElementById('btt_'+i),{
+        type:'line',
+        data:{labels:dates.map(d=>d.slice(5)),datasets},
+        options:{
+          responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{display:false},
+            tooltip:{callbacks:{
+              label:ctx=>{
+                if(ctx.datasetIndex>0)return null;
+                const v=ctx.parsed.y;
+                const flag=item.refHigh!==null&&v>item.refHigh?' ↑':
+                  item.refLow!==null&&v<item.refLow?' ↓':'';
+                return v+' '+(item.unit||'')+flag;
+              }
+            }}
+          },
+          scales:{
+            x:{grid:{color:gc},ticks:{color:tc,font:{size:10}}},
+            y:{grid:{color:gc},ticks:{color:tc,font:{size:10}},
+              min:parseFloat((minV-pad).toFixed(1)),
+              max:parseFloat((maxV+pad).toFixed(1))}
+          }
+        }
+      });
+      btTrendInst.push(inst);
+    });
+}
 
 /* ── 5번: 카드 접기/펼치기 ── */
 function toggleCard(id, header) {
