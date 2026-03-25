@@ -756,205 +756,13 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script>
 
-/* ── Supabase 연동 ── */
-const SUPA_URL = typeof process !== 'undefined' 
-  ? process.env.SUPABASE_URL 
-  : window.__SUPABASE_URL__ || '';
-const SUPA_KEY = typeof process !== 'undefined'
-  ? process.env.SUPABASE_ANON_KEY
-  : window.__SUPABASE_ANON_KEY__ || '';
-
-let supabase = null;
-let currentUser = null;
-let authMode = 'login';
-
-// Supabase 초기화 (환경변수를 앱에서 가져오기)
-async function initSupabase() {
-  try {
-    const res = await fetch('/api/config');
-    if(res.ok) {
-      const cfg = await res.json();
-      if(cfg.supabaseUrl && cfg.supabaseKey) {
-        supabase = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseKey);
-        const { data: { session } } = await supabase.auth.getSession();
-        if(session) {
-          currentUser = session.user;
-          showApp();
-        } else {
-          showLogin();
-        }
-        return;
-      }
-    }
-  } catch(e) {}
-  // Supabase 없으면 로컬 모드로 실행
-  showApp();
-}
-
-function showLogin() {
-  document.getElementById('loginPage').style.display = 'block';
-  document.getElementById('app').style.display = 'none';
-}
-
-function showApp() {
-  document.getElementById('loginPage').style.display = 'none';
-  document.getElementById('app').style.display = 'block';
-  if(currentUser) {
-    document.getElementById('logoutBtn').style.display = 'block';
-    syncFromDB();
-  }
-}
-
-function switchAuthTab(mode) {
-  authMode = mode;
-  const isLogin = mode === 'login';
-  document.getElementById('tabLogin').style.background = isLogin ? 'var(--teal)' : 'transparent';
-  document.getElementById('tabLogin').style.color = isLogin ? '#fff' : 'var(--text2)';
-  document.getElementById('tabSignup').style.background = !isLogin ? 'var(--teal)' : 'transparent';
-  document.getElementById('tabSignup').style.color = !isLogin ? '#fff' : 'var(--text2)';
-  document.getElementById('authSubmit').textContent = isLogin ? '로그인' : '회원가입';
-  document.getElementById('authMsg').textContent = '';
-}
-
-async function handleAuth() {
-  if(!supabase) { showApp(); return; }
-  const email = document.getElementById('authEmail').value.trim();
-  const password = document.getElementById('authPassword').value;
-  const msg = document.getElementById('authMsg');
-  const btn = document.getElementById('authSubmit');
-
-  if(!email || !password) { msg.textContent = '이메일과 비밀번호를 입력해주세요'; msg.style.color = 'var(--coral)'; return; }
-  if(password.length < 6) { msg.textContent = '비밀번호는 6자 이상이어야 해요'; msg.style.color = 'var(--coral)'; return; }
-
-  btn.textContent = '처리 중...'; btn.disabled = true;
-
-  try {
-    let result;
-    if(authMode === 'login') {
-      result = await supabase.auth.signInWithPassword({ email, password });
-    } else {
-      result = await supabase.auth.signUp({ email, password });
-    }
-
-    if(result.error) {
-      msg.textContent = result.error.message.includes('Invalid') ? '이메일 또는 비밀번호가 틀렸어요' :
-        result.error.message.includes('already') ? '이미 가입된 이메일이에요' :
-        result.error.message.includes('confirm') ? '이메일 인증 후 로그인해주세요' :
-        result.error.message;
-      msg.style.color = 'var(--coral)';
-    } else if(authMode === 'signup' && !result.data?.session) {
-      msg.textContent = '✅ 가입 완료! 이메일 인증 후 로그인해주세요';
-      msg.style.color = 'var(--teal)';
-    } else {
-      currentUser = result.data.user;
-      showApp();
-    }
-  } catch(e) {
-    msg.textContent = '오류가 발생했어요. 다시 시도해주세요';
-    msg.style.color = 'var(--coral)';
-  }
-  btn.textContent = authMode === 'login' ? '로그인' : '회원가입';
-  btn.disabled = false;
-}
-
-async function handleLogout() {
-  if(!supabase) return;
-  await supabase.auth.signOut();
-  currentUser = null;
-  document.getElementById('logoutBtn').style.display = 'none';
-  showLogin();
-}
-
-/* ── DB 동기화 ── */
-async function syncFromDB() {
-  if(!supabase || !currentUser) return;
-  try {
-    // 고양이 목록 불러오기
-    const { data: cats } = await supabase.from('cats')
-      .select('*').eq('user_id', currentUser.id).order('created_at');
-    if(cats && cats.length > 0) {
-      state.cats = cats.map(c => c.name);
-      state.activeCat = state.cats[0];
-      // 고양이 프로필 복원
-      state.catProfiles = {};
-      cats.forEach(c => {
-        state.catProfiles[c.name] = {
-          breed: c.breed, birth: c.birth_date, gender: c.gender,
-          neuter: c.neutered ? 'yes' : 'no', insulin: c.insulin_type,
-          diseases: c.diseases || [], memo: c.memo, dbId: c.id
-        };
-      });
-    }
-    // 오늘 기록 불러오기
-    await loadDailyRecords();
-    // 혈액검사 불러오기
-    await loadBloodTests();
-    renderCatBar(); updateMetrics();
-    toast('데이터 동기화 완료 ☁️');
-  } catch(e) {
-    console.error('DB 동기화 오류:', e);
-  }
-}
-
-async function loadDailyRecords() {
-  if(!supabase || !currentUser) return;
-  const { data } = await supabase.from('daily_records')
-    .select('*').eq('user_id', currentUser.id);
-  if(data) {
-    data.forEach(r => {
-      const cat = r.cat_id ? Object.keys(state.catProfiles).find(
-        k => state.catProfiles[k]?.dbId === r.cat_id
-      ) : null;
-      if(cat) {
-        if(!state.records[cat]) state.records[cat] = {};
-        state.records[cat][r.record_date] = r.data;
-      }
-    });
-  }
-}
-
-async function loadBloodTests() {
-  if(!supabase || !currentUser) return;
-  const { data } = await supabase.from('blood_tests')
-    .select('*').eq('user_id', currentUser.id).order('created_at', {ascending: false});
-  if(data && data.length > 0) {
-    btData = data.map(r => ({
-      cat: Object.keys(state.catProfiles).find(k => state.catProfiles[k]?.dbId === r.cat_id) || '',
-      date: r.test_date, items: r.items, ts: new Date(r.created_at).getTime()
-    }));
-  }
-}
-
-async function saveToDB() {
-  if(!supabase || !currentUser) return;
-  try {
-    // 오늘 기록 저장
-    const cat = state.activeCat;
-    const profile = (state.catProfiles || {})[cat];
-    if(!profile?.dbId) return;
-    const rec = getRec(cat, today());
-    await supabase.from('daily_records').upsert({
-      cat_id: profile.dbId,
-      user_id: currentUser.id,
-      record_date: today(),
-      data: rec,
-      updated_at: new Date().toISOString()
-    }, { onConflict: 'cat_id,record_date' });
-  } catch(e) {
-    console.error('DB 저장 오류:', e);
-  }
-}
-
-// 기존 saveS에 DB 저장 추가
-const _origSaveS = saveS;
-
 const SK='dangmyo_v2',SK_BT='bt_v2',SK_FD='fd_v2';
 let state={cats:['케이','달래'],activeCat:'케이',records:{},catProfiles:{}};
 let btData=[],fdData=[];
 try{const d=localStorage.getItem(SK);if(d)state=JSON.parse(d)}catch(e){}
 try{const d=localStorage.getItem(SK_BT);if(d)btData=JSON.parse(d)}catch(e){}
 try{const d=localStorage.getItem(SK_FD);if(d)fdData=JSON.parse(d)}catch(e){}
-const saveS=()=>{try{localStorage.setItem(SK,JSON.stringify(state))}catch(e){}};
+const saveS=()=>{try{localStorage.setItem(SK,JSON.stringify(state))}catch(e){}; if(typeof saveToDB==='function'){saveToDB();}};
 const saveBT=()=>{try{localStorage.setItem(SK_BT,JSON.stringify(btData))}catch(e){}};
 const saveFD=()=>{try{localStorage.setItem(SK_FD,JSON.stringify(fdData))}catch(e){}};
 const today=()=>new Date().toISOString().slice(0,10);
@@ -2594,6 +2402,197 @@ function closeModal(id){
 }
 // 초기 실행
 updateInsulinNext();
+/* ── Supabase 연동 ── */
+const SUPA_URL = typeof process !== 'undefined' 
+  ? process.env.SUPABASE_URL 
+  : window.__SUPABASE_URL__ || '';
+const SUPA_KEY = typeof process !== 'undefined'
+  ? process.env.SUPABASE_ANON_KEY
+  : window.__SUPABASE_ANON_KEY__ || '';
+
+let sbClient = null;
+let currentUser = null;
+let authMode = 'login';
+
+// Supabase 초기화 (환경변수를 앱에서 가져오기)
+async function initSupabase() {
+  try {
+    const res = await fetch('/api/config');
+    if(res.ok) {
+      const cfg = await res.json();
+      if(cfg.supabaseUrl && cfg.supabaseKey) {
+        sbClient = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseKey);
+        const { data: { session } } = await sbClient.auth.getSession();
+        if(session) {
+          currentUser = session.user;
+          showApp();
+        } else {
+          showLogin();
+        }
+        return;
+      }
+    }
+  } catch(e) {}
+  // Supabase 없으면 로컬 모드로 실행
+  showApp();
+}
+
+function showLogin() {
+  document.getElementById('loginPage').style.display = 'block';
+  document.getElementById('app').style.display = 'none';
+}
+
+function showApp() {
+  document.getElementById('loginPage').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  if(currentUser) {
+    document.getElementById('logoutBtn').style.display = 'block';
+    syncFromDB();
+  }
+}
+
+function switchAuthTab(mode) {
+  authMode = mode;
+  const isLogin = mode === 'login';
+  document.getElementById('tabLogin').style.background = isLogin ? 'var(--teal)' : 'transparent';
+  document.getElementById('tabLogin').style.color = isLogin ? '#fff' : 'var(--text2)';
+  document.getElementById('tabSignup').style.background = !isLogin ? 'var(--teal)' : 'transparent';
+  document.getElementById('tabSignup').style.color = !isLogin ? '#fff' : 'var(--text2)';
+  document.getElementById('authSubmit').textContent = isLogin ? '로그인' : '회원가입';
+  document.getElementById('authMsg').textContent = '';
+}
+
+async function handleAuth() {
+  if(!sbClient) { showApp(); return; }
+  const email = document.getElementById('authEmail').value.trim();
+  const password = document.getElementById('authPassword').value;
+  const msg = document.getElementById('authMsg');
+  const btn = document.getElementById('authSubmit');
+
+  if(!email || !password) { msg.textContent = '이메일과 비밀번호를 입력해주세요'; msg.style.color = 'var(--coral)'; return; }
+  if(password.length < 6) { msg.textContent = '비밀번호는 6자 이상이어야 해요'; msg.style.color = 'var(--coral)'; return; }
+
+  btn.textContent = '처리 중...'; btn.disabled = true;
+
+  try {
+    let result;
+    if(authMode === 'login') {
+      result = await sbClient.auth.signInWithPassword({ email, password });
+    } else {
+      result = await sbClient.auth.signUp({ email, password });
+    }
+
+    if(result.error) {
+      msg.textContent = result.error.message.includes('Invalid') ? '이메일 또는 비밀번호가 틀렸어요' :
+        result.error.message.includes('already') ? '이미 가입된 이메일이에요' :
+        result.error.message.includes('confirm') ? '이메일 인증 후 로그인해주세요' :
+        result.error.message;
+      msg.style.color = 'var(--coral)';
+    } else if(authMode === 'signup' && !result.data?.session) {
+      msg.textContent = '✅ 가입 완료! 이메일 인증 후 로그인해주세요';
+      msg.style.color = 'var(--teal)';
+    } else {
+      currentUser = result.data.user;
+      showApp();
+    }
+  } catch(e) {
+    msg.textContent = '오류가 발생했어요. 다시 시도해주세요';
+    msg.style.color = 'var(--coral)';
+  }
+  btn.textContent = authMode === 'login' ? '로그인' : '회원가입';
+  btn.disabled = false;
+}
+
+async function handleLogout() {
+  if(!sbClient) return;
+  await sbClient.auth.signOut();
+  currentUser = null;
+  document.getElementById('logoutBtn').style.display = 'none';
+  showLogin();
+}
+
+/* ── DB 동기화 ── */
+async function syncFromDB() {
+  if(!sbClient || !currentUser) return;
+  try {
+    // 고양이 목록 불러오기
+    const { data: cats } = await sbClient.from('cats')
+      .select('*').eq('user_id', currentUser.id).order('created_at');
+    if(cats && cats.length > 0) {
+      state.cats = cats.map(c => c.name);
+      state.activeCat = state.cats[0];
+      // 고양이 프로필 복원
+      state.catProfiles = {};
+      cats.forEach(c => {
+        state.catProfiles[c.name] = {
+          breed: c.breed, birth: c.birth_date, gender: c.gender,
+          neuter: c.neutered ? 'yes' : 'no', insulin: c.insulin_type,
+          diseases: c.diseases || [], memo: c.memo, dbId: c.id
+        };
+      });
+    }
+    // 오늘 기록 불러오기
+    await loadDailyRecords();
+    // 혈액검사 불러오기
+    await loadBloodTests();
+    renderCatBar(); updateMetrics();
+    toast('데이터 동기화 완료 ☁️');
+  } catch(e) {
+    console.error('DB 동기화 오류:', e);
+  }
+}
+
+async function loadDailyRecords() {
+  if(!sbClient || !currentUser) return;
+  const { data } = await sbClient.from('daily_records')
+    .select('*').eq('user_id', currentUser.id);
+  if(data) {
+    data.forEach(r => {
+      const cat = r.cat_id ? Object.keys(state.catProfiles).find(
+        k => state.catProfiles[k]?.dbId === r.cat_id
+      ) : null;
+      if(cat) {
+        if(!state.records[cat]) state.records[cat] = {};
+        state.records[cat][r.record_date] = r.data;
+      }
+    });
+  }
+}
+
+async function loadBloodTests() {
+  if(!sbClient || !currentUser) return;
+  const { data } = await sbClient.from('blood_tests')
+    .select('*').eq('user_id', currentUser.id).order('created_at', {ascending: false});
+  if(data && data.length > 0) {
+    btData = data.map(r => ({
+      cat: Object.keys(state.catProfiles).find(k => state.catProfiles[k]?.dbId === r.cat_id) || '',
+      date: r.test_date, items: r.items, ts: new Date(r.created_at).getTime()
+    }));
+  }
+}
+
+async function saveToDB() {
+  if(!sbClient || !currentUser) return;
+  try {
+    // 오늘 기록 저장
+    const cat = state.activeCat;
+    const profile = (state.catProfiles || {})[cat];
+    if(!profile?.dbId) return;
+    const rec = getRec(cat, today());
+    await sbClient.from('daily_records').upsert({
+      cat_id: profile.dbId,
+      user_id: currentUser.id,
+      record_date: today(),
+      data: rec,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'cat_id,record_date' });
+  } catch(e) {
+    console.error('DB 저장 오류:', e);
+  }
+}
+
+
+
 initSupabase();
 </script>
 
