@@ -562,6 +562,14 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
         </div>
         <input type="radio" name="cgmApp" value="pasta">
       </label>
+      <label class="app-opt" id="optLibre">
+        <div class="app-opt-icon" style="background:#EDE7F6">🔵</div>
+        <div>
+          <div class="app-opt-text">리브레뷰 (LibreView)</div>
+          <div class="app-opt-sub">Abbott FreeStyle Libre</div>
+        </div>
+        <input type="radio" name="cgmApp" value="libre">
+      </label>
     </div>
 
     <div id="cgmAppHint" style="font-size:11px;color:var(--text2);margin-bottom:.75rem;line-height:1.6;padding:.6rem .75rem;background:var(--bg2);border-radius:8px">
@@ -2597,7 +2605,8 @@ document.getElementById('cgmCat').value=state.activeCat||'케이';
 let selectedApp='caresens';
 const hintMap={
   caresens:'📊 <b>케어센스 에어</b> — 하루치 혈당 그래프 화면 캡처 (센스365 앱도 OK)<br>5분 간격 측정, 변동 화살표, 목표범위 밴드 자동 인식.',
-  pasta:'🍝 <b>파스타 (PASTA)</b> — 다이어리 탭 혈당 그래프 또는 리포트 화면 캡처<br>GMI·TIR·CV%·식사/운동 이벤트 아이콘까지 자동 추출해요.'
+  pasta:'🍝 <b>파스타 (PASTA)</b> — 다이어리 탭 혈당 그래프 또는 리포트 화면 캡처<br>GMI·TIR·CV%·식사/운동 이벤트 아이콘까지 자동 추출해요.',
+  libre:'🔵 <b>리브레뷰 (LibreView)</b> — FreeStyle Libre 앱 또는 LibreView 웹 리포트 화면 캡처<br>15분 간격 측정, AGP 리포트, TIR·GMI·평균혈당 자동 추출해요.'
 };
 document.querySelectorAll('input[name="cgmApp"]').forEach(radio=>{
   radio.addEventListener('change',()=>{
@@ -2606,7 +2615,7 @@ document.querySelectorAll('input[name="cgmApp"]').forEach(radio=>{
     radio.closest('.app-opt').classList.add('selected');
     document.getElementById('cgmAppHint').innerHTML=hintMap[selectedApp];
     document.getElementById('cgmDropTitle').textContent=
-      selectedApp==='pasta'?'파스타 앱 스크린· 업로드':'케어센스 에어 스크린· 업로드';
+      selectedApp==='pasta'?'파스타 앱 스크린샷 업로드':selectedApp==='libre'?'리브레뷰 스크린샷 업로드':'케어센스 에어 스크린샷 업로드';
   });
 });
 
@@ -2669,7 +2678,49 @@ setupDrop('cgmDrop','cgmFile',async file=>{
 }`;
 
   // 파스타(PASTA) 전용 추출 프롬프트
-  const pastaPrompt=`당신은 카카오헬스케어 파스타(PASTA) 앱 스크린샷에서 고양이 혈당 데이터를 정밀 추출하는 전문 AI입니다.
+  
+const librePrompt=`당신은 Abbott FreeStyle Libre 리브레뷰(LibreView) 앱 또는 웹 리포트 스크린샷에서 고양이 혈당 데이터를 정밀 추출하는 전문 AI입니다.
+
+【리브레뷰 UI 특성 — 반드시 숙지】
+- FreeStyle Libre 1/2/3 센서 사용, 15분 간격 자동 측정 (스캔 시 실시간)
+- 리브레 앱 화면: 현재 혈당(큰 숫자) + 방향 화살표 + 8시간 그래프
+- LibreView 웹 AGP 리포트: 14일 평균 패턴, TIR(목표범위 내 시간), GMI
+- 목표범위 밴드: 초록(70~180 mg/dL 또는 3.9~10.0 mmol/L)
+- 단위: mmol/L(유럽/한국 일부) 또는 mg/dL — mmol/L이면 ×18 변환
+- 리포트 주요 지표: 평균혈당, GMI(추정 당화혈색소), TIR%, 고혈당%, 저혈당%, CV%
+- 색상: 파란색 계열 UI, 초록/노란/빨간 혈당 구간 표시
+- 센서 만료/교체 알림이 화면에 표시될 수 있음 (무시하고 혈당 데이터 추출)
+
+【고양이 적용 주의사항】
+- 리브레는 사람용 CGM이므로 고양이 목표범위(80~200 mg/dL)와 다를 수 있음
+- TIR 계산 시 고양이 기준(80~200 mg/dL)으로 재계산 필요 — 원본 TIR도 함께 기록
+- GMI는 고양이에게 직접 적용 불가 — 참고값으로만 기록
+
+【추출 지침】
+1. 그래프의 혈당 포인트를 시간 순서대로 읽기 (X축: 시간, Y축: 혈당)
+2. 가능하면 15분 간격 포인트 모두 추출 (최소 주요 포인트 10개 이상)
+3. 고혈당(>200)/저혈당(<80) 구간 식별
+4. 리포트 화면이면 TIR, 평균혈당, GMI, CV% 추출
+5. mmol/L 단위면 반드시 ×18 변환하여 mg/dL로 통일
+
+【JSON 출력 형식】
+{
+  "date": "YYYY-MM-DD",
+  "device": "FreeStyle Libre",
+  "readings": [{"time": "HH:MM", "value": 숫자(mg/dL)}],
+  "avg": 평균혈당(mg/dL),
+  "min": 최저혈당,
+  "max": 최고혈당,
+  "tir": TIR%(80-200 기준),
+  "tir_original": 리브레 원본TIR%(70-180 기준),
+  "gmi": GMI값(있으면),
+  "cv": CV%(있으면),
+  "high_count": 고혈당 횟수,
+  "low_count": 저혈당 횟수,
+  "sensor_type": "Libre 1/2/3 중 확인된 것"
+}`;
+
+const pastaPrompt=`당신은 카카오헬스케어 파스타(PASTA) 앱 스크린샷에서 고양이 혈당 데이터를 정밀 추출하는 전문 AI입니다.
 
 【파스타 앱 UI 특성 — 반드시 숙지】
 - 케어센스 에어(CareSens Air) 또는 덱스콤 G7과 SDK 직접 연동, 5분 간격 측정
@@ -2715,7 +2766,7 @@ setupDrop('cgmDrop','cgmFile',async file=>{
   "notes": "식사 후 혈당 스파이크, 이벤트 전후 패턴 등 특이사항. 없으면 빈문자열"
 }`;
 
-  const finalSys = selectedApp==='pasta' ? pastaPrompt : sys;
+  const finalSys = selectedApp==='pasta' ? pastaPrompt : selectedApp==='libre' ? librePrompt : sys;
   try{
     const resp=await fetch('/api/proxy',{
       method:'POST',headers:{'Content-Type':'application/json'},
@@ -2723,7 +2774,7 @@ setupDrop('cgmDrop','cgmFile',async file=>{
         model:'claude-sonnet-4-20250514',max_tokens:2000,system:finalSys,
         messages:[{role:'user',content:[
           {type:'image',source:{type:'base64',media_type:file.type,data:b64}},
-          {type:'text',text:`이 ${selectedApp==='pasta'?'파스타(PASTA)':'케어센스 에어'} 앱 스크린샷에서 고양이 ${cgmCat}의 ${cgmDate} 혈당 데이터를 모두 추출해주세요.`}
+          {type:'text',text:`이 ${selectedApp==='pasta'?'파스타(PASTA)':selectedApp==='libre'?'리브레뷰(LibreView)':'케어센스 에어'} 앱 스크린샷에서 고양이 ${cgmCat}의 ${cgmDate} 혈당 데이터를 모두 추출해주세요.`}
         ]}]
       })
     });
@@ -3032,7 +3083,7 @@ function renderCgmHistory(){
     item.innerHTML=`<div class="h-dot" style="background:${color}"></div>
       <div class="h-name">${d.cat} · ${dt}
         <span style="font-size:10px;color:var(--text3)">${d.device||'CGM'} · ${(d.readings||[]).length}회</span>
-        ${d.appType==='pasta'?'<span style="font-size:9px;padding:1px 6px;border-radius:5px;background:var(--amber-l);color:var(--amber-d);margin-left:3px">파스타</span>':'<span style="font-size:9px;padding:1px 6px;border-radius:5px;background:var(--teal-l);color:var(--teal-d);margin-left:3px">케어센스</span>'}
+        ${d.appType==='pasta'?'<span style="font-size:9px;padding:1px 6px;border-radius:5px;background:var(--amber-l);color:var(--amber-d);margin-left:3px">파스타</span>':d.appType==='libre'?'<span style="font-size:9px;padding:1px 6px;border-radius:5px;background:#EDE7F6;color:#6A1B9A;margin-left:3px">리브레</span>':'<span style="font-size:9px;padding:1px 6px;border-radius:5px;background:var(--teal-l);color:var(--teal-d);margin-left:3px">케어센스</span>'}
       </div>
       <div class="h-meta">평균 ${avg}<br>최저 ${d.min||'?'} · 최고 ${d.max||'?'}</div>`;
     // 삭제 버튼
