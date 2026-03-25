@@ -1111,12 +1111,14 @@ setupDrop('btDrop','btFile',async file=>{
   document.getElementById('btResult').style.display='none';
   showStat('btStatus','loading','AI가 혈액검사지를 읽고 있어요...');
   const b64=await toB64(file);
-  const sys='혈액검사지에서 모든 항목을 추출하여 아래 JSON만 출력하세요.\n{"items":[{"name":"항목명","abbr":"약어","value":숫자,"unit":"단위","refLow":숫자or null,"refHigh":숫자or null,"category":"신장|간|혈구|전해질|혈당|췌장|갑상선|단백|지질|기타"}]}';
+  const sys='혈액검사지에서 모든 항목을 추출하여 아래 JSON만 출력하세요.\n'+
+'검사 결과가 여러 날짜로 나뉘어 있으면 가장 최근 날짜 결과를 기준으로 추출하세요.\n'+
+'{"items":[{"name":"항목명","abbr":"약어","value":숫자,"unit":"단위","refLow":숫자or null,"refHigh":숫자or null,"category":"신장|간|혈구|전해질|혈당|췌장|갑상선|단백|지질|기타"}]}';
   let mc=file.type.startsWith('image/')?[{type:'image',source:{type:'base64',media_type:file.type,data:b64}},{type:'text',text:'모든 항목을 추출해주세요.'}]:[{type:'document',source:{type:'base64',media_type:'application/pdf',data:b64}},{type:'text',text:'모든 항목을 추출해주세요.'}];
   try{
     const resp=await fetch('/api/proxy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:4000,system:sys,messages:[{role:'user',content:mc}]})});
     const data=await resp.json();
-    if(response.status===429){throw new Error(data.message||'요청이 너무 많아요. 잠시 후 다시 시도해주세요.');}
+    if(resp.status===429){throw new Error(data.message||'요청이 너무 많아요. 잠시 후 다시 시도해주세요.');}
     if(data.error){throw new Error(data.error.message||JSON.stringify(data.error));}
     if(!data.content||!data.content[0]){throw new Error('응답 없음: '+JSON.stringify(data));}
     // 응답 파싱 강화
