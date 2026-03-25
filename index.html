@@ -636,6 +636,16 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     <div class="g-filter" id="btCatFilter"></div>
     <div id="btChartsWrap"></div>
   </div>
+
+  <!-- 혈액검사 저장 이력 목록 -->
+  <div class="card" style="margin-top:.5rem">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem">
+      <div class="card-title" style="margin:0">📋 저장된 검사 이력</div>
+      <button type="button" onclick="if(confirm('전체 혈액검사 이력을 삭제할까요?')){btData=[];saveBT();renderBTHistoryList();renderBTGraphs();toast('전체 삭제됐어요');}"
+        style="padding:4px 10px;border:0.5px solid var(--bd);border-radius:7px;background:transparent;color:var(--text3);font-size:11px;cursor:pointer;font-family:inherit">전체 삭제</button>
+    </div>
+    <div id="btHistoryList"><div class="empty">저장된 혈액검사 이력이 없어요</div></div>
+  </div>
 </div>
 
 <!-- ══ 사료분석 ══ -->
@@ -825,7 +835,7 @@ try{const d=localStorage.getItem(SK);if(d)state=JSON.parse(d)}catch(e){}
 try{const d=localStorage.getItem(SK_BT);if(d)btData=JSON.parse(d)}catch(e){}
 try{const d=localStorage.getItem(SK_FD);if(d)fdData=JSON.parse(d)}catch(e){}
 const saveS=()=>{try{localStorage.setItem(SK,JSON.stringify(state))}catch(e){}; if(typeof saveToDB==='function'){saveToDB();}};
-const saveBT=()=>{try{localStorage.setItem(SK_BT,JSON.stringify(btData))}catch(e){};if(document.getElementById('tab-graph')?.classList.contains('active'))renderBTTrend();};
+const saveBT=()=>{try{localStorage.setItem(SK_BT,JSON.stringify(btData))}catch(e){};if(document.getElementById('tab-graph')?.classList.contains('active'))renderBTTrend();renderBTHistoryList();};
 const saveFD=()=>{try{localStorage.setItem(SK_FD,JSON.stringify(fdData))}catch(e){}};
 const today=()=>new Date().toISOString().slice(0,10);
 const nowT=()=>new Date().toTimeString().slice(0,5);
@@ -1042,14 +1052,24 @@ function renderHistory(){
   all.sort((a,b)=>b.ts-a.ts);
   if(!all.length){list.innerHTML='<div class="empty">오늘 기록이 없어요</div>';return}
   list.innerHTML='';
-  all.forEach(item=>{
+  all.forEach((item,idx)=>{
     const d=item.d;let dot='ld-n',txt='';
     if(item.type==='bg'){const st=bgSt(d.bg,d.ketone);dot='ld-'+(st==='danger'?'d':st==='warn'?'w':'n');txt=`[혈당·케톤] ${d.time} ${d.type} | ${d.bg||'–'} mg/dL · 케톤 ${d.ketone||'–'} mmol/L${d.note?' · '+d.note:''}`;}
     else if(item.type==='ins'){dot='ld-i';txt=`[인슐린] ${d.time} | ${d.type} ${d.dose}U${d.preBg?' (투여 전 '+d.preBg+')':''}`;}
     else if(item.type==='meal'){dot='ld-m';txt=`[식사] ${d.time} | ${d.name||'–'} ${d.amt}g${d.kcal?' · '+d.kcal+'kcal':''}`;}
     else if(item.type==='wt'){dot='ld-wt';txt=`[체중] ${d.time} | ${d.weight}kg${d.note?' · '+d.note:''}`;}
     else if(item.type==='routine'){dot='ld-m';txt=`[투약·루틴] ${d.time} | ${d.items.join(', ')}${d.memo?' · '+d.memo:''}`;}
-    list.innerHTML+=`<div class="log-item"><div class="log-dot ${dot}"></div><div class="log-text">${txt}</div></div>`;
+
+    const el=document.createElement('div');
+    el.className='log-item';
+    el.style.cssText='display:flex;align-items:center;gap:6px;position:relative';
+    const dotEl=document.createElement('div');dotEl.className='log-dot '+dot;
+    const txtEl=document.createElement('div');txtEl.className='log-text';txtEl.style.flex='1';txtEl.textContent=txt;
+    const delEl=document.createElement('button');delEl.type='button';delEl.textContent='🗑️';
+    delEl.style.cssText='background:none;border:none;color:var(--text3);cursor:pointer;padding:2px 6px;font-size:13px;flex-shrink:0;opacity:0.6';
+    delEl.addEventListener('click',(e)=>{e.stopPropagation();deleteLogItem(item.type,item.ts);});
+    el.appendChild(dotEl);el.appendChild(txtEl);el.appendChild(delEl);
+    list.appendChild(el);
   });
 }
 
@@ -1287,6 +1307,7 @@ document.getElementById('btSave').onclick=()=>{
   document.getElementById('btResult').style.display='none';
   toast('혈액검사 저장 완료! ☁️');
   renderBTGraphs();
+  renderBTHistoryList();
 };
 let btGI=[],btAC=new Set();
 function renderBTGraphs(){
@@ -2549,6 +2570,19 @@ function renderCgmHistory(){
         ${d.appType==='pasta'?'<span style="font-size:9px;padding:1px 6px;border-radius:5px;background:var(--amber-l);color:var(--amber-d);margin-left:3px">파스타</span>':'<span style="font-size:9px;padding:1px 6px;border-radius:5px;background:var(--teal-l);color:var(--teal-d);margin-left:3px">케어센스</span>'}
       </div>
       <div class="h-meta">평균 ${avg}<br>최저 ${d.min||'?'} · 최고 ${d.max||'?'}</div>`;
+    // 삭제 버튼
+    const cgmDelBtn=document.createElement('button');
+    cgmDelBtn.type='button';
+    cgmDelBtn.textContent='🗑️';
+    cgmDelBtn.style.cssText='background:none;border:none;font-size:13px;cursor:pointer;padding:2px 6px;opacity:0.5;flex-shrink:0';
+    cgmDelBtn.addEventListener('click',(e)=>{
+      e.stopPropagation();
+      if(!confirm(dt+' CGM 기록을 삭제할까요?'))return;
+      const i=cgmData.indexOf(d);
+      if(i>-1){cgmData.splice(i,1);saveCGM();renderCgmHistory();toast('삭제됐어요');}
+    });
+    item.style.cssText=(item.style.cssText||'')+'display:flex;align-items:center;gap:6px;';
+    item.appendChild(cgmDelBtn);
     item.onclick=()=>{cgmExtracted=d;renderCgmExtracted(d);window.scrollTo({top:0,behavior:'smooth'})};
     list.appendChild(item);
   });
@@ -2694,6 +2728,90 @@ function renderBTTrend(){
       });
       btTrendInst.push(inst);
     });
+}
+
+
+/* ── 기록 개별 삭제 ── */
+function deleteLogItem(type, ts) {
+  if(!confirm('이 기록을 삭제할까요?')) return;
+  const rec = getRec(state.activeCat, today());
+  const keyMap = {bg:'bg', ins:'ins', meal:'meals', wt:'weights', routine:'routines'};
+  const key = keyMap[type];
+  if(!key || !rec[key]) return;
+  const idx = rec[key].findIndex(r => r.ts === ts);
+  if(idx > -1) {
+    rec[key].splice(idx, 1);
+    saveS(); updateMetrics(); renderHistory();
+    toast('삭제됐어요');
+  }
+}
+
+/* ── 혈액검사 이력 목록 렌더링 ── */
+function renderBTHistoryList() {
+  const list = document.getElementById('btHistoryList');
+  if(!list) return;
+  if(!btData.length) {
+    list.innerHTML = '<div class="empty">저장된 혈액검사 이력이 없어요</div>';
+    return;
+  }
+  list.innerHTML = '';
+  [...btData].sort((a,b)=>b.date>a.date?1:-1).forEach((bt,i) => {
+    const highCount = (bt.items||[]).filter(it=>it.refHigh!==null&&it.value>it.refHigh).length;
+    const lowCount = (bt.items||[]).filter(it=>it.refLow!==null&&it.value<it.refLow).length;
+    const color = highCount+lowCount===0?'#1D9E75':highCount+lowCount<=2?'#BA7517':'#D85A30';
+    const item = document.createElement('div');
+    item.className = 'h-item';
+    item.style.cssText = 'display:flex;align-items:center;gap:6px';
+    item.innerHTML = '<div class="h-dot" style="background:'+color+'"></div>'
+      +'<div style="flex:1;cursor:pointer">'
+      +'<div class="h-name">'+bt.cat+' · '+bt.date+'</div>'
+      +'<div class="h-meta">'+(bt.items||[]).length+'개 항목'
+      +(highCount?'&nbsp;·&nbsp;<span style="color:#D85A30">↑높음 '+highCount+'</span>':'')
+      +(lowCount?'&nbsp;·&nbsp;<span style="color:#185FA5">↓낮음 '+lowCount+'</span>':'')
+      +'</div></div>'
+      +'<button type="button" style="background:none;border:none;font-size:13px;cursor:pointer;padding:2px 6px;opacity:0.5;flex-shrink:0">🗑️</button>';
+    // 클릭 - 결과 보기
+    item.querySelector('div[style*="flex:1"]').addEventListener('click', ()=>{
+      btEx = bt;
+      // 결과 표시
+      const btResult = document.getElementById('btResult');
+      const tbody = document.getElementById('btBody');
+      if(!btResult||!tbody) return;
+      const prevRec = btData.filter(d=>d.cat===bt.cat&&d.date<bt.date).sort((a,b)=>b.date<a.date?-1:1)[0];
+      tbody.innerHTML = '';
+      (bt.items||[]).forEach(item=>{
+        const s=item.refLow!==null&&item.value<item.refLow?'l':item.refHigh!==null&&item.value>item.refHigh?'h':'n';
+        const badge=s==='n'?'<span class="bn">정상</span>':s==='h'?'<span class="bh">높음</span>':'<span class="bl">낮음</span>';
+        const ref=item.refLow!==null||item.refHigh!==null?`${item.refLow??''}~${item.refHigh??''}`:'–';
+        let changeTd='<td style="color:var(--text3);font-size:11px">–</td>';
+        if(prevRec){
+          const prevItem=prevRec.items.find(i=>(i.abbr||i.name)===(item.abbr||item.name));
+          if(prevItem&&prevItem.value!==null){
+            const diff=parseFloat((item.value-prevItem.value).toFixed(2));
+            const arrow=diff>0?'▲':diff<0?'▼':'━';
+            const c=diff>0?'var(--coral)':diff<0?'var(--blue)':'var(--text3)';
+            changeTd=`<td style="font-size:11px;color:${c};white-space:nowrap">${arrow}${Math.abs(diff)}</td>`;
+          }
+        }
+        tbody.innerHTML+=`<tr><td>${item.name}${item.abbr&&item.abbr!==item.name?` <span style="color:var(--text3);font-size:10px">(${item.abbr})</span>`:''}</td><td style="font-weight:500">${item.value}</td><td style="color:var(--text2)">${item.unit||'–'}</td><td style="color:var(--text2)">${ref}</td><td>${badge}</td>${changeTd}</tr>`;
+      });
+      document.getElementById('btResultLabel').textContent=`${bt.cat} · ${bt.date} (${(bt.items||[]).length}개 항목)`;
+      btResult.style.display='block';
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+    // 삭제 버튼
+    item.querySelector('button').addEventListener('click', (e)=>{
+      e.stopPropagation();
+      if(!confirm(bt.date+' 혈액검사 기록을 삭제할까요?')) return;
+      const idx = btData.indexOf(bt);
+      if(idx > -1) {
+        btData.splice(idx, 1);
+        saveBT(); renderBTHistoryList(); renderBTGraphs();
+        toast('삭제됐어요');
+      }
+    });
+    list.appendChild(item);
+  });
 }
 
 /* ── 5번: 카드 접기/펼치기 ── */
