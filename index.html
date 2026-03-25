@@ -347,6 +347,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     <div class="row2">
       <div class="ig"><label>혈당 (mg/dL)</label><input type="number" id="bgVal" placeholder="예: 250"></div>
       <div class="ig"><label>케톤 (mmol/L)</label><input type="number" id="ketVal" placeholder="예: 0.3" step="0.1"></div>
+      <div class="ig"><label>날짜</label><input type="date" id="bgDate"></div>
       <div class="ig"><label>측정 시각</label><input type="time" id="bgTime"></div>
       <div class="ig"><label>식전/식후</label><select id="bgType"><option>식전</option><option>식후2h</option><option>식후4h</option><option>기타</option></select></div>
       <div class="ig full"><label>메모</label><input type="text" id="bgNote" placeholder="식욕, 활동량, 특이사항"></div>
@@ -362,6 +363,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     <div id="wtCard">
     <div class="row2">
       <div class="ig"><label>체중 (kg)</label><input type="number" id="wtVal" placeholder="예: 3.54" step="0.01"></div>
+      <div class="ig"><label>날짜</label><input type="date" id="wtDate"></div>
       <div class="ig"><label>측정 시각</label><input type="time" id="wtTime"></div>
       <div class="ig full"><label>메모</label><input type="text" id="wtNote" placeholder="식전 측정 등"></div>
     </div>
@@ -378,6 +380,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     <div class="row2">
       <div class="ig"><label>종류</label><select id="insType"><option>프로징크</option><option>글라진</option><option>레버미어</option><option>NPH</option><option>레귤러</option><option>기타</option></select></div>
       <div class="ig"><label>투여량 (U)</label><input type="number" id="insVal" placeholder="예: 1.5" step="0.5"></div>
+      <div class="ig"><label>날짜</label><input type="date" id="insDate"></div>
       <div class="ig"><label>투여 시각</label><input type="time" id="insTime"></div>
       <div class="ig"><label>투여 전 혈당</label><input type="number" id="insPreBg" placeholder="mg/dL"></div>
     </div>
@@ -394,6 +397,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
       <div class="ig"><label>사료명</label><input type="text" id="foodName" placeholder="예: 몬지 레날"></div>
       <div class="ig"><label>급여량 (g)</label><input type="number" id="foodAmt" placeholder="g"></div>
       <div class="ig"><label>칼로리 (kcal)</label><input type="number" id="foodKcal" placeholder="kcal"></div>
+      <div class="ig"><label>날짜</label><input type="date" id="foodDate"></div>
       <div class="ig"><label>급여 시각</label><input type="time" id="foodTime"></div>
     </div>
     <button class="btn btn-blue" id="saveMeal">식사 저장</button>
@@ -425,6 +429,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     <div id="routineTagArea"></div>
 
     <div class="row2" style="margin-bottom:8px">
+      <div class="ig"><label>날짜</label><input type="date" id="routineDate"></div>
       <div class="ig"><label>시각</label><input type="time" id="routineTime"></div>
       <div class="ig"><label>직접 입력</label><input type="text" id="routineCustom" placeholder="예: 코발라민 0.5ml"></div>
     </div>
@@ -579,6 +584,18 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 
 <!-- ══ 히스토리 ══ -->
 <div class="sec" id="tab-history">
+  <!-- 날짜 네비게이션 -->
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:.75rem;background:var(--bg2);border-radius:10px;padding:.5rem .75rem">
+    <button type="button" onclick="histNavDate(-1)"
+      style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text2);padding:0 4px">‹</button>
+    <input type="date" id="histDatePicker"
+      style="flex:1;border:none;background:transparent;font-size:13px;font-weight:500;color:var(--text);font-family:inherit;text-align:center;cursor:pointer"
+      onchange="renderHistory()">
+    <button type="button" onclick="histNavDate(1)"
+      style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text2);padding:0 4px">›</button>
+    <button type="button" onclick="document.getElementById('histDatePicker').value=today();renderHistory();"
+      style="padding:3px 10px;border:0.5px solid var(--bd);border-radius:7px;background:transparent;color:var(--teal);font-size:11px;cursor:pointer;font-family:inherit">오늘</button>
+  </div>
   <div style="background:var(--teal-l);border-radius:10px;padding:.75rem 1rem;margin-bottom:.75rem">
       <div style="font-size:12px;font-weight:500;color:var(--teal-d);margin-bottom:.3rem">📋 기록 내보내기</div>
       <div style="font-size:11px;color:var(--teal);line-height:1.7;margin-bottom:.6rem">
@@ -752,7 +769,26 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
           style="padding:6px 14px;border-radius:20px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit">
           🔀 당뇨+신부전
         </button>
+        <button type="button" id="modeHCM" onclick="setFdMode('hcm')"
+          style="padding:6px 14px;border-radius:20px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit">
+          🫀 심근비대증(HCM)
+        </button>
       </div>
+    </div>
+    <!-- HCM 스테이지 선택 -->
+    <div id="hcmStageWrap" style="display:none;margin-bottom:.75rem">
+      <div style="font-size:11px;font-weight:500;color:var(--text2);margin-bottom:.4rem">ACVIM HCM 스테이지</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button type="button" class="hcm-stage-btn active" data-stage="B1" onclick="setHcmStage('B1',this)"
+          style="padding:5px 12px;border-radius:8px;border:1.5px solid var(--teal);background:var(--teal);color:#fff;font-size:12px;cursor:pointer;font-family:inherit">Stage B1</button>
+        <button type="button" class="hcm-stage-btn" data-stage="B2" onclick="setHcmStage('B2',this)"
+          style="padding:5px 12px;border-radius:8px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:12px;cursor:pointer;font-family:inherit">Stage B2</button>
+        <button type="button" class="hcm-stage-btn" data-stage="C" onclick="setHcmStage('C',this)"
+          style="padding:5px 12px;border-radius:8px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:12px;cursor:pointer;font-family:inherit">Stage C</button>
+        <button type="button" class="hcm-stage-btn" data-stage="D" onclick="setHcmStage('D',this)"
+          style="padding:5px 12px;border-radius:8px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:12px;cursor:pointer;font-family:inherit">Stage D</button>
+      </div>
+      <div id="hcmStageDesc" style="font-size:11px;color:var(--text2);margin-top:.4rem;line-height:1.7"></div>
     </div>
 
     <!-- CKD 스테이지 선택 (CKD/복합 모드일 때만 표시) -->
@@ -857,6 +893,7 @@ function showStat(id,type,msg){
 function hideStat(id){document.getElementById(id).style.display='none'}
 
 ['bgTime','wtTime','insTime','foodTime'].forEach(id=>document.getElementById(id).value=nowT());
+['bgDate','wtDate','insDate','foodDate','routineDate'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=today();});
 document.getElementById('btDate').value=today();
 
 /* 고양이 바 */
@@ -1010,19 +1047,25 @@ document.getElementById('saveBg').onclick=()=>{
 };
 document.getElementById('saveWt').onclick=()=>{
   const w=parseFloat(document.getElementById('wtVal').value);if(isNaN(w)){toast('체중을 입력해주세요','#D85A30');return}
-  getRec(state.activeCat,today()).weights.push({weight:w,time:document.getElementById('wtTime').value,note:document.getElementById('wtNote').value,ts:Date.now()});
-  saveS();updateMetrics();updateWtDiff();['wtVal','wtNote'].forEach(id=>document.getElementById(id).value='');toast('체중 저장 완료!');
+  const wtD=document.getElementById('wtDate').value||today();
+  getRec(state.activeCat,wtD).weights.push({weight:w,time:document.getElementById('wtTime').value,note:document.getElementById('wtNote').value,ts:Date.now()});
+  saveS();updateMetrics();updateWtDiff();['wtVal','wtNote'].forEach(id=>document.getElementById(id).value='');
+  toast(wtD!==today()?wtD+' 날짜로 저장됐어요':'체중 저장 완료!');
 };
 document.getElementById('saveIns').onclick=()=>{
   const dose=parseFloat(document.getElementById('insVal').value);if(isNaN(dose)){toast('투여량을 입력해주세요','#D85A30');return}
-  getRec(state.activeCat,today()).ins.push({type:document.getElementById('insType').value,dose,time:document.getElementById('insTime').value,preBg:document.getElementById('insPreBg').value,ts:Date.now()});
-  saveS();updateMetrics();updateInsulinNext();['insVal','insPreBg'].forEach(id=>document.getElementById(id).value='');toast('인슐린 저장 완료!');
+  const insD=document.getElementById('insDate').value||today();
+  getRec(state.activeCat,insD).ins.push({type:document.getElementById('insType').value,dose,time:document.getElementById('insTime').value,preBg:document.getElementById('insPreBg').value,ts:Date.now()});
+  saveS();updateMetrics();updateInsulinNext();['insVal','insPreBg'].forEach(id=>document.getElementById(id).value='');
+  toast(insD!==today()?insD+' 날짜로 저장됐어요':'인슐린 저장 완료!');
 };
 document.getElementById('saveMeal').onclick=()=>{
   const name=document.getElementById('foodName').value,amt=document.getElementById('foodAmt').value;
   if(!name&&!amt){toast('사료명 또는 급여량을 입력해주세요','#D85A30');return}
-  getRec(state.activeCat,today()).meals.push({name,amt:parseFloat(amt)||0,kcal:parseFloat(document.getElementById('foodKcal').value)||0,time:document.getElementById('foodTime').value,ts:Date.now()});
-  saveS();['foodName','foodAmt','foodKcal'].forEach(id=>document.getElementById(id).value='');toast('식사 저장 완료!');
+  const mealD=document.getElementById('foodDate').value||today();
+  getRec(state.activeCat,mealD).meals.push({name,amt:parseFloat(amt)||0,kcal:parseFloat(document.getElementById('foodKcal').value)||0,time:document.getElementById('foodTime').value,ts:Date.now()});
+  saveS();['foodName','foodAmt','foodKcal'].forEach(id=>document.getElementById(id).value='');
+  toast(mealD!==today()?mealD+' 날짜로 저장됐어요':'식사 저장 완료!');
 };
 
 /* 탭 전환 */
@@ -1041,8 +1084,20 @@ document.querySelectorAll('.nav-btn').forEach(b=>{
 });
 
 /* 히스토리 */
+
+function histNavDate(delta){
+  const picker=document.getElementById('histDatePicker');
+  if(!picker)return;
+  const d=new Date(picker.value||today());
+  d.setDate(d.getDate()+delta);
+  picker.value=d.toISOString().slice(0,10);
+  renderHistory();
+}
+
 function renderHistory(){
-  const rec=getRec(state.activeCat,today());const list=document.getElementById('logList');
+  const histDate=document.getElementById('histDatePicker')?.value||today();
+  if(!document.getElementById('histDatePicker')?.value){const el=document.getElementById('histDatePicker');if(el)el.value=today();}
+  const rec=getRec(state.activeCat,histDate);const list=document.getElementById('logList');
   const all=[];
   rec.bg.forEach(r=>all.push({ts:r.ts,type:'bg',d:r}));
   rec.ins.forEach(r=>all.push({ts:r.ts,type:'ins',d:r}));
@@ -1453,20 +1508,122 @@ const CKD_CRITERIA = {
 
 function setFdMode(mode) {
   fdMode = mode;
-  // 버튼 스타일
-  ['dm','ckd','both'].forEach(m => {
+  const modeColors = {dm:'var(--teal)', ckd:'var(--blue)', both:'var(--purple)', hcm:'var(--coral)'};
+  ['dm','ckd','both','hcm'].forEach(m => {
     const btn = document.getElementById('mode'+m.toUpperCase());
     if(!btn) return;
     const isActive = m === mode;
-    const color = m==='dm' ? 'var(--teal)' : m==='ckd' ? 'var(--blue)' : 'var(--purple)';
+    const color = modeColors[m];
     btn.style.background = isActive ? color : 'transparent';
     btn.style.color = isActive ? '#fff' : 'var(--text2)';
     btn.style.borderColor = isActive ? color : 'var(--bd)';
   });
-  // CKD 스테이지 표시
-  const wrap = document.getElementById('ckdStageWrap');
-  if(wrap) wrap.style.display = (mode === 'ckd' || mode === 'both') ? 'block' : 'none';
+  const ckdWrap = document.getElementById('ckdStageWrap');
+  if(ckdWrap) ckdWrap.style.display = (mode === 'ckd' || mode === 'both') ? 'block' : 'none';
+  const hcmWrap = document.getElementById('hcmStageWrap');
+  if(hcmWrap) hcmWrap.style.display = mode === 'hcm' ? 'block' : 'none';
   updateCkdDesc();
+  updateHcmDesc();
+}
+
+let hcmStage = 'B1';
+const HCM_CRITERIA = {
+  'B1': {
+    color: '#1D9E75',
+    label: 'Stage B1 — 무증상, 저위험',
+    desc: '심장 변화는 있으나 심부전 위험 낮음. 식이 제한보다 균형 잡힌 영양 유지가 우선.',
+    checklist: [
+      {icon:'✅', text:'나트륨 DM 0.4% 이하 사료 권장 (고나트륨 회피)', ok:true},
+      {icon:'✅', text:'충분한 단백질 유지 — 근육 손실 예방 핵심', ok:true},
+      {icon:'✅', text:'타우린 함유 확인 (필수 아미노산)', ok:true},
+      {icon:'ℹ️', text:'오메가3(EPA/DHA) 보충 고려 — 항염 효과', ok:null},
+      {icon:'🚫', text:'고나트륨 간식·사람 음식 금지', ok:false},
+    ],
+    note:'※ B1은 식이 제한보다 영양 균형이 핵심. 식욕 유지가 중요해요.'
+  },
+  'B2': {
+    color: '#BA7517',
+    label: 'Stage B2 — 무증상, 고위험 (좌심방 확장)',
+    desc: '심부전·혈전 위험 증가. 나트륨 제한 시작, 고품질 단백질 유지.',
+    checklist: [
+      {icon:'✅', text:'나트륨 DM 0.4% 이하 엄수', ok:true},
+      {icon:'✅', text:'충분한 단백질 유지 (근육 손실 예방)', ok:true},
+      {icon:'✅', text:'타우린 함유 확인', ok:true},
+      {icon:'✅', text:'오메가3(EPA/DHA) 보충 권장', ok:true},
+      {icon:'🚫', text:'고나트륨 간식·사람 음식 금지', ok:false},
+    ],
+    note:'※ B2부터 약물 치료(클로피도그렐 등) 시작 단계. 식이와 병행 중요.'
+  },
+  'C': {
+    color: '#D85A30',
+    label: 'Stage C — 심부전(CHF) 또는 혈전 경험',
+    desc: '심부전 발생 또는 혈전 경험. 나트륨 추가 제한, 식욕 유지가 최우선.',
+    checklist: [
+      {icon:'⚠️', text:'나트륨 DM 0.3% 이하 — 적극 제한', ok:false},
+      {icon:'✅', text:'충분한 칼로리·단백질 — 심장 악액질(cachexia) 예방 필수', ok:true},
+      {icon:'✅', text:'타우린 + 오메가3 보충 권장', ok:true},
+      {icon:'⚠️', text:'식욕 감소 시 고칼로리 습식 우선, 억지로 먹이지 않기', ok:null},
+      {icon:'🚫', text:'고나트륨 간식 절대 금지', ok:false},
+    ],
+    note:'※ Stage C는 식욕 유지가 나트륨 제한보다 더 중요할 수 있어요. 수의사 지시 우선.'
+  },
+  'D': {
+    color: '#8B0000',
+    label: 'Stage D — 불응성 심부전',
+    desc: 'ACVIM 가이드라인: Stage D에서는 저염식을 오히려 피해야 할 수 있어요.',
+    checklist: [
+      {icon:'⚠️', text:'저염식 주의 — Stage D에서 과도한 나트륨 제한은 역효과 가능 (ACVIM 2020)', ok:null},
+      {icon:'✅', text:'고칼로리·고단백 유지 — 체중 유지가 최우선', ok:true},
+      {icon:'✅', text:'타우린 + 오메가3 지속 보충', ok:true},
+      {icon:'⚠️', text:'식욕 촉진 식이 전략 필요 (온도, 종류 다양화)', ok:null},
+      {icon:'🚫', text:'식이 제한보다 수의사 처방 식이 우선', ok:false},
+    ],
+    note:'※ Stage D는 식이보다 약물 관리가 핵심. 반드시 수의사와 상의하세요.'
+  }
+};
+
+function setHcmStage(stage, el) {
+  hcmStage = stage;
+  document.querySelectorAll('.hcm-stage-btn').forEach(btn => {
+    const isActive = btn.dataset.stage === stage;
+    btn.style.background = isActive ? 'var(--coral)' : 'transparent';
+    btn.style.color = isActive ? '#fff' : 'var(--text2)';
+    btn.style.borderColor = isActive ? 'var(--coral)' : 'var(--bd)';
+  });
+  updateHcmDesc();
+}
+
+function updateHcmDesc() {
+  const desc = document.getElementById('hcmStageDesc');
+  if(!desc || fdMode !== 'hcm') return;
+  const c = HCM_CRITERIA[hcmStage];
+  desc.innerHTML = '<b style="color:'+c.color+'">'+c.label+'</b><br>'+c.desc;
+}
+
+function renderHcmResult(area) {
+  const c = HCM_CRITERIA[hcmStage];
+  let html = '<div style="background:'+c.color+'15;border:1.5px solid '+c.color+';border-radius:12px;padding:.85rem 1rem;margin-bottom:.75rem">'
+    +'<div style="font-size:14px;font-weight:700;color:'+c.color+';margin-bottom:.3rem">🫀 '+c.label+'</div>'
+    +'<div style="font-size:12px;color:var(--text2)">'+c.desc+'</div>'
+    +'</div>';
+
+  html += '<div style="background:var(--bg2);border-radius:10px;padding:.75rem 1rem;margin-bottom:.5rem">'
+    +'<div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:.6rem">🗒️ 식이 체크리스트 (ACVIM 2020 기반)</div>';
+  c.checklist.forEach(item => {
+    const bg = item.ok===true?'rgba(29,158,117,0.08)':item.ok===false?'rgba(216,90,48,0.08)':'rgba(186,117,23,0.08)';
+    html += '<div style="display:flex;align-items:flex-start;gap:8px;padding:6px 8px;border-radius:7px;background:'+bg+';margin-bottom:4px">'
+      +'<span style="font-size:14px;flex-shrink:0">'+item.icon+'</span>'
+      +'<span style="font-size:12px;color:var(--text);line-height:1.5">'+item.text+'</span>'
+      +'</div>';
+  });
+  html += '</div>';
+
+  html += '<div style="background:var(--bg2);border-radius:8px;padding:.6rem .8rem;font-size:11px;color:var(--text3);line-height:1.7">'
+    +c.note+'<br>'
+    +'<span style="font-size:10px">※ 출처: ACVIM 2020 고양이 심근병증 컨센서스 가이드라인 (Luis Fuentes et al., JVIM 2020)</span>'
+    +'</div>';
+
+  area.innerHTML = html;
 }
 
 function setCkdStage(stage, el) {
@@ -1610,6 +1767,14 @@ function renderFdResult(d){
   const cs=cdm!==null?Math.max(0,Math.round((1-cdm/30)*100)):50;
   const tags=(d.ingredients_top5||[]).map((ing,i)=>{const lw=ing.toLowerCase();const cls=i===0?'p':lw.includes('쌀')||lw.includes('옥수수')||lw.includes('밀')||lw.includes('전분')||lw.includes('rice')||lw.includes('corn')?'c':'';return`<span class="tag ${cls}">${ing}</span>`}).join('');
   const area=document.getElementById('fdResult');
+  // HCM 전용 모드
+  if(fdMode === 'hcm') {
+    area.innerHTML = '';
+    const hcmDiv = document.createElement('div');
+    renderHcmResult(hcmDiv);
+    area.appendChild(hcmDiv);
+    return;
+  }
   // CKD 전용 모드일 때 당뇨 verdict 숨기기
   if(fdMode === 'ckd') {
     area.innerHTML = '';
@@ -1850,8 +2015,9 @@ document.getElementById('saveRoutine').addEventListener('click',()=>{
   if(!items.length){toast('항목을 선택하거나 직접 입력해주세요','#D85A30');return}
   const memo=document.getElementById('routineMemo').value;
   const time=document.getElementById('routineTime').value;
-  if(!getRec(state.activeCat,today()).routines)getRec(state.activeCat,today()).routines=[];
-  getRec(state.activeCat,today()).routines.push({items,memo,time,ts:Date.now()});
+  const routineD=document.getElementById('routineDate').value||today();
+  if(!getRec(state.activeCat,routineD).routines)getRec(state.activeCat,routineD).routines=[];
+  getRec(state.activeCat,routineD).routines.push({items,memo,time,ts:Date.now()});
   saveS();
   routineSelected.clear();
   renderRoutineTags();
@@ -2734,7 +2900,8 @@ function renderBTTrend(){
 /* ── 기록 개별 삭제 ── */
 function deleteLogItem(type, ts) {
   if(!confirm('이 기록을 삭제할까요?')) return;
-  const rec = getRec(state.activeCat, today());
+  const histDate=document.getElementById('histDatePicker')?.value||today();
+  const rec = getRec(state.activeCat, histDate);
   const keyMap = {bg:'bg', ins:'ins', meal:'meals', wt:'weights', routine:'routines'};
   const key = keyMap[type];
   if(!key || !rec[key]) return;
