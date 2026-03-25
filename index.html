@@ -3543,6 +3543,12 @@ function closeModal(id){
 }
 // 초기 실행
 updateInsulinNext();
+// 첫 고양이 등록 입력창 Enter 키 지원
+document.addEventListener('keydown', (e) => {
+  if(e.key === 'Enter' && document.getElementById('firstCatName') === document.activeElement) {
+    registerFirstCat();
+  }
+});
 /* ── Supabase 연동 ── */
 const SUPA_URL = typeof process !== 'undefined' 
   ? process.env.SUPABASE_URL 
@@ -3608,6 +3614,54 @@ function showOnboarding() {
 function finishOnboarding() {
   try { localStorage.setItem('cm_onboarded', '1'); } catch(e) {}
   showApp();
+  // 고양이가 없으면 바로 추가 모달 열기
+  setTimeout(() => {
+    if(!state.cats.length) {
+      showCatAddPrompt();
+    }
+  }, 400);
+}
+
+function showCatAddPrompt() {
+  // 고양이 추가 안내 모달
+  const modal = document.createElement('div');
+  modal.id = 'catAddPrompt';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem';
+  modal.innerHTML = '<div style="background:var(--bg);border-radius:16px;padding:1.5rem;max-width:340px;width:100%;text-align:center">'
+    + '<div style="font-size:2rem;margin-bottom:.5rem">🐾</div>'
+    + '<div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:.5rem">첫 번째 고양이를 등록해요!</div>'
+    + '<div style="font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:1.25rem">'
+    + '고양이 이름을 등록하면<br>혈당·체중·사료 기록을 시작할 수 있어요</div>'
+    + '<input type="text" id="firstCatName" placeholder="고양이 이름 입력" maxlength="10"'
+    + ' style="width:100%;padding:10px 12px;border:1.5px solid var(--teal);border-radius:10px;font-size:15px;background:var(--bg);color:var(--text);font-family:inherit;box-sizing:border-box;margin-bottom:.75rem;text-align:center">'
+    + '<button type="button" onclick="registerFirstCat()"'
+    + ' style="width:100%;padding:12px;background:var(--teal);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;margin-bottom:.5rem">'
+    + '등록하기</button>'
+    + '<button type="button" onclick="closeCatPrompt()"'
+    + ' style="width:100%;padding:10px;background:transparent;color:var(--text3);border:none;font-size:13px;cursor:pointer;font-family:inherit">'
+    + '나중에 할게요</button>'
+    + '</div>';
+  document.body.appendChild(modal);
+  setTimeout(() => document.getElementById('firstCatName')?.focus(), 100);
+}
+
+function closeCatPrompt() {
+  document.getElementById('catAddPrompt')?.remove();
+}
+
+function registerFirstCat() {
+  const name = document.getElementById('firstCatName')?.value.trim();
+  if(!name) {
+    document.getElementById('firstCatName').style.borderColor = 'var(--coral)';
+    return;
+  }
+  state.cats.push(name);
+  state.activeCat = name;
+  saveS();
+  upsertCatToDB(name);
+  renderCatBar();
+  document.getElementById('catAddPrompt')?.remove();
+  toast('🐾 ' + name + ' 등록 완료! 이제 기록을 시작해보세요');
 }
 
 function switchAuthTab(mode) {
@@ -4041,7 +4095,9 @@ initSupabase();
       </button>
     </div>
     <div style="font-size:10px;color:var(--text3);margin-top:.5rem;line-height:1.6">
-      기기를 바꾸거나 데이터가 안 보일 때 "다시 불러오기"를 눌러주세요.
+      기기를 바꾸거나 데이터가 안 보일 때 "다시 불러오기"를 눌러주세요.<br>
+      <a href="https://supabase.com/dashboard/project/lyrzrgvugntdqvxdxyfk" target="_blank"
+        style="color:var(--teal);text-decoration:none">☁️ Supabase 사용량 확인</a>
     </div>
   </div>
 </div>
