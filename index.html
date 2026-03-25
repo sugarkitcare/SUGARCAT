@@ -1185,7 +1185,7 @@ setupDrop('btDrop','btFile',async file=>{
     hideStat('btStatus');
     const prevRec=btData.filter(d=>d.cat===btCatVal&&d.date<btDate).sort((a,b)=>b.date<a.date?-1:1)[0];
     const tbody=document.getElementById('btBody');tbody.innerHTML='';
-    parsed.items.forEach(item=>{
+    (btEx.items||[]).forEach(item=>{
       const s=item.refLow!==null&&item.value<item.refLow?'l':item.refHigh!==null&&item.value>item.refHigh?'h':'n';
       const badge=s==='n'?'<span class="bn">정상</span>':s==='h'?'<span class="bh">높음</span>':'<span class="bl">낮음</span>';
       const ref=item.refLow!==null||item.refHigh!==null?`${item.refLow??''}~${item.refHigh??''}`:'–';
@@ -1201,7 +1201,7 @@ setupDrop('btDrop','btFile',async file=>{
       }
       tbody.innerHTML+=`<tr><td>${item.name}${item.abbr&&item.abbr!==item.name?` <span style="color:var(--text3);font-size:10px">(${item.abbr})</span>`:''}</td><td style="font-weight:500">${item.value}</td><td style="color:var(--text2)">${item.unit||'–'}</td><td style="color:var(--text2)">${ref}</td><td>${badge}</td>${changeTd}</tr>`;
     });
-    document.getElementById('btResultLabel').textContent=`${btEx.cat} · ${btEx.date} (${parsed.items.length}개 항목)`;
+    document.getElementById('btResultLabel').textContent=`${btEx.cat} · ${btEx.date} (${(btEx.items||[]).length}개 항목)`;
     document.getElementById('btResult').style.display='block';
   }catch(e){
     console.error('BT error:',e);
