@@ -1480,9 +1480,14 @@ setupDrop('btDrop','btFile',async file=>{
         const ei=btData.findIndex(d=>d.cat===r.cat&&d.date===r.date);
         const entry=Object.assign({},r,{ts:Date.now()});
         if(ei>-1)btData[ei]=entry;else btData.unshift(entry);
+        // DB에도 각 날짜별로 저장
+        saveBloodTestToDB(r);
       });
       saveBT();
-      toast(resultsToSave.length+'개 날짜 결과 모두 저장됐어요!');
+      renderBTGraphs();
+      renderBTHistoryList();
+      renderBTTrend();
+      toast(resultsToSave.length+'개 날짜 결과 모두 저장됐어요! 📊');
     }
     const btDate=btEx.date;
     hideStat('btStatus');
@@ -1523,6 +1528,7 @@ document.getElementById('btSave').onclick=()=>{
   toast('혈액검사 저장 완료! ☁️');
   renderBTGraphs();
   renderBTHistoryList();
+  renderBTTrend();
 };
 let btGI=[],btAC=new Set();
 function renderBTGraphs(){
@@ -3742,6 +3748,7 @@ async function syncFromDB() {
     updateInsulinNext();
     renderBTHistoryList();
     renderBTGraphs();
+    renderBTTrend();
 
     // 로컬에 DB에 없는 기록이 있으면 자동 마이그레이션
     const localDates = Object.keys(state.records?.[state.activeCat] || {});
