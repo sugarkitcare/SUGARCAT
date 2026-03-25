@@ -3683,10 +3683,10 @@ async function handleAuth() {
   const btn = document.getElementById('authSubmit');
 
   if(!email || !password) { msg.textContent = '이메일과 비밀번호를 입력해주세요'; msg.style.color = 'var(--coral)'; return; }
-  // 이메일 형식 검증 - 언더바(_), 점(.), 하이픈(-) 포함 허용
-  const emailRegex = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
-  if(!emailRegex.test(email)) { msg.textContent = '올바른 이메일 형식을 입력해주세요 (예: cat@gmail.com)'; msg.style.color = 'var(--coral)'; return; }
-  if(password.length < 6) { msg.textContent = '비밀번호는 6자 이상이어야 해요'; msg.style.color = 'var(--coral)'; return; }
+  // 이메일 형식 간단 검증
+  if(!email.includes('@') || email.split('@').length !== 2 || !email.split('@')[1].includes('.') || email.indexOf('@') === 0) {
+    msg.textContent = '올바른 이메일 형식을 입력해주세요 (예: cat@gmail.com)'; msg.style.color = 'var(--coral)'; return;
+  }
 
   btn.textContent = '처리 중...'; btn.disabled = true;
 
