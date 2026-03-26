@@ -1307,20 +1307,31 @@ document.getElementById('saveMeal').onclick=()=>{
 
 /* 탭 전환 */
 window.showTab = function showTab(tab, btn) {
-  document.querySelectorAll('.nav-btn, label.nav-btn').forEach(x=>x.classList.remove('active'));
-  document.querySelectorAll('.sec').forEach(x=>{x.setAttribute('hidden','');x.classList.remove('active');});
-  if(btn) btn.classList.add('active');
-  const tabEl = document.getElementById('tab-'+tab);
-  if(tabEl) {
-    tabEl.removeAttribute('hidden');
-    tabEl.classList.add('active');
-  }
-  if(tab==='cgm') try{renderCgmHistory();}catch(e){}
-  if(tab==='graph') try{renderGraphs();renderBTTrend();}catch(e){}
-  if(tab==='history') try{renderHistory();renderRoutineSchedule();}catch(e){}
-  if(tab==='bloodtest') try{renderBTGraphs();renderBTHistoryList();}catch(e){}
-  if(tab==='food') try{renderFdHistory();}catch(e){}
-  if(tab==='daily') try{updateMetrics();updateWtDiff();updateInsulinNext();renderRoutineChecklist();}catch(e){}
+  try {
+    // 모든 탭 숨기기
+    var secs = document.querySelectorAll('.sec');
+    for(var i=0; i<secs.length; i++){
+      secs[i].setAttribute('hidden','');
+      secs[i].style.display='none';
+    }
+    // 모든 버튼 비활성화
+    var btns = document.querySelectorAll('.nav-btn');
+    for(var j=0; j<btns.length; j++) btns[j].classList.remove('active');
+    // 선택 탭 표시
+    var tabEl = document.getElementById('tab-'+tab);
+    if(tabEl){
+      tabEl.removeAttribute('hidden');
+      tabEl.style.display='block';
+    }
+    if(btn) btn.classList.add('active');
+    // 렌더링
+    if(tab==='cgm') try{renderCgmHistory();}catch(e){console.warn(e);}
+    if(tab==='graph') try{renderGraphs();renderBTTrend();}catch(e){console.warn(e);}
+    if(tab==='history') try{renderHistory();renderRoutineSchedule();}catch(e){console.warn(e);}
+    if(tab==='bloodtest') try{renderBTGraphs();renderBTHistoryList();}catch(e){console.warn(e);}
+    if(tab==='food') try{renderFdHistory();}catch(e){console.warn(e);}
+    if(tab==='daily') try{updateMetrics();renderRoutineChecklist();}catch(e){console.warn(e);}
+  } catch(e) { console.error('showTab 오류:', tab, e); }
 }
 
 /* 히스토리 */
@@ -3907,14 +3918,19 @@ document.addEventListener('keydown', (e) => {
     registerFirstCat();
   }
 });
-// 탭 전환 이벤트 - DOMContentLoaded 이후에도 작동하도록
-document.addEventListener('DOMContentLoaded', function() {
-  document.querySelectorAll('[data-tab]').forEach(btn => {
+// 탭 전환 이벤트
+function initTabs() {
+  document.querySelectorAll('[data-tab]').forEach(function(btn) {
     btn.addEventListener('click', function() {
-      showTab(this.dataset.tab, this);
+      window.showTab(this.dataset.tab, this);
     });
   });
-});
+}
+if(document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initTabs);
+} else {
+  initTabs();
+}
 
 /* ── Supabase 연동 ── */
 const SUPA_URL = typeof process !== 'undefined' 
