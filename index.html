@@ -43,12 +43,12 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 .cat-chip.add{border-style:dashed;color:var(--teal);background:transparent}
 
 /* 내비 */
-.nav{display:flex;gap:3px;background:var(--bg2);border-radius:10px;padding:3px;margin-bottom:1rem}
+.nav{display:flex;gap:3px;background:var(--bg2);border-radius:10px;padding:3px;margin-bottom:1rem;overflow-x:auto;-webkit-overflow-scrolling:touch}
 .nav-btn{flex:1;padding:6px 1px;border:none;background:transparent;border-radius:7px;font-size:10px;font-weight:500;color:var(--text2);cursor:pointer;font-family:inherit}
 .nav-btn.active{background:var(--bg);color:var(--teal);box-shadow:0 1px 3px rgba(0,0,0,.08)}
 
 /* 섹션 */
-.sec{display:none !important}.sec.active{display:block !important}
+.sec[hidden]{display:none !important}
 
 /* 카드 */
 .card{background:var(--bg);border:0.5px solid var(--bd);border-radius:12px;padding:.75rem .75rem;margin-bottom:.75rem}
@@ -426,7 +426,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.26</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.27</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
   <a href="https://open.kakao.com/o/sjseVrVe" target="_blank"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;text-decoration:none;white-space:nowrap">
@@ -438,18 +438,18 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 </div>
 </div>
 <div class="cat-bar" id="catBar"></div>
-<div class="nav">
-  <button class="nav-btn active" data-tab="daily">오늘기록</button>
-  <button class="nav-btn" data-tab="cgm">CGM</button>
-  <button class="nav-btn" data-tab="graph">그래프</button>
-  <button class="nav-btn" data-tab="history">기록조회</button>
-  <button class="nav-btn" data-tab="bloodtest">혈액검사</button>
-  <button class="nav-btn" data-tab="food">사료분석</button>
-  <button class="nav-btn" data-tab="ai">AI 해석</button>
+<div class="nav" id="mainNav">
+  <button class="nav-btn active" data-tab="daily" onclick="showTab('daily',this)">오늘기록</button>
+  <button class="nav-btn" data-tab="cgm" onclick="showTab('cgm',this)">CGM</button>
+  <button class="nav-btn" data-tab="graph" onclick="showTab('graph',this)">그래프</button>
+  <button class="nav-btn" data-tab="history" onclick="showTab('history',this)">기록조회</button>
+  <button class="nav-btn" data-tab="bloodtest" onclick="showTab('bloodtest',this)">혈액검사</button>
+  <button class="nav-btn" data-tab="food" onclick="showTab('food',this)">사료분석</button>
+  <button class="nav-btn" data-tab="ai" onclick="showTab('ai',this)">AI 해석</button>
 </div>
 
 <!-- ══ 오늘 기록 ══ -->
-<div class="sec active" id="tab-daily">
+<div class="sec active" id="tab-daily" style="display:block">
   <div class="metrics" id="todayMetrics">
     <div class="metric"><div class="mv" id="mBg">--</div><div class="ml">혈당 mg/dL</div></div>
     <div class="metric"><div class="mv" id="mKet">--</div><div class="ml">케톤 mmol/L</div></div>
@@ -580,7 +580,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 </div>
 
 <!-- ══ 연속혈당(CGM) ══ -->
-<div class="sec" id="tab-cgm">
+<div class="sec" id="tab-cgm" hidden>
 
   <!-- 업로드 카드 -->
   <div class="card">
@@ -694,7 +694,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 </div>
 
 <!-- ══ 그래프 ══ -->
-<div class="sec" id="tab-graph">
+<div class="sec" id="tab-graph" hidden>
   <div style="display:flex;gap:6px;margin-bottom:.6rem;flex-wrap:wrap">
     <div style="font-size:11px;color:var(--text2);align-self:center">기간:</div>
     <div class="g-chip" id="gp7" onclick="setGPeriod(7,this)">7일</div>
@@ -732,7 +732,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 </div>
 
 <!-- ══ 히스토리 ══ -->
-<div class="sec" id="tab-history">
+<div class="sec" id="tab-history" hidden>
   <!-- 루틴 스케줄표 -->
   <div class="card" style="margin-bottom:.75rem">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
@@ -771,7 +771,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 </div>
 
 <!-- ══ 혈액검사 ══ -->
-<div class="sec" id="tab-bloodtest">
+<div class="sec" id="tab-bloodtest" hidden>
   <div class="card">
     <div class="card-title">혈액검사지 업로드 → AI 자동 추출 → 항목별 그래프</div>
     <div class="drop-zone" id="btDrop">
@@ -832,7 +832,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 </div>
 
 <!-- ══ 사료분석 ══ -->
-<div class="sec" id="tab-food">
+<div class="sec" id="tab-food" hidden>
   <div class="card">
     <div class="card-title">🔢 고양이 일일 칼로리 계산기</div>
     <div style="font-size:11px;color:var(--text2);margin-bottom:.75rem;line-height:1.6">
@@ -1056,7 +1056,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 </div>
 
 <!-- ══ AI 해석 ══ -->
-<div class="sec" id="tab-ai">
+<div class="sec" id="tab-ai" hidden>
   <div class="card">
     <div class="card-title">AI 수치 해석 · 케어 질문</div>
     <div class="ai-chat" id="aiChat">
@@ -1306,24 +1306,22 @@ document.getElementById('saveMeal').onclick=()=>{
 };
 
 /* 탭 전환 */
-document.querySelectorAll('.nav-btn').forEach(b=>{
-  b.onclick=()=>{
-    try{
-      document.querySelectorAll('.nav-btn').forEach(x=>x.classList.remove('active'));
-      document.querySelectorAll('.sec').forEach(x=>x.classList.remove('active'));
-      b.classList.add('active');const tab=b.dataset.tab;
-      const tabEl=document.getElementById('tab-'+tab);
-      if(!tabEl){console.error('탭 요소 없음: tab-'+tab);return;}
-      tabEl.classList.add('active');
-      if(tab==='cgm'){renderCgmHistory();}
-      if(tab==='graph'){renderGraphs();renderBTTrend();}
-      if(tab==='history'){renderHistory();renderRoutineSchedule();}
-      if(tab==='bloodtest'){renderBTGraphs();renderBTHistoryList();}
-      if(tab==='food')renderFdHistory();
-      if(tab==='daily'){updateMetrics();updateWtDiff();updateInsulinNext();renderRoutineChecklist();}
-    }catch(e){console.error('탭 전환 오류:',e);}
-  };
-});
+window.showTab = function showTab(tab, btn) {
+  document.querySelectorAll('.nav-btn, label.nav-btn').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.sec').forEach(x=>{x.setAttribute('hidden','');x.classList.remove('active');});
+  if(btn) btn.classList.add('active');
+  const tabEl = document.getElementById('tab-'+tab);
+  if(tabEl) {
+    tabEl.removeAttribute('hidden');
+    tabEl.classList.add('active');
+  }
+  if(tab==='cgm') try{renderCgmHistory();}catch(e){}
+  if(tab==='graph') try{renderGraphs();renderBTTrend();}catch(e){}
+  if(tab==='history') try{renderHistory();renderRoutineSchedule();}catch(e){}
+  if(tab==='bloodtest') try{renderBTGraphs();renderBTHistoryList();}catch(e){}
+  if(tab==='food') try{renderFdHistory();}catch(e){}
+  if(tab==='daily') try{updateMetrics();updateWtDiff();updateInsulinNext();renderRoutineChecklist();}catch(e){}
+}
 
 /* 히스토리 */
 
@@ -3909,6 +3907,15 @@ document.addEventListener('keydown', (e) => {
     registerFirstCat();
   }
 });
+// 탭 전환 이벤트 - DOMContentLoaded 이후에도 작동하도록
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('[data-tab]').forEach(btn => {
+    btn.addEventListener('click', function() {
+      showTab(this.dataset.tab, this);
+    });
+  });
+});
+
 /* ── Supabase 연동 ── */
 const SUPA_URL = typeof process !== 'undefined' 
   ? process.env.SUPABASE_URL 
