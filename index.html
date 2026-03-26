@@ -4283,6 +4283,12 @@ async function syncFromDB() {
     }
 
     toast('☁️ 동기화 완료! 고양이 '+(state.cats.length)+'마리');
+    // 동기화 완료 후 현재 활성 탭 재렌더링
+    try {
+      var activeBtn = document.querySelector('.nav-btn.active');
+      var activeTab = (activeBtn && activeBtn.dataset && activeBtn.dataset.tab) ? activeBtn.dataset.tab : 'daily';
+      window.showTab(activeTab, activeBtn);
+    } catch(e) { console.warn('동기화 후 탭 재렌더링 오류:', e); }
   } catch(e) {
     console.error('DB 동기화 오류:', e);
     toast('⚠️ 동기화 실패: '+e.message, '#D85A30');
