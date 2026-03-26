@@ -426,7 +426,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.65</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.66</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
   <a href="https://open.kakao.com/o/sjseVrVe" target="_blank"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;text-decoration:none;white-space:nowrap">
@@ -1174,8 +1174,13 @@ function renderCatBar(){
       try{loadRoutineForCat(c);}catch(e){}
       // 오늘 기록 요약 갱신
       try{renderDailySummary();}catch(e){}
-      // CGM 탭 고양이 필드 동기화
+      // CGM 탭 고양이 필드 동기화 + 데이터 로드
       try{const cc=document.getElementById('cgmCat');if(cc)cc.value=c;}catch(e){}
+      try{loadCGMForCat(c).then(()=>{
+        const activeTab=document.querySelector('.nav-btn.active')?.dataset?.tab;
+        if(activeTab==='cgm')renderCgmHistory();
+        if(activeTab==='graph')try{renderTimelineChart(document.getElementById('timelineDatePicker')?.value||today());}catch(e){}
+      });}catch(e){}
       // 현재 열린 탭 재렌더링 (기록조회, 그래프 등 고양이별 데이터 갱신)
       try{
         const activeTab=document.querySelector('.nav-btn.active')?.dataset?.tab;
@@ -1422,7 +1427,7 @@ window.showTab = function showTab(tab, btn) {
     if(btn) btn.classList.add('active');
 
     // 렌더링
-    if(tab==='cgm') try{renderCgmHistory();const cc=document.getElementById('cgmCat');if(cc)cc.value=state.activeCat||'';}catch(e){console.warn(e);}
+    if(tab==='cgm') try{const cc=document.getElementById('cgmCat');if(cc)cc.value=state.activeCat||'';loadCGMForCat(state.activeCat).then(()=>renderCgmHistory());}catch(e){console.warn(e);}
     if(tab==='graph') try{renderGraphs();renderBTTrend();const tlDate=document.getElementById('timelineDatePicker');if(tlDate&&!tlDate.value)tlDate.value=today();try{renderTimelineChart(document.getElementById('timelineDatePicker')?.value||today());}catch(e2){console.warn(e2);}}catch(e){console.warn(e);}
     if(tab==='history') try{renderHistory();renderRoutineSchedule();}catch(e){console.warn(e);}
     if(tab==='bloodtest') try{renderBTGraphs();renderBTHistoryList();}catch(e){console.warn(e);}
@@ -3185,8 +3190,46 @@ ${itemSummary}
 ══════════════════════════════ */
 const SK_CGM='cgmData_v1';
 let cgmData=[];
-try{const d=localStorage.getItem(SK_CGM);if(d)cgmData=JSON.parse(d)}catch(e){}
-const saveCGM=()=>{try{localStorage.setItem(SK_CGM,JSON.stringify(cgmData))}catch(e){}};
+try{const d=localStorage.getItem(SK_CGM+'_'+state.activeCat);if(d)cgmData=JSON.parse(d)}catch(e){}
+
+const saveCGM=(catName)=>{
+  const cat=catName||state.activeCat;
+  // localStorage 고양이별 저장
+  try{localStorage.setItem(SK_CGM+'_'+cat,JSON.stringify(cgmData))}catch(e){}
+  // DB 저장
+  if(sbClient&&currentUser&&cat){
+    sbClient.from('user_settings').upsert({
+      user_id:currentUser.id,
+      key:'cgm_data_'+cat,
+      value:cgmData,
+      updated_at:new Date().toISOString()
+    },{onConflict:'user_id,key'}).then(({error})=>{
+      if(error)console.warn('CGM DB 저장 오류:',error);
+    });
+  }
+};
+
+async function loadCGMForCat(catName){
+  const cat=catName||state.activeCat;
+  if(!cat)return;
+  // DB 우선
+  if(sbClient&&currentUser){
+    try{
+      const {data}=await sbClient.from('user_settings')
+        .select('value').eq('user_id',currentUser.id).eq('key','cgm_data_'+cat).single();
+      if(data?.value&&Array.isArray(data.value)){
+        cgmData=data.value;
+        try{localStorage.setItem(SK_CGM+'_'+cat,JSON.stringify(cgmData));}catch(e){}
+        return;
+      }
+    }catch(e){}
+  }
+  // localStorage 폴백
+  try{
+    const local=localStorage.getItem(SK_CGM+'_'+cat)||localStorage.getItem(SK_CGM);
+    cgmData=local?JSON.parse(local):[];
+  }catch(e){cgmData=[];}
+}
 
 document.getElementById('cgmDate').value=today();
 document.getElementById('cgmCat').value=state.activeCat||'케이';
@@ -3525,7 +3568,7 @@ document.getElementById('cgmSaveBtn').onclick=()=>{
   cgmExtracted.cat = state.activeCat || cgmExtracted.cat;
   cgmData.unshift({ts:Date.now(),...cgmExtracted});
   if(cgmData.length>60)cgmData=cgmData.slice(0,60);
-  saveCGM();
+  saveCGM(state.activeCat);
   // cgmData에만 저장 (rec.bg 중복 추가 제거)
   // 타임라인은 cgmData에서 직접 읽음
   const readings=cgmExtracted.readings||[];
@@ -4317,6 +4360,7 @@ function showApp() {
   try { updateMetrics(); } catch(e) {}
   try { renderRoutineChecklist(); } catch(e) {}
   try { renderDailySummary(); } catch(e) {}
+  if(currentUser) try{loadCGMForCat(state.activeCat);}catch(e){}
 }
 
 function showOnboarding() {
@@ -4560,6 +4604,7 @@ async function syncFromDB() {
 
     // 루틴 설정 불러오기 (현재 고양이 기준)
     try { await loadRoutineForCat(state.activeCat); } catch(e) { console.warn('루틴 로드 오류:', e); }
+    try { await loadCGMForCat(state.activeCat); } catch(e) { console.warn('CGM 로드 오류:', e); }
 
     toast('☁️ 동기화 완료! 고양이 '+(state.cats.length)+'마리');
     // 동기화 후 daily 탭 데이터만 갱신 (탭 전환 없이)
