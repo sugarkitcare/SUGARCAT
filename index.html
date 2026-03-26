@@ -426,7 +426,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.40</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.45</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
   <a href="https://open.kakao.com/o/sjseVrVe" target="_blank"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;text-decoration:none;white-space:nowrap">
@@ -506,7 +506,25 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     </div>
     <div id="insCard">
     <div class="row2">
-      <div class="ig"><label>종류</label><select id="insType"><option>프로징크</option><option>글라진</option><option>레버미어</option><option>NPH</option><option>핸들러</option><option>기타</option></select></div>
+      <div class="ig"><label>종류</label><select id="insType">
+  <optgroup label="지속형 (기저 인슐린)">
+    <option>프로징크 (PZI)</option>
+    <option>글라진 (란투스/바사글라)</option>
+    <option>레버미어 (데테미르)</option>
+    <option>트레시바 (데글루덱)</option>
+    <option>캐닌슐린 (아연현탁)</option>
+    <option>NPH</option>
+  </optgroup>
+  <optgroup label="초속형 (식전/교정용)">
+    <option>노보래피드 (아스파르트)</option>
+    <option>휴마로그 (리스프로)</option>
+    <option>어피드라 (글루리신)</option>
+    <option>액트라피드 (속효성)</option>
+  </optgroup>
+  <optgroup label="기타">
+    <option>기타</option>
+  </optgroup>
+</select></div>
       <div class="ig"><label>투여량 (U)</label><input type="number" id="insVal" placeholder="예: 1.5" step="0.5"></div>
       <div class="ig"><label>날짜</label><input type="date" id="insDate"></div>
       <div class="ig"><label>투여 시각</label><input type="time" id="insTime"></div>
@@ -782,7 +800,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
       <div style="font-size:11px;color:var(--text3);margin-bottom:.5rem">혈당(점)·인슐린(막대)·식사(▲)를 시간대별로 확인해요</div>
       <div class="chart-wrap" style="height:180px"><canvas id="timelineChart"></canvas></div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:.4rem;font-size:10px;color:var(--text2)">
-        <span>🟢 혈당 (mg/dL)</span><span>🟠 인슐린 (U, 우축)</span><span>🔺 식사 (kcal, 우축)</span>
+        <span>🟢 혈당 (mg/dL) — 선+점</span><span>&nbsp;&nbsp;🔶 인슐린 — 마커 (툴팁에 U)</span><span>&nbsp;&nbsp;🔷 식사 — 마커 (툴팁에 kcal)</span>
       </div>
       <div id="timelineEmpty" style="display:none;text-align:center;padding:1rem;color:var(--text3);font-size:12px">이 날의 기록이 없어요</div>
     </div>
@@ -1524,80 +1542,103 @@ function renderTimelineChart(date) {
   const gc = isDark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.05)';
   const tc = isDark?'#B4B2A9':'#888780';
 
-  // 시각을 숫자(분)로 변환
   function timeToMin(t){ if(!t)return null; const p=t.split(':'); return parseInt(p[0])*60+parseInt(p[1]||0); }
   function minToLabel(m){ return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'); }
 
-  // 혈당 데이터
-  const bgPoints = rec.bg.filter(r=>r.bg!==''&&r.time).map(r=>({x:timeToMin(r.time),y:parseFloat(r.bg),label:`혈당 ${r.bg}mg/dL${r.ketone?(' / 케톤 '+r.ketone):''}`,time:r.time})).filter(r=>r.x!==null);
-  // 인슐린 데이터
-  const insPoints = rec.ins.filter(r=>r.dose&&r.time).map(r=>({x:timeToMin(r.time),y:parseFloat(r.dose),label:`인슐린 ${r.dose}U (${r.type||''})`,time:r.time})).filter(r=>r.x!==null);
-  // 식사 데이터
-  const mealPoints = rec.meals.filter(r=>r.time).map(r=>({x:timeToMin(r.time),y:r.kcal||1,label:`식사 ${r.name||''}${r.kcal?' '+r.kcal+'kcal':''}`,time:r.time})).filter(r=>r.x!==null);
+  // 혈당: 점+연결선
+  const bgPoints = rec.bg.filter(r=>r.bg!==''&&r.time)
+    .map(r=>({x:timeToMin(r.time), y:parseFloat(r.bg),
+      _label:'혈당 '+r.bg+'mg/dL'+(r.ketone?' / 케톤 '+r.ketone:'')+(r.type?' ('+r.type+')':'')}))
+    .filter(r=>r.x!==null).sort((a,b)=>a.x-b.x);
+
+  // 인슐린: y축 하단 고정 마커 (y=15 고정, 수치는 툴팁으로만)
+  const insPoints = rec.ins.filter(r=>r.dose&&r.time)
+    .map(r=>({x:timeToMin(r.time), y:15,
+      _label:'💉 인슐린 '+r.dose+'U'+(r.type?' ('+r.type+')':'')+(r.preBg?' 투여전혈당:'+r.preBg:'')}))
+    .filter(r=>r.x!==null);
+
+  // 식사: y축 하단 고정 마커 (y=8 고정, kcal은 툴팁으로만)
+  const mealPoints = rec.meals.filter(r=>r.time)
+    .map(r=>({x:timeToMin(r.time), y:8,
+      _label:'🍽️ '+(r.name||'식사')+(r.kcal?' '+r.kcal+'kcal':'')+(r.amt?' '+r.amt+'g':'')}))
+    .filter(r=>r.x!==null);
 
   const hasData = bgPoints.length||insPoints.length||mealPoints.length;
   if(empty) empty.style.display = hasData?'none':'block';
-  if(canvas) canvas.style.display = hasData?'block':'none';
+  canvas.style.display = hasData?'block':'none';
   if(!hasData) return;
 
-  // x축 범위: 데이터 최소~최대 + 여유
   const allX = [...bgPoints,...insPoints,...mealPoints].map(p=>p.x);
   const xMin = Math.max(0, Math.min(...allX)-60);
   const xMax = Math.min(1440, Math.max(...allX)+60);
-
-  // x축 눈금 생성
   const tickStep = (xMax-xMin)>480?120:60;
   const ticks=[];
   for(let m=Math.ceil(xMin/tickStep)*tickStep;m<=xMax;m+=tickStep) ticks.push(m);
 
+  // 목표범위 배경 플러그인 (80~200 연녹색 밴드)
+  const targetBandPlugin = {
+    id:'targetBand',
+    beforeDatasetsDraw:function(chart){
+      const yScale = chart.scales['yBg'];
+      const xScale = chart.scales['x'];
+      if(!yScale||!xScale) return;
+      const ctx2 = chart.ctx;
+      const y200 = yScale.getPixelForValue(180);
+      const y80  = yScale.getPixelForValue(70);
+      ctx2.save();
+      ctx2.fillStyle = 'rgba(29,158,117,0.08)';
+      ctx2.fillRect(xScale.left, y200, xScale.right-xScale.left, y80-y200);
+      ctx2.restore();
+    }
+  };
+
   timelineInst = new Chart(canvas, {
     type:'scatter',
+    plugins:[targetBandPlugin],
     data:{datasets:[
       // 혈당 라인+점
-      {label:'혈당',data:bgPoints.map(p=>({x:p.x,y:p.y,_label:p.label})),
-       type:'scatter',yAxisID:'yBg',
-       backgroundColor:'#1D9E75',borderColor:'#1D9E75',
-       pointRadius:6,pointHoverRadius:8,showLine:true,
-       borderWidth:1.5,tension:.3,spanGaps:false,order:1},
-      // 인슐린 막대 (scatter+bar 혼합은 type:bar로)
-      {label:'인슐린(U)',data:insPoints.map(p=>({x:p.x,y:p.y,_label:p.label})),
-       type:'bar',yAxisID:'yRight',
-       backgroundColor:'rgba(186,117,23,0.7)',borderRadius:3,
-       barThickness:10,order:3},
-      // 식사 삼각형 마커
-      {label:'식사',data:mealPoints.map(p=>({x:p.x,y:p.y,_label:p.label})),
-       type:'scatter',yAxisID:'yRight',
-       backgroundColor:'rgba(24,95,165,0.8)',borderColor:'rgba(24,95,165,0.8)',
-       pointStyle:'triangle',pointRadius:8,pointHoverRadius:10,order:2},
+      {label:'혈당',
+       data:bgPoints.map(p=>({x:p.x,y:p.y,_label:p._label})),
+       showLine:true, tension:.35, spanGaps:false,
+       borderColor:'#1D9E75', backgroundColor:'#1D9E75',
+       pointRadius:5, pointHoverRadius:8, borderWidth:2, order:1},
+      // 인슐린 마커 (y=15 고정, 다이아몬드)
+      {label:'인슐린',
+       data:insPoints.map(p=>({x:p.x,y:p.y,_label:p._label})),
+       pointStyle:'rectRot', pointRadius:7, pointHoverRadius:10,
+       backgroundColor:'rgba(186,117,23,0.9)', borderColor:'rgba(186,117,23,0.9)',
+       borderWidth:0, showLine:false, order:2},
+      // 식사 마커 (y=8 고정, 삼각형)
+      {label:'식사',
+       data:mealPoints.map(p=>({x:p.x,y:p.y,_label:p._label})),
+       pointStyle:'triangle', pointRadius:7, pointHoverRadius:10,
+       backgroundColor:'rgba(24,95,165,0.9)', borderColor:'rgba(24,95,165,0.9)',
+       borderWidth:0, showLine:false, order:3},
     ]},
     options:{
-      responsive:true,maintainAspectRatio:false,
+      responsive:true, maintainAspectRatio:false,
       plugins:{
         legend:{display:false},
-        tooltip:{callbacks:{
-          label:function(ctx){
-            const raw=ctx.raw;
-            if(raw&&raw._label) return ' '+raw._label;
-            return ' '+ctx.dataset.label+': '+ctx.parsed.y;
+        tooltip:{
+          callbacks:{
+            label:function(ctx){
+              const raw=ctx.raw;
+              return raw&&raw._label ? ' '+raw._label : ' '+ctx.dataset.label+': '+ctx.parsed.y;
+            }
           }
-        }}
+        }
       },
       scales:{
-        x:{type:'linear',min:xMin,max:xMax,
+        x:{type:'linear', min:xMin, max:xMax,
            grid:{color:gc},
-           ticks:{color:tc,font:{size:10},
-             values:ticks,
+           ticks:{color:tc, font:{size:10}, values:ticks,
              callback:function(v){return minToLabel(v);}
-           },
-           title:{display:true,text:'시각',color:tc,font:{size:9}}
+           }
         },
-        yBg:{position:'left',grid:{color:gc},
-             ticks:{color:'#1D9E75',font:{size:10}},
-             min:0,max:450,
-             title:{display:true,text:'혈당',color:'#1D9E75',font:{size:9}}},
-        yRight:{position:'right',grid:{drawOnChartArea:false},
-                ticks:{color:tc,font:{size:10}},min:0,
-                title:{display:true,text:'인슐린/식사',color:tc,font:{size:9}}}
+        yBg:{position:'left', grid:{color:gc},
+             min:0, max:450,
+             ticks:{color:'#1D9E75', font:{size:10}},
+             title:{display:true, text:'혈당 mg/dL', color:'#1D9E75', font:{size:9}}}
       }
     }
   });
@@ -1690,7 +1731,7 @@ function renderGraphs(){
   const defs=[
     {k:'bg',label:`혈당 (mg/dL) — 최· ${periodLabel}`,color:'#1D9E75',type:'line',
      yMin:0,yMax:450,
-     annotations:[{value:200,color:'rgba(186,117,23,0.4)',label:'200'},{value:80,color:'rgba(24,95,165,0.4)',label:'80'}],
+     annotations:[{value:180,color:'rgba(186,117,23,0.4)',label:'180'},{value:70,color:'rgba(24,95,165,0.4)',label:'70'}],
      fn:d=>{const r=getRec(state.activeCat,d);const arr=r.bg.filter(x=>x.bg!=='').map(x=>parseFloat(x.bg));return arr.length?Math.round(arr.reduce((a,b)=>a+b)/arr.length):null}},
     {k:'ket',label:`케톤 (mmol/L) — 최· ${periodLabel}`,color:'#BA7517',type:'line',
      yMin:0,yMax:6,
@@ -3457,7 +3498,7 @@ ${isPasta?'카카오헬스케어 파스타(PASTA)':'케어센스 에어(CareSens
 - 고혈당: >200 mg/dL / 위험: >400 mg/dL + 케톤 상승 → DKA 의심
 - TIR 목표: ≥70% (고양이 당뇨 관리 목표)
 - 급변동 기준: 15분 내 40 mg/dL 이상 변화
-- 인슐린 피크: 프로징크 4~8h / 글라진·레버미어 6~12h
+- 인슐린 피크: 프로징크(PZI) 4~8h / 글라진·레버미어·트레시바 6~16h / 캐닌슐린 4~8h / 초속형(노보래피드 등) 1~3h
 ${isPasta?`- GMI 참고: 고양이 당화혈색소 직접 비교는 부정확하나 혈당 조절 경향 참고 가능
 - CV% 안정 기준: ≤36% (변동성 낮을수록 안정적 관리)
 - 파스타 이벤트(식사·운동인슐린) 기록이 있으면 이벤트 전후 혈당 반응 반드시 분석`:''}
@@ -4691,22 +4732,67 @@ initSupabase();
     <label>품종</label>
     <select id="cpBreed" style="padding:10px 12px;border:0.5px solid var(--bd);border-radius:9px;font-size:14px;background:var(--bg);color:var(--text);font-family:inherit;width:100%;box-sizing:border-box">
       <option value="">선택 안 함</option>
-      <option value="코리안숏헤어">코리안숏헤어 (한국 고양이)</option>
-      <option value="러시안블루">러시안블루</option>
-      <option value="스코티시폴드">스코티시폴드</option>
-      <option value="브리티시숏헤어">브리티시숏헤어</option>
-      <option value="페르시안">페르시안</option>
-      <option value="메인쿤">메인쿤</option>
-      <option value="노르웨이숲">노르웨이숲</option>
-      <option value="샴">샴</option>
-      <option value="아비시니안">아비시니안</option>
-      <option value="벵갈">벵갈</option>
-      <option value="먼치킨">먼치킨</option>
-      <option value="스핑크스">스핑크스</option>
-      <option value="터키쉬앙고라">터키쉬앙고라</option>
-      <option value="버만">버만</option>
-      <option value="라가머핀">라가머핀</option>
-      <option value="직접입력">직접 입력...</option>
+      <optgroup label="국내 인기">
+        <option value="코리안숏헤어">코리안숏헤어 (한국 고양이)</option>
+        <option value="스코티시폴드">스코티시폴드</option>
+        <option value="브리티시숏헤어">브리티시숏헤어</option>
+        <option value="러시안블루">러시안블루</option>
+        <option value="먼치킨">먼치킨</option>
+        <option value="메인쿤">메인쿤</option>
+        <option value="페르시안">페르시안</option>
+        <option value="랙돌">랙돌</option>
+        <option value="아메리칸숏헤어">아메리칸숏헤어</option>
+        <option value="노르웨이숲">노르웨이숲</option>
+        <option value="샴">샴</option>
+        <option value="벵갈">벵갈</option>
+      </optgroup>
+      <optgroup label="장모종">
+        <option value="페르시안">페르시안</option>
+        <option value="메인쿤">메인쿤</option>
+        <option value="노르웨이숲">노르웨이숲</option>
+        <option value="랙돌">랙돌</option>
+        <option value="버만">버만</option>
+        <option value="라가머핀">라가머핀</option>
+        <option value="터키쉬앙고라">터키쉬앙고라</option>
+        <option value="터키쉬반">터키쉬반</option>
+        <option value="히말라얀">히말라얀</option>
+        <option value="바리니즈">바리니즈</option>
+        <option value="소말리">소말리</option>
+        <option value="재패니즈밥테일(장모)">재패니즈밥테일 (장모)</option>
+      </optgroup>
+      <optgroup label="단모종">
+        <option value="아비시니안">아비시니안</option>
+        <option value="아메리칸숏헤어">아메리칸숏헤어</option>
+        <option value="이집션마우">이집션마우</option>
+        <option value="싱가푸라">싱가푸라</option>
+        <option value="오리엔탈숏헤어">오리엔탈숏헤어</option>
+        <option value="통키니즈">통키니즈</option>
+        <option value="데본렉스">데본렉스</option>
+        <option value="코니쉬렉스">코니쉬렉스</option>
+        <option value="셀커크렉스">셀커크렉스</option>
+        <option value="스핑크스">스핑크스</option>
+        <option value="봄베이">봄베이</option>
+        <option value="브리티시론헤어">브리티시론헤어</option>
+        <option value="버미즈">버미즈</option>
+        <option value="재패니즈밥테일">재패니즈밥테일</option>
+        <option value="아메리칸컬">아메리칸컬</option>
+        <option value="아메리칸밥테일">아메리칸밥테일</option>
+        <option value="스노우슈">스노우슈</option>
+        <option value="하바나브라운">하바나브라운</option>
+        <option value="코랫">코랫</option>
+        <option value="샤르트뢰">샤르트뢰</option>
+        <option value="라팜">라팜</option>
+        <option value="오시캣">오시캣</option>
+        <option value="자바니즈">자바니즈</option>
+        <option value="컬러포인트숏헤어">컬러포인트숏헤어</option>
+      </optgroup>
+      <optgroup label="희귀·기타">
+        <option value="사바나">사바나</option>
+        <option value="카라칼혼혈">카라칼혼혈</option>
+        <option value="폴드계열혼혈">폴드계열혼혈</option>
+        <option value="믹스(혼혈)">믹스 (혼혈)</option>
+        <option value="직접입력">직접 입력...</option>
+      </optgroup>
     </select>
     <input type="text" id="cpBreedCustom" placeholder="품종 직접 입력" style="display:none;margin-top:6px;padding:10px 12px;border:0.5px solid var(--bd);border-radius:9px;font-size:14px;background:var(--bg);color:var(--text);font-family:inherit;width:100%;box-sizing:border-box"></div>
   <div class="row2" style="margin-bottom:10px">
@@ -4720,7 +4806,26 @@ initSupabase();
       <select id="cpNeuter"><option value="">선택</option><option value="yes">했어요</option><option value="no">안했어요</option></select>
     </div>
     <div class="ig"><label>인슐린 종류</label>
-      <select id="cpInsulin"><option value="">없음</option><option value="프로징크">프로징크</option><option value="글라진">글라진</option><option value="레버미어">레버미어</option><option value="NPH">NPH</option></select>
+      <select id="cpInsulin">
+  <option value="">없음</option>
+  <optgroup label="지속형">
+    <option value="프로징크 (PZI)">프로징크 (PZI)</option>
+    <option value="글라진 (란투스/바사글라)">글라진 (란투스/바사글라)</option>
+    <option value="레버미어 (데테미르)">레버미어 (데테미르)</option>
+    <option value="트레시바 (데글루덱)">트레시바 (데글루덱)</option>
+    <option value="캐닌슐린 (아연현탁)">캐닌슐린 (아연현탁)</option>
+    <option value="NPH">NPH</option>
+  </optgroup>
+  <optgroup label="초속형">
+    <option value="노보래피드 (아스파르트)">노보래피드 (아스파르트)</option>
+    <option value="휴마로그 (리스프로)">휴마로그 (리스프로)</option>
+    <option value="어피드라 (글루리신)">어피드라 (글루리신)</option>
+    <option value="액트라피드 (속효성)">액트라피드 (속효성)</option>
+  </optgroup>
+  <optgroup label="기타">
+    <option value="기타">기타</option>
+  </optgroup>
+</select>
     </div>
   </div>
   <div style="font-size:11px;font-weight:500;color:var(--text2);margin-bottom:.4rem">동반 질환</div>
