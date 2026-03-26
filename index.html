@@ -1308,6 +1308,9 @@ document.getElementById('saveMeal').onclick=()=>{
 /* 탭 전환 */
 window.showTab = function showTab(tab, btn) {
   try {
+    // #app이 혹시 숨겨져 있으면 강제로 표시
+    var appEl = document.getElementById('app');
+    if(appEl && appEl.style.display === 'none') appEl.style.display = 'block';
     // 모든 탭 숨기기
     var secs = document.querySelectorAll('.sec');
     for(var i=0; i<secs.length; i++){
@@ -4032,6 +4035,12 @@ function showApp() {
     document.getElementById('logoutBtn').style.display = 'block';
     syncFromDB();
   }
+  // 로그인 후 활성 탭 초기 렌더링 보장
+  try {
+    var activeBtn = document.querySelector('.nav-btn.active') || document.querySelector('.nav-btn[data-tab="daily"]');
+    var activeTab = (activeBtn && activeBtn.dataset && activeBtn.dataset.tab) ? activeBtn.dataset.tab : 'daily';
+    window.showTab(activeTab, activeBtn);
+  } catch(e) { console.warn('showApp 탭 초기화 오류:', e); }
 }
 
 function showOnboarding() {
