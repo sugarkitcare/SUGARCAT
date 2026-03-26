@@ -426,7 +426,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.66</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.67</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
   <a href="https://open.kakao.com/o/sjseVrVe" target="_blank"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;text-decoration:none;white-space:nowrap">
@@ -595,7 +595,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 
   <!-- 업로드 카드 -->
   <div class="card">
-    <div class="card-title">📸 CGM 앱 스크린· → AI 혈당 데이터 자동 추출</div>
+    <div class="card-title">📸 CGM 앱 스크린샷 → AI 혈당 데이터 자동 추출</div>
 
     <!-- 앱 선택 -->
     <div style="font-size:11px;color:var(--text2);margin-bottom:.6rem">어떤 앱 화면을 업로드할 건가요?</div>
@@ -631,9 +631,9 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
       5분 간격 측정 데이터, 변동 화살표, 목표범위 밴드를 읽어요.
     </div>
     <div class="drop-zone" id="cgmDrop">
-      <div class="drop-title" id="cgmDropTitle">케어센스 에어 스크린· 업로드</div>
+      <div class="drop-title" id="cgmDropTitle">케어센스 에어 스크린샷 업로드</div>
       <div class="drop-sub">하루치 혈당 그래프 화면 캡처 · JPG/PNG</div>
-      <label class="drop-lbl" for="cgmFile">스크린· 선택</label>
+      <label class="drop-lbl" for="cgmFile">스크린샷 선택</label>
       <input type="file" id="cgmFile" accept="image/*" style="display:none">
     </div>
     <img id="cgmPreview" class="img-prev" style="display:none">
@@ -1064,7 +1064,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     <div style="background:var(--blue-l);border-radius:10px;padding:.75rem 1rem;margin-bottom:.75rem;font-size:12px;color:var(--blue);line-height:1.7">
       <div style="font-weight:500;margin-bottom:.3rem">· 정확한 분석을 위한 촬영 가이드</div>
       <div style="display:flex;flex-direction:column;gap:3px">
-        <div>✅ <b>포장지 실물 촬영</b> — ·면 보증분석치 표 부분만 클로즈업 <span style="color:var(--teal);font-weight:500">(가장 정확)</span></div>
+        <div>✅ <b>포장지 실물 촬영</b> — 뒷면 보증분석치 표 부분만 클로즈업 <span style="color:var(--teal);font-weight:500">(가장 정확)</span></div>
         <div>✅ <b>성분표 부분만 크롭</b> — 상세페이지에서 영양성분 표만 잘라서 캡처</div>
         <div>⚠️ <b>상세페이지 전체 캡처</b> — 마케팅 텍스트가 섞여 오류 가능</div>
         <div>❌ <b>카카오톡 앱 화면 캡처</b> — 정확도 매우 낮음</div>
@@ -1097,7 +1097,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
   <div class="card">
     <div class="card-title">AI 수치 해석 · 케어 질문</div>
     <div class="ai-chat" id="aiChat">
-      <div class="ai-msg bot">안녕하세요! 혈당·케톤·체중·사료 관련 궁금한 점을 입력해주세요 🐾<br>오늘 기록을 바탕으로 분석해드릴게요.</div>
+      <div class="ai-msg bot">안녕하세요! 오늘 기록된 수치나 케어 관련 궁금한 점을 자유롭게 입력해주세요 🐾<br>기록을 바탕으로 함께 분석해드릴게요.</div>
     </div>
     <button class="btn btn-teal" id="autoAnalyze" style="margin-bottom:.6rem">📊 오늘 기록 자동 분석</button>
     <div class="ai-row">
@@ -1759,11 +1759,11 @@ function renderGraphs(){
   const periodLabel=gPeriod===0?'전체':gPeriod+'일';
 
   const defs=[
-    {k:'ket',label:`케톤 (mmol/L) — 최· ${periodLabel}`,color:'#BA7517',type:'line',
+    {k:'ket',label:`케톤 (mmol/L) — ${periodLabel}`,color:'#BA7517',type:'line',
      yMin:0,yMax:6,
      annotations:[{value:2.4,color:'rgba(216,90,48,0.5)',label:'2.4 위험'},{value:0.5,color:'rgba(186,117,23,0.3)',label:'0.5 주의'}],
      fn:d=>{const r=getRec(state.activeCat,d);const arr=r.bg.filter(x=>x.ketone!=='').map(x=>parseFloat(x.ketone));return arr.length?parseFloat((arr.reduce((a,b)=>a+b)/arr.length).toFixed(2)):null}},
-    {k:'wt',label:`체중 (kg) — 최· ${periodLabel}`,color:'#534AB7',type:'line',
+    {k:'wt',label:`체중 (kg) — ${periodLabel}`,color:'#534AB7',type:'line',
      fn:d=>{const r=getRec(state.activeCat,d);const ws=r.weights||[];return ws.length?ws[ws.length-1].weight:null}},
   ];
 
@@ -2194,7 +2194,7 @@ const HCM_CRITERIA = {
   'B1': {
     color: '#1D9E75',
     label: 'Stage B1 — 무증상, 저위험',
-    desc: '심장 변화는 있으나 심부전 위험 낮음. 식이 제한보다 ·형 잡힌 영양 유지가 우선.',
+    desc: '심장 변화는 있으나 심부전 위험 낮음. 식이 제한보다 균형 잡힌 영양 유지가 우선.',
     checklist: [
       {icon:'✅', text:'나트륨 DM 0.4% 이하 사료 권장 (고나트륨 회피)', ok:true},
       {icon:'✅', text:'충분한 단백질 유지 — 근육 손실 예방 핵심', ok:true},
@@ -2202,7 +2202,7 @@ const HCM_CRITERIA = {
       {icon:'ℹ️', text:'오메가3(EPA/DHA) 보충 고려 — 항염 효과', ok:null},
       {icon:'🚫', text:'고나트륨 간식 및 사람 음식 금지', ok:false},
     ],
-    note:'※ B1은 식이 제한보다 영양 ·형이 핵심. 식욕 유지가 중요해요.'
+    note:'※ B1은 식이 제한보다 영양 균형이 핵심. 식욕 유지가 중요해요.'
   },
   'B2': {
     color: '#BA7517',
@@ -2222,7 +2222,7 @@ const HCM_CRITERIA = {
     label: 'Stage C — 심부전(CHF) 또는 혈전 경험',
     desc: '심부전 발생 또는 혈전 경험. 나트륨 추가 제한, 식욕 유지가 최우선.',
     checklist: [
-      {icon:'⚠️', text:'나트륨 DM 0.3% 이하 — 적· 제한', ok:false},
+      {icon:'⚠️', text:'나트륨 DM 0.3% 이하 — 적극 제한', ok:false},
       {icon:'✅', text:'충분한 칼로리·단백질 — 심장 악액질(cachexia) 예방 필수', ok:true},
       {icon:'✅', text:'타우린 + 오메가3 보충 권장', ok:true},
       {icon:'⚠️', text:'식욕 감소 시 고칼로리 습식 우선, 억지로 먹이지 않기', ok:null},
@@ -2715,11 +2715,11 @@ function buildCtx(){
   const lw=rec.weights.length?rec.weights[rec.weights.length-1]:null;
   const kcal=rec.meals.reduce((a,m)=>a+m.kcal,0);
   let ctx=`고양이: ${state.activeCat}\n오늘: ${today()}\n`;
-  if(lb)ctx+=`최· 혈당: ${lb.bg}mg/dL, 케톤: ${lb.ketone}mmol/L (${lb.time} ${lb.type})\n`;
-  if(li)ctx+=`최· 인슐린: ${li.type} ${li.dose}U (${li.time})\n`;
+  if(lb)ctx+=`최근 혈당: ${lb.bg}mg/dL, 케톤: ${lb.ketone}mmol/L (${lb.time} ${lb.type})\n`;
+  if(li)ctx+=`최근 인슐린: ${li.type} ${li.dose}U (${li.time})\n`;
   if(lw)ctx+=`오늘 체중: ${lw.weight}kg\n`;
   if(kcal)ctx+=`오늘 총 칼로리: ${kcal}kcal\n`;
-  if(fdData.length){const last=fdData[0].data;const m=last.moisture??75;const carb=last.carb_af??estCarb(last.protein_af??0,last.fat_af??0,last.fiber_af??0,last.ash_af??(last.type==='wet'?2:7),m);ctx+=`최· 분석 사료: ${fdData[0].name} (탄수 DM ${cDM(carb,m)}%)\n`;}
+  if(fdData.length){const last=fdData[0].data;const m=last.moisture??75;const carb=last.carb_af??estCarb(last.protein_af??0,last.fat_af??0,last.fiber_af??0,last.ash_af??(last.type==='wet'?2:7),m);ctx+=`최근 분석 사료: ${fdData[0].name} (탄수 DM ${cDM(carb,m)}%)\n`;}
   return ctx;
 }
 async function sendAI(msg){
