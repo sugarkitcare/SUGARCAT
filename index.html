@@ -426,7 +426,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.51</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.52</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
   <a href="https://open.kakao.com/o/sjseVrVe" target="_blank"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;text-decoration:none;white-space:nowrap">
@@ -1532,11 +1532,28 @@ function renderTimelineChart(date) {
   function timeToMin(t){ if(!t)return null; const p=t.split(':'); return parseInt(p[0])*60+parseInt(p[1]||0); }
   function minToLabel(m){ return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'); }
 
-  // 혈당: 점+연결선
-  const bgPoints = rec.bg.filter(r=>r.bg!==''&&r.time)
+  // 혈당: 점+연결선 (수동 입력 + CGM 데이터 통합)
+  const bgManual = rec.bg.filter(r=>r.bg!==''&&r.time)
     .map(r=>({x:timeToMin(r.time), y:parseFloat(r.bg),
       _label:'혈당 '+r.bg+'mg/dL'+(r.ketone?' / 케톤 '+r.ketone:'')+(r.type?' ('+r.type+')':'')}))
-    .filter(r=>r.x!==null).sort((a,b)=>a.x-b.x);
+    .filter(r=>r.x!==null);
+
+  // CGM 데이터에서 해당 날짜+고양이 readings 추가
+  const cgmForDay = (typeof cgmData !== 'undefined' ? cgmData : [])
+    .filter(c=>c.date===d && c.cat===state.activeCat);
+  const bgCGM = cgmForDay.flatMap(c=>(c.readings||[])
+    .filter(r=>r.time&&r.value)
+    .map(r=>({x:timeToMin(r.time), y:r.value,
+      _label:'혈당 '+r.value+'mg/dL (CGM)'})))
+    .filter(r=>r.x!==null);
+
+  // 수동 입력 우선, CGM 중복 제거 (같은 시각 ±2분)
+  const bgAll = [...bgManual];
+  bgCGM.forEach(cp=>{
+    const dup = bgManual.some(mp=>Math.abs(mp.x-cp.x)<=2);
+    if(!dup) bgAll.push(cp);
+  });
+  const bgPoints = bgAll.sort((a,b)=>a.x-b.x);
 
   // 인슐린: y축 하단 고정 마커 (y=15 고정, 수치는 툴팁으로만)
   const insPoints = rec.ins.filter(r=>r.dose&&r.time)
@@ -2674,7 +2691,21 @@ const defaultItems=[
 ];
 let routineItems=defaultItems;
 try{const d=localStorage.getItem(SK_RT);if(d)routineItems=JSON.parse(d)}catch(e){}
-const saveRT=()=>{try{localStorage.setItem(SK_RT,JSON.stringify(routineItems))}catch(e){}};
+const saveRT=()=>{
+  try{localStorage.setItem(SK_RT,JSON.stringify(routineItems))}catch(e){}
+  // DB 연동: routineItems를 daily_records의 특별 키로 저장
+  if(sbClient && currentUser) {
+    sbClient.from('daily_records').upsert({
+      cat_id: null,
+      user_id: currentUser.id,
+      record_date: 'routine_settings',
+      data: {routineItems: routineItems},
+      updated_at: new Date().toISOString()
+    }, {onConflict: 'user_id,record_date'}).then(({error})=>{
+      if(error) console.warn('루틴 설정 DB 저장 오류:', error);
+    });
+  }
+};
 const catColor={med:'#534AB7',food:'#BA7517',other:'#1D9E75'};
 const catLabel={med:'약 및 보조제',food:'간식 및 음수',other:'기타루틴'};
 const routineSelected=new Set();
@@ -3412,7 +3443,7 @@ document.getElementById('cgmSaveBtn').onclick=()=>{
       bg:r.value,ketone:'',time:r.time,type:'CGM',note:'CGM 자동입력',ts:Date.now()
     });
   });
-  saveS();
+  saveS(cgmExtracted.date);
   toast(`${readings.length}개 혈당 데이터 저장 완료!`);
   renderCgmHistory();
 };
@@ -4424,6 +4455,18 @@ async function syncFromDB() {
         await migrateBloodTestsToDB();
       }, 2000);
     }
+
+    // 루틴 설정 불러오기
+    try {
+      const { data: rtData } = await sbClient.from('daily_records')
+        .select('data').eq('user_id', currentUser.id).eq('record_date', 'routine_settings').single();
+      if(rtData?.data?.routineItems && Array.isArray(rtData.data.routineItems)) {
+        routineItems = rtData.data.routineItems;
+        try{localStorage.setItem(SK_RT, JSON.stringify(routineItems));}catch(e){}
+        renderRoutineTags();
+        renderRoutineChecklist();
+      }
+    } catch(e) {}
 
     toast('☁️ 동기화 완료! 고양이 '+(state.cats.length)+'마리');
     // 동기화 후 daily 탭 데이터만 갱신 (탭 전환 없이)
