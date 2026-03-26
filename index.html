@@ -426,7 +426,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.60</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.62</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
   <a href="https://open.kakao.com/o/sjseVrVe" target="_blank"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;text-decoration:none;white-space:nowrap">
@@ -457,6 +457,17 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     <div class="metric purple"><div class="mv" id="mWt">--</div><div class="ml">체중 kg</div></div>
   </div>
 
+  <!-- 오늘 기록 미니 요약 -->
+  <div class="card" id="dailySummaryCard" style="margin-bottom:.75rem">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
+      <div style="font-size:12px;font-weight:500;color:var(--text2)">📋 오늘 기록</div>
+      <div style="font-size:10px;color:var(--text3)" id="dailySummaryDate"></div>
+    </div>
+    <div id="dailySummaryList" style="font-size:12px;color:var(--text);line-height:1.9">
+      <div style="color:var(--text3);text-align:center;padding:.5rem">오늘 기록이 없어요</div>
+    </div>
+  </div>
+
   <!-- 8번: 인슐린 투여 예정 표시 -->
   <div id="insulinNextBanner" style="display:none;background:var(--amber-l);border-radius:10px;padding:.65rem 1rem;margin-bottom:.75rem;font-size:12px;color:var(--amber-d)">
     <div style="display:flex;align-items:center;gap:8px">
@@ -468,9 +479,9 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.65rem;cursor:pointer" onclick="toggleCard('bgCard',this)">
       <span style="font-size:12px;font-weight:500;color:var(--text2)">혈당 · 케톤</span>
-      <span style="font-size:11px;color:var(--teal)">▲ 접기</span>
+      <span style="font-size:11px;color:var(--teal)">▼ 펼치기</span>
     </div>
-    <div id="bgCard">
+    <div id="bgCard" style="display:none">
     <div class="kg-row"><span class="kg kg1">정상 &lt;0.5</span><span class="kg kg2">주의 0.5~2.3</span><span class="kg kg3">위험 ≥2.4</span></div>
     <div class="row2">
       <div class="ig"><label>혈당 (mg/dL)</label><input type="number" id="bgVal" placeholder="예: 250"></div>
@@ -486,9 +497,9 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.65rem;cursor:pointer" onclick="toggleCard('wtCard',this)">
       <span style="font-size:12px;font-weight:500;color:var(--text2)">몸무게</span>
-      <span style="font-size:11px;color:var(--teal)">▲ 접기</span>
+      <span style="font-size:11px;color:var(--teal)">▼ 펼치기</span>
     </div>
-    <div id="wtCard">
+    <div id="wtCard" style="display:none">
     <div class="row2">
       <div class="ig"><label>체중 (kg)</label><input type="number" id="wtVal" placeholder="예: 3.54" step="0.01"></div>
       <div class="ig"><label>날짜</label><input type="date" id="wtDate"></div>
@@ -502,9 +513,9 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.65rem;cursor:pointer" onclick="toggleCard('insCard',this)">
       <span style="font-size:12px;font-weight:500;color:var(--text2)">인슐린 투여</span>
-      <span style="font-size:11px;color:var(--teal)">▲ 접기</span>
+      <span style="font-size:11px;color:var(--teal)">▼ 펼치기</span>
     </div>
-    <div id="insCard">
+    <div id="insCard" style="display:none">
     <div class="row2">
       <div class="ig"><label>종류</label><select id="insType">
   <optgroup label="지속형 (기저 인슐린)">
@@ -536,9 +547,9 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.65rem;cursor:pointer" onclick="toggleCard('mealCard',this)">
       <span style="font-size:12px;font-weight:500;color:var(--text2)">식사 · 칼로리</span>
-      <span style="font-size:11px;color:var(--teal)">▲ 접기</span>
+      <span style="font-size:11px;color:var(--teal)">▼ 펼치기</span>
     </div>
-    <div id="mealCard">
+    <div id="mealCard" style="display:none">
     <div class="row2">
       <div class="ig"><label>사료명</label><input type="text" id="foodName" placeholder="예: 몬지 레날"></div>
       <div class="ig"><label>급여량 (g)</label><input type="number" id="foodAmt" placeholder="g"></div>
@@ -550,14 +561,17 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     </div>
   </div>
   <div class="card" id="routineCard">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
-    <div class="card-title">💊 투약·보조제·루틴</div>
-    <button type="button" onclick="openCatProfile(state.activeCat)"
-      style="font-size:10px;color:var(--text3);background:none;border:none;cursor:pointer;font-family:inherit;padding:2px 4px">
-      ⚙️ 항목 설정
-    </button>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;cursor:pointer" onclick="toggleCard('routineBody',this)">
+    <div style="font-size:12px;font-weight:500;color:var(--text2)">💊 투약·보조제·루틴</div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <button type="button" onclick="event.stopPropagation();openCatProfile(state.activeCat)"
+        style="font-size:10px;color:var(--text3);background:none;border:none;cursor:pointer;font-family:inherit;padding:2px 4px">
+        ⚙️ 항목 설정
+      </button>
+      <span style="font-size:11px;color:var(--teal)">▼ 펼치기</span>
+    </div>
   </div>
-
+  <div id="routineBody" style="display:none">
   <!-- 오늘 루틴 체크리스트 -->
   <div id="routineChecklist"></div>
 
@@ -572,6 +586,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
   </div>
   <input type="hidden" id="routineTime">
   <input type="hidden" id="routineMemo">
+  </div><!-- /routineBody -->
 </div>
 
 </div><!-- /tab-daily -->
@@ -750,16 +765,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 
 <!-- ══ 히스토리 ══ -->
 <div class="sec" id="tab-history" style="display:none">
-  <!-- 루틴 스케줄표 -->
-  <div class="card" style="margin-bottom:.75rem">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
-      <div class="card-title" style="margin:0">📋 오늘 루틴 스케줄</div>
-      <div style="font-size:11px;color:var(--text3)" id="routineScheduleDate"></div>
-    </div>
-    <div id="routineScheduleList"></div>
-  </div>
-
-  <!-- 날짜 네비게이션 -->
+  <!-- 날짜 네비게이션 (상단 고정) -->
   <div style="display:flex;align-items:center;gap:8px;margin-bottom:.75rem;background:var(--bg2);border-radius:10px;padding:.5rem .75rem">
     <button type="button" onclick="histNavDate(-1)"
       style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text2);padding:0 4px">‹</button>
@@ -771,19 +777,33 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     <button type="button" onclick="document.getElementById('histDatePicker').value=today();renderHistory();"
       style="padding:3px 10px;border:0.5px solid var(--bd);border-radius:7px;background:transparent;color:var(--teal);font-size:11px;cursor:pointer;font-family:inherit">오늘</button>
   </div>
-  <div style="background:var(--teal-l);border-radius:10px;padding:.75rem 1rem;margin-bottom:.75rem">
-      <div style="font-size:12px;font-weight:500;color:var(--teal-d);margin-bottom:.3rem">📋 기록 내보내기</div>
-      <div style="font-size:11px;color:var(--teal);line-height:1.7;margin-bottom:.6rem">
-        혈당·케톤·체중·인슐린·식사·투약 기록을 CSV 파일로 저장해요.<br>
-        • 병원 진료 시 수의사에게 참고 자료로 제출할 수 있어요<br>
-        • 이메일 또는 카카오톡으로 공유해서 원격 상담에도 활용 가능해요<br>
-        • 엑셀 또는 구글 스프레드시트에서 바로 열 수 있어요
-      </div>
-      <button onclick="exportCSV()" style="padding:6px 16px;background:var(--teal);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit">📥 CSV 파일 다운로드</button>
+
+  <!-- 루틴 스케줄표 -->
+  <div class="card" style="margin-bottom:.75rem">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
+      <div class="card-title" style="margin:0">📋 루틴 스케줄</div>
+      <div style="font-size:11px;color:var(--text3)" id="routineScheduleDate"></div>
     </div>
-    <div class="card">
-    <div class="card-title">오늘 기록 타임라인</div>
-    <div class="log-list" id="logList"><div class="empty">오늘 기록이 없어요</div></div>
+    <div id="routineScheduleList"></div>
+  </div>
+  <div class="card">
+    <div class="card-title" id="histLogTitle">기록 타임라인</div>
+    <div class="log-list" id="logList"><div class="empty">이 날의 기록이 없어요</div></div>
+  </div>
+
+  <!-- CSV 내보내기 (하단) -->
+  <div class="card" style="margin-top:.5rem">
+    <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="toggleCard('csvBody',this)">
+      <div style="font-size:12px;font-weight:500;color:var(--text2)">📥 기록 내보내기</div>
+      <span style="font-size:11px;color:var(--teal)">▼ 펼치기</span>
+    </div>
+    <div id="csvBody" style="display:none;margin-top:.75rem">
+      <div style="font-size:11px;color:var(--text2);line-height:1.7;margin-bottom:.6rem">
+        혈당·케톤·체중·인슐린·식사·투약 기록을 CSV로 저장해요.<br>
+        병원 진료 시 수의사 참고 자료로 활용 가능해요.
+      </div>
+      <button onclick="exportCSV()" style="padding:8px 16px;background:var(--teal);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;width:100%">📥 CSV 파일 다운로드</button>
+    </div>
   </div>
 </div>
 
@@ -1284,6 +1304,49 @@ function updateMetrics(){
 }
 updateMetrics();
 
+function renderDailySummary() {
+  const el = document.getElementById('dailySummaryList');
+  const dateEl = document.getElementById('dailySummaryDate');
+  if(!el) return;
+  const d = today();
+  if(dateEl) dateEl.textContent = d;
+  const rec = getRec(state.activeCat, d);
+  const items = [];
+
+  // 혈당
+  rec.bg.forEach(r => {
+    if(r.bg !== '') {
+      const st = bgSt(r.bg, r.ketone);
+      const color = st==='danger'?'var(--coral)':st==='warn'?'var(--amber)':'var(--teal)';
+      items.push({ts:r.ts, html:`<span style="color:${color};font-weight:600">${r.bg}</span> mg/dL${r.ketone?' · 케톤 '+r.ketone:''}  <span style="color:var(--text3);font-size:11px">${r.time} ${r.type}</span>`});
+    }
+  });
+  // 인슐린
+  rec.ins.forEach(r => {
+    items.push({ts:r.ts, html:`💉 ${r.type} <span style="font-weight:600">${r.dose}U</span>  <span style="color:var(--text3);font-size:11px">${r.time}</span>`});
+  });
+  // 식사
+  rec.meals.forEach(r => {
+    items.push({ts:r.ts, html:`🍽️ ${r.name||'식사'}${r.kcal?' '+r.kcal+'kcal':''}  <span style="color:var(--text3);font-size:11px">${r.time}</span>`});
+  });
+  // 체중
+  (rec.weights||[]).forEach(r => {
+    items.push({ts:r.ts, html:`⚖️ <span style="font-weight:600">${r.weight}kg</span>  <span style="color:var(--text3);font-size:11px">${r.time}</span>`});
+  });
+  // 루틴 (체크된 것만)
+  const doneSet = new Set((rec.routines||[]).flatMap(r=>r.items||[]));
+  if(doneSet.size) {
+    items.push({ts:Date.now(), html:`✅ ${[...doneSet].join(', ')}`});
+  }
+
+  if(!items.length) {
+    el.innerHTML = '<div style="color:var(--text3);text-align:center;padding:.5rem;font-size:12px">아직 오늘 기록이 없어요</div>';
+    return;
+  }
+  items.sort((a,b)=>a.ts-b.ts);
+  el.innerHTML = items.map(i=>`<div style="padding:2px 0;border-bottom:0.5px solid var(--bd)">${i.html}</div>`).join('');
+}
+
 function updateWtDiff(){
   const cat=state.activeCat,recs=state.records[cat]||{};
   const dates=Object.keys(recs).sort().reverse();
@@ -1307,21 +1370,21 @@ document.getElementById('saveBg').onclick=()=>{
   getRec(state.activeCat,today()).bg.push({bg:isNaN(bg)?'':bg,ketone:isNaN(ket)?'':ket,time:document.getElementById('bgTime').value,type:document.getElementById('bgType').value,note:document.getElementById('bgNote').value,ts:Date.now()});
   const bgD=document.getElementById('bgDate').value||today();saveS(bgD);updateMetrics();updateInsulinNext();
   checkKetoneAlert(ket, bg);
-  ['bgVal','ketVal','bgNote'].forEach(id=>document.getElementById(id).value='');toast('혈당·케톤 저장 완료!');
+  ['bgVal','ketVal','bgNote'].forEach(id=>document.getElementById(id).value='');toast('혈당·케톤 저장 완료!');renderDailySummary();
 };
 document.getElementById('saveWt').onclick=()=>{
   const w=parseFloat(document.getElementById('wtVal').value);if(isNaN(w)){toast('체중을 입력해주세요','#D85A30');return}
   const wtD=document.getElementById('wtDate').value||today();
   getRec(state.activeCat,wtD).weights.push({weight:w,time:document.getElementById('wtTime').value,note:document.getElementById('wtNote').value,ts:Date.now()});
   saveS(wtD);updateMetrics();updateWtDiff();['wtVal','wtNote'].forEach(id=>document.getElementById(id).value='');
-  toast(wtD!==today()?wtD+' 날짜로 저장됐어요':'체중 저장 완료!');
+  toast(wtD!==today()?wtD+' 날짜로 저장됐어요':'체중 저장 완료!');renderDailySummary();
 };
 document.getElementById('saveIns').onclick=()=>{
   const dose=parseFloat(document.getElementById('insVal').value);if(isNaN(dose)){toast('투여량을 입력해주세요','#D85A30');return}
   const insD=document.getElementById('insDate').value||today();
   getRec(state.activeCat,insD).ins.push({type:document.getElementById('insType').value,dose,time:document.getElementById('insTime').value,preBg:document.getElementById('insPreBg').value,ts:Date.now()});
   saveS(insD);updateMetrics();updateInsulinNext();['insVal','insPreBg'].forEach(id=>document.getElementById(id).value='');
-  toast(insD!==today()?insD+' 날짜로 저장됐어요':'인슐린 저장 완료!');
+  toast(insD!==today()?insD+' 날짜로 저장됐어요':'인슐린 저장 완료!');renderDailySummary();
 };
 document.getElementById('saveMeal').onclick=()=>{
   const name=document.getElementById('foodName').value,amt=document.getElementById('foodAmt').value;
@@ -1329,7 +1392,7 @@ document.getElementById('saveMeal').onclick=()=>{
   const mealD=document.getElementById('foodDate').value||today();
   getRec(state.activeCat,mealD).meals.push({name,amt:parseFloat(amt)||0,kcal:parseFloat(document.getElementById('foodKcal').value)||0,time:document.getElementById('foodTime').value,ts:Date.now()});
   saveS();['foodName','foodAmt','foodKcal'].forEach(id=>document.getElementById(id).value='');
-  toast(mealD!==today()?mealD+' 날짜로 저장됐어요':'식사 저장 완료!');
+  toast(mealD!==today()?mealD+' 날짜로 저장됐어요':'식사 저장 완료!');renderDailySummary();
 };
 
 /* 탭 전환 */
@@ -1360,7 +1423,7 @@ window.showTab = function showTab(tab, btn) {
     if(tab==='history') try{renderHistory();renderRoutineSchedule();}catch(e){console.warn(e);}
     if(tab==='bloodtest') try{renderBTGraphs();renderBTHistoryList();}catch(e){console.warn(e);}
     if(tab==='food') try{renderFdHistory();}catch(e){console.warn(e);}
-    if(tab==='daily') try{updateMetrics();renderRoutineChecklist();}catch(e){console.warn(e);}
+    if(tab==='daily') try{updateMetrics();renderRoutineChecklist();renderDailySummary();}catch(e){console.warn(e);}
   } catch(e) { console.error('showTab 오류:', tab, e); }
 }
 
@@ -2795,6 +2858,7 @@ function toggleRoutineCheck(itemName){
   saveS(today_date);
   renderRoutineChecklist();
   renderHistory();
+  try{renderDailySummary();}catch(e){}
 }
 
 
