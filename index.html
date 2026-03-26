@@ -48,7 +48,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 .nav-btn.active{background:var(--bg);color:var(--teal);box-shadow:0 1px 3px rgba(0,0,0,.08)}
 
 /* 섹션 */
-.sec{display:none}.sec.active{display:block}
+/* sec display: inline style로만 제어 */
 
 /* 카드 */
 .card{background:var(--bg);border:0.5px solid var(--bd);border-radius:12px;padding:.75rem .75rem;margin-bottom:.75rem}
@@ -426,7 +426,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.30</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.38</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
   <a href="https://open.kakao.com/o/sjseVrVe" target="_blank"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;text-decoration:none;white-space:nowrap">
@@ -439,17 +439,17 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 </div>
 <div class="cat-bar" id="catBar"></div>
 <div class="nav" id="mainNav">
-  <button class="nav-btn active" data-tab="daily" onclick="showTab('daily',this)">오늘기록</button>
-  <button class="nav-btn" data-tab="cgm" onclick="showTab('cgm',this)">CGM</button>
-  <button class="nav-btn" data-tab="graph" onclick="showTab('graph',this)">그래프</button>
-  <button class="nav-btn" data-tab="history" onclick="showTab('history',this)">기록조회</button>
-  <button class="nav-btn" data-tab="bloodtest" onclick="showTab('bloodtest',this)">혈액검사</button>
-  <button class="nav-btn" data-tab="food" onclick="showTab('food',this)">사료분석</button>
-  <button class="nav-btn" data-tab="ai" onclick="showTab('ai',this)">AI 해석</button>
+  <button class="nav-btn active" data-tab="daily">오늘기록</button>
+  <button class="nav-btn" data-tab="cgm">CGM</button>
+  <button class="nav-btn" data-tab="graph">그래프</button>
+  <button class="nav-btn" data-tab="history">기록조회</button>
+  <button class="nav-btn" data-tab="bloodtest">혈액검사</button>
+  <button class="nav-btn" data-tab="food">사료분석</button>
+  <button class="nav-btn" data-tab="ai">AI 해석</button>
 </div>
 
 <!-- ══ 오늘 기록 ══ -->
-<div class="sec active" id="tab-daily">
+<div class="sec active" id="tab-daily" style="display:block">
   <div class="metrics" id="todayMetrics">
     <div class="metric"><div class="mv" id="mBg">--</div><div class="ml">혈당 mg/dL</div></div>
     <div class="metric"><div class="mv" id="mKet">--</div><div class="ml">케톤 mmol/L</div></div>
@@ -579,8 +579,9 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
   </div>
 </div>
 
+</div><!-- /tab-daily -->
 <!-- ══ 연속혈당(CGM) ══ -->
-<div class="sec" id="tab-cgm">
+<div class="sec" id="tab-cgm" style="display:none">
 
   <!-- 업로드 카드 -->
   <div class="card">
@@ -694,7 +695,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 </div>
 
 <!-- ══ 그래프 ══ -->
-<div class="sec" id="tab-graph">
+<div class="sec" id="tab-graph" style="display:none">
   <div style="display:flex;gap:6px;margin-bottom:.6rem;flex-wrap:wrap">
     <div style="font-size:11px;color:var(--text2);align-self:center">기간:</div>
     <div class="g-chip" id="gp7" onclick="setGPeriod(7,this)">7일</div>
@@ -732,7 +733,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 </div>
 
 <!-- ══ 히스토리 ══ -->
-<div class="sec" id="tab-history">
+<div class="sec" id="tab-history" style="display:none">
   <!-- 루틴 스케줄표 -->
   <div class="card" style="margin-bottom:.75rem">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
@@ -771,7 +772,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 </div>
 
 <!-- ══ 혈액검사 ══ -->
-<div class="sec" id="tab-bloodtest">
+<div class="sec" id="tab-bloodtest" style="display:none">
   <div class="card">
     <div class="card-title">혈액검사지 업로드 → AI 자동 추출 → 항목별 그래프</div>
     <div class="drop-zone" id="btDrop">
@@ -832,7 +833,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 </div>
 
 <!-- ══ 사료분석 ══ -->
-<div class="sec" id="tab-food">
+<div class="sec" id="tab-food" style="display:none">
   <div class="card">
     <div class="card-title">🔢 고양이 일일 칼로리 계산기</div>
     <div style="font-size:11px;color:var(--text2);margin-bottom:.75rem;line-height:1.6">
@@ -1056,7 +1057,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 </div>
 
 <!-- ══ AI 해석 ══ -->
-<div class="sec" id="tab-ai">
+<div class="sec" id="tab-ai" style="display:none">
   <div class="card">
     <div class="card-title">AI 수치 해석 · 케어 질문</div>
     <div class="ai-chat" id="aiChat">
@@ -1326,6 +1327,7 @@ window.showTab = function showTab(tab, btn) {
       tabEl.style.display='block';
     }
     if(btn) btn.classList.add('active');
+
     // 렌더링
     if(tab==='cgm') try{renderCgmHistory();}catch(e){console.warn(e);}
     if(tab==='graph') try{renderGraphs();renderBTTrend();}catch(e){console.warn(e);}
@@ -3921,18 +3923,14 @@ document.addEventListener('keydown', (e) => {
   }
 });
 // 탭 전환 이벤트
-function initTabs() {
-  document.querySelectorAll('[data-tab]').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      window.showTab(this.dataset.tab, this);
-    });
-  });
-}
-if(document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initTabs);
-} else {
-  initTabs();
-}
+// 이벤트 위임: document 전체에서 nav-btn 클릭 감지 (가장 확실한 방식)
+document.addEventListener('click', function(e) {
+  var btn = e.target.closest ? e.target.closest('.nav-btn') : null;
+  if(!btn && e.target.classList && e.target.classList.contains('nav-btn')) btn = e.target;
+  if(btn && btn.dataset && btn.dataset.tab) {
+    window.showTab(btn.dataset.tab, btn);
+  }
+});
 
 /* ── Supabase 연동 ── */
 const SUPA_URL = typeof process !== 'undefined' 
