@@ -426,7 +426,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.64</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.65</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
   <a href="https://open.kakao.com/o/sjseVrVe" target="_blank"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;text-decoration:none;white-space:nowrap">
@@ -639,7 +639,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     <img id="cgmPreview" class="img-prev" style="display:none">
     <div class="row2" style="margin-bottom:.75rem">
       <div class="ig"><label>측정 날짜</label><input type="date" id="cgmDate"></div>
-      <div class="ig"><label>고양이</label><input type="text" id="cgmCat" placeholder="케이"></div>
+      <div class="ig"><label>고양이</label><input type="text" id="cgmCat" placeholder="케이" readonly style="background:var(--bg2);cursor:default"></div>
     </div>
     <div id="cgmStatus" style="display:none"></div>
   </div>
@@ -1422,7 +1422,7 @@ window.showTab = function showTab(tab, btn) {
     if(btn) btn.classList.add('active');
 
     // 렌더링
-    if(tab==='cgm') try{renderCgmHistory();}catch(e){console.warn(e);}
+    if(tab==='cgm') try{renderCgmHistory();const cc=document.getElementById('cgmCat');if(cc)cc.value=state.activeCat||'';}catch(e){console.warn(e);}
     if(tab==='graph') try{renderGraphs();renderBTTrend();const tlDate=document.getElementById('timelineDatePicker');if(tlDate&&!tlDate.value)tlDate.value=today();try{renderTimelineChart(document.getElementById('timelineDatePicker')?.value||today());}catch(e2){console.warn(e2);}}catch(e){console.warn(e);}
     if(tab==='history') try{renderHistory();renderRoutineSchedule();}catch(e){console.warn(e);}
     if(tab==='bloodtest') try{renderBTGraphs();renderBTHistoryList();}catch(e){console.warn(e);}
@@ -1594,7 +1594,7 @@ function renderTimelineChart(date) {
 
   // CGM 데이터에서 해당 날짜+고양이 readings 추가
   const cgmForDay = (typeof cgmData !== 'undefined' ? cgmData : [])
-    .filter(c=>c.date===d && c.cat===state.activeCat);
+    .filter(c=>c.date===d && (c.cat||'').trim()===(state.activeCat||'').trim());
   const bgCGM = cgmForDay.flatMap(c=>(c.readings||[])
     .filter(r=>r.time&&r.value)
     .map(r=>({x:timeToMin(r.time), y:r.value,
@@ -3521,6 +3521,8 @@ function renderCgmExtracted(d){
 // 저장
 document.getElementById('cgmSaveBtn').onclick=()=>{
   if(!cgmExtracted)return;
+  // 저장 시 현재 activeCat으로 강제 설정
+  cgmExtracted.cat = state.activeCat || cgmExtracted.cat;
   cgmData.unshift({ts:Date.now(),...cgmExtracted});
   if(cgmData.length>60)cgmData=cgmData.slice(0,60);
   saveCGM();
