@@ -426,7 +426,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.54</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.55</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
   <a href="https://open.kakao.com/o/sjseVrVe" target="_blank"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;text-decoration:none;white-space:nowrap">
@@ -3982,7 +3982,7 @@ function openCatProfile(cat) {
   page.style.display='block';
   window.scrollTo(0,0);
   // 루틴 항목 목록도 렌더링
-  try{ renderRoutineTags(); }catch(e){}
+  try{ renderRoutineTags(); renderRoutineEditList(); }catch(e){}
 }
 
 // 품종 직접입력 처리
@@ -4175,6 +4175,18 @@ function showApp() {
   if(currentUser) {
     document.getElementById('logoutBtn').style.display = 'block';
     syncFromDB();
+    // 루틴 설정 빠른 로드 (syncFromDB 완료 전에도 표시)
+    (async()=>{
+      try {
+        const {data} = await sbClient.from('user_settings')
+          .select('value').eq('user_id',currentUser.id).eq('key','routine_items').single();
+        if(data?.value && Array.isArray(data.value)){
+          routineItems = data.value;
+          try{localStorage.setItem(SK_RT,JSON.stringify(routineItems));}catch(e){}
+          renderRoutineChecklist();
+        }
+      } catch(e) {}
+    })();
   }
   // daily 탭 초기 렌더링
   try { updateMetrics(); } catch(e) {}
@@ -4780,15 +4792,17 @@ initSupabase();
   <div style="margin-top:1.5rem;padding-top:1rem;border-top:0.5px solid var(--bd)">
     <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:.25rem">💊 투약·루틴 항목 설정</div>
     <div style="font-size:11px;color:var(--text3);margin-bottom:.75rem">오늘기록 탭 체크리스트에 표시할 항목을 관리해요</div>
-    <div style="display:flex;gap:6px;margin-bottom:.6rem">
+    <div style="margin-bottom:.5rem">
       <input type="text" id="newRoutineName" placeholder="항목명 (예: 오메가3)"
-        style="flex:1;padding:9px 10px;border:0.5px solid var(--bd);border-radius:9px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit">
-      <select id="newRoutineCat" style="padding:9px 8px;border:0.5px solid var(--bd);border-radius:9px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit">
-        <option value="med">💊 약·보조제</option>
-        <option value="food">🍖 간식·음수</option>
-        <option value="other">📋 기타루틴</option>
-      </select>
-      <button onclick="addRoutineItem()" style="padding:9px 14px;background:var(--teal);color:#fff;border:none;border-radius:9px;font-size:13px;cursor:pointer;font-family:inherit;font-weight:500">추가</button>
+        style="width:100%;box-sizing:border-box;padding:10px 12px;border:0.5px solid var(--bd);border-radius:9px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit;margin-bottom:6px">
+      <div style="display:flex;gap:6px">
+        <select id="newRoutineCat" style="flex:1;padding:9px 8px;border:0.5px solid var(--bd);border-radius:9px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit">
+          <option value="med">💊 약·보조제</option>
+          <option value="food">🍖 간식·음수</option>
+          <option value="other">📋 기타루틴</option>
+        </select>
+        <button onclick="addRoutineItem()" style="padding:9px 20px;background:var(--teal);color:#fff;border:none;border-radius:9px;font-size:13px;cursor:pointer;font-family:inherit;font-weight:500;white-space:nowrap">+ 추가</button>
+      </div>
     </div>
     <div id="routineItemList" style="max-height:300px;overflow-y:auto"></div>
   </div>
