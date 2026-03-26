@@ -426,7 +426,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.56</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.57</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
   <a href="https://open.kakao.com/o/sjseVrVe" target="_blank"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;text-decoration:none;white-space:nowrap">
@@ -2691,13 +2691,8 @@ const saveRT=(catName)=>{
 async function loadRoutineForCat(catName) {
   const cat = catName || state.activeCat;
   if(!cat) return;
-  // 1. localStorage 먼저
   const lsKey = SK_RT + '_' + cat;
-  try {
-    const local = localStorage.getItem(lsKey);
-    if(local) { routineItems = JSON.parse(local); renderRoutineChecklist(); renderRoutineEditList(); return; }
-  } catch(e) {}
-  // 2. DB에서 불러오기
+  // DB 연결 시: DB 항상 우선 (다기기 연동)
   if(sbClient && currentUser) {
     try {
       const {data} = await sbClient.from('user_settings')
@@ -2706,8 +2701,24 @@ async function loadRoutineForCat(catName) {
         routineItems = data.value;
         try{localStorage.setItem(lsKey, JSON.stringify(routineItems));}catch(e){}
       } else {
-        routineItems = [...defaultItems]; // 데이터 없으면 기본값
+        // DB에 없으면 localStorage 확인
+        try {
+          const local = localStorage.getItem(lsKey);
+          routineItems = local ? JSON.parse(local) : [...defaultItems];
+        } catch(e) { routineItems = [...defaultItems]; }
       }
+    } catch(e) {
+      // DB 오류 시 localStorage 폴백
+      try {
+        const local = localStorage.getItem(lsKey);
+        routineItems = local ? JSON.parse(local) : [...defaultItems];
+      } catch(e2) { routineItems = [...defaultItems]; }
+    }
+  } else {
+    // 비로그인: localStorage 사용
+    try {
+      const local = localStorage.getItem(lsKey);
+      routineItems = local ? JSON.parse(local) : [...defaultItems];
     } catch(e) { routineItems = [...defaultItems]; }
   }
   renderRoutineChecklist();
@@ -2795,10 +2806,11 @@ function renderRoutineEditList(){
 
 function addRoutineItem(){
   const name=document.getElementById('newRoutineName').value.trim();
-  const cat=document.getElementById('newRoutineCat').value;
+  const catVal=document.getElementById('newRoutineCat').value;
   if(!name){toast('항목명을 입력해주세요','#D85A30');return}
   if(routineItems.find(i=>i.name===name)){toast('이미 있는 항목이에요','#BA7517');return}
-  routineItems.push({name,cat});saveRT();
+  routineItems.push({name,cat:catVal});
+  saveRT(currentProfileCat||state.activeCat);
   document.getElementById('newRoutineName').value='';
   renderRoutineChecklist();renderRoutineEditList();
   toast(name+' 추가 완료!');
@@ -2807,7 +2819,8 @@ function addRoutineItem(){
 function deleteRoutineItem(idx){
   const item=routineItems[idx];
   if(!confirm(item.name+'을(를) 삭제할까요?'))return;
-  routineItems.splice(idx,1);saveRT();
+  routineItems.splice(idx,1);
+  saveRT(currentProfileCat||state.activeCat);
   routineSelected.delete(item.name);
   renderRoutineChecklist();renderRoutineEditList();
 }
