@@ -426,7 +426,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.55</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.56</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
   <a href="https://open.kakao.com/o/sjseVrVe" target="_blank"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;text-decoration:none;white-space:nowrap">
@@ -1150,6 +1150,8 @@ function renderCatBar(){
       renderCatBar();updateMetrics();updateWtDiff();updateInsulinNext();saveS();
       const prof=(state.catProfiles||{})[c];
       if(prof&&prof.insulin){const el=document.getElementById('insType');if(el)el.value=prof.insulin;}
+      // 고양이 전환 시 해당 고양이 루틴 불러오기
+      try{loadRoutineForCat(c);}catch(e){}
     });
 
     // 설정 버튼
@@ -2667,13 +2669,17 @@ const defaultItems=[
   {name:'병원 방문',cat:'other'},{name:'배변 확인',cat:'other'},{name:'구토',cat:'other'}
 ];
 let routineItems=defaultItems;
-try{const d=localStorage.getItem(SK_RT);if(d)routineItems=JSON.parse(d)}catch(e){}
-const saveRT=()=>{
-  try{localStorage.setItem(SK_RT,JSON.stringify(routineItems))}catch(e){}
-  if(sbClient && currentUser) {
+// 루틴 초기값 - loadRoutineForCat()에서 고양이별로 로드
+const saveRT=(catName)=>{
+  const cat = catName || state.activeCat;
+  // localStorage: 고양이별 키로 저장
+  const lsKey = SK_RT + '_' + cat;
+  try{localStorage.setItem(lsKey, JSON.stringify(routineItems))}catch(e){}
+  // DB: 고양이별 키로 저장
+  if(sbClient && currentUser && cat) {
     sbClient.from('user_settings').upsert({
       user_id: currentUser.id,
-      key: 'routine_items',
+      key: 'routine_items_' + cat,
       value: routineItems,
       updated_at: new Date().toISOString()
     }, {onConflict: 'user_id,key'}).then(({error})=>{
@@ -2681,6 +2687,33 @@ const saveRT=()=>{
     });
   }
 };
+// 고양이별 루틴 불러오기
+async function loadRoutineForCat(catName) {
+  const cat = catName || state.activeCat;
+  if(!cat) return;
+  // 1. localStorage 먼저
+  const lsKey = SK_RT + '_' + cat;
+  try {
+    const local = localStorage.getItem(lsKey);
+    if(local) { routineItems = JSON.parse(local); renderRoutineChecklist(); renderRoutineEditList(); return; }
+  } catch(e) {}
+  // 2. DB에서 불러오기
+  if(sbClient && currentUser) {
+    try {
+      const {data} = await sbClient.from('user_settings')
+        .select('value').eq('user_id', currentUser.id).eq('key', 'routine_items_' + cat).single();
+      if(data?.value && Array.isArray(data.value)) {
+        routineItems = data.value;
+        try{localStorage.setItem(lsKey, JSON.stringify(routineItems));}catch(e){}
+      } else {
+        routineItems = [...defaultItems]; // 데이터 없으면 기본값
+      }
+    } catch(e) { routineItems = [...defaultItems]; }
+  }
+  renderRoutineChecklist();
+  try{renderRoutineEditList();}catch(e){}
+}
+
 const catColor={med:'#534AB7',food:'#BA7517',other:'#1D9E75'};
 const catLabel={med:'약 및 보조제',food:'간식 및 음수',other:'기타루틴'};
 const routineSelected=new Set();
@@ -3982,7 +4015,8 @@ function openCatProfile(cat) {
   page.style.display='block';
   window.scrollTo(0,0);
   // 루틴 항목 목록도 렌더링
-  try{ renderRoutineTags(); renderRoutineEditList(); }catch(e){}
+  // 해당 고양이 루틴 불러오기
+  try{ loadRoutineForCat(cat); }catch(e){}
 }
 
 // 품종 직접입력 처리
@@ -4175,17 +4209,9 @@ function showApp() {
   if(currentUser) {
     document.getElementById('logoutBtn').style.display = 'block';
     syncFromDB();
-    // 루틴 설정 빠른 로드 (syncFromDB 완료 전에도 표시)
+    // 루틴 설정 빠른 로드 (현재 고양이 기준)
     (async()=>{
-      try {
-        const {data} = await sbClient.from('user_settings')
-          .select('value').eq('user_id',currentUser.id).eq('key','routine_items').single();
-        if(data?.value && Array.isArray(data.value)){
-          routineItems = data.value;
-          try{localStorage.setItem(SK_RT,JSON.stringify(routineItems));}catch(e){}
-          renderRoutineChecklist();
-        }
-      } catch(e) {}
+      try { await loadRoutineForCat(state.activeCat); } catch(e) {}
     })();
   }
   // daily 탭 초기 렌더링
@@ -4432,17 +4458,8 @@ async function syncFromDB() {
       }, 2000);
     }
 
-    // 루틴 설정 불러오기 (user_settings 테이블)
-    try {
-      const { data: rtData } = await sbClient.from('user_settings')
-        .select('value').eq('user_id', currentUser.id).eq('key', 'routine_items').single();
-      if(rtData?.value && Array.isArray(rtData.value)) {
-        routineItems = rtData.value;
-        try{localStorage.setItem(SK_RT, JSON.stringify(routineItems));}catch(e){}
-        try{renderRoutineTags();}catch(e){}
-        try{renderRoutineChecklist();}catch(e){}
-      }
-    } catch(e) { console.warn('루틴 설정 로드 오류:', e); }
+    // 루틴 설정 불러오기 (현재 고양이 기준)
+    try { await loadRoutineForCat(state.activeCat); } catch(e) { console.warn('루틴 로드 오류:', e); }
 
     toast('☁️ 동기화 완료! 고양이 '+(state.cats.length)+'마리');
     // 동기화 후 daily 탭 데이터만 갱신 (탭 전환 없이)
