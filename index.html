@@ -426,7 +426,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.63</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.64</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
   <a href="https://open.kakao.com/o/sjseVrVe" target="_blank"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;text-decoration:none;white-space:nowrap">
@@ -1174,6 +1174,8 @@ function renderCatBar(){
       try{loadRoutineForCat(c);}catch(e){}
       // 오늘 기록 요약 갱신
       try{renderDailySummary();}catch(e){}
+      // CGM 탭 고양이 필드 동기화
+      try{const cc=document.getElementById('cgmCat');if(cc)cc.value=c;}catch(e){}
       // 현재 열린 탭 재렌더링 (기록조회, 그래프 등 고양이별 데이터 갱신)
       try{
         const activeTab=document.querySelector('.nav-btn.active')?.dataset?.tab;
@@ -3522,16 +3524,20 @@ document.getElementById('cgmSaveBtn').onclick=()=>{
   cgmData.unshift({ts:Date.now(),...cgmExtracted});
   if(cgmData.length>60)cgmData=cgmData.slice(0,60);
   saveCGM();
-  // 오늘 기록에도 혈당 데이터 추가
+  // cgmData에만 저장 (rec.bg 중복 추가 제거)
+  // 타임라인은 cgmData에서 직접 읽음
   const readings=cgmExtracted.readings||[];
-  readings.forEach(r=>{
-    getRec(cgmExtracted.cat,cgmExtracted.date).bg.push({
-      bg:r.value,ketone:'',time:r.time,type:'CGM',note:'CGM 자동입력',ts:Date.now()
-    });
-  });
   saveS(cgmExtracted.date);
-  toast(`${readings.length}개 혈당 데이터 저장 완료!`);
+  toast(`${readings.length}개 혈당 데이터 저장 완료! 그래프 탭 타임라인에서 확인하세요 📊`);
   renderCgmHistory();
+  // 그래프 탭 타임라인 날짜 동기화
+  try {
+    const tlPicker = document.getElementById('timelineDatePicker');
+    if(tlPicker) tlPicker.value = cgmExtracted.date;
+    renderTimelineChart(cgmExtracted.date);
+  } catch(e) {}
+  // 오늘 기록 요약도 갱신 (오늘 날짜 데이터면)
+  if(cgmExtracted.date === today()) try{renderDailySummary();}catch(e){}
 };
 
 // AI 분석
