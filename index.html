@@ -426,7 +426,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.45</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.46</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
   <a href="https://open.kakao.com/o/sjseVrVe" target="_blank"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;text-decoration:none;white-space:nowrap">
@@ -4730,69 +4730,53 @@ initSupabase();
   </div>
   <div class="ig">
     <label>품종</label>
-    <select id="cpBreed" style="padding:10px 12px;border:0.5px solid var(--bd);border-radius:9px;font-size:14px;background:var(--bg);color:var(--text);font-family:inherit;width:100%;box-sizing:border-box">
+        <select id="cpBreed" style="padding:10px 12px;border:0.5px solid var(--bd);border-radius:9px;font-size:14px;background:var(--bg);color:var(--text);font-family:inherit;width:100%;box-sizing:border-box">
       <option value="">선택 안 함</option>
-      <optgroup label="국내 인기">
-        <option value="코리안숏헤어">코리안숏헤어 (한국 고양이)</option>
-        <option value="스코티시폴드">스코티시폴드</option>
-        <option value="브리티시숏헤어">브리티시숏헤어</option>
-        <option value="러시안블루">러시안블루</option>
-        <option value="먼치킨">먼치킨</option>
-        <option value="메인쿤">메인쿤</option>
-        <option value="페르시안">페르시안</option>
-        <option value="랙돌">랙돌</option>
-        <option value="아메리칸숏헤어">아메리칸숏헤어</option>
-        <option value="노르웨이숲">노르웨이숲</option>
-        <option value="샴">샴</option>
-        <option value="벵갈">벵갈</option>
-      </optgroup>
-      <optgroup label="장모종">
-        <option value="페르시안">페르시안</option>
-        <option value="메인쿤">메인쿤</option>
-        <option value="노르웨이숲">노르웨이숲</option>
-        <option value="랙돌">랙돌</option>
-        <option value="버만">버만</option>
-        <option value="라가머핀">라가머핀</option>
-        <option value="터키쉬앙고라">터키쉬앙고라</option>
-        <option value="터키쉬반">터키쉬반</option>
-        <option value="히말라얀">히말라얀</option>
-        <option value="바리니즈">바리니즈</option>
-        <option value="소말리">소말리</option>
-        <option value="재패니즈밥테일(장모)">재패니즈밥테일 (장모)</option>
-      </optgroup>
-      <optgroup label="단모종">
-        <option value="아비시니안">아비시니안</option>
-        <option value="아메리칸숏헤어">아메리칸숏헤어</option>
-        <option value="이집션마우">이집션마우</option>
-        <option value="싱가푸라">싱가푸라</option>
-        <option value="오리엔탈숏헤어">오리엔탈숏헤어</option>
-        <option value="통키니즈">통키니즈</option>
-        <option value="데본렉스">데본렉스</option>
-        <option value="코니쉬렉스">코니쉬렉스</option>
-        <option value="셀커크렉스">셀커크렉스</option>
-        <option value="스핑크스">스핑크스</option>
-        <option value="봄베이">봄베이</option>
-        <option value="브리티시론헤어">브리티시론헤어</option>
-        <option value="버미즈">버미즈</option>
-        <option value="재패니즈밥테일">재패니즈밥테일</option>
-        <option value="아메리칸컬">아메리칸컬</option>
-        <option value="아메리칸밥테일">아메리칸밥테일</option>
-        <option value="스노우슈">스노우슈</option>
-        <option value="하바나브라운">하바나브라운</option>
-        <option value="코랫">코랫</option>
-        <option value="샤르트뢰">샤르트뢰</option>
-        <option value="라팜">라팜</option>
-        <option value="오시캣">오시캣</option>
-        <option value="자바니즈">자바니즈</option>
-        <option value="컬러포인트숏헤어">컬러포인트숏헤어</option>
-      </optgroup>
-      <optgroup label="희귀·기타">
-        <option value="사바나">사바나</option>
-        <option value="카라칼혼혈">카라칼혼혈</option>
-        <option value="폴드계열혼혈">폴드계열혼혈</option>
-        <option value="믹스(혼혈)">믹스 (혼혈)</option>
-        <option value="직접입력">직접 입력...</option>
-      </optgroup>
+      <option value="거미털고양이 (라팜)">거미털고양이 (라팜)</option>
+      <option value="노르웨이숲">노르웨이숲</option>
+      <option value="데본렉스">데본렉스</option>
+      <option value="라가머핀">라가머핀</option>
+      <option value="랙돌">랙돌</option>
+      <option value="러시안블루">러시안블루</option>
+      <option value="먼치킨">먼치킨</option>
+      <option value="메인쿤">메인쿤</option>
+      <option value="믹스 (혼혈)">믹스 (혼혈)</option>
+      <option value="바리니즈">바리니즈</option>
+      <option value="버만">버만</option>
+      <option value="버미즈">버미즈</option>
+      <option value="벵갈">벵갈</option>
+      <option value="봄베이">봄베이</option>
+      <option value="브리티시론헤어">브리티시론헤어</option>
+      <option value="브리티시숏헤어">브리티시숏헤어</option>
+      <option value="사바나">사바나</option>
+      <option value="샤르트뢰">샤르트뢰</option>
+      <option value="샴">샴</option>
+      <option value="셀커크렉스">셀커크렉스</option>
+      <option value="소말리">소말리</option>
+      <option value="스노우슈">스노우슈</option>
+      <option value="스코티시폴드">스코티시폴드</option>
+      <option value="스코티시스트레이트">스코티시스트레이트</option>
+      <option value="스핑크스">스핑크스</option>
+      <option value="싱가푸라">싱가푸라</option>
+      <option value="아메리칸밥테일">아메리칸밥테일</option>
+      <option value="아메리칸숏헤어">아메리칸숏헤어</option>
+      <option value="아메리칸컬">아메리칸컬</option>
+      <option value="아비시니안">아비시니안</option>
+      <option value="오리엔탈숏헤어">오리엔탈숏헤어</option>
+      <option value="오시캣">오시캣</option>
+      <option value="이집션마우">이집션마우</option>
+      <option value="자바니즈">자바니즈</option>
+      <option value="재패니즈밥테일">재패니즈밥테일</option>
+      <option value="코니쉬렉스">코니쉬렉스</option>
+      <option value="코랫">코랫</option>
+      <option value="코리안숏헤어">코리안숏헤어</option>
+      <option value="터키쉬반">터키쉬반</option>
+      <option value="터키쉬앙고라">터키쉬앙고라</option>
+      <option value="통키니즈">통키니즈</option>
+      <option value="페르시안">페르시안</option>
+      <option value="하바나브라운">하바나브라운</option>
+      <option value="히말라얀">히말라얀</option>
+      <option value="직접입력">직접 입력...</option>
     </select>
     <input type="text" id="cpBreedCustom" placeholder="품종 직접 입력" style="display:none;margin-top:6px;padding:10px 12px;border:0.5px solid var(--bd);border-radius:9px;font-size:14px;background:var(--bg);color:var(--text);font-family:inherit;width:100%;box-sizing:border-box"></div>
   <div class="row2" style="margin-bottom:10px">
