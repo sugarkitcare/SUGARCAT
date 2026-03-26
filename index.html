@@ -426,7 +426,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.53</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.54</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
   <a href="https://open.kakao.com/o/sjseVrVe" target="_blank"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;text-decoration:none;white-space:nowrap">
@@ -561,22 +561,17 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
   <!-- 오늘 루틴 체크리스트 -->
   <div id="routineChecklist"></div>
 
-  <!-- 메모/시각/저장 -->
-  <div style="margin-top:.75rem;padding-top:.75rem;border-top:0.5px solid var(--bd)">
-    <div style="display:flex;gap:8px;margin-bottom:8px">
-      <div class="ig" style="flex:1"><label>날짜</label><input type="date" id="routineDate"></div>
-      <div class="ig" style="flex:1"><label>시각</label><input type="time" id="routineTime"></div>
-    </div>
-    <div class="ig" style="margin-bottom:8px">
-      <label>직접 입력 (추가 항목)</label>
-      <input type="text" id="routineCustom" placeholder="예: 코발라민 0.5ml">
-    </div>
-    <div class="ig" style="margin-bottom:8px">
-      <label>메모</label>
-      <input type="text" id="routineMemo" placeholder="용량, 특이사항 등">
-    </div>
-    <button class="btn" id="saveRoutine" style="background:var(--purple);color:#fff;width:100%">투약·루틴 저장</button>
+  <!-- 날짜 + 추가메모 (간소화) -->
+  <div style="margin-top:.75rem;padding-top:.75rem;border-top:0.5px solid var(--bd);display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <input type="date" id="routineDate"
+      style="padding:6px 10px;border:0.5px solid var(--bd);border-radius:8px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit"
+      onchange="renderRoutineChecklist()">
+    <input type="text" id="routineCustom" placeholder="추가 기록 (예: 코발라민 0.5ml)"
+      style="flex:1;min-width:120px;padding:6px 10px;border:0.5px solid var(--bd);border-radius:8px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit">
+    <button class="btn" id="saveRoutine" style="background:var(--purple);color:#fff;padding:6px 14px;font-size:12px">저장</button>
   </div>
+  <input type="hidden" id="routineTime">
+  <input type="hidden" id="routineMemo">
 </div>
 
 </div><!-- /tab-daily -->
@@ -2675,15 +2670,13 @@ let routineItems=defaultItems;
 try{const d=localStorage.getItem(SK_RT);if(d)routineItems=JSON.parse(d)}catch(e){}
 const saveRT=()=>{
   try{localStorage.setItem(SK_RT,JSON.stringify(routineItems))}catch(e){}
-  // DB 연동: routineItems를 daily_records의 특별 키로 저장
   if(sbClient && currentUser) {
-    sbClient.from('daily_records').upsert({
-      cat_id: null,
+    sbClient.from('user_settings').upsert({
       user_id: currentUser.id,
-      record_date: 'routine_settings',
-      data: {routineItems: routineItems},
+      key: 'routine_items',
+      value: routineItems,
       updated_at: new Date().toISOString()
-    }, {onConflict: 'user_id,record_date'}).then(({error})=>{
+    }, {onConflict: 'user_id,key'}).then(({error})=>{
       if(error) console.warn('루틴 설정 DB 저장 오류:', error);
     });
   }
@@ -2792,22 +2785,16 @@ document.getElementById('routineTime').value=nowTime();
 renderRoutineTags();
 
 document.getElementById('saveRoutine').addEventListener('click',()=>{
-  const items=[...routineSelected];
   const custom=document.getElementById('routineCustom').value.trim();
-  if(custom)items.push(custom);
-  // 빈 항목도 저장 허용 (메모만 있을 경우 등)
-  const memo=document.getElementById('routineMemo').value;
-  const time=document.getElementById('routineTime').value;
+  if(!custom){toast('추가 기록할 내용을 입력해주세요','#D85A30');return;}
   const routineD=document.getElementById('routineDate').value||today();
   if(!getRec(state.activeCat,routineD).routines)getRec(state.activeCat,routineD).routines=[];
-  getRec(state.activeCat,routineD).routines.push({items,memo,time,ts:Date.now()});
+  getRec(state.activeCat,routineD).routines.push({items:[custom],memo:'',time:nowTime(),ts:Date.now()});
   saveS(routineD);
-  routineSelected.clear();
   renderRoutineChecklist();
   renderHistory();
   document.getElementById('routineCustom').value='';
-  document.getElementById('routineMemo').value='';
-  toast('투약·루틴 저장 완료!');
+  toast('추가 기록 저장 완료!');
 });
 
 
@@ -4433,17 +4420,17 @@ async function syncFromDB() {
       }, 2000);
     }
 
-    // 루틴 설정 불러오기
+    // 루틴 설정 불러오기 (user_settings 테이블)
     try {
-      const { data: rtData } = await sbClient.from('daily_records')
-        .select('data').eq('user_id', currentUser.id).eq('record_date', 'routine_settings').single();
-      if(rtData?.data?.routineItems && Array.isArray(rtData.data.routineItems)) {
-        routineItems = rtData.data.routineItems;
+      const { data: rtData } = await sbClient.from('user_settings')
+        .select('value').eq('user_id', currentUser.id).eq('key', 'routine_items').single();
+      if(rtData?.value && Array.isArray(rtData.value)) {
+        routineItems = rtData.value;
         try{localStorage.setItem(SK_RT, JSON.stringify(routineItems));}catch(e){}
-        renderRoutineTags();
-        renderRoutineChecklist();
+        try{renderRoutineTags();}catch(e){}
+        try{renderRoutineChecklist();}catch(e){}
       }
-    } catch(e) {}
+    } catch(e) { console.warn('루틴 설정 로드 오류:', e); }
 
     toast('☁️ 동기화 완료! 고양이 '+(state.cats.length)+'마리');
     // 동기화 후 daily 탭 데이터만 갱신 (탭 전환 없이)
