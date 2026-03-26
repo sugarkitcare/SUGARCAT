@@ -426,7 +426,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.38</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.39</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
   <a href="https://open.kakao.com/o/sjseVrVe" target="_blank"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;text-decoration:none;white-space:nowrap">
@@ -710,6 +710,23 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     <div class="g-chip" data-g="kcal">칼로리</div>
     <div class="g-chip" data-g="ins">인슐린</div>
   </div>
+  <!-- 통합 그래프: 혈당 + 인슐린 + 식사 -->
+  <div class="card" id="comboChartCard" style="margin-bottom:.75rem">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;cursor:pointer" onclick="toggleCard('comboChartBody',this)">
+      <div style="font-size:13px;font-weight:500;color:var(--text)">📊 혈당 · 인슐린 · 식사 통합</div>
+      <span style="font-size:11px;color:var(--teal)">▲ 접기</span>
+    </div>
+    <div id="comboChartBody">
+      <div style="font-size:11px;color:var(--text3);margin-bottom:.5rem;line-height:1.6">혈당(선)·인슐린(막대)·칼로리(막대)를 한눈에 비교해요</div>
+      <div class="chart-wrap" style="height:200px"><canvas id="comboChart"></canvas></div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:.5rem;font-size:10px;color:var(--text2)">
+        <span>🟢 혈당 (mg/dL)</span>
+        <span>🟠 인슐린 (U, 우축)</span>
+        <span>🔵 칼로리 (kcal, 우축)</span>
+      </div>
+    </div>
+  </div>
+
   <div id="chartsWrap"></div>
 
   <!-- 혈액검사 추이 카드 -->
@@ -1279,7 +1296,7 @@ document.getElementById('saveBg').onclick=()=>{
   const bg=parseFloat(document.getElementById('bgVal').value),ket=parseFloat(document.getElementById('ketVal').value);
   if(isNaN(bg)&&isNaN(ket)){toast('혈당 또는 케톤을 입력해주세요','#D85A30');return}
   getRec(state.activeCat,today()).bg.push({bg:isNaN(bg)?'':bg,ketone:isNaN(ket)?'':ket,time:document.getElementById('bgTime').value,type:document.getElementById('bgType').value,note:document.getElementById('bgNote').value,ts:Date.now()});
-  saveS(bgD);updateMetrics();updateInsulinNext();
+  const bgD=document.getElementById('bgDate').value||today();saveS(bgD);updateMetrics();updateInsulinNext();
   checkKetoneAlert(ket, bg);
   ['bgVal','ketVal','bgNote'].forEach(id=>document.getElementById(id).value='');toast('혈당·케톤 저장 완료!');
 };
@@ -1476,7 +1493,7 @@ function renderHistory(){
 }
 
 /* 그래프 */
-let gInst=[];let gPeriod=0;
+let gInst=[];let gPeriod=0;let comboInst=null;
 const gActive=new Set(['bg','ket','wt']);
 
 function setGPeriod(n,el){
@@ -1516,8 +1533,42 @@ function getDateRange(){
 
 function getLast(n){const d=[];for(let i=n-1;i>=0;i--){const dt=new Date();dt.setDate(dt.getDate()-i);d.push(dt.toISOString().slice(0,10))}return d}
 
+function renderComboChart() {
+  if(comboInst){comboInst.destroy();comboInst=null;}
+  const canvas=document.getElementById('comboChart');
+  if(!canvas)return;
+  const isDark=matchMedia('(prefers-color-scheme:dark)').matches;
+  const gc=isDark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.05)';
+  const tc=isDark?'#B4B2A9':'#888780';
+  const days=getDateRange();
+  const labels=days.map(d=>d.slice(5));
+  const bgData=days.map(d=>{const r=getRec(state.activeCat,d);const arr=r.bg.filter(x=>x.bg!=='').map(x=>parseFloat(x.bg));return arr.length?Math.round(arr.reduce((a,b)=>a+b)/arr.length):null;});
+  const insData=days.map(d=>{const r=getRec(state.activeCat,d);const arr=r.ins.map(x=>parseFloat(x.dose)).filter(x=>!isNaN(x));return arr.length?parseFloat((arr.reduce((a,b)=>a+b)/arr.length).toFixed(1)):null;});
+  const kcalData=days.map(d=>{const r=getRec(state.activeCat,d);const s=r.meals.reduce((a,m)=>a+(m.kcal||0),0);return s||null;});
+  const hasAny=bgData.some(v=>v!==null)||insData.some(v=>v!==null)||kcalData.some(v=>v!==null);
+  const card=document.getElementById('comboChartCard');
+  if(!hasAny){if(card)card.style.display='none';return;}
+  if(card)card.style.display='block';
+  comboInst=new Chart(canvas,{
+    type:'bar',
+    data:{labels,datasets:[
+      {label:'혈당(mg/dL)',data:bgData,type:'line',yAxisID:'yBg',borderColor:'#1D9E75',backgroundColor:'rgba(29,158,117,0.1)',tension:.35,fill:true,pointRadius:days.length>60?2:4,pointBackgroundColor:'#1D9E75',spanGaps:false,borderWidth:2,order:1},
+      {label:'인슐린(U)',data:insData,type:'bar',yAxisID:'yRight',backgroundColor:'rgba(186,117,23,0.6)',borderRadius:3,order:2},
+      {label:'칼로리(kcal)',data:kcalData,type:'bar',yAxisID:'yRight',backgroundColor:'rgba(24,95,165,0.5)',borderRadius:3,order:3}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return ' '+ctx.dataset.label+': '+ctx.parsed.y;}}}},
+      scales:{
+        x:{grid:{color:gc},ticks:{color:tc,font:{size:10},maxTicksLimit:days.length>60?8:15}},
+        yBg:{position:'left',grid:{color:gc},ticks:{color:'#1D9E75',font:{size:10}},min:0,max:450},
+        yRight:{position:'right',grid:{drawOnChartArea:false},ticks:{color:tc,font:{size:10}}}
+      }
+    }
+  });
+}
+
 function renderGraphs(){
-  gInst.forEach(c=>c.destroy());gInst=[];
+  gInst.forEach(c=>c.destroy());gInst=[];try{renderComboChart();}catch(e){console.warn(e);}
   const wrap=document.getElementById('chartsWrap');wrap.innerHTML='';
   const isDark=matchMedia('(prefers-color-scheme:dark)').matches;
   const gc=isDark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.05)';
@@ -2640,7 +2691,7 @@ document.getElementById('saveRoutine').addEventListener('click',()=>{
   const items=[...routineSelected];
   const custom=document.getElementById('routineCustom').value.trim();
   if(custom)items.push(custom);
-  if(!items.length){toast('항목을 선택하거나 직접 입력해주세요','#D85A30');return}
+  // 빈 항목도 저장 허용 (메모만 있을 경우 등)
   const memo=document.getElementById('routineMemo').value;
   const time=document.getElementById('routineTime').value;
   const routineD=document.getElementById('routineDate').value||today();
