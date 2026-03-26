@@ -426,7 +426,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.47</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.50</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
   <a href="https://open.kakao.com/o/sjseVrVe" target="_blank"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;text-decoration:none;white-space:nowrap">
@@ -722,11 +722,8 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     <div class="g-chip active" id="gpAll" onclick="setGPeriod(0,this)">전체</div>
   </div>
   <div class="g-filter">
-    <div class="g-chip active" data-g="bg">혈당</div>
     <div class="g-chip active" data-g="ket">케톤</div>
     <div class="g-chip active" data-g="wt">체중</div>
-    <div class="g-chip" data-g="kcal">칼로리</div>
-    <div class="g-chip" data-g="ins">인슐린</div>
   </div>
   <!-- 통합 그래프: 혈당 + 인슐린 + 식사 -->
   <div class="card" id="comboChartCard" style="margin-bottom:.75rem">
@@ -735,13 +732,37 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
       <span style="font-size:11px;color:var(--teal)">▲ 접기</span>
     </div>
     <div id="comboChartBody">
-      <div style="font-size:11px;color:var(--text3);margin-bottom:.5rem;line-height:1.6">혈당(선)·인슐린(막대)·칼로리(막대)를 한눈에 비교해요</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:.5rem;line-height:1.6">혈당(선)·인슐린(◆)·식사(▲)를 날짜별로 비교해요</div>
       <div class="chart-wrap" style="height:200px"><canvas id="comboChart"></canvas></div>
       <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:.5rem;font-size:10px;color:var(--text2)">
-        <span>🟢 혈당 (mg/dL)</span>
-        <span>🟠 인슐린 (U, 우축)</span>
-        <span>🔵 칼로리 (kcal, 우축)</span>
+        <span>🟢 혈당 (mg/dL, 좌축)</span>
+        <span>🔶 인슐린 투여 (마커)</span>
+        <span>🔷 식사 기록 (마커)</span>
       </div>
+    </div>
+  </div>
+
+  <!-- 하루 타임라인 차트 (날짜 선택 가능) -->
+  <div class="card" id="timelineCard" style="margin-bottom:.75rem">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem;cursor:pointer" onclick="toggleCard('timelineBody',this)">
+      <div style="font-size:13px;font-weight:500;color:var(--text)">⏱️ 하루 타임라인</div>
+      <span style="font-size:11px;color:var(--teal)">▲ 접기</span>
+    </div>
+    <div id="timelineBody">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:.6rem">
+        <span style="font-size:11px;color:var(--text2)">날짜:</span>
+        <input type="date" id="timelineDatePicker"
+          style="border:0.5px solid var(--bd);border-radius:8px;padding:4px 10px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit;cursor:pointer"
+          onchange="try{renderTimelineChart(this.value);}catch(e){}">
+        <button type="button" onclick="document.getElementById('timelineDatePicker').value=today();try{renderTimelineChart(today());}catch(e){}"
+          style="padding:4px 10px;border:0.5px solid var(--bd);border-radius:7px;background:transparent;color:var(--teal);font-size:11px;cursor:pointer;font-family:inherit">오늘</button>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:.5rem">혈당(선+점)·인슐린(◆)·식사(▲)를 시간대별로 확인해요</div>
+      <div class="chart-wrap" style="height:200px"><canvas id="timelineChart"></canvas></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:.4rem;font-size:10px;color:var(--text2)">
+        <span>🟢 혈당 (mg/dL)</span><span>🔶 인슐린 (마커)</span><span>🔷 식사 (마커)</span>
+      </div>
+      <div id="timelineEmpty" style="display:none;text-align:center;padding:1rem;color:var(--text3);font-size:12px">이 날의 기록이 없어요</div>
     </div>
   </div>
 
@@ -784,28 +805,12 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
       style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text2);padding:0 4px">‹</button>
     <input type="date" id="histDatePicker"
       style="flex:1;border:none;background:transparent;font-size:13px;font-weight:500;color:var(--text);font-family:inherit;text-align:center;cursor:pointer"
-      onchange="renderHistory();try{renderTimelineChart();}catch(e){}">
+      onchange="renderHistory()">
     <button type="button" onclick="histNavDate(1)"
       style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text2);padding:0 4px">›</button>
     <button type="button" onclick="document.getElementById('histDatePicker').value=today();renderHistory();"
       style="padding:3px 10px;border:0.5px solid var(--bd);border-radius:7px;background:transparent;color:var(--teal);font-size:11px;cursor:pointer;font-family:inherit">오늘</button>
   </div>
-  <!-- 하루 타임라인 차트 -->
-  <div class="card" id="timelineCard" style="margin-bottom:.75rem">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem;cursor:pointer" onclick="toggleCard('timelineBody',this)">
-      <div style="font-size:13px;font-weight:500;color:var(--text)">⏱️ 하루 타임라인</div>
-      <span style="font-size:11px;color:var(--teal)">▲ 접기</span>
-    </div>
-    <div id="timelineBody">
-      <div style="font-size:11px;color:var(--text3);margin-bottom:.5rem">혈당(점)·인슐린(막대)·식사(▲)를 시간대별로 확인해요</div>
-      <div class="chart-wrap" style="height:180px"><canvas id="timelineChart"></canvas></div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:.4rem;font-size:10px;color:var(--text2)">
-        <span>🟢 혈당 (mg/dL) — 선+점</span><span>&nbsp;&nbsp;🔶 인슐린 — 마커 (툴팁에 U)</span><span>&nbsp;&nbsp;🔷 식사 — 마커 (툴팁에 kcal)</span>
-      </div>
-      <div id="timelineEmpty" style="display:none;text-align:center;padding:1rem;color:var(--text3);font-size:12px">이 날의 기록이 없어요</div>
-    </div>
-  </div>
-
   <div style="background:var(--teal-l);border-radius:10px;padding:.75rem 1rem;margin-bottom:.75rem">
       <div style="font-size:12px;font-weight:500;color:var(--teal-d);margin-bottom:.3rem">📋 기록 내보내기</div>
       <div style="font-size:11px;color:var(--teal);line-height:1.7;margin-bottom:.6rem">
@@ -1381,8 +1386,8 @@ window.showTab = function showTab(tab, btn) {
 
     // 렌더링
     if(tab==='cgm') try{renderCgmHistory();}catch(e){console.warn(e);}
-    if(tab==='graph') try{renderGraphs();renderBTTrend();}catch(e){console.warn(e);}
-    if(tab==='history') try{renderHistory();renderRoutineSchedule();renderTimelineChart();}catch(e){console.warn(e);}
+    if(tab==='graph') try{renderGraphs();renderBTTrend();const tlDate=document.getElementById('timelineDatePicker');if(tlDate&&!tlDate.value)tlDate.value=today();renderTimelineChart(document.getElementById('timelineDatePicker')?.value||today());}catch(e){console.warn(e);}
+    if(tab==='history') try{renderHistory();renderRoutineSchedule();}catch(e){console.warn(e);}
     if(tab==='bloodtest') try{renderBTGraphs();renderBTHistoryList();}catch(e){console.warn(e);}
     if(tab==='food') try{renderFdHistory();}catch(e){console.warn(e);}
     if(tab==='daily') try{updateMetrics();renderRoutineChecklist();}catch(e){console.warn(e);}
@@ -1399,7 +1404,6 @@ function histNavDate(delta){
   picker.value=d.toISOString().slice(0,10);
   renderHistory();
   renderRoutineSchedule();
-  try{renderTimelineChart();}catch(e){}
 }
 
 
@@ -1646,7 +1650,7 @@ function renderTimelineChart(date) {
 
 /* 그래프 */
 let gInst=[];let gPeriod=0;let comboInst=null;
-const gActive=new Set(['bg','ket','wt']);
+const gActive=new Set(['ket','wt']);
 
 function setGPeriod(n,el){
   gPeriod=n;
@@ -1694,26 +1698,101 @@ function renderComboChart() {
   const tc=isDark?'#B4B2A9':'#888780';
   const days=getDateRange();
   const labels=days.map(d=>d.slice(5));
-  const bgData=days.map(d=>{const r=getRec(state.activeCat,d);const arr=r.bg.filter(x=>x.bg!=='').map(x=>parseFloat(x.bg));return arr.length?Math.round(arr.reduce((a,b)=>a+b)/arr.length):null;});
-  const insData=days.map(d=>{const r=getRec(state.activeCat,d);const arr=r.ins.map(x=>parseFloat(x.dose)).filter(x=>!isNaN(x));return arr.length?parseFloat((arr.reduce((a,b)=>a+b)/arr.length).toFixed(1)):null;});
-  const kcalData=days.map(d=>{const r=getRec(state.activeCat,d);const s=r.meals.reduce((a,m)=>a+(m.kcal||0),0);return s||null;});
-  const hasAny=bgData.some(v=>v!==null)||insData.some(v=>v!==null)||kcalData.some(v=>v!==null);
+
+  // 혈당: 날짜별 평균
+  const bgData=days.map(d=>{
+    const r=getRec(state.activeCat,d);
+    const arr=r.bg.filter(x=>x.bg!=='').map(x=>parseFloat(x.bg));
+    return arr.length?Math.round(arr.reduce((a,b)=>a+b)/arr.length):null;
+  });
+  // 인슐린 마커: 투여 기록 있는 날 y=20 고정
+  const insMarker=days.map((d,i)=>{
+    const r=getRec(state.activeCat,d);
+    const hasIns=r.ins&&r.ins.length>0;
+    if(!hasIns)return null;
+    const total=r.ins.reduce((a,x)=>a+(parseFloat(x.dose)||0),0);
+    return {y:20, _label:'💉 인슐린 '+total.toFixed(1)+'U'};
+  });
+  // 식사 마커: 식사 기록 있는 날 y=10 고정
+  const mealMarker=days.map((d,i)=>{
+    const r=getRec(state.activeCat,d);
+    const hasMeal=r.meals&&r.meals.length>0;
+    if(!hasMeal)return null;
+    const kcal=r.meals.reduce((a,m)=>a+(m.kcal||0),0);
+    return {y:10, _label:'🍽️ 식사 '+kcal+'kcal'};
+  });
+
+  const hasAny=bgData.some(v=>v!==null)||insMarker.some(v=>v!==null)||mealMarker.some(v=>v!==null);
   const card=document.getElementById('comboChartCard');
   if(!hasAny){if(card)card.style.display='none';return;}
   if(card)card.style.display='block';
+
+  // 목표범위 배경 플러그인 (70~180)
+  const targetBandPlugin={
+    id:'comboBand',
+    beforeDatasetsDraw:function(chart){
+      const yScale=chart.scales['yBg'];
+      const xScale=chart.scales['x'];
+      if(!yScale||!xScale)return;
+      const ctx2=chart.ctx;
+      const y180=yScale.getPixelForValue(180);
+      const y70=yScale.getPixelForValue(70);
+      ctx2.save();
+      ctx2.fillStyle='rgba(29,158,117,0.08)';
+      ctx2.fillRect(xScale.left,y180,xScale.right-xScale.left,y70-y180);
+      // 참조선 180
+      ctx2.strokeStyle='rgba(186,117,23,0.35)';
+      ctx2.lineWidth=1;ctx2.setLineDash([5,4]);
+      ctx2.beginPath();ctx2.moveTo(xScale.left,y180);ctx2.lineTo(xScale.right,y180);ctx2.stroke();
+      // 참조선 70
+      ctx2.strokeStyle='rgba(24,95,165,0.35)';
+      ctx2.beginPath();ctx2.moveTo(xScale.left,y70);ctx2.lineTo(xScale.right,y70);ctx2.stroke();
+      ctx2.setLineDash([]);ctx2.restore();
+    }
+  };
+
   comboInst=new Chart(canvas,{
-    type:'bar',
+    type:'line',
+    plugins:[targetBandPlugin],
     data:{labels,datasets:[
-      {label:'혈당(mg/dL)',data:bgData,type:'line',yAxisID:'yBg',borderColor:'#1D9E75',backgroundColor:'rgba(29,158,117,0.1)',tension:.35,fill:true,pointRadius:days.length>60?2:4,pointBackgroundColor:'#1D9E75',spanGaps:false,borderWidth:2,order:1},
-      {label:'인슐린(U)',data:insData,type:'bar',yAxisID:'yRight',backgroundColor:'rgba(186,117,23,0.6)',borderRadius:3,order:2},
-      {label:'칼로리(kcal)',data:kcalData,type:'bar',yAxisID:'yRight',backgroundColor:'rgba(24,95,165,0.5)',borderRadius:3,order:3}
+      // 혈당 선
+      {label:'혈당',data:bgData,
+       borderColor:'#1D9E75',backgroundColor:'rgba(29,158,117,0.08)',
+       tension:.35,fill:true,pointRadius:days.length>60?2:5,
+       pointBackgroundColor:'#1D9E75',spanGaps:false,borderWidth:2,order:1},
+      // 인슐린 마커 (다이아몬드, y=20 고정)
+      {label:'인슐린',
+       data:insMarker.map((v,i)=>v===null?null:{x:i,y:v.y,_label:v._label}),
+       parsing:{xAxisKey:'x',yAxisKey:'y'},
+       type:'scatter',
+       pointStyle:'rectRot',pointRadius:8,pointHoverRadius:11,
+       backgroundColor:'rgba(186,117,23,0.9)',borderColor:'rgba(186,117,23,0.9)',
+       borderWidth:0,order:2},
+      // 식사 마커 (삼각형, y=10 고정)
+      {label:'식사',
+       data:mealMarker.map((v,i)=>v===null?null:{x:i,y:v.y,_label:v._label}),
+       parsing:{xAxisKey:'x',yAxisKey:'y'},
+       type:'scatter',
+       pointStyle:'triangle',pointRadius:8,pointHoverRadius:11,
+       backgroundColor:'rgba(24,95,165,0.9)',borderColor:'rgba(24,95,165,0.9)',
+       borderWidth:0,order:3}
     ]},
     options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return ' '+ctx.dataset.label+': '+ctx.parsed.y;}}}},
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{
+          label:function(ctx){
+            const raw=ctx.raw;
+            if(raw&&raw._label)return ' '+raw._label;
+            if(ctx.dataset.label==='혈당')return ' 혈당 '+ctx.parsed.y+'mg/dL';
+            return '';
+          }
+        }}
+      },
       scales:{
         x:{grid:{color:gc},ticks:{color:tc,font:{size:10},maxTicksLimit:days.length>60?8:15}},
-        yBg:{position:'left',grid:{color:gc},ticks:{color:'#1D9E75',font:{size:10}},min:0,max:450},
-        yRight:{position:'right',grid:{drawOnChartArea:false},ticks:{color:tc,font:{size:10}}}
+        yBg:{position:'left',grid:{color:gc},ticks:{color:'#1D9E75',font:{size:10}},min:0,max:450,
+          title:{display:true,text:'혈당 mg/dL',color:'#1D9E75',font:{size:9}}}
       }
     }
   });
@@ -1729,20 +1808,12 @@ function renderGraphs(){
   const periodLabel=gPeriod===0?'전체':gPeriod+'일';
 
   const defs=[
-    {k:'bg',label:`혈당 (mg/dL) — 최· ${periodLabel}`,color:'#1D9E75',type:'line',
-     yMin:0,yMax:450,
-     annotations:[{value:180,color:'rgba(186,117,23,0.4)',label:'180'},{value:70,color:'rgba(24,95,165,0.4)',label:'70'}],
-     fn:d=>{const r=getRec(state.activeCat,d);const arr=r.bg.filter(x=>x.bg!=='').map(x=>parseFloat(x.bg));return arr.length?Math.round(arr.reduce((a,b)=>a+b)/arr.length):null}},
     {k:'ket',label:`케톤 (mmol/L) — 최· ${periodLabel}`,color:'#BA7517',type:'line',
      yMin:0,yMax:6,
      annotations:[{value:2.4,color:'rgba(216,90,48,0.5)',label:'2.4 위험'},{value:0.5,color:'rgba(186,117,23,0.3)',label:'0.5 주의'}],
      fn:d=>{const r=getRec(state.activeCat,d);const arr=r.bg.filter(x=>x.ketone!=='').map(x=>parseFloat(x.ketone));return arr.length?parseFloat((arr.reduce((a,b)=>a+b)/arr.length).toFixed(2)):null}},
     {k:'wt',label:`체중 (kg) — 최· ${periodLabel}`,color:'#534AB7',type:'line',
      fn:d=>{const r=getRec(state.activeCat,d);const ws=r.weights||[];return ws.length?ws[ws.length-1].weight:null}},
-    {k:'kcal',label:`칼로리 (kcal) — 최· ${periodLabel}`,color:'#185FA5',type:'bar',
-     fn:d=>{const r=getRec(state.activeCat,d);const s=r.meals.reduce((a,m)=>a+m.kcal,0);return s||null}},
-    {k:'ins',label:`인슐린 투여량 (U) — 최· ${periodLabel}`,color:'#BA7517',type:'bar',
-     fn:d=>{const r=getRec(state.activeCat,d);const arr=r.ins.map(x=>parseFloat(x.dose)).filter(x=>!isNaN(x));return arr.length?parseFloat((arr.reduce((a,b)=>a+b)/arr.length).toFixed(1)):null}},
   ];
 
   defs.forEach(def=>{
@@ -4746,7 +4817,7 @@ initSupabase();
       <option value="버미즈">버미즈</option>
       <option value="벵갈">벵갈</option>
       <option value="봄베이">봄베이</option>
-      <option value="브리티시론헤어">브리티시론헤어</option>
+      <option value="브리티시롱헤어">브리티시롱헤어</option>
       <option value="브리티시숏헤어">브리티시숏헤어</option>
       <option value="사바나">사바나</option>
       <option value="샤르트뢰">샤르트뢰</option>
