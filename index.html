@@ -485,7 +485,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.76</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.78</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap">
@@ -5038,9 +5038,8 @@ async function syncFromDB() {
     renderBTGraphs();
     renderBTTrend();
 
-    // 로컬에 DB에 없는 기록이 있으면 자동 마이그레이션
-    const localDates = Object.keys(state.records?.[state.activeCat] || {});
-    if((localDates.length > 0 || btData.length > 0) && cats && cats.length > 0) {
+    // 로컬에 기록이 있으면 자동 마이그레이션 (신규 사용자는 조용히 스킵)
+    if(cats && cats.length > 0) {
       setTimeout(async ()=>{
         await migrateLocalToDB();
         await migrateBloodTestsToDB();
@@ -5051,7 +5050,7 @@ async function syncFromDB() {
     try { await loadRoutineForCat(state.activeCat); } catch(e) { console.warn('루틴 로드 오류:', e); }
     try { await loadCGMForCat(state.activeCat); } catch(e) { console.warn('CGM 로드 오류:', e); }
 
-    toast('☁️ 동기화 완료! 고양이 '+(state.cats.length)+'마리');
+    toast('☁️ 동기화 완료' + (state.cats.length > 0 ? '! 고양이 '+state.cats.length+'마리' : ''));
     // 동기화 후 daily 탭 데이터만 갱신 (탭 전환 없이)
     try { updateMetrics(); } catch(e) {}
     try { renderRoutineChecklist(); } catch(e) {}
@@ -5157,7 +5156,7 @@ async function migrateLocalToDB() {
       const rec = records[date];
       if(!rec) continue;
       const hasData = (rec.bg?.length||0)+(rec.ins?.length||0)
-        +(rec.meals?.length||0)+(rec.weights?.length||0)+(rec.routines?.length||0) > 0;
+        +(rec.meals?.length||0)+(rec.weights?.length||0)+(rec.routines?.length||0)+(rec.rr?.length||0) > 0;
       if(!hasData) continue;
       try {
         await sbClient.from('daily_records').upsert({
@@ -5171,7 +5170,7 @@ async function migrateLocalToDB() {
       } catch(e) {}
     }
   }
-  toast(`☁️ 로컬 기록 ${totalCount}일치 DB 업로드 완료!`);
+  if(totalCount > 0) toast(`☁️ 로컬 기록 ${totalCount}일치 DB 업로드 완료!`);
   return totalCount;
 }
 
