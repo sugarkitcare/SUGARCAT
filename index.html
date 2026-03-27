@@ -426,7 +426,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.69</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.70</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
   <a href="https://open.kakao.com/o/sjseVrVe" target="_blank"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;text-decoration:none;white-space:nowrap">
@@ -535,7 +535,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
         <div id="rrTimerLabel" style="font-size:11px;color:var(--text3);margin-bottom:.5rem">시작 전</div>
         <!-- 큰 탭 버튼 -->
         <button id="rrTapBtn" type="button" onclick="rrTap()"
-          style="width:140px;height:140px;border-radius:50%;border:4px solid var(--teal);background:var(--bg);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0 auto;font-family:inherit;transition:transform .1s,background .1s">
+          style="width:140px;height:140px;border-radius:50%;border:4px solid var(--teal);background:var(--bg);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0 auto;font-family:inherit;transition:transform .1s,background .1s;touch-action:manipulation;-webkit-user-select:none;user-select:none">
           <div id="rrCount" style="font-size:42px;font-weight:700;color:var(--teal);line-height:1">0</div>
           <div style="font-size:11px;color:var(--text3);margin-top:4px">탭하여 시작</div>
         </button>
@@ -1933,16 +1933,74 @@ function renderGraphs(){
      fn:d=>{const r=getRec(state.activeCat,d);const ws=r.weights||[];return ws.length?ws[ws.length-1].weight:null}},
     {k:'rr',label:`호흡수 (회/분) — ${periodLabel}`,color:'#1D7FBF',type:'line',
      yMin:0,yMax:60,
+     multiDataset: true,
      annotations:[{value:40,color:'rgba(216,90,48,0.5)',label:'40 위험'},{value:30,color:'rgba(186,117,23,0.35)',label:'30 주의'}],
-     fn:d=>{const r=getRec(state.activeCat,d);const arr=(r.rr||[]).map(x=>x.rr).filter(x=>x>0);return arr.length?Math.round(arr.reduce((a,b)=>a+b)/arr.length):null}},
+     fn:d=>{const r=getRec(state.activeCat,d);const arr=(r.rr||[]).map(x=>x.rr).filter(x=>x>0);return arr.length?Math.round(arr.reduce((a,b)=>a+b)/arr.length):null},
+     fnByState:(d,st)=>{const r=getRec(state.activeCat,d);const arr=(r.rr||[]).filter(x=>x.state===st).map(x=>x.rr).filter(x=>x>0);return arr.length?Math.round(arr.reduce((a,b)=>a+b)/arr.length):null}},
   ];
 
   defs.forEach(def=>{
     if(!gActive.has(def.k))return;
-    const data=def.days?def.days.map(def.fn):days.map(def.fn);
     const labels=days.map(d=>d.slice(5));
-    const hasData=data.some(v=>v!==null);
 
+    // 호흡수: 상태별 3개 데이터셋
+    if(def.multiDataset && def.fnByState) {
+      const rrStates = [
+        {st:'sleep', label:'😴 수면', color:'#1D7FBF', dash:[]},
+        {st:'rest',  label:'🐱 안정', color:'#1D9E75', dash:[4,3]},
+        {st:'active',label:'🏃 활동', color:'#BA7517', dash:[2,3]},
+      ];
+      const hasAnyRR = days.some(d=>(getRec(state.activeCat,d).rr||[]).length>0);
+      const card=document.createElement('div');card.className='card';
+      if(!hasAnyRR){
+        card.innerHTML=`<div class="card-title">${def.label}</div><div style="text-align:center;padding:1.5rem;color:var(--text3);font-size:12px">아직 기록이 없어요<br><span style="font-size:11px">오늘 기록 탭에서 입력하면 그래프가 그려져요 📊</span></div>`;
+        wrap.appendChild(card);return;
+      }
+      card.innerHTML=`<div class="card-title">${def.label}</div>`
+        +`<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:.4rem;padding:0 .25rem;font-size:10px;color:var(--text2)">`
+        +rrStates.map(s=>`<span><span style="display:inline-block;width:12px;height:3px;background:${s.color};border-radius:2px;vertical-align:middle;margin-right:3px"></span>${s.label}</span>`).join('')
+        +`</div><div class="chart-wrap" style="height:170px"><canvas id="gc_${def.k}"></canvas></div>`;
+      wrap.appendChild(card);
+
+      const yOpts={grid:{color:gc},ticks:{color:tc,font:{size:10}},min:def.yMin||0,max:def.yMax||60};
+      const datasets=[];
+
+      rrStates.forEach(s=>{
+        const data=days.map(d=>def.fnByState(d,s.st));
+        if(data.some(v=>v!==null)){
+          datasets.push({label:s.label,data,borderColor:s.color,
+            backgroundColor:s.color+'22',
+            tension:.35,fill:false,
+            pointRadius:days.length>60?3:5,
+            pointStyle:'circle',
+            pointBackgroundColor:s.color,
+            borderDash:s.dash,
+            spanGaps:false,borderWidth:2});
+        }
+      });
+
+      // 참조선
+      if(def.annotations){
+        def.annotations.forEach(ann=>{
+          datasets.push({data:days.map(()=>ann.value),borderColor:ann.color,borderWidth:1.5,
+            borderDash:[5,4],pointRadius:0,fill:false,tension:0,label:''});
+        });
+      }
+
+      const inst=new Chart(document.getElementById('gc_'+def.k),{
+        type:'line',data:{labels,datasets},
+        options:{responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{display:false},
+            tooltip:{callbacks:{label:ctx=>ctx.dataset.label&&ctx.parsed.y!==null?`${ctx.dataset.label}: ${ctx.parsed.y}회/분`:''}}},
+          scales:{x:{grid:{color:gc},ticks:{color:tc,font:{size:10},maxTicksLimit:days.length>60?8:15}},y:yOpts}
+        }
+      });
+      gInst.push(inst);
+      return;
+    }
+
+    const data=def.days?def.days.map(def.fn):days.map(def.fn);
+    const hasData=data.some(v=>v!==null);
     const hasAnyData=days.some(d=>def.fn(d)!==null);
     const card=document.createElement('div');card.className='card';
     if(!hasAnyData){
@@ -1961,7 +2019,6 @@ function renderGraphs(){
       tension:.35,fill:def.type==='line',pointRadius:days.length>60?2:4,
       pointBackgroundColor:def.color,spanGaps:false,borderRadius:def.type==='bar'?4:0,borderWidth:2}];
 
-    // 참조선 추가
     if(def.annotations){
       def.annotations.forEach(ann=>{
         datasets.push({data:days.map(()=>ann.value),borderColor:ann.color,borderWidth:1.5,
