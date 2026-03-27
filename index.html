@@ -485,7 +485,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.82</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.83</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap">
@@ -2269,55 +2269,39 @@ function setupDrop(dropId,fileId,fn,multiFn){
 async function btAnalyzeMultiple(files) {
   const MAX = 2;
   const fileList = [...files].slice(0, MAX);
-  if(fileList.length > MAX) {
+  if([...files].length > MAX) {
     toast(`최대 ${MAX}장까지 업로드 가능해요`, '#BA7517');
   }
-  // 미리보기
   const prevWrap = document.getElementById('btMultiPreview');
   if(prevWrap) {
     prevWrap.style.display = 'flex';
     prevWrap.innerHTML = fileList.map((_,i) =>
-      `<div style="background:var(--bg2);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--text2)" id="btMultiItem${i}">
-        📄 ${i+1}장
-      </div>`
+      `<div style="background:var(--bg2);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--text2)" id="btMultiItem${i}">📄 ${i+1}장</div>`
     ).join('');
   }
-  document.getElementById('btResult').style.display = 'none';
-  document.getElementById('btPreview').style.display = 'none';
 
   let successCount = 0;
   for(let i = 0; i < fileList.length; i++) {
     const file = fileList[i];
     const itemEl = document.getElementById('btMultiItem'+i);
     if(itemEl) itemEl.style.color = 'var(--teal)';
+    const isLast = (i === fileList.length - 1);
+    // 마지막 장은 silent=false로 → 결과창 정상 표시
     showStat('btStatus','loading',`${i+1}/${fileList.length}장 분석 중... (최대 약 30초 소요)`);
     try {
-      await btAnalyzeSingle(file, true);
+      await btAnalyzeSingle(file, !isLast);
       successCount++;
       if(itemEl) itemEl.innerHTML = `✅ ${i+1}장 완료`;
     } catch(e) {
       if(itemEl) itemEl.innerHTML = `❌ ${i+1}장 실패`;
     }
   }
-  hideStat('btStatus');
   if(prevWrap) prevWrap.style.display = 'none';
-  toast(`${successCount}/${fileList.length}장 분석 완료! 📊`);
-  renderBTHistoryList();
-  renderBTGraphs();
-  renderBTTrend();
-  // 마지막 분석 결과 화면에 표시 (단일 처리와 동일하게 렌더링)
-  if(successCount > 0 && btEx) {
-    // btResult 표시 영역 초기화
-    const oldCards2 = document.getElementById('btCatCards');
-    if(oldCards2) oldCards2.innerHTML = '';
-    // btAnalyzeSingle을 silent=false로 마지막 파일 재분석하지 않고
-    // btEx 기준으로 결과창만 업데이트
-    document.getElementById('btResultLabel').textContent =
-      `${btEx.cat} · ${btEx.date} (${(btEx.items||[]).length}개 항목) — ${successCount}장 저장 완료`;
-    document.getElementById('btResult').style.display = 'block';
-    // 저장 버튼 상태 업데이트
-    const saveBtn = document.getElementById('btSave');
-    if(saveBtn) saveBtn.style.display = 'none';
+  if(successCount > 0) {
+    toast(`${successCount}/${fileList.length}장 분석 완료! 📊`);
+    renderBTHistoryList();
+    renderBTGraphs();
+    renderBTTrend();
   }
 }
 
@@ -2328,8 +2312,6 @@ async function btAnalyzeSingle(file, silent=false) {
     document.getElementById('btResult').style.display='none';
     showStat('btStatus','loading','AI가 혈액검사지를 읽고 있어요...');
   }
-  // silent 모드에서도 btResult 초기화
-  if(silent) { document.getElementById('btResult').style.display='none'; }
   const b64=await toB64(file);
   const sys='혈액검사지에서 날짜별로 모든 항목을 추출하여 아래 JSON만 출력하세요.\n'+
 '날짜가 여러 개이면 날짜별로 각각 분리해서 추출하세요.\n'+
