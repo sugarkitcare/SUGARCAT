@@ -485,7 +485,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.86</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.87</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap">
@@ -2437,7 +2437,10 @@ setupDrop('btDrop','btFile',async file=>{
   document.getElementById('btResult').style.display='block';
   }catch(e){
     console.error('BT error:',e);
-    showStat('btStatus','err','분석 중 오류가 발생했어요: '+e.message+'\n잠시 후 다시 시도해주세요. 반복되면 이미지 용량을 줄여보세요.');
+    const errMsg = e.message&&e.message.toLowerCase().includes('overload')
+      ? 'AI 서버가 잠시 바빠요 😅\n30초 후 다시 시도해주세요.'
+      : '분석 중 오류가 발생했어요: '+e.message+'\n잠시 후 다시 시도해주세요.';
+    showStat('btStatus','err',errMsg);
   }
 });
 document.getElementById('btSave').onclick=()=>{
