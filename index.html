@@ -485,7 +485,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.83</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.86</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap">
@@ -933,17 +933,18 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="sec" id="tab-bloodtest" style="display:none">
   <div class="card">
     <div class="card-title">혈액검사지 업로드 → AI 자동 추출 → 항목별 그래프</div>
+    <!-- 안내 문구 -->
+    <div style="background:var(--teal-l);border-radius:10px;padding:.65rem .9rem;margin-bottom:.75rem;font-size:12px;color:var(--teal-d);line-height:1.7">
+      💡 <b>검사지가 여러 장이어도 괜찮아요</b><br>
+      한 장씩 업로드해서 저장하면 날짜별·항목별로 자동 누적돼요.<br>
+      <span style="color:var(--teal);font-size:11px">예) 3월 검사지 저장 → 6월 검사지 저장 → 그래프에서 추이 자동 표시</span>
+    </div>
     <div class="drop-zone" id="btDrop">
       <div class="drop-title">혈액검사지 업로드</div>
-      <div class="drop-sub">이미지(JPG·PNG) 또는 PDF · 최대 2장</div>
-      <label class="drop-lbl" for="btFile">파일 선택 (최대 2장)</label>
-      <input type="file" id="btFile" accept="image/*,application/pdf" multiple style="display:none">
+      <div class="drop-sub">이미지(JPG·PNG) 또는 PDF</div>
+      <label class="drop-lbl" for="btFile">파일 선택</label>
+      <input type="file" id="btFile" accept="image/*,application/pdf" style="display:none">
     </div>
-    <div style="font-size:11px;color:var(--text3);margin:.4rem 0 .75rem;text-align:center">
-      여러 장 선택 시 순서대로 분석해요 · 최대 약 30초 소요
-    </div>
-    <!-- 다중 파일 미리보기 -->
-    <div id="btMultiPreview" style="display:none;display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.5rem"></div>
     <img id="btPreview" class="img-prev" style="display:none">
     <div class="row2" style="margin-bottom:.75rem">
       <div class="ig"><label>검사 날짜</label><input type="date" id="btDate"></div>
@@ -2249,69 +2250,19 @@ function renderGraphs(){
 
 /* 혈액검사 */
 let btEx=null;
-function setupDrop(dropId,fileId,fn,multiFn){
+function setupDrop(dropId,fileId,fn){
   const drop=document.getElementById(dropId),file=document.getElementById(fileId);
   drop.ondragover=e=>{e.preventDefault();drop.classList.add('drag')};
   drop.ondragleave=()=>drop.classList.remove('drag');
-  drop.ondrop=e=>{
-    e.preventDefault();drop.classList.remove('drag');
-    const files=[...e.dataTransfer.files];
-    if(multiFn&&files.length>1) multiFn(files);
-    else if(files[0]) fn(files[0]);
-  };
-  file.onchange=e=>{
-    const files=[...e.target.files];
-    if(multiFn&&files.length>1) multiFn(files);
-    else if(files[0]) fn(files[0]);
-  };
-}
-// 혈액검사 다중 파일 순차 처리
-async function btAnalyzeMultiple(files) {
-  const MAX = 2;
-  const fileList = [...files].slice(0, MAX);
-  if([...files].length > MAX) {
-    toast(`최대 ${MAX}장까지 업로드 가능해요`, '#BA7517');
-  }
-  const prevWrap = document.getElementById('btMultiPreview');
-  if(prevWrap) {
-    prevWrap.style.display = 'flex';
-    prevWrap.innerHTML = fileList.map((_,i) =>
-      `<div style="background:var(--bg2);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--text2)" id="btMultiItem${i}">📄 ${i+1}장</div>`
-    ).join('');
-  }
-
-  let successCount = 0;
-  for(let i = 0; i < fileList.length; i++) {
-    const file = fileList[i];
-    const itemEl = document.getElementById('btMultiItem'+i);
-    if(itemEl) itemEl.style.color = 'var(--teal)';
-    const isLast = (i === fileList.length - 1);
-    // 마지막 장은 silent=false로 → 결과창 정상 표시
-    showStat('btStatus','loading',`${i+1}/${fileList.length}장 분석 중... (최대 약 30초 소요)`);
-    try {
-      await btAnalyzeSingle(file, !isLast);
-      successCount++;
-      if(itemEl) itemEl.innerHTML = `✅ ${i+1}장 완료`;
-    } catch(e) {
-      if(itemEl) itemEl.innerHTML = `❌ ${i+1}장 실패`;
-    }
-  }
-  if(prevWrap) prevWrap.style.display = 'none';
-  if(successCount > 0) {
-    toast(`${successCount}/${fileList.length}장 분석 완료! 📊`);
-    renderBTHistoryList();
-    renderBTGraphs();
-    renderBTTrend();
-  }
+  drop.ondrop=e=>{e.preventDefault();drop.classList.remove('drag');const f=e.dataTransfer.files[0];if(f)fn(f)};
+  file.onchange=e=>{if(e.target.files[0])fn(e.target.files[0])};
 }
 
-async function btAnalyzeSingle(file, silent=false) {
-  if(!silent){
-    if(file.type.startsWith('image/')){const url=URL.createObjectURL(file);document.getElementById('btPreview').src=url;document.getElementById('btPreview').style.display='block';}
-    else document.getElementById('btPreview').style.display='none';
-    document.getElementById('btResult').style.display='none';
-    showStat('btStatus','loading','AI가 혈액검사지를 읽고 있어요...');
-  }
+setupDrop('btDrop','btFile',async file=>{
+  if(file.type.startsWith('image/')){const url=URL.createObjectURL(file);document.getElementById('btPreview').src=url;document.getElementById('btPreview').style.display='block';}
+  else document.getElementById('btPreview').style.display='none';
+  document.getElementById('btResult').style.display='none';
+  showStat('btStatus','loading','AI가 혈액검사지를 읽고 있어요...');
   const b64=await toB64(file);
   const sys='혈액검사지에서 날짜별로 모든 항목을 추출하여 아래 JSON만 출력하세요.\n'+
 '날짜가 여러 개이면 날짜별로 각각 분리해서 추출하세요.\n'+
@@ -2389,7 +2340,7 @@ async function btAnalyzeSingle(file, silent=false) {
       toast(resultsToSave.length+'개 날짜 결과 모두 저장됐어요! 📊');
     }
     const btDate=btEx.date;
-    if(!silent) hideStat('btStatus');
+  hideStat('btStatus');
     // 이전 카테고리 카드 초기화
     const oldCards = document.getElementById('btCatCards');
     if(oldCards) oldCards.innerHTML = '';
@@ -2482,16 +2433,13 @@ async function btAnalyzeSingle(file, silent=false) {
       });
       cardContainer.appendChild(card);
     });
-    if(!silent){
-      document.getElementById('btResultLabel').textContent=`${btEx.cat} · ${btEx.date} (${(btEx.items||[]).length}개 항목)`;
-      document.getElementById('btResult').style.display='block';
-    }
+  document.getElementById('btResultLabel').textContent=`${btEx.cat} · ${btEx.date} (${(btEx.items||[]).length}개 항목)`;
+  document.getElementById('btResult').style.display='block';
   }catch(e){
     console.error('BT error:',e);
-    if(!silent) showStat('btStatus','err','분석 중 오류가 발생했어요: '+e.message+'\n잠시 후 다시 시도해주세요. 반복되면 이미지 용량을 줄여보세요.');
-    throw e;
+    showStat('btStatus','err','분석 중 오류가 발생했어요: '+e.message+'\n잠시 후 다시 시도해주세요. 반복되면 이미지 용량을 줄여보세요.');
   }
-}
+});
 document.getElementById('btSave').onclick=()=>{
   if(!btEx)return;
   const ei=btData.findIndex(d=>d.cat===btEx.cat&&d.date===btEx.date);
@@ -2582,11 +2530,6 @@ function renderBTGraphs(){
   });
 }
 
-// btDrop setupDrop 재연결
-setupDrop('btDrop','btFile',
-  async file=>{ await btAnalyzeSingle(file, false); },
-  async files=>{ await btAnalyzeMultiple(files); }
-);
 
 /* 사료 분석 */
 const cDM=(v,m)=>v===null?null:parseFloat((v/(100-m)*100).toFixed(1));
