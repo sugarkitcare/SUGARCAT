@@ -485,7 +485,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.74</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.75</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap">
@@ -676,10 +676,13 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
   </div>
   <div class="card" id="routineCard">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;cursor:pointer" onclick="toggleCard('routineBody',this)">
-    <div style="font-size:12px;font-weight:500;color:var(--text2)">💊 투약·보조제·루틴</div>
+    <div>
+      <div style="font-size:12px;font-weight:500;color:var(--text2)">💊 투약·보조제·루틴</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:1px">탭해서 오늘 투약 체크</div>
+    </div>
     <div style="display:flex;align-items:center;gap:8px">
       <button type="button" onclick="event.stopPropagation();openCatProfile(state.activeCat)"
-        style="font-size:10px;color:var(--text3);background:none;border:none;cursor:pointer;font-family:inherit;padding:2px 4px">
+        style="font-size:10px;color:var(--teal);background:var(--teal-l);border:0.5px solid var(--teal);border-radius:7px;cursor:pointer;font-family:inherit;padding:3px 8px">
         ⚙️ 항목 설정
       </button>
       <span style="font-size:11px;color:var(--teal)">▼ 펼치기</span>
@@ -3202,7 +3205,7 @@ async function loadRoutineForCat(catName) {
   if(sbClient && currentUser) {
     try {
       const {data} = await sbClient.from('user_settings')
-        .select('value').eq('user_id', currentUser.id).eq('key', 'routine_items_' + cat).single();
+        .select('value').eq('user_id', currentUser.id).eq('key', 'routine_items_' + cat).maybeSingle();
       if(data?.value && Array.isArray(data.value)) {
         routineItems = data.value;
         try{localStorage.setItem(lsKey, JSON.stringify(routineItems));}catch(e){}
@@ -3303,14 +3306,24 @@ function toggleRT(el,v){
 function renderRoutineEditList(){
   const list=document.getElementById('routineItemList');
   if(!list)return;
-  list.innerHTML='';
-  routineItems.forEach((item,i)=>{
-    const row=document.createElement('div');row.className='routine-item-row';
-    row.innerHTML=`<span class="routine-item-name">${item.name}</span>
-      <span class="routine-item-cat" style="background:${catColor[item.cat]}">${catLabel[item.cat]}</span>
-      <button class="routine-item-del" onclick="deleteRoutineItem(${i})">×</button>`;
-    list.appendChild(row);
+  const catOrder=['med','food','other'];
+  const catLabel2={med:'💊 약·보조제',food:'🍖 간식·음수',other:'📋 기타루틴'};
+  let html='';
+  catOrder.forEach(cat=>{
+    const items=routineItems.filter((item,i)=>item.cat===cat);
+    if(!items.length)return;
+    html+=`<div style="font-size:11px;font-weight:500;color:var(--text2);margin:8px 0 4px">${catLabel2[cat]}</div>`;
+    items.forEach(item=>{
+      const i=routineItems.indexOf(item);
+      html+=`<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg2);border-radius:9px;margin-bottom:5px">
+        <span style="flex:1;font-size:13px;color:var(--text)">${item.name}</span>
+        <button type="button" onclick="deleteRoutineItem(${i})"
+          style="padding:3px 10px;border:0.5px solid var(--coral);border-radius:7px;background:transparent;color:var(--coral);font-size:11px;cursor:pointer;font-family:inherit">삭제</button>
+      </div>`;
+    });
   });
+  if(!html) html='<div style="text-align:center;padding:1rem;color:var(--text3);font-size:12px">등록된 항목이 없어요</div>';
+  list.innerHTML=html;
 }
 
 function addRoutineItem(){
@@ -3640,7 +3653,7 @@ async function loadCGMForCat(catName){
   if(sbClient&&currentUser){
     try{
       const {data}=await sbClient.from('user_settings')
-        .select('value').eq('user_id',currentUser.id).eq('key','cgm_data_'+cat).single();
+        .select('value').eq('user_id',currentUser.id).eq('key','cgm_data_'+cat).maybeSingle();
       if(data?.value&&Array.isArray(data.value)){
         cgmData=data.value;
         try{localStorage.setItem(SK_CGM+'_'+cat,JSON.stringify(cgmData));}catch(e){}
@@ -4315,7 +4328,7 @@ function deleteLogItem(type, ts) {
   if(!confirm('이 기록을 삭제할까요?')) return;
   const histDate=document.getElementById('histDatePicker')?.value||today();
   const rec = getRec(state.activeCat, histDate);
-  const keyMap = {bg:'bg', ins:'ins', meal:'meals', wt:'weights', routine:'routines'};
+  const keyMap = {bg:'bg', ins:'ins', meal:'meals', wt:'weights', routine:'routines', rr:'rr'};
   const key = keyMap[type];
   if(!key || !rec[key]) return;
   const idx = rec[key].findIndex(r => r.ts === ts);
