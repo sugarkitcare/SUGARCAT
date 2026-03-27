@@ -423,15 +423,66 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
   </a>
 </div>
 
+<!-- 피드백 모달 -->
+<div id="feedbackModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9000;overflow-y:auto;-webkit-overflow-scrolling:touch">
+  <div style="background:var(--bg);border-radius:16px 16px 0 0;padding:1.5rem 1.25rem;position:absolute;bottom:0;left:0;right:0;max-height:90vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem">
+      <div style="font-size:16px;font-weight:600;color:var(--text)">💬 피드백 보내기</div>
+      <button type="button" onclick="closeFeedback()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text2);padding:4px">×</button>
+    </div>
+
+    <!-- 별점 -->
+    <div style="margin-bottom:1.25rem">
+      <div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:.5rem">앱 만족도</div>
+      <div style="display:flex;gap:8px;justify-content:center" id="starRow">
+        <span class="fb-star" data-v="1" onclick="fbSetStar(1)" style="font-size:32px;cursor:pointer;opacity:.35">⭐</span>
+        <span class="fb-star" data-v="2" onclick="fbSetStar(2)" style="font-size:32px;cursor:pointer;opacity:.35">⭐</span>
+        <span class="fb-star" data-v="3" onclick="fbSetStar(3)" style="font-size:32px;cursor:pointer;opacity:.35">⭐</span>
+        <span class="fb-star" data-v="4" onclick="fbSetStar(4)" style="font-size:32px;cursor:pointer;opacity:.35">⭐</span>
+        <span class="fb-star" data-v="5" onclick="fbSetStar(5)" style="font-size:32px;cursor:pointer;opacity:.35">⭐</span>
+      </div>
+    </div>
+
+    <!-- 카테고리 -->
+    <div style="margin-bottom:1.25rem">
+      <div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:.5rem">카테고리</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px" id="fbCatRow">
+        <button type="button" class="fb-cat-btn" data-cat="bug" onclick="fbSetCat(this)"
+          style="padding:9px;border:1.5px solid var(--bd);border-radius:10px;background:var(--bg2);color:var(--text);font-size:13px;cursor:pointer;font-family:inherit">🐛 버그 신고</button>
+        <button type="button" class="fb-cat-btn" data-cat="feature" onclick="fbSetCat(this)"
+          style="padding:9px;border:1.5px solid var(--bd);border-radius:10px;background:var(--bg2);color:var(--text);font-size:13px;cursor:pointer;font-family:inherit">💡 기능 제안</button>
+        <button type="button" class="fb-cat-btn" data-cat="praise" onclick="fbSetCat(this)"
+          style="padding:9px;border:1.5px solid var(--bd);border-radius:10px;background:var(--bg2);color:var(--text);font-size:13px;cursor:pointer;font-family:inherit">👏 칭찬해요</button>
+        <button type="button" class="fb-cat-btn" data-cat="other" onclick="fbSetCat(this)"
+          style="padding:9px;border:1.5px solid var(--bd);border-radius:10px;background:var(--bg2);color:var(--text);font-size:13px;cursor:pointer;font-family:inherit">📝 기타</button>
+      </div>
+    </div>
+
+    <!-- 자유 텍스트 -->
+    <div style="margin-bottom:1.25rem">
+      <div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:.5rem">내용 <span style="color:var(--text3);font-weight:400">(선택)</span></div>
+      <textarea id="fbContent" placeholder="불편한 점, 개선 아이디어, 칭찬 등 자유롭게 남겨주세요"
+        style="width:100%;box-sizing:border-box;height:100px;padding:10px 12px;border:0.5px solid var(--bd);border-radius:10px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit;resize:none;line-height:1.6"></textarea>
+    </div>
+
+    <!-- 버전 표시 -->
+    <div style="font-size:11px;color:var(--text3);margin-bottom:1rem" id="fbVersionLabel"></div>
+
+    <!-- 제출 버튼 -->
+    <button type="button" onclick="submitFeedback()"
+      class="btn btn-teal" style="width:100%;padding:14px;font-size:14px">피드백 제출</button>
+  </div>
+</div>
+
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.70</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.72</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
-  <a href="https://open.kakao.com/o/sjseVrVe" target="_blank"
-    style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;text-decoration:none;white-space:nowrap">
+  <button type="button" onclick="openFeedback()"
+    style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap">
     💬 피드백
-  </a>
+  </button>
   <button id="logoutBtn" onclick="handleLogout()" type="button"
     style="display:none;padding:5px 12px;border:0.5px solid var(--bd);border-radius:8px;background:transparent;color:var(--text2);font-size:11px;cursor:pointer;font-family:inherit;">로그아웃</button>
 </div>
@@ -1452,6 +1503,144 @@ function rrReset() {
   // 상태 선택 초기화 (수면으로)
   const firstBtn = document.querySelector('.rr-state-btn[data-state="sleep"]');
   if(firstBtn) rrSelectState(firstBtn);
+}
+
+
+/* ── 피드백 ── */
+const ADMIN_EMAIL = 'limkit@kakao.com';
+let fbRating = 0;
+let fbCat = '';
+let adminFeedbackAll = [];
+
+function openFeedback() {
+  fbRating = 0; fbCat = '';
+  document.getElementById('fbContent').value = '';
+  document.querySelectorAll('.fb-star').forEach(s=>s.style.opacity='.35');
+  document.querySelectorAll('.fb-cat-btn').forEach(b=>{
+    b.style.border='1.5px solid var(--bd)';b.style.background='var(--bg2)';b.style.color='var(--text)';
+  });
+  const ver = document.querySelector('.hdr-title span')?.textContent||'';
+  document.getElementById('fbVersionLabel').textContent = '버전: '+ver;
+  document.getElementById('feedbackModal').style.display='block';
+  document.body.style.overflow='hidden';
+}
+
+function closeFeedback() {
+  document.getElementById('feedbackModal').style.display='none';
+  document.body.style.overflow='';
+}
+
+function fbSetStar(v) {
+  fbRating=v;
+  document.querySelectorAll('.fb-star').forEach(s=>{
+    s.style.opacity=parseInt(s.dataset.v)<=v?'1':'.35';
+  });
+}
+
+function fbSetCat(btn) {
+  fbCat=btn.dataset.cat;
+  document.querySelectorAll('.fb-cat-btn').forEach(b=>{
+    b.style.border='1.5px solid var(--bd)';b.style.background='var(--bg2)';b.style.color='var(--text)';
+  });
+  btn.style.border='1.5px solid var(--teal)';
+  btn.style.background='var(--teal-l)';
+  btn.style.color='var(--teal-d)';
+}
+
+async function submitFeedback() {
+  if(!fbRating){toast('별점을 선택해주세요','#BA7517');return;}
+  if(!fbCat){toast('카테고리를 선택해주세요','#BA7517');return;}
+  const content=document.getElementById('fbContent').value.trim();
+  const ver=document.querySelector('.hdr-title span')?.textContent||'';
+  try {
+    if(!sbClient||!currentUser) throw new Error('로그인 필요');
+    const {error}=await sbClient.from('feedback').insert({
+      user_id:currentUser.id,rating:fbRating,category:fbCat,
+      content:content||null,version:ver
+    });
+    if(error) throw error;
+    closeFeedback();
+    toast('피드백 감사해요! 더 좋은 앱으로 발전할게요 🙏');
+  } catch(e) {
+    console.error(e);
+    toast('제출 중 오류가 발생했어요','#D85A30');
+  }
+}
+
+/* 관리자 페이지 */
+async function openAdminPage() {
+  if(!sbClient||!currentUser){toast('로그인 필요','#D85A30');return;}
+  if(currentUser.email!==ADMIN_EMAIL){toast('관리자만 접근 가능해요','#D85A30');return;}
+  const appEl=document.getElementById('app');
+  if(appEl)appEl.style.display='none';
+  document.getElementById('adminPage').style.display='block';
+  window.scrollTo(0,0);
+  await loadAdminFeedback();
+}
+
+async function loadAdminFeedback() {
+  const listEl=document.getElementById('adminFeedbackList');
+  const statsEl=document.getElementById('adminStats');
+  listEl.innerHTML='<div style="text-align:center;padding:2rem;color:var(--text3)">로딩 중...</div>';
+  try {
+    const {data,error}=await sbClient.from('feedback')
+      .select('*').order('created_at',{ascending:false});
+    if(error) throw error;
+    adminFeedbackAll=data||[];
+    renderAdminStats(statsEl);
+    renderAdminList('all');
+  } catch(e) {
+    listEl.innerHTML='<div style="text-align:center;padding:2rem;color:var(--coral)">불러오기 실패: '+e.message+'</div>';
+  }
+}
+
+function renderAdminStats(statsEl) {
+  const el=statsEl||document.getElementById('adminStats');
+  const total=adminFeedbackAll.length;
+  const avgRating=total?Math.round(adminFeedbackAll.reduce((a,f)=>a+(f.rating||0),0)/total*10)/10:0;
+  const bugs=adminFeedbackAll.filter(f=>f.category==='bug').length;
+  el.innerHTML=[
+    {label:'전체',val:total+'건',color:'var(--teal)'},
+    {label:'평균 별점',val:'⭐'+avgRating,color:'var(--amber)'},
+    {label:'버그 신고',val:bugs+'건',color:'var(--coral)'},
+  ].map(s=>`<div style="background:var(--bg2);border-radius:10px;padding:.75rem;text-align:center">
+    <div style="font-size:18px;font-weight:700;color:${s.color}">${s.val}</div>
+    <div style="font-size:11px;color:var(--text3);margin-top:2px">${s.label}</div>
+  </div>`).join('');
+}
+
+function renderAdminList(cat) {
+  const listEl=document.getElementById('adminFeedbackList');
+  const catLabel={bug:'🐛 버그',feature:'💡 기능제안',praise:'👏 칭찬',other:'📝 기타'};
+  const filtered=cat==='all'?adminFeedbackAll:adminFeedbackAll.filter(f=>f.category===cat);
+  if(!filtered.length){
+    listEl.innerHTML='<div style="text-align:center;padding:2rem;color:var(--text3)">피드백이 없어요</div>';
+    return;
+  }
+  listEl.innerHTML=filtered.map(f=>{
+    const date=f.created_at?f.created_at.slice(0,10):'';
+    const stars='⭐'.repeat(f.rating||0);
+    return `<div style="background:var(--bg2);border-radius:12px;padding:1rem;margin-bottom:.75rem">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem">
+        <span style="font-size:12px;font-weight:500;color:var(--text)">${catLabel[f.category]||f.category}</span>
+        <span style="font-size:11px;color:var(--text3)">${date}</span>
+      </div>
+      <div style="font-size:13px;margin-bottom:.3rem">${stars}</div>
+      <div style="font-size:12px;color:var(--teal);margin-bottom:.3rem">v${f.version||''}</div>
+      ${f.content?`<div style="font-size:13px;color:var(--text);line-height:1.6;margin-top:.4rem">${f.content}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function adminFilterCat(btn) {
+  const cat=btn.dataset.cat;
+  document.querySelectorAll('.admin-filter-btn').forEach(b=>{
+    b.style.border='1.5px solid var(--bd)';b.style.background='var(--bg2)';b.style.color='var(--text2)';
+  });
+  btn.style.border='1.5px solid var(--teal)';
+  btn.style.background='var(--teal-l)';
+  btn.style.color='var(--teal-d)';
+  renderAdminList(cat);
 }
 
 function updateMetrics(){
@@ -4456,7 +4645,7 @@ function toggleFavFood(name, el) {
 function closeModal(id){
   const m=document.getElementById(id);
   if(m)m.style.display='none';
-  if(id==='catProfilePage'){
+  if(id==='catProfilePage'||id==='adminPage'){
     const appEl2=document.getElementById('app');if(appEl2)appEl2.style.display='block';
     window.scrollTo(0,0);
   }
@@ -5224,7 +5413,35 @@ initSupabase();
 <div style="text-align:center;padding:1.5rem 1rem;font-size:10px;color:var(--text3);line-height:1.8;max-width:420px;margin:0 auto">
   케어마스터즈의 모든 분석 결과는 <b>참고용</b>이며 수의학적 진단&middot;처방을 대체하지 않아요.<br>
   치료 결정은 반드시 담당 수의사와 상담하세요.<br>
-  © 2025 케어마스터즈 BETA &middot; <a href="https://open.kakao.com/o/sjseVrVe" target="_blank" style="color:var(--teal);text-decoration:none">💬 피드백 카카오톡</a>
+  © 2025 케어마스터즈 BETA &middot; <a href="https://open.kakao.com/o/sjseVrVe" target="_blank" style="color:var(--teal);text-decoration:none">💬 카카오 채널</a> &middot; <button type="button" onclick="openAdminPage()" style="background:none;border:none;color:var(--text3);font-size:11px;cursor:pointer;font-family:inherit;padding:0">관리자</button>
+</div>
+<!-- 관리자 피드백 페이지 -->
+<div id="adminPage" style="display:none;width:100%;min-height:100vh;background:var(--bg);padding:20px 16px 40px;box-sizing:border-box">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:1.25rem;padding-top:8px">
+    <button onclick="closeModal('adminPage')" type="button"
+      style="background:var(--bg2);border:none;font-size:16px;cursor:pointer;color:var(--teal);padding:8px 14px;line-height:1;border-radius:10px;font-family:inherit">← 뒤로</button>
+    <div style="font-size:16px;font-weight:600;color:var(--text)">📊 피드백 관리</div>
+  </div>
+
+  <!-- 통계 요약 -->
+  <div id="adminStats" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:1rem"></div>
+
+  <!-- 필터 -->
+  <div style="display:flex;gap:6px;margin-bottom:.75rem;flex-wrap:wrap" id="adminFilter">
+    <button class="admin-filter-btn active" data-cat="all" onclick="adminFilterCat(this)"
+      style="padding:5px 12px;border:1.5px solid var(--teal);border-radius:8px;background:var(--teal-l);color:var(--teal-d);font-size:11px;cursor:pointer;font-family:inherit">전체</button>
+    <button class="admin-filter-btn" data-cat="bug" onclick="adminFilterCat(this)"
+      style="padding:5px 12px;border:1.5px solid var(--bd);border-radius:8px;background:var(--bg2);color:var(--text2);font-size:11px;cursor:pointer;font-family:inherit">🐛 버그</button>
+    <button class="admin-filter-btn" data-cat="feature" onclick="adminFilterCat(this)"
+      style="padding:5px 12px;border:1.5px solid var(--bd);border-radius:8px;background:var(--bg2);color:var(--text2);font-size:11px;cursor:pointer;font-family:inherit">💡 기능제안</button>
+    <button class="admin-filter-btn" data-cat="praise" onclick="adminFilterCat(this)"
+      style="padding:5px 12px;border:1.5px solid var(--bd);border-radius:8px;background:var(--bg2);color:var(--text2);font-size:11px;cursor:pointer;font-family:inherit">👏 칭찬</button>
+    <button class="admin-filter-btn" data-cat="other" onclick="adminFilterCat(this)"
+      style="padding:5px 12px;border:1.5px solid var(--bd);border-radius:8px;background:var(--bg2);color:var(--text2);font-size:11px;cursor:pointer;font-family:inherit">📝 기타</button>
+  </div>
+
+  <!-- 피드백 목록 -->
+  <div id="adminFeedbackList"></div>
 </div>
 
 </body>
