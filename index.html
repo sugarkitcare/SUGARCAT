@@ -485,7 +485,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.73</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.74</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap">
@@ -4667,13 +4667,12 @@ document.addEventListener('keydown', (e) => {
   }
 });
 // 탭 전환 이벤트
-// 이벤트 위임: document 전체에서 nav-btn 클릭 감지 (가장 확실한 방식)
-document.addEventListener('click', function(e) {
-  var btn = e.target.closest ? e.target.closest('.nav-btn') : null;
-  if(!btn && e.target.classList && e.target.classList.contains('nav-btn')) btn = e.target;
-  if(btn && btn.dataset && btn.dataset.tab) {
+// 탭 버튼에 직접 onclick 바인딩 (이벤트 위임보다 안정적)
+document.querySelectorAll('.nav-btn').forEach(function(btn) {
+  btn.onclick = function(e) {
+    e.stopPropagation();
     window.showTab(btn.dataset.tab, btn);
-  }
+  };
 });
 
 /* ── Supabase 연동 ── */
