@@ -485,7 +485,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.99</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.00</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap">
@@ -4874,6 +4874,7 @@ function saveCatProfile() {
   const breedFinal = breedSel2.value === '직접입력'
     ? document.getElementById('cpBreedCustom').value.trim()
     : breedSel2.value;
+  const existingDbId = (state.catProfiles[currentProfileCat]||{}).dbId;
   state.catProfiles[currentProfileCat]={
     breed: breedFinal,
     birth:document.getElementById('cpBirth').value,
@@ -4881,7 +4882,8 @@ function saveCatProfile() {
     neuter:document.getElementById('cpNeuter').value,
     insulin:document.getElementById('cpInsulin').value,
     memo:document.getElementById('cpMemo').value,
-    diseases
+    diseases,
+    dbId: existingDbId  // 기존 dbId 유지
   };
   saveS();
   // DB에도 저장
@@ -5446,7 +5448,7 @@ async function upsertCatToDB(catName) {
     } else {
       // 같은 이름이 이미 DB에 있는지 확인 (중복 방지)
       const { data: existing } = await sbClient.from('cats')
-        .select('id').eq('user_id', currentUser.id).eq('name', catName).single();
+        .select('id').eq('user_id', currentUser.id).eq('name', catName).maybeSingle();
       if(existing?.id) {
         // 이미 있으면 dbId 저장 후 diseases 포함 전체 업데이트
         if(!state.catProfiles[catName]) state.catProfiles[catName] = {};
