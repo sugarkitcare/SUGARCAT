@@ -485,7 +485,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.92</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.94</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap">
@@ -1317,7 +1317,7 @@ function renderCatBar(){
         if(activeTab==='history'){renderHistory();renderRoutineSchedule();try{renderTimelineChart();}catch(e){}}
         else if(activeTab==='graph'){renderGraphs();try{renderBTTrend();}catch(e){};}
         else if(activeTab==='bloodtest'){try{renderBTGraphs();renderBTHistoryList();}catch(e){};}
-        else if(activeTab==='food'){try{renderFdHistory();}catch(e){};}
+        else if(activeTab==='food'){try{renderFdHistory();autoSetFdMode(c);}catch(e){};}
       }catch(e){}
     });
 
@@ -1857,6 +1857,19 @@ function resetCardOrder(cat) {
   toast('카드 순서와 숨김을 초기화했어요');
 }
 
+
+function autoSetFdMode(cat) {
+  const diseases = (state.catProfiles?.[cat||state.activeCat]?.diseases) || [];
+  const hasDM = diseases.includes('당뇨(DM)');
+  const hasCKD = diseases.includes('신부전(CKD)') || diseases.includes('PKD(다낭신)');
+  const hasHCM = diseases.includes('심비대증(HCM)');
+  if(hasDM && hasCKD) setFdMode('both');
+  else if(hasDM && hasHCM) setFdMode('hcm');
+  else if(hasCKD) setFdMode('ckd');
+  else if(hasHCM) setFdMode('hcm');
+  else setFdMode('dm');
+}
+
 function updateMetrics(){
   const rec=getRec(state.activeCat,today());
   const lb=rec.bg.length?rec.bg[rec.bg.length-1]:null;
@@ -1998,7 +2011,7 @@ window.showTab = function showTab(tab, btn) {
     if(tab==='graph') try{renderGraphs();renderBTTrend();const tlDate=document.getElementById('timelineDatePicker');if(tlDate&&!tlDate.value)tlDate.value=today();try{renderTimelineChart(document.getElementById('timelineDatePicker')?.value||today());}catch(e2){console.warn(e2);}}catch(e){console.warn(e);}
     if(tab==='history') try{renderHistory();renderRoutineSchedule();}catch(e){console.warn(e);}
     if(tab==='bloodtest') try{renderBTGraphs();renderBTHistoryList();}catch(e){console.warn(e);}
-    if(tab==='food') try{renderFdHistory();}catch(e){console.warn(e);}
+    if(tab==='food') try{renderFdHistory();autoSetFdMode(state.activeCat);}catch(e){console.warn(e);}
     if(tab==='daily') try{updateMetrics();renderRoutineChecklist();renderDailySummary();applyCardOrder(state.activeCat);}catch(e){console.warn(e);}
   } catch(e) { console.error('showTab 오류:', tab, e); }
 }
@@ -3642,6 +3655,8 @@ function calcCalorie(){
   }
   if(calcDiseases.has('ckd')){
     notes.push('CKD: 인 제한 사료 권장, 충분한 수분 섭취');
+  const diseases2 = (state.catProfiles?.[state.activeCat]?.diseases)||[];
+  if(diseases2.includes('PKD(다낭신)')) notes.push('PKD: CKD와 동일하게 인 제한 + 수분 섭취 중요. 신기능 보존이 핵심');
   }
   if(calcDiseases.has('panc')){
     factor=Math.min(factor,1.2);
@@ -4803,6 +4818,19 @@ function openCatProfile(cat) {
     breedCustom.style.display = 'block';
     breedCustom.value = breedVal;
   }
+  // 품종 직접입력 이벤트 재바인딩
+  const breedSelEl = document.getElementById('cpBreed');
+  if(breedSelEl) {
+    breedSelEl.onchange = function() {
+      const customEl = document.getElementById('cpBreedCustom');
+      if(this.value === '직접입력') {
+        customEl.style.display = 'block';
+        customEl.focus();
+      } else {
+        customEl.style.display = 'none';
+      }
+    };
+  }
   document.getElementById('cpBirth').value=profile.birth||'';
   document.getElementById('cpGender').value=profile.gender||'';
   document.getElementById('cpNeuter').value=profile.neuter||'';
@@ -4823,15 +4851,7 @@ function openCatProfile(cat) {
 }
 
 // 품종 직접입력 처리
-document.getElementById('cpBreed')?.addEventListener('change', function() {
-  const custom = document.getElementById('cpBreedCustom');
-  if(this.value === '직접입력') {
-    custom.style.display = 'block';
-    custom.focus();
-  } else {
-    custom.style.display = 'none';
-  }
-});
+// cpBreed 이벤트는 openCatProfile에서 바인딩
 
 function saveCatProfile() {
   if(!state.catProfiles)state.catProfiles={};
@@ -5603,6 +5623,7 @@ initSupabase();
   <div class="routine-tags" id="cpDiseaseTags" style="margin-bottom:.75rem">
     <div class="routine-tag" data-val="당뇨(DM)">당뇨(DM)</div>
     <div class="routine-tag" data-val="신부전(CKD)">신부전(CKD)</div>
+              <div class="routine-tag" data-val="PKD(다낭신)">PKD(다낭신)</div>
     <div class="routine-tag" data-val="심비대증(HCM)">심비대증(HCM)</div>
     <div class="routine-tag" data-val="췌장염">췌장염</div>
     <div class="routine-tag" data-val="IBD">IBD</div>
