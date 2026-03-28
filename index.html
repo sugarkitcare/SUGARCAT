@@ -485,7 +485,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.90</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.91</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap">
@@ -608,7 +608,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     </div>
   </div>
 
-  <div class="card">
+  <div class="card" id="daily-card-wt">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.65rem;cursor:pointer" onclick="toggleCard('wtCard',this)">
       <span style="font-size:12px;font-weight:500;color:var(--text2)">몸무게</span>
       <span style="font-size:11px;color:var(--teal)">▼ 펼치기</span>
@@ -658,7 +658,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     <button class="btn btn-amber" id="saveIns">인슐린 저장</button>
     </div>
   </div>
-  <div class="card">
+  <div class="card" id="daily-card-meal">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.65rem;cursor:pointer" onclick="toggleCard('mealCard',this)">
       <span style="font-size:12px;font-weight:500;color:var(--text2)">식사 · 칼로리</span>
       <span style="font-size:11px;color:var(--teal)">▼ 펼치기</span>
@@ -674,7 +674,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     <button class="btn btn-blue" id="saveMeal">식사 저장</button>
     </div>
   </div>
-  <div class="card" id="routineCard">
+  <div class="card" id="daily-card-routine">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;cursor:pointer" onclick="toggleCard('routineBody',this)">
     <div>
       <div style="font-size:12px;font-weight:500;color:var(--text2)">💊 투약·보조제·루틴</div>
@@ -1668,7 +1668,7 @@ function adminFilterCat(btn) {
 
 
 /* ── 카드 순서/숨김 관리 ── */
-const DEFAULT_CARD_ORDER = ['bg','rr','ins'];
+const DEFAULT_CARD_ORDER = ['bg','rr','ins','wt','meal','routine'];
 const SK_CARD_ORDER = 'cardOrder_v1';
 const SK_CARD_HIDDEN = 'cardHidden_v1';
 
@@ -1699,10 +1699,11 @@ function autoCardOrder(cat) {
   const diseases = (state.catProfiles?.[cat]?.diseases) || [];
   const hasDM = diseases.includes('당뇨(DM)');
   const hasHCM = diseases.includes('심비대증(HCM)');
-  if(hasDM && hasHCM) return ['bg','rr','ins'];
-  if(hasDM) return ['bg','ins','rr'];
-  if(hasHCM) return ['rr','bg','ins'];
-  return ['bg','rr','ins'];
+  const tail = ['wt','meal','routine'];
+  if(hasDM && hasHCM) return ['bg','rr','ins',...tail];
+  if(hasDM) return ['bg','ins','rr',...tail];
+  if(hasHCM) return ['rr','bg','ins',...tail];
+  return ['bg','rr','ins',...tail];
 }
 
 function saveCardOrder(cat, order) {
@@ -1718,6 +1719,9 @@ function applyCardOrder(cat) {
     bg: document.getElementById('daily-card-bg'),
     rr: document.getElementById('daily-card-rr'),
     ins: document.getElementById('daily-card-ins'),
+    wt: document.getElementById('daily-card-wt'),
+    meal: document.getElementById('daily-card-meal'),
+    routine: document.getElementById('daily-card-routine'),
   };
   // 숨김/표시 처리
   Object.entries(anchors).forEach(([k,el])=>{
@@ -1741,7 +1745,7 @@ function renderCardOrderUI(cat) {
   if(!el) return;
   const order = getCardOrder(cat||state.activeCat);
   const hidden = getCardHidden(cat||state.activeCat);
-  const labels = {bg:'혈당·케톤', rr:'🫁 호흡수 측정', ins:'💉 인슐린 투여'};
+  const labels = {bg:'혈당·케톤', rr:'🫁 호흡수 측정', ins:'💉 인슐린 투여', wt:'⚖️ 몸무게', meal:'🍽️ 식사·칼로리', routine:'💊 투약·루틴'};
   const catKey = cat||state.activeCat;
   const visible = order.filter(k=>!hidden.includes(k));
 
