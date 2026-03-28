@@ -485,14 +485,14 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.11</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.12</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">
     💬 피드백
   </button>
   <button id="logoutBtn" onclick="handleLogout()" type="button"
-    style="display:none;padding:5px 10px;border:0.5px solid var(--bd);border-radius:8px;background:transparent;color:var(--text2);font-size:11px;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">로그아웃</button>
+    style="display:none;padding:5px 10px;border:0.5px solid var(--bd);border-radius:8px;background:transparent;color:var(--text2);font-size:11px;cursor:pointer;font-family:inherit;white-space:nowrap">로그아웃</button>
 </div>
 </div>
 </div>
@@ -5112,6 +5112,10 @@ function showApp() {
   document.getElementById('app').style.display = 'block';
   if(currentUser) {
     document.getElementById('logoutBtn').style.display = 'block';
+    if(currentUser.email===ADMIN_EMAIL){
+      const ab=document.getElementById('adminBtnProfile');
+      if(ab)ab.style.display='block';
+    }
     syncFromDB();
     // 루틴 설정 빠른 로드 (현재 고양이 기준)
     (async()=>{
@@ -5353,7 +5357,7 @@ async function syncFromDB() {
     updateMetrics();
     updateWtDiff();
     updateInsulinNext();
-    try{renderBTHistoryList();renderBTGraphs();}catch(e){}
+    try{renderBTHistoryList();renderBTGraphs();renderBTTrend();}catch(e){}
     renderBTHistoryList();
     renderBTGraphs();
     renderBTTrend();
@@ -5618,6 +5622,12 @@ initSupabase();
     <button onclick="closeModal('catProfilePage')" type="button"
       style="background:var(--bg2);border:none;font-size:16px;cursor:pointer;color:var(--teal);padding:8px 14px;line-height:1;border-radius:10px;font-family:inherit">← 뒤로</button>
     <div id="catProfileTitle" style="font-size:16px;font-weight:600;color:var(--text)">고양이 기본 정보</div>
+    <div style="display:flex;gap:6px;margin-left:auto">
+      <button type="button" onclick="openAdminPage()" id="adminBtnProfile"
+        style="display:none;padding:5px 10px;border:0.5px solid var(--bd);border-radius:8px;background:transparent;color:var(--text3);font-size:11px;cursor:pointer;font-family:inherit">관리자</button>
+      <button type="button" onclick="handleLogout()"
+        style="padding:5px 10px;border:0.5px solid var(--bd);border-radius:8px;background:transparent;color:var(--text2);font-size:11px;cursor:pointer;font-family:inherit">로그아웃</button>
+    </div>
   </div>
   <div class="ig" style="margin-bottom:10px"><label>이름 수정</label><input type="text" id="cpCatName" placeholder="예: 케이"
       style="padding:10px 12px;border:0.5px solid var(--bd);border-radius:9px;font-size:14px;background:var(--bg);color:var(--text);font-family:inherit;width:100%;box-sizing:border-box">
