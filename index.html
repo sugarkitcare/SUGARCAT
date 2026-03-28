@@ -485,7 +485,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.97</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.98</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap">
@@ -4886,7 +4886,20 @@ function saveCatProfile() {
   saveS();
   // DB에도 저장
   upsertCatToDB(currentProfileCat);
+  // 질환 변경 → 저장된 카드 순서 초기화 후 자동 정렬 재적용
+  try {
+    localStorage.removeItem(SK_CARD_ORDER+'_'+currentProfileCat);
+    // 숨김은 유지 (사용자가 의도적으로 숨긴 것)
+  } catch(e) {}
+  // DB 카드 순서도 초기화
+  if(sbClient&&currentUser) {
+    sbClient.from('user_settings').delete()
+      .eq('user_id',currentUser.id).eq('key','card_order_'+currentProfileCat)
+      .then(()=>{});
+  }
   closeModal('catProfilePage');
+  // 카드 순서 재적용
+  try { applyCardOrder(currentProfileCat); } catch(e) {}
   // 인슐린 종류 자동 반영
   const ins=state.catProfiles[currentProfileCat].insulin;
   if(ins)document.getElementById('insType').value=ins;
