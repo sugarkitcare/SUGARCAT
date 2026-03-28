@@ -485,7 +485,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.88</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.89</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap">
@@ -1726,17 +1726,24 @@ function renderCardOrderUI(cat) {
   const el = document.getElementById('cardOrderUI');
   if(!el) return;
   const order = getCardOrder(cat||state.activeCat);
-  const labels = {bg:'혈당·케톤', rr:'🫁 호흡수', ins:'인슐린 투여'};
-  el.innerHTML = order.map((k,i) => `
-    <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg2);border-radius:9px;margin-bottom:5px">
+  const labels = {bg:'혈당·케톤', rr:'🫁 호흡수 측정', ins:'인슐린 투여'};
+  const catKey = cat||state.activeCat;
+  el.innerHTML = order.map((k,i) => {
+    const canUp = i > 0;
+    const canDown = i < order.length - 1;
+    return `<div style="display:flex;align-items:center;gap:8px;padding:9px 12px;background:var(--bg2);border-radius:9px;margin-bottom:5px">
+      <span style="font-size:13px;color:var(--text3);font-weight:500;min-width:18px">${i+1}</span>
       <span style="flex:1;font-size:13px;color:var(--text)">${labels[k]||k}</span>
-      <div style="display:flex;gap:4px">
-        ${i>0?`<button type="button" onclick="moveCard('${k}',-1,'${cat||state.activeCat}')"
-          style="padding:3px 8px;border:0.5px solid var(--bd);border-radius:6px;background:var(--bg);color:var(--text2);font-size:12px;cursor:pointer">↑</button>`:'<div style="width:36px"></div>'}
-        ${i<order.length-1?`<button type="button" onclick="moveCard('${k}',1,'${cat||state.activeCat}')"
-          style="padding:3px 8px;border:0.5px solid var(--bd);border-radius:6px;background:var(--bg);color:var(--text2);font-size:12px;cursor:pointer">↓</button>`:'<div style="width:36px"></div>'}
+      <div style="display:flex;gap:4px;flex-shrink:0">
+        <button type="button" onclick="moveCard('${k}',-1,'${catKey}')"
+          style="width:32px;height:32px;border:0.5px solid var(--bd);border-radius:7px;background:${canUp?'var(--bg)':'var(--bg2)'};color:${canUp?'var(--text2)':'var(--bd)'};font-size:14px;cursor:${canUp?'pointer':'default'};display:flex;align-items:center;justify-content:center"
+          ${canUp?'':' disabled'}>↑</button>
+        <button type="button" onclick="moveCard('${k}',1,'${catKey}')"
+          style="width:32px;height:32px;border:0.5px solid var(--bd);border-radius:7px;background:${canDown?'var(--bg)':'var(--bg2)'};color:${canDown?'var(--text2)':'var(--bd)'};font-size:14px;cursor:${canDown?'pointer':'default'};display:flex;align-items:center;justify-content:center"
+          ${canDown?'':' disabled'}>↓</button>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 function moveCard(cardKey, dir, cat) {
@@ -3248,15 +3255,25 @@ renderFdHistory();
 /* AI */
 function buildCtx(){
   const rec=getRec(state.activeCat,today());
+  const prof=(state.catProfiles||{})[state.activeCat]||{};
   const lb=rec.bg.length?rec.bg[rec.bg.length-1]:null;
   const li=rec.ins.length?rec.ins[rec.ins.length-1]:null;
   const lw=rec.weights.length?rec.weights[rec.weights.length-1]:null;
   const kcal=rec.meals.reduce((a,m)=>a+m.kcal,0);
-  let ctx=`고양이: ${state.activeCat}\n오늘: ${today()}\n`;
-  if(lb)ctx+=`최근 혈당: ${lb.bg}mg/dL, 케톤: ${lb.ketone}mmol/L (${lb.time} ${lb.type})\n`;
+  const rr=rec.rr?.length?rec.rr[rec.rr.length-1]:null;
+  let ctx=`[고양이 정보]\n이름: ${state.activeCat}\n`;
+  if(prof.breed)ctx+=`품종: ${prof.breed}\n`;
+  if(prof.birth)ctx+=`생년월일: ${prof.birth}\n`;
+  if(prof.diseases?.length)ctx+=`동반질환: ${prof.diseases.join(', ')}\n`;
+  if(prof.insulin)ctx+=`인슐린: ${prof.insulin}\n`;
+  if(prof.memo)ctx+=`메모: ${prof.memo}\n`;
+  ctx+=`\n[오늘 기록: ${today()}]\n`;
+  if(lb)ctx+=`최근 혈당: ${lb.bg}mg/dL, 케톤: ${lb.ketone||'미측정'}mmol/L (${lb.time} ${lb.type})\n`;
   if(li)ctx+=`최근 인슐린: ${li.type} ${li.dose}U (${li.time})\n`;
   if(lw)ctx+=`오늘 체중: ${lw.weight}kg\n`;
+  if(rr)ctx+=`최근 호흡수: ${rr.rr}회/분 (${rr.stateLabel||''} ${rr.time})\n`;
   if(kcal)ctx+=`오늘 총 칼로리: ${kcal}kcal\n`;
+  if(!lb&&!li&&!lw&&!rr&&!kcal)ctx+=`오늘 아직 기록 없음\n`;
   if(fdData.length){const last=fdData[0].data;const m=last.moisture??75;const carb=last.carb_af??estCarb(last.protein_af??0,last.fat_af??0,last.fiber_af??0,last.ash_af??(last.type==='wet'?2:7),m);ctx+=`최근 분석 사료: ${fdData[0].name} (탄수 DM ${cDM(carb,m)}%)\n`;}
   return ctx;
 }
@@ -3266,7 +3283,7 @@ async function sendAI(msg){
   const typing=document.createElement('div');typing.className='ai-typing';typing.innerHTML='<span></span><span></span><span></span>';chat.appendChild(typing);
   chat.scrollTop=chat.scrollHeight;
   try{
-    const resp=await fetch('/api/proxy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:800,system:`당신은 고양이 당뇨 전문 케어 어시스턴트입니다.\n현재 기록:\n${buildCtx()}\n·칙: ACVIM/WSAVA 기반. 케톤≥2.4 또는 혈당≥400 → 즉시 병원 안내 최우선. 진단은 수의사 영역 명시. 한국어 200자 내외.`,messages:[{role:'user',content:msg}]})});
+    const resp=await fetch('/api/proxy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:800,system:`당신은 환묘(당뇨·신부전·심근비대증·췌장염 등 복합질환 고양이) 케어 전문 어시스턴트입니다.\n고양이 정보와 오늘 기록:\n${buildCtx()}\n원칙: ACVIM/WSAVA 기반. 케톤≥2.4 또는 혈당≥400 → 즉시 병원 안내 최우선. 호흡수≥40 → 즉시 병원. 진단·처방은 수의사 영역임을 명시. 한국어 250자 내외. 기록이 없어도 고양이 프로필 기반으로 질환별 일반 케어 조언 가능.`,messages:[{role:'user',content:msg}]})});
     const data=await resp.json();typing.remove();
     const bd=document.createElement('div');bd.className='ai-msg bot';bd.textContent=data.content&&data.content[0]?data.content[0].text:'응답을 받지 못했습니다.';chat.appendChild(bd);
   }catch(e){typing.remove();const ed=document.createElement('div');ed.className='ai-msg bot';ed.textContent='오류가 발생했습니다.';chat.appendChild(ed);}
