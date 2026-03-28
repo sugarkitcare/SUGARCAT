@@ -485,7 +485,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.98</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.99</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap">
@@ -5448,9 +5448,10 @@ async function upsertCatToDB(catName) {
       const { data: existing } = await sbClient.from('cats')
         .select('id').eq('user_id', currentUser.id).eq('name', catName).single();
       if(existing?.id) {
-        // 이미 있으면 dbId만 저장
+        // 이미 있으면 dbId 저장 후 diseases 포함 전체 업데이트
         if(!state.catProfiles[catName]) state.catProfiles[catName] = {};
         state.catProfiles[catName].dbId = existing.id;
+        await sbClient.from('cats').update(payload).eq('id', existing.id);
         try{localStorage.setItem(SK, JSON.stringify(state));}catch(e){}
         return;
       }
