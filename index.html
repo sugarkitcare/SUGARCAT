@@ -485,7 +485,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.00</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.01</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap">
@@ -1071,7 +1071,17 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
       <div style="font-size:11px;font-weight:500;color:var(--text2);margin-bottom:.5rem">📦 사료별 하루 급여량 계산</div>
       <div style="font-size:11px;color:var(--text3);margin-bottom:.5rem">사료 포장의 실제 칼로리 정보를 입력하세요</div>
       <div id="calcManualList"></div>
-      <button onclick="addManualFood()" style="padding:5px 12px;border:0.5px dashed var(--teal);border-radius:8px;background:transparent;color:var(--teal);font-size:12px;cursor:pointer;margin-top:.4rem;font-family:inherit">+ 사료 추가</button>
+      <div style="display:flex;gap:6px;align-items:center;margin-top:.4rem;flex-wrap:wrap">
+        <button onclick="addManualFood()" style="padding:5px 12px;border:0.5px dashed var(--teal);border-radius:8px;background:transparent;color:var(--teal);font-size:12px;cursor:pointer;font-family:inherit">+ 직접 입력</button>
+        <button onclick="openFavFoodPicker()" style="padding:5px 12px;border:0.5px solid var(--amber);border-radius:8px;background:transparent;color:var(--amber-d);font-size:12px;cursor:pointer;font-family:inherit">⭐ 즐겨찾기에서 선택</button>
+      </div>
+      <!-- 즐겨찾기 선택 패널 -->
+      <div id="favFoodPicker" style="display:none;background:var(--bg2);border-radius:10px;padding:.75rem;margin-top:.5rem">
+        <div style="font-size:11px;font-weight:500;color:var(--text2);margin-bottom:.5rem">⭐ 즐겨찾기 사료 선택</div>
+        <div id="favFoodPickerList"></div>
+        <button onclick="document.getElementById('favFoodPicker').style.display='none'"
+          style="padding:4px 10px;border:0.5px solid var(--bd);border-radius:7px;background:transparent;color:var(--text3);font-size:11px;cursor:pointer;font-family:inherit;margin-top:.5rem">닫기</button>
+      </div>
     </div>
 
     <!-- 분석된 사료 연동 -->
@@ -1868,6 +1878,60 @@ function autoSetFdMode(cat) {
   else if(hasCKD) setFdMode('ckd');
   else if(hasHCM) setFdMode('hcm');
   else setFdMode('dm');
+}
+
+
+/* ── 즐겨찾기 사료 피커 ── */
+function openFavFoodPicker() {
+  const picker = document.getElementById('favFoodPicker');
+  const list = document.getElementById('favFoodPickerList');
+  if(!picker || !list) return;
+
+  // 즐겨찾기된 사료 목록 + fdData에서 칼로리 매칭
+  const favList = favFoods.map(name => {
+    const match = fdData.find(d => d.name === name);
+    return { name, data: match || null };
+  });
+
+  if(!favList.length) {
+    list.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:.5rem">즐겨찾기된 사료가 없어요.<br>사료 분석 후 ⭐을 눌러 추가해주세요.</div>';
+  } else {
+    list.innerHTML = favList.map(f => {
+      const d = f.data?.data;
+      const m = d?.moisture ?? 75;
+      const kcal = d?.kcal_per_100g ?? null;
+      const per = d?.type === 'dry' ? 100 : 85;
+      const kcalEst = d ? Math.round((d.protein_af||0)*3.5+(d.fat_af||0)*8.5+((d.carb_af)||0)*3.5) : 0;
+      const kcalFinal = kcal || kcalEst || 0;
+      const kcalLabel = kcal ? `${kcal}kcal/100g` : kcalEst ? `${kcalEst}kcal/100g (추정)` : '칼로리 정보 없음';
+      const safeName = f.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+      return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--bg);border-radius:8px;margin-bottom:5px">
+        <div>
+          <div style="font-size:13px;color:var(--text)">${f.name}</div>
+          <div style="font-size:11px;color:var(--text3)">${kcalLabel}</div>
+        </div>
+        <button type="button" onclick="addFavFoodToCalc('${safeName}',${kcalFinal},${per})"
+          style="padding:4px 10px;border:0.5px solid var(--teal);border-radius:7px;background:var(--teal-l);color:var(--teal-d);font-size:11px;cursor:pointer;font-family:inherit">
+          추가
+        </button>
+      </div>`;
+    }).join('');
+  }
+
+  picker.style.display = picker.style.display === 'none' ? 'block' : 'none';
+}
+
+function addFavFoodToCalc(name, kcal, per) {
+  // 이미 추가된 사료면 스킵
+  if(manualFoods.find(f => f.name === name)) {
+    toast(`${name}은 이미 추가돼 있어요`, '#BA7517');
+    return;
+  }
+  manualFoods.push({ name, kcal: kcal||60, per: per||85 });
+  saveManualFoods();
+  renderManualFoodList();
+  document.getElementById('favFoodPicker').style.display = 'none';
+  toast(`${name} 추가됐어요!`);
 }
 
 function updateMetrics(){
