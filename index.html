@@ -485,7 +485,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.91</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.92</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap">
@@ -1302,8 +1302,8 @@ function renderCatBar(){
       try{loadRoutineForCat(c);}catch(e){}
       // 오늘 기록 요약 갱신
       try{renderDailySummary();}catch(e){}
-      // 카드 순서 적용
-      try{applyCardOrder(c);}catch(e){}
+      // 카드 순서 로드 및 적용
+      try{ if(currentUser){loadCardSettingsForCat(c);}else{applyCardOrder(c);} }catch(e){}
       // CGM 탭 고양이 필드 동기화 + 데이터 로드
       try{const cc=document.getElementById('cgmCat');if(cc)cc.value=c;}catch(e){}
       try{loadCGMForCat(c).then(()=>{
@@ -1673,26 +1673,51 @@ const SK_CARD_ORDER = 'cardOrder_v1';
 const SK_CARD_HIDDEN = 'cardHidden_v1';
 
 function getCardOrder(cat) {
-  const key = SK_CARD_ORDER + '_' + (cat||state.activeCat);
+  const c = cat||state.activeCat;
   try {
-    const saved = localStorage.getItem(key);
+    const saved = localStorage.getItem(SK_CARD_ORDER+'_'+c);
     if(saved) return JSON.parse(saved);
   } catch(e) {}
-  return autoCardOrder(cat||state.activeCat);
+  return autoCardOrder(c);
 }
 
 function getCardHidden(cat) {
-  const key = SK_CARD_HIDDEN + '_' + (cat||state.activeCat);
+  const c = cat||state.activeCat;
   try {
-    const saved = localStorage.getItem(key);
+    const saved = localStorage.getItem(SK_CARD_HIDDEN+'_'+c);
     if(saved) return JSON.parse(saved);
   } catch(e) {}
   return [];
 }
 
+async function loadCardSettingsForCat(cat) {
+  const c = cat||state.activeCat;
+  if(!sbClient||!currentUser) return;
+  try {
+    const {data:orderData} = await sbClient.from('user_settings')
+      .select('value').eq('user_id',currentUser.id).eq('key','card_order_'+c).maybeSingle();
+    if(orderData?.value) {
+      localStorage.setItem(SK_CARD_ORDER+'_'+c, JSON.stringify(orderData.value));
+    }
+    const {data:hiddenData} = await sbClient.from('user_settings')
+      .select('value').eq('user_id',currentUser.id).eq('key','card_hidden_'+c).maybeSingle();
+    if(hiddenData?.value) {
+      localStorage.setItem(SK_CARD_HIDDEN+'_'+c, JSON.stringify(hiddenData.value));
+    }
+  } catch(e) { console.warn('카드설정 로드오류:',e); }
+  applyCardOrder(c);
+}
+
 function saveCardHidden(cat, hidden) {
-  const key = SK_CARD_HIDDEN + '_' + (cat||state.activeCat);
+  const c = cat||state.activeCat;
+  const key = SK_CARD_HIDDEN + '_' + c;
   try { localStorage.setItem(key, JSON.stringify(hidden)); } catch(e) {}
+  if(sbClient&&currentUser) {
+    sbClient.from('user_settings').upsert({
+      user_id:currentUser.id, key:'card_hidden_'+c,
+      value:hidden, updated_at:new Date().toISOString()
+    },{onConflict:'user_id,key'}).then(({error})=>{if(error)console.warn('카드숨김 저장오류:',error);});
+  }
 }
 
 function autoCardOrder(cat) {
@@ -1707,8 +1732,15 @@ function autoCardOrder(cat) {
 }
 
 function saveCardOrder(cat, order) {
-  const key = SK_CARD_ORDER + '_' + (cat||state.activeCat);
+  const c = cat||state.activeCat;
+  const key = SK_CARD_ORDER + '_' + c;
   try { localStorage.setItem(key, JSON.stringify(order)); } catch(e) {}
+  if(sbClient&&currentUser) {
+    sbClient.from('user_settings').upsert({
+      user_id:currentUser.id, key:'card_order_'+c,
+      value:order, updated_at:new Date().toISOString()
+    },{onConflict:'user_id,key'}).then(({error})=>{if(error)console.warn('카드순서 저장오류:',error);});
+  }
 }
 
 function applyCardOrder(cat) {
@@ -4989,6 +5021,7 @@ function showApp() {
   try { renderRoutineChecklist(); } catch(e) {}
   try { renderDailySummary(); } catch(e) {}
   if(currentUser) try{loadCGMForCat(state.activeCat);}catch(e){}
+  if(currentUser) try{loadCardSettingsForCat(state.activeCat);}catch(e){}
 }
 
 function showOnboarding() {
@@ -5232,6 +5265,7 @@ async function syncFromDB() {
     // 루틴 설정 불러오기 (현재 고양이 기준)
     try { await loadRoutineForCat(state.activeCat); } catch(e) { console.warn('루틴 로드 오류:', e); }
     try { await loadCGMForCat(state.activeCat); } catch(e) { console.warn('CGM 로드 오류:', e); }
+    try { await loadCardSettingsForCat(state.activeCat); } catch(e) { console.warn('카드설정 로드 오류:', e); }
 
     toast('☁️ 동기화 완료' + (state.cats.length > 0 ? '! 고양이 '+state.cats.length+'마리' : ''));
     // 동기화 후 daily 탭 데이터만 갱신 (탭 전환 없이)
