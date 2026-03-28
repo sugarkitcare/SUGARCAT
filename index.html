@@ -485,7 +485,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.94</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.96</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap">
@@ -1089,27 +1089,27 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 
     <!-- 분석 모드 선택 -->
     <div style="margin-bottom:.75rem">
-      <div style="font-size:11px;font-weight:500;color:var(--text2);margin-bottom:.4rem">분석 모드</div>
+      <div style="font-size:11px;font-weight:500;color:var(--text2);margin-bottom:.4rem">분석 모드 <span style="font-weight:400;color:var(--text3)">· 고양이 질환 설정 시 자동 선택돼요</span></div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
         <button type="button" id="modeDM" onclick="setFdMode('dm')"
           style="padding:6px 14px;border-radius:20px;border:1.5px solid var(--teal);background:var(--teal);color:#fff;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit">
-          🩺 당뇨(DM)
+          당뇨(DM)
         </button>
         <button type="button" id="modeCKD" onclick="setFdMode('ckd')"
           style="padding:6px 14px;border-radius:20px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit">
-          🫘 신부전(CKD)
+          신부전(CKD·PKD)
         </button>
         <button type="button" id="modeBOTH" onclick="setFdMode('both')"
           style="padding:6px 14px;border-radius:20px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit">
-          🔀 당뇨+신부전
+          당뇨(DM)+신부전(CKD·PKD)
         </button>
         <button type="button" id="modeHCM" onclick="setFdMode('hcm')"
           style="padding:6px 14px;border-radius:20px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit">
-          🫀 심비대증(HCM)
+          심비대증(HCM)
         </button>
         <button type="button" id="modeHCMCKD" onclick="setFdMode('hcmckd')"
           style="padding:6px 14px;border-radius:20px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit">
-          🫀+🫘 HCM+신부전
+          심비대증(HCM)+신부전(CKD·PKD)
         </button>
       </div>
     </div>
