@@ -52,7 +52,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 
 /* 내비 */
 .nav{display:flex;gap:3px;background:var(--bg2);border-radius:10px;padding:3px;margin-bottom:1rem;overflow-x:auto;-webkit-overflow-scrolling:touch}
-.nav-btn{flex:1;padding:6px 1px;border:none;background:transparent;border-radius:7px;font-size:10px;font-weight:500;color:var(--text2);cursor:pointer;font-family:inherit}
+.nav-btn{flex:1;padding:6px 1px;border:none;background:transparent;border-radius:7px;font-size:10px;font-weight:500;color:var(--text2);cursor:pointer;font-family:inherit;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .nav-btn.active{background:var(--bg);color:var(--teal);box-shadow:0 1px 3px rgba(0,0,0,.08)}
 
 /* 섹션 */
@@ -485,7 +485,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.01</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.02</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap">
@@ -5005,8 +5005,15 @@ document.addEventListener('keydown', (e) => {
 // 탭 전환 이벤트
 // 탭 버튼에 직접 onclick 바인딩 (이벤트 위임보다 안정적)
 document.querySelectorAll('.nav-btn').forEach(function(btn) {
+  // iOS Safari 호환: touchend + onclick 둘 다 처리
+  var tapped = false;
+  btn.addEventListener('touchend', function(e) {
+    e.preventDefault();
+    tapped = true;
+    window.showTab(btn.dataset.tab, btn);
+  }, {passive: false});
   btn.onclick = function(e) {
-    e.stopPropagation();
+    if(tapped) { tapped = false; return; }
     window.showTab(btn.dataset.tab, btn);
   };
 });
