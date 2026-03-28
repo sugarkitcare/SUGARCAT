@@ -485,7 +485,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.89</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.90</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap">
@@ -1667,9 +1667,10 @@ function adminFilterCat(btn) {
 }
 
 
-/* ── 카드 순서 관리 ── */
+/* ── 카드 순서/숨김 관리 ── */
 const DEFAULT_CARD_ORDER = ['bg','rr','ins'];
 const SK_CARD_ORDER = 'cardOrder_v1';
+const SK_CARD_HIDDEN = 'cardHidden_v1';
 
 function getCardOrder(cat) {
   const key = SK_CARD_ORDER + '_' + (cat||state.activeCat);
@@ -1677,8 +1678,21 @@ function getCardOrder(cat) {
     const saved = localStorage.getItem(key);
     if(saved) return JSON.parse(saved);
   } catch(e) {}
-  // 질환 기반 자동 정렬
   return autoCardOrder(cat||state.activeCat);
+}
+
+function getCardHidden(cat) {
+  const key = SK_CARD_HIDDEN + '_' + (cat||state.activeCat);
+  try {
+    const saved = localStorage.getItem(key);
+    if(saved) return JSON.parse(saved);
+  } catch(e) {}
+  return [];
+}
+
+function saveCardHidden(cat, hidden) {
+  const key = SK_CARD_HIDDEN + '_' + (cat||state.activeCat);
+  try { localStorage.setItem(key, JSON.stringify(hidden)); } catch(e) {}
 }
 
 function autoCardOrder(cat) {
@@ -1697,26 +1711,26 @@ function saveCardOrder(cat, order) {
 }
 
 function applyCardOrder(cat) {
-  const order = getCardOrder(cat||state.activeCat);
-  const tabDaily = document.getElementById('tab-daily');
-  if(!tabDaily) return;
-  // 카드들 순서대로 재배치
+  const c = cat||state.activeCat;
+  const order = getCardOrder(c);
+  const hidden = getCardHidden(c);
   const anchors = {
     bg: document.getElementById('daily-card-bg'),
     rr: document.getElementById('daily-card-rr'),
     ins: document.getElementById('daily-card-ins'),
   };
-  // 혈당 카드 기준점(insulinNextBanner 다음)
-  const insertRef = document.getElementById('daily-card-bg')?.parentNode;
-  if(!insertRef) return;
-  // 카드들을 일단 분리
-  const cards = order.map(k => anchors[k]).filter(Boolean);
-  const firstCard = anchors['bg'];
-  if(!firstCard) return;
-  // 첫 카드 위치 기준으로 순서 재배치
-  let refNode = cards[0];
+  // 숨김/표시 처리
+  Object.entries(anchors).forEach(([k,el])=>{
+    if(!el) return;
+    el.style.display = hidden.includes(k) ? 'none' : '';
+  });
+  // 표시 카드만 순서 재배치
+  const visibleCards = order.filter(k=>!hidden.includes(k)).map(k=>anchors[k]).filter(Boolean);
+  if(!visibleCards.length) return;
+  let refNode = visibleCards[0];
   const parent = refNode.parentNode;
-  cards.forEach(card => {
+  if(!parent) return;
+  visibleCards.forEach(card => {
     parent.insertBefore(card, refNode.nextSibling);
     refNode = card;
   });
@@ -1726,24 +1740,63 @@ function renderCardOrderUI(cat) {
   const el = document.getElementById('cardOrderUI');
   if(!el) return;
   const order = getCardOrder(cat||state.activeCat);
-  const labels = {bg:'혈당·케톤', rr:'🫁 호흡수 측정', ins:'인슐린 투여'};
+  const hidden = getCardHidden(cat||state.activeCat);
+  const labels = {bg:'혈당·케톤', rr:'🫁 호흡수 측정', ins:'💉 인슐린 투여'};
   const catKey = cat||state.activeCat;
-  el.innerHTML = order.map((k,i) => {
+  const visible = order.filter(k=>!hidden.includes(k));
+
+  let html = '';
+  // 표시 중인 카드
+  visible.forEach((k,i) => {
     const canUp = i > 0;
-    const canDown = i < order.length - 1;
-    return `<div style="display:flex;align-items:center;gap:8px;padding:9px 12px;background:var(--bg2);border-radius:9px;margin-bottom:5px">
-      <span style="font-size:13px;color:var(--text3);font-weight:500;min-width:18px">${i+1}</span>
+    const canDown = i < visible.length - 1;
+    html += `<div style="display:flex;align-items:center;gap:6px;padding:9px 12px;background:var(--bg2);border-radius:9px;margin-bottom:5px">
+      <span style="font-size:12px;color:var(--text3);min-width:16px">${i+1}</span>
       <span style="flex:1;font-size:13px;color:var(--text)">${labels[k]||k}</span>
       <div style="display:flex;gap:4px;flex-shrink:0">
         <button type="button" onclick="moveCard('${k}',-1,'${catKey}')"
-          style="width:32px;height:32px;border:0.5px solid var(--bd);border-radius:7px;background:${canUp?'var(--bg)':'var(--bg2)'};color:${canUp?'var(--text2)':'var(--bd)'};font-size:14px;cursor:${canUp?'pointer':'default'};display:flex;align-items:center;justify-content:center"
-          ${canUp?'':' disabled'}>↑</button>
+          style="width:30px;height:30px;border:0.5px solid var(--bd);border-radius:7px;background:${canUp?'var(--bg)':'transparent'};color:${canUp?'var(--text2)':'var(--bd)'};font-size:14px;cursor:${canUp?'pointer':'default'};display:flex;align-items:center;justify-content:center"
+          ${canUp?'':'disabled'}>↑</button>
         <button type="button" onclick="moveCard('${k}',1,'${catKey}')"
-          style="width:32px;height:32px;border:0.5px solid var(--bd);border-radius:7px;background:${canDown?'var(--bg)':'var(--bg2)'};color:${canDown?'var(--text2)':'var(--bd)'};font-size:14px;cursor:${canDown?'pointer':'default'};display:flex;align-items:center;justify-content:center"
-          ${canDown?'':' disabled'}>↓</button>
+          style="width:30px;height:30px;border:0.5px solid var(--bd);border-radius:7px;background:${canDown?'var(--bg)':'transparent'};color:${canDown?'var(--text2)':'var(--bd)'};font-size:14px;cursor:${canDown?'pointer':'default'};display:flex;align-items:center;justify-content:center"
+          ${canDown?'':'disabled'}>↓</button>
+        <button type="button" onclick="hideCard('${k}','${catKey}')"
+          style="width:30px;height:30px;border:0.5px solid var(--coral);border-radius:7px;background:transparent;color:var(--coral);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center"
+          title="숨기기">✕</button>
       </div>
     </div>`;
-  }).join('');
+  });
+
+  // 숨긴 카드
+  if(hidden.length) {
+    html += `<div style="font-size:11px;color:var(--text3);margin:8px 0 4px">숨긴 카드</div>`;
+    hidden.forEach(k => {
+      html += `<div style="display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--bg2);border-radius:9px;margin-bottom:5px;opacity:0.55">
+        <span style="flex:1;font-size:13px;color:var(--text2)">${labels[k]||k}</span>
+        <button type="button" onclick="showCard('${k}','${catKey}')"
+          style="padding:4px 10px;border:0.5px solid var(--teal);border-radius:7px;background:transparent;color:var(--teal);font-size:11px;cursor:pointer;font-family:inherit">복원</button>
+      </div>`;
+    });
+  }
+
+  el.innerHTML = html;
+}
+
+function hideCard(cardKey, cat) {
+  const hidden = getCardHidden(cat);
+  if(!hidden.includes(cardKey)) hidden.push(cardKey);
+  saveCardHidden(cat, hidden);
+  renderCardOrderUI(cat);
+  applyCardOrder(cat);
+  toast('카드를 숨겼어요 · 설정에서 복원 가능해요');
+}
+
+function showCard(cardKey, cat) {
+  const hidden = getCardHidden(cat).filter(k=>k!==cardKey);
+  saveCardHidden(cat, hidden);
+  renderCardOrderUI(cat);
+  applyCardOrder(cat);
+  toast('카드를 복원했어요');
 }
 
 function moveCard(cardKey, dir, cat) {
@@ -1760,11 +1813,12 @@ function moveCard(cardKey, dir, cat) {
 }
 
 function resetCardOrder(cat) {
-  const key = SK_CARD_ORDER + '_' + (cat||state.activeCat);
-  try { localStorage.removeItem(key); } catch(e) {}
-  renderCardOrderUI(cat);
-  applyCardOrder(cat);
-  toast('질환 기반 자동 정렬로 초기화했어요');
+  const c = cat||state.activeCat;
+  try { localStorage.removeItem(SK_CARD_ORDER+'_'+c); } catch(e) {}
+  try { localStorage.removeItem(SK_CARD_HIDDEN+'_'+c); } catch(e) {}
+  renderCardOrderUI(c);
+  applyCardOrder(c);
+  toast('카드 순서와 숨김을 초기화했어요');
 }
 
 function updateMetrics(){
