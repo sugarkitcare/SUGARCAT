@@ -485,7 +485,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.03</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.04</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap">
@@ -2716,13 +2716,19 @@ setupDrop('btDrop','btFile',async file=>{
     showStat('btStatus','err',errMsg);
   }
 });
-document.getElementById('btSave').onclick=()=>{
+document.getElementById('btSave').onclick=async()=>{
   if(!btEx)return;
   const ei=btData.findIndex(d=>d.cat===btEx.cat&&d.date===btEx.date);
   if(ei>-1)btData[ei]=Object.assign({},btEx,{ts:Date.now()});
   else btData.unshift(Object.assign({},btEx,{ts:Date.now()}));
   saveBT();
-  saveBloodTestToDB(btEx);
+  // 고양이 DB 등록 확인 후 혈액검사 저장
+  if(sbClient && currentUser) {
+    try {
+      await upsertCatToDB(btEx.cat);
+      await saveBloodTestToDB(btEx);
+    } catch(e) { console.error('혈액검사 DB 저장 오류:', e); }
+  }
   btEx=null;
   document.getElementById('btResult').style.display='none';
   const cc=document.getElementById('btCatCards');if(cc)cc.innerHTML='';
@@ -5355,11 +5361,13 @@ async function syncFromDB() {
     // 3. 혈액검사 불러오기
     btData = [];
     await loadBloodTests();
+    saveBT(); // localStorage 캐시 갱신
 
     renderCatBar();
     updateMetrics();
     updateWtDiff();
     updateInsulinNext();
+    try{renderBTHistoryList();renderBTGraphs();}catch(e){}
     renderBTHistoryList();
     renderBTGraphs();
     renderBTTrend();
@@ -5417,24 +5425,25 @@ async function loadBloodTests() {
     .eq('user_id', currentUser.id)
     .order('created_at', {ascending: false});
   
-  // JOIN 실패 시 단순 조회로 폴백
+  // JOIN 실패 or cats 빈 경우 단순 조회로 폴백
   let btRaw = data;
-  if(error || !data) {
+  if(error || !data || data.length === 0) {
     const { data: plain } = await sbClient.from('blood_tests')
       .select('*').eq('user_id', currentUser.id)
       .order('created_at', {ascending: false});
-    btRaw = plain;
+    if(plain && plain.length > 0) btRaw = plain;
   }
   
   if(btRaw && btRaw.length > 0) {
     btData = btRaw.map(r => ({
       cat: r.cats?.name ||
-        Object.keys(state.catProfiles).find(k => state.catProfiles[k]?.dbId === r.cat_id) ||
+        Object.keys(state.catProfiles||{}).find(k => (state.catProfiles||{})[k]?.dbId === r.cat_id) ||
         state.activeCat || '',
       date: r.test_date,
       items: r.items,
       ts: new Date(r.created_at).getTime()
     }));
+    saveBT(); // localStorage에도 캐시
   }
 }
 
