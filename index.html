@@ -485,7 +485,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.87</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.3.88</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap">
@@ -535,7 +535,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     </div>
   </div>
 
-  <div class="card">
+  <div class="card" id="daily-card-bg">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.65rem;cursor:pointer" onclick="toggleCard('bgCard',this)">
       <span style="font-size:12px;font-weight:500;color:var(--text2)">혈당 · 케톤</span>
       <span style="font-size:11px;color:var(--teal)">▼ 펼치기</span>
@@ -555,7 +555,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
   </div>
 
   <!-- 호흡수 측정 카드 -->
-  <div class="card">
+  <div class="card" id="daily-card-rr">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;cursor:pointer" onclick="toggleCard('rrCard',this)">
       <span style="font-size:12px;font-weight:500;color:var(--text2)">🫁 호흡수 측정</span>
       <span style="font-size:11px;color:var(--teal)">▼ 펼치기</span>
@@ -624,7 +624,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     <button class="btn btn-purple" id="saveWt">체중 저장</button>
     </div>
   </div>
-  <div class="card">
+  <div class="card" id="daily-card-ins">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.65rem;cursor:pointer" onclick="toggleCard('insCard',this)">
       <span style="font-size:12px;font-weight:500;color:var(--text2)">인슐린 투여</span>
       <span style="font-size:11px;color:var(--teal)">▼ 펼치기</span>
@@ -1302,6 +1302,8 @@ function renderCatBar(){
       try{loadRoutineForCat(c);}catch(e){}
       // 오늘 기록 요약 갱신
       try{renderDailySummary();}catch(e){}
+      // 카드 순서 적용
+      try{applyCardOrder(c);}catch(e){}
       // CGM 탭 고양이 필드 동기화 + 데이터 로드
       try{const cc=document.getElementById('cgmCat');if(cc)cc.value=c;}catch(e){}
       try{loadCGMForCat(c).then(()=>{
@@ -1664,6 +1666,100 @@ function adminFilterCat(btn) {
   renderAdminList(cat);
 }
 
+
+/* ── 카드 순서 관리 ── */
+const DEFAULT_CARD_ORDER = ['bg','rr','ins'];
+const SK_CARD_ORDER = 'cardOrder_v1';
+
+function getCardOrder(cat) {
+  const key = SK_CARD_ORDER + '_' + (cat||state.activeCat);
+  try {
+    const saved = localStorage.getItem(key);
+    if(saved) return JSON.parse(saved);
+  } catch(e) {}
+  // 질환 기반 자동 정렬
+  return autoCardOrder(cat||state.activeCat);
+}
+
+function autoCardOrder(cat) {
+  const diseases = (state.catProfiles?.[cat]?.diseases) || [];
+  const hasDM = diseases.includes('당뇨(DM)');
+  const hasHCM = diseases.includes('심비대증(HCM)');
+  if(hasDM && hasHCM) return ['bg','rr','ins'];
+  if(hasDM) return ['bg','ins','rr'];
+  if(hasHCM) return ['rr','bg','ins'];
+  return ['bg','rr','ins'];
+}
+
+function saveCardOrder(cat, order) {
+  const key = SK_CARD_ORDER + '_' + (cat||state.activeCat);
+  try { localStorage.setItem(key, JSON.stringify(order)); } catch(e) {}
+}
+
+function applyCardOrder(cat) {
+  const order = getCardOrder(cat||state.activeCat);
+  const tabDaily = document.getElementById('tab-daily');
+  if(!tabDaily) return;
+  // 카드들 순서대로 재배치
+  const anchors = {
+    bg: document.getElementById('daily-card-bg'),
+    rr: document.getElementById('daily-card-rr'),
+    ins: document.getElementById('daily-card-ins'),
+  };
+  // 혈당 카드 기준점(insulinNextBanner 다음)
+  const insertRef = document.getElementById('daily-card-bg')?.parentNode;
+  if(!insertRef) return;
+  // 카드들을 일단 분리
+  const cards = order.map(k => anchors[k]).filter(Boolean);
+  const firstCard = anchors['bg'];
+  if(!firstCard) return;
+  // 첫 카드 위치 기준으로 순서 재배치
+  let refNode = cards[0];
+  const parent = refNode.parentNode;
+  cards.forEach(card => {
+    parent.insertBefore(card, refNode.nextSibling);
+    refNode = card;
+  });
+}
+
+function renderCardOrderUI(cat) {
+  const el = document.getElementById('cardOrderUI');
+  if(!el) return;
+  const order = getCardOrder(cat||state.activeCat);
+  const labels = {bg:'혈당·케톤', rr:'🫁 호흡수', ins:'인슐린 투여'};
+  el.innerHTML = order.map((k,i) => `
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg2);border-radius:9px;margin-bottom:5px">
+      <span style="flex:1;font-size:13px;color:var(--text)">${labels[k]||k}</span>
+      <div style="display:flex;gap:4px">
+        ${i>0?`<button type="button" onclick="moveCard('${k}',-1,'${cat||state.activeCat}')"
+          style="padding:3px 8px;border:0.5px solid var(--bd);border-radius:6px;background:var(--bg);color:var(--text2);font-size:12px;cursor:pointer">↑</button>`:'<div style="width:36px"></div>'}
+        ${i<order.length-1?`<button type="button" onclick="moveCard('${k}',1,'${cat||state.activeCat}')"
+          style="padding:3px 8px;border:0.5px solid var(--bd);border-radius:6px;background:var(--bg);color:var(--text2);font-size:12px;cursor:pointer">↓</button>`:'<div style="width:36px"></div>'}
+      </div>
+    </div>`).join('');
+}
+
+function moveCard(cardKey, dir, cat) {
+  const order = getCardOrder(cat);
+  const idx = order.indexOf(cardKey);
+  if(idx < 0) return;
+  const newIdx = idx + dir;
+  if(newIdx < 0 || newIdx >= order.length) return;
+  [order[idx], order[newIdx]] = [order[newIdx], order[idx]];
+  saveCardOrder(cat, order);
+  renderCardOrderUI(cat);
+  applyCardOrder(cat);
+  toast('카드 순서가 변경됐어요');
+}
+
+function resetCardOrder(cat) {
+  const key = SK_CARD_ORDER + '_' + (cat||state.activeCat);
+  try { localStorage.removeItem(key); } catch(e) {}
+  renderCardOrderUI(cat);
+  applyCardOrder(cat);
+  toast('질환 기반 자동 정렬로 초기화했어요');
+}
+
 function updateMetrics(){
   const rec=getRec(state.activeCat,today());
   const lb=rec.bg.length?rec.bg[rec.bg.length-1]:null;
@@ -1806,7 +1902,7 @@ window.showTab = function showTab(tab, btn) {
     if(tab==='history') try{renderHistory();renderRoutineSchedule();}catch(e){console.warn(e);}
     if(tab==='bloodtest') try{renderBTGraphs();renderBTHistoryList();}catch(e){console.warn(e);}
     if(tab==='food') try{renderFdHistory();}catch(e){console.warn(e);}
-    if(tab==='daily') try{updateMetrics();renderRoutineChecklist();renderDailySummary();}catch(e){console.warn(e);}
+    if(tab==='daily') try{updateMetrics();renderRoutineChecklist();renderDailySummary();applyCardOrder(state.activeCat);}catch(e){console.warn(e);}
   } catch(e) { console.error('showTab 오류:', tab, e); }
 }
 
@@ -4616,6 +4712,7 @@ function openCatProfile(cat) {
   // 루틴 항목 목록도 렌더링
   // 해당 고양이 루틴 불러오기
   try{ loadRoutineForCat(cat); }catch(e){}
+  try{ renderCardOrderUI(cat); }catch(e){}
 }
 
 // 품종 직접입력 처리
@@ -5404,6 +5501,17 @@ initSupabase();
   </div>
   <div class="ig" style="margin-bottom:1rem"><label>메모</label><input type="text" id="cpMemo" placeholder="특이사항, 알레르기 등"></div>
   <button onclick="saveCatProfile()" class="btn btn-teal" style="width:100%;padding:14px">저장</button>
+
+  <!-- 카드 순서 설정 -->
+  <div style="margin-top:1.5rem;padding-top:1rem;border-top:0.5px solid var(--bd)">
+    <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:.25rem">📋 오늘기록 카드 순서</div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:.75rem">↑↓ 버튼으로 카드 순서를 바꿀 수 있어요 · 질환 설정 기반으로 자동 정렬돼요</div>
+    <div id="cardOrderUI"></div>
+    <button type="button" onclick="resetCardOrder(currentProfileCat)"
+      style="padding:6px 14px;border:0.5px solid var(--bd);border-radius:8px;background:transparent;color:var(--text3);font-size:11px;cursor:pointer;font-family:inherit;margin-top:6px">
+      🔄 자동 정렬로 초기화
+    </button>
+  </div>
 
   <!-- 루틴 항목 설정 -->
   <div style="margin-top:1.5rem;padding-top:1rem;border-top:0.5px solid var(--bd)">
