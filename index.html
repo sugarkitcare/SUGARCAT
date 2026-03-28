@@ -485,7 +485,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.15</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.16</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">
@@ -497,22 +497,22 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 </div>
 </div>
 <div class="cat-bar" id="catBar">
-  <div id="catSlot0" style="display:none" class="cat-chip">
+  <div id="catSlot0" style="display:none;align-items:center;gap:4px" class="cat-chip">
     <button type="button" id="catName0" onclick="switchCat(this.dataset.cat)" data-cat="" style="cursor:pointer;background:none;border:none;font-family:inherit;font-size:inherit;color:inherit;padding:0;font-weight:inherit"></button>
     <button type="button" id="catSettings0" onclick="openCatProfile(document.getElementById('catName0').dataset.cat)" style="font-size:14px;background:none;border:none;cursor:pointer;padding:2px 5px;min-width:26px;min-height:26px;color:inherit;opacity:0.7">⚙</button>
     <button type="button" id="catDel0" onclick="deleteCat(document.getElementById('catName0').dataset.cat)" style="font-size:15px;background:none;border:none;cursor:pointer;padding:2px 5px;min-width:26px;min-height:26px;color:inherit;opacity:0.6">×</button>
   </div>
-  <div id="catSlot1" style="display:none" class="cat-chip">
+  <div id="catSlot1" style="display:none;align-items:center;gap:4px" class="cat-chip">
     <button type="button" id="catName1" onclick="switchCat(this.dataset.cat)" data-cat="" style="cursor:pointer;background:none;border:none;font-family:inherit;font-size:inherit;color:inherit;padding:0;font-weight:inherit"></button>
     <button type="button" id="catSettings1" onclick="openCatProfile(document.getElementById('catName1').dataset.cat)" style="font-size:14px;background:none;border:none;cursor:pointer;padding:2px 5px;min-width:26px;min-height:26px;color:inherit;opacity:0.7">⚙</button>
     <button type="button" id="catDel1" onclick="deleteCat(document.getElementById('catName1').dataset.cat)" style="font-size:15px;background:none;border:none;cursor:pointer;padding:2px 5px;min-width:26px;min-height:26px;color:inherit;opacity:0.6">×</button>
   </div>
-  <div id="catSlot2" style="display:none" class="cat-chip">
+  <div id="catSlot2" style="display:none;align-items:center;gap:4px" class="cat-chip">
     <button type="button" id="catName2" onclick="switchCat(this.dataset.cat)" data-cat="" style="cursor:pointer;background:none;border:none;font-family:inherit;font-size:inherit;color:inherit;padding:0;font-weight:inherit"></button>
     <button type="button" id="catSettings2" onclick="openCatProfile(document.getElementById('catName2').dataset.cat)" style="font-size:14px;background:none;border:none;cursor:pointer;padding:2px 5px;min-width:26px;min-height:26px;color:inherit;opacity:0.7">⚙</button>
     <button type="button" id="catDel2" onclick="deleteCat(document.getElementById('catName2').dataset.cat)" style="font-size:15px;background:none;border:none;cursor:pointer;padding:2px 5px;min-width:26px;min-height:26px;color:inherit;opacity:0.6">×</button>
   </div>
-  <div id="catSlot3" style="display:none" class="cat-chip">
+  <div id="catSlot3" style="display:none;align-items:center;gap:4px" class="cat-chip">
     <button type="button" id="catName3" onclick="switchCat(this.dataset.cat)" data-cat="" style="cursor:pointer;background:none;border:none;font-family:inherit;font-size:inherit;color:inherit;padding:0;font-weight:inherit"></button>
     <button type="button" id="catSettings3" onclick="openCatProfile(document.getElementById('catName3').dataset.cat)" style="font-size:14px;background:none;border:none;cursor:pointer;padding:2px 5px;min-width:26px;min-height:26px;color:inherit;opacity:0.7">⚙</button>
     <button type="button" id="catDel3" onclick="deleteCat(document.getElementById('catName3').dataset.cat)" style="font-size:15px;background:none;border:none;cursor:pointer;padding:2px 5px;min-width:26px;min-height:26px;color:inherit;opacity:0.6">×</button>
@@ -1323,20 +1323,15 @@ function renderCatBar(){
       document.getElementById('catSettings'+i).style.display='';
       document.getElementById('catDel'+i).style.display='';
       slot.style.display='flex';
-      slot.style.alignItems='center';
-      slot.style.gap='4px';
-      slot.style.padding='5px 10px';
       if(c===state.activeCat) slot.classList.add('active');
       else slot.classList.remove('active');
     } else {
       slot.style.display='none';
     }
   }
-  // 고양이 없을 때 안내
+  // catAddSlot 초기화
   const addSlot=document.getElementById('catAddSlot');
-  if(!state.cats.length && addSlot){
-    addSlot.innerHTML='<div style="font-size:12px;color:var(--text2);padding:6px 4px">👆 + 추가 버튼을 눌러 첫 번째 고양이를 등록해보세요!</div>';
-  }
+  if(addSlot) addSlot.innerHTML='';
   // + 추가 버튼 (인라인 입력)
   const addBtn=document.createElement('div');
   addBtn.className='cat-chip add';
