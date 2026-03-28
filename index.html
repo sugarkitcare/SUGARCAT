@@ -46,7 +46,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 
 /* 고양이 탭 */
 .cat-bar{display:flex;gap:6px;margin-bottom:.85rem;overflow-x:auto;padding-bottom:2px}
-.cat-chip{padding:5px 14px;border-radius:20px;border:0.5px solid var(--bd);background:var(--bg);font-size:13px;color:var(--text2);cursor:pointer;white-space:nowrap;flex-shrink:0}
+.cat-chip{touch-action:manipulation;-webkit-tap-highlight-color:transparent;padding:5px 14px;border-radius:20px;border:0.5px solid var(--bd);background:var(--bg);font-size:13px;color:var(--text2);cursor:pointer;white-space:nowrap;flex-shrink:0}
 .cat-chip.active{background:var(--teal);color:#fff;border-color:var(--teal)}
 .cat-chip.add{border-style:dashed;color:var(--teal);background:transparent}
 
@@ -485,7 +485,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.02</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.03</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap">
@@ -1303,7 +1303,7 @@ function renderCatBar(){
     const nameSpan=document.createElement('span');
     nameSpan.textContent=c;
     nameSpan.style.cursor='pointer';
-    nameSpan.addEventListener('click',()=>{
+    const switchCat = () => {
       state.activeCat=c;
       renderCatBar();updateMetrics();updateWtDiff();updateInsulinNext();saveS();
       const prof=(state.catProfiles||{})[c];
@@ -1329,7 +1329,9 @@ function renderCatBar(){
         else if(activeTab==='bloodtest'){try{renderBTGraphs();renderBTHistoryList();}catch(e){};}
         else if(activeTab==='food'){try{renderFdHistory();autoSetFdMode(c);}catch(e){};}
       }catch(e){}
-    });
+    };
+    nameSpan.addEventListener('click', switchCat);
+    nameSpan.addEventListener('touchend', function(e){ e.preventDefault(); switchCat(); }, {passive:false});
 
     // 설정 버튼
     const infoBtn=document.createElement('button');
@@ -1337,6 +1339,7 @@ function renderCatBar(){
     infoBtn.type='button';
     infoBtn.style.cssText='font-size:14px;background:none;border:none;cursor:pointer;padding:2px 5px;min-width:26px;min-height:26px;color:inherit;opacity:0.7';
     infoBtn.addEventListener('click',(e)=>{e.stopPropagation();openCatProfile(c);});
+    infoBtn.addEventListener('touchend',(e)=>{e.preventDefault();e.stopPropagation();openCatProfile(c);},{passive:false});
 
     // 삭제 버튼
     const delBtn=document.createElement('button');
@@ -5005,17 +5008,18 @@ document.addEventListener('keydown', (e) => {
 // 탭 전환 이벤트
 // 탭 버튼에 직접 onclick 바인딩 (이벤트 위임보다 안정적)
 document.querySelectorAll('.nav-btn').forEach(function(btn) {
-  // iOS Safari 호환: touchend + onclick 둘 다 처리
-  var tapped = false;
+  btn.addEventListener('touchstart', function(e) {
+    e.stopPropagation();
+  }, {passive: true});
   btn.addEventListener('touchend', function(e) {
     e.preventDefault();
-    tapped = true;
+    e.stopPropagation();
     window.showTab(btn.dataset.tab, btn);
   }, {passive: false});
-  btn.onclick = function(e) {
-    if(tapped) { tapped = false; return; }
+  btn.addEventListener('click', function(e) {
+    e.stopPropagation();
     window.showTab(btn.dataset.tab, btn);
-  };
+  });
 });
 
 /* ── Supabase 연동 ── */
