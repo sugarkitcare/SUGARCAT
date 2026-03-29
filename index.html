@@ -485,7 +485,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.16</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.17</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">
@@ -1945,6 +1945,54 @@ window.deleteCat = function(c) {
   }else{toast(c+' 삭제됐어요');}
 };
 
+
+/* ── AI 사용량 리밋 시스템 ── */
+const AI_LIMITS = {
+  bloodtest: 3,   // 혈액검사 분석 하루 3회
+  food: 5,        // 사료 분석 하루 5회
+  cgm: 3,         // CGM 추출 하루 3회
+  ai: 10          // AI 해석 하루 10회
+};
+
+const AI_LIMIT_LABELS = {
+  bloodtest: '혈액검사 분석',
+  food: '사료 분석',
+  cgm: 'CGM 추출',
+  ai: 'AI 해석'
+};
+
+function getAIUsageKey(type) {
+  const today = new Date().toISOString().slice(0,10);
+  const uid = currentUser?.id || 'guest';
+  return `ai_usage_${uid}_${type}_${today}`;
+}
+
+function getAIUsageCount(type) {
+  try {
+    return parseInt(localStorage.getItem(getAIUsageKey(type)) || '0');
+  } catch(e) { return 0; }
+}
+
+function incrementAIUsage(type) {
+  try {
+    const key = getAIUsageKey(type);
+    const count = getAIUsageCount(type) + 1;
+    localStorage.setItem(key, String(count));
+    return count;
+  } catch(e) { return 0; }
+}
+
+function checkAILimit(type) {
+  const count = getAIUsageCount(type);
+  const limit = AI_LIMITS[type];
+  if(count >= limit) {
+    const label = AI_LIMIT_LABELS[type];
+    toast(`오늘 ${label} 한도(${limit}회)를 모두 사용했어요. 내일 다시 이용해주세요 🐾`, '#BA7517');
+    return false;
+  }
+  return true;
+}
+
 function updateMetrics(){
   const rec=getRec(state.activeCat,today());
   const lb=rec.bg.length?rec.bg[rec.bg.length-1]:null;
@@ -2542,6 +2590,7 @@ function setupDrop(dropId,fileId,fn){
 setupDrop('btDrop','btFile',async file=>{
   if(file.type.startsWith('image/')){const url=URL.createObjectURL(file);document.getElementById('btPreview').src=url;document.getElementById('btPreview').style.display='block';}
   else document.getElementById('btPreview').style.display='none';
+  if(!checkAILimit('bloodtest')) return;
   document.getElementById('btResult').style.display='none';
   showStat('btStatus','loading','AI가 혈액검사지를 읽고 있어요...');
   const b64=await toB64(file);
@@ -2556,6 +2605,7 @@ setupDrop('btDrop','btFile',async file=>{
     if(resp.status===429){throw new Error(data.message||'요청이 너무 많아요. 잠시 후 다시 시도해주세요.');}
     if(data.error){throw new Error(data.error.message||JSON.stringify(data.error));}
     if(!data.content||!data.content[0]){throw new Error('응답 없음: '+JSON.stringify(data));}
+    incrementAIUsage('bloodtest');
     // 응답 파싱 강화
     let rawText='';
     if(data.content&&data.content[0]&&data.content[0].text){
@@ -2830,6 +2880,7 @@ const lvColor=lv=>({best:'#1D9E75',good:'#3B6D11',caution:'#BA7517',bad:'#D85A30
 setupDrop('fdDrop','fdFile',async file=>{
   if(file.type.startsWith('image/')){const url=URL.createObjectURL(file);document.getElementById('fdPreview').src=url;document.getElementById('fdPreview').style.display='block';}
   else document.getElementById('fdPreview').style.display='none';
+  if(!checkAILimit('food')) return;
   document.getElementById('fdResult').innerHTML='';
   showStat('fdStatus','loading','AI가 성분표를 분석하고 있어요...');
   const b64=await toB64(file);const isWet=document.getElementById('fdType').value==='wet';const fdNm=document.getElementById('fdName').value||'분석 사료';
@@ -2838,6 +2889,7 @@ setupDrop('fdDrop','fdFile',async file=>{
   try{
     const resp=await fetch('/api/proxy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1200,system:sys,messages:[{role:'user',content:mc}]})});
     const data=await resp.json();
+    incrementAIUsage('food');
     let rawText2='';
     if(data.content&&data.content[0]&&data.content[0].text){
       rawText2=data.content[0].text;
@@ -3462,13 +3514,14 @@ function buildCtx(){
   return ctx;
 }
 async function sendAI(msg){
+  if(!checkAILimit('ai')) return;
   const chat=document.getElementById('aiChat');
   const ud=document.createElement('div');ud.className='ai-msg user';ud.textContent=msg;chat.appendChild(ud);
   const typing=document.createElement('div');typing.className='ai-typing';typing.innerHTML='<span></span><span></span><span></span>';chat.appendChild(typing);
   chat.scrollTop=chat.scrollHeight;
   try{
     const resp=await fetch('/api/proxy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:800,system:`당신은 환묘(당뇨·신부전·심근비대증·췌장염 등 복합질환 고양이) 케어 전문 어시스턴트입니다.\n고양이 정보와 오늘 기록:\n${buildCtx()}\n원칙: ACVIM/WSAVA 기반. 케톤≥2.4 또는 혈당≥400 → 즉시 병원 안내 최우선. 호흡수≥40 → 즉시 병원. 진단·처방은 수의사 영역임을 명시. 한국어 250자 내외. 기록이 없어도 고양이 프로필 기반으로 질환별 일반 케어 조언 가능.`,messages:[{role:'user',content:msg}]})});
-    const data=await resp.json();typing.remove();
+    const data=await resp.json();incrementAIUsage('ai');typing.remove();
     const bd=document.createElement('div');bd.className='ai-msg bot';bd.textContent=data.content&&data.content[0]?data.content[0].text:'응답을 받지 못했습니다.';chat.appendChild(bd);
   }catch(e){typing.remove();const ed=document.createElement('div');ed.className='ai-msg bot';ed.textContent='오류가 발생했습니다.';chat.appendChild(ed);}
   chat.scrollTop=chat.scrollHeight;
@@ -3918,7 +3971,8 @@ ${itemSummary}
 이상 수치 ${highItems.length+lowItems.length}개, 정상 ${normalItems.length}개`;
 
   try {
-    const resp = await fetch('/api/proxy', {
+    if(!checkAILimit('bloodtest')) return;
+  const resp = await fetch('/api/proxy', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
@@ -4017,6 +4071,7 @@ setupDrop('cgmDrop','cgmFile',async file=>{
   const url=URL.createObjectURL(file);
   document.getElementById('cgmPreview').src=url;
   document.getElementById('cgmPreview').style.display='block';
+  if(!checkAILimit('cgm')) return;
   document.getElementById('cgmResultCard').style.display='none';
   document.getElementById('cgmAiResult').style.display='none';
   showStat('cgmStatus','loading','AI가 혈당 그래프를 읽고 있어요... (15~25초 소요)');
