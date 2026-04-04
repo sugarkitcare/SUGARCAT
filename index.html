@@ -432,6 +432,23 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 </div>
 
 <!-- 피드백 모달 -->
+<!-- 앱 공지 팝업 -->
+<div id="noticeModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9500;pointer-events:none">
+  <div style="background:var(--bg);border-radius:16px;padding:1.5rem;max-width:360px;width:calc(100% - 2rem);margin:3rem auto;position:relative;pointer-events:auto">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem">
+      <span style="font-size:20px">📢</span>
+      <div style="font-size:15px;font-weight:700;color:var(--text)" id="noticeTitle">업데이트 공지</div>
+    </div>
+    <div id="noticeBody" style="font-size:13px;color:var(--text);line-height:1.8;margin-bottom:1.25rem;white-space:pre-line"></div>
+    <div style="display:flex;gap:8px">
+      <button type="button" onclick="closeNotice(true)"
+        style="flex:1;padding:11px;border:0.5px solid var(--bd);border-radius:10px;background:var(--bg2);color:var(--text2);font-size:13px;cursor:pointer;font-family:inherit">오늘 하루 보지 않기</button>
+      <button type="button" onclick="closeNotice(false)"
+        style="flex:1;padding:11px;border:none;border-radius:10px;background:var(--teal);color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">확인</button>
+    </div>
+  </div>
+</div>
+
 <div id="feedbackModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9000;overflow-y:auto;-webkit-overflow-scrolling:touch;pointer-events:none">
   <div style="background:var(--bg);border-radius:16px 16px 0 0;padding:1.5rem 1.25rem;position:absolute;bottom:0;left:0;right:0;max-height:90vh;overflow-y:auto">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem">
@@ -485,7 +502,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.17</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.19</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">
@@ -1991,6 +2008,65 @@ function checkAILimit(type) {
     return false;
   }
   return true;
+}
+
+
+/* ── 앱 공지 팝업 ── */
+// 공지 설정 (여기만 수정하면 됨)
+const APP_NOTICE = {
+  id: 'notice_v0418b',  // 공지 바꿀 때마다 id 변경 → 다시 표시됨
+  title: '🔧 업데이트 안내',
+  body: `베타 사용 1주일, 피드백 감사해요 🐾
+
+여러분이 보내주신 소중한 의견을 바탕으로
+아래 내용을 업데이트할 예정이에요.
+
+📅 업데이트 기간: 4월 3일 ~ 4월 13일
+
+✅ 병원마다 다른 혈검 항목명 통합
+   (HCT = 헤마토크릿 → 하나의 그래프로)
+✅ 그래프 카테고리 기본 접힘
+   + 질환별 자동 우선 표시
+✅ 사료 분석 숨은 탄수 계산 개선
+✅ 기타 오류 수정
+
+💬 업데이트 전에 추가로 원하시는 기능이나
+불편한 점이 있으시면 지금 바로 알려주세요!
+이번 업데이트에 반영하겠습니다.
+
+앱 내 💬 피드백 버튼으로 보내주시면 돼요.`
+};
+
+function showNotice() {
+  const notice = APP_NOTICE;
+  if(!notice) return;
+  // 오늘 하루 보지 않기 체크
+  const hiddenUntil = localStorage.getItem('notice_hidden_' + notice.id);
+  if(hiddenUntil && Date.now() < parseInt(hiddenUntil)) return;
+  // 이미 확인한 공지 체크
+  const confirmed = localStorage.getItem('notice_confirmed_' + notice.id);
+  if(confirmed) return;
+
+  document.getElementById('noticeTitle').textContent = notice.title;
+  document.getElementById('noticeBody').textContent = notice.body;
+  const modal = document.getElementById('noticeModal');
+  modal.style.display = 'block';
+  modal.style.pointerEvents = 'auto';
+}
+
+function closeNotice(hideToday) {
+  const modal = document.getElementById('noticeModal');
+  modal.style.display = 'none';
+  modal.style.pointerEvents = 'none';
+  if(hideToday) {
+    // 오늘 자정까지 숨기기
+    const midnight = new Date();
+    midnight.setHours(23,59,59,999);
+    localStorage.setItem('notice_hidden_' + APP_NOTICE.id, String(midnight.getTime()));
+  } else {
+    // 확인 → 다시 안 보임
+    localStorage.setItem('notice_confirmed_' + APP_NOTICE.id, '1');
+  }
 }
 
 function updateMetrics(){
@@ -5192,6 +5268,8 @@ function showApp() {
   try { renderDailySummary(); } catch(e) {}
   if(currentUser) try{loadCGMForCat(state.activeCat);}catch(e){}
   if(currentUser) try{loadCardSettingsForCat(state.activeCat);}catch(e){}
+  // 공지 팝업 (로그인 후 표시)
+  setTimeout(()=>{ try{showNotice();}catch(e){} }, 800);
 }
 
 function showOnboarding() {
