@@ -502,7 +502,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.19</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.20</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">
@@ -2744,7 +2744,15 @@ setupDrop('btDrop','btFile',async file=>{
       renderBTGraphs();
       renderBTHistoryList();
       renderBTTrend();
-      toast(resultsToSave.length+'개 날짜 결과 모두 저장됐어요! 📊');
+      toast(resultsToSave.length+'개 날짜 결과 저장 완료! 그래프 탭에서 확인해보세요 📊');
+      // 저장 후 결과 영역 숨기기
+      document.getElementById('btResult').style.display='none';
+      hideStat('btStatus');
+      // 파일 입력 초기화
+      const btFileEl = document.getElementById('btFile');
+      if(btFileEl) btFileEl.value='';
+      const btPreviewEl = document.getElementById('btPreview');
+      if(btPreviewEl) btPreviewEl.style.display='none';
     }
     const btDate=btEx.date;
   hideStat('btStatus');
@@ -4688,9 +4696,66 @@ function renderBTTrend(){
   const gc=isDark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.05)';
   const tc=isDark?'#B4B2A9':'#888780';
 
-  Object.values(map)
-    .filter(item=>btTrendAC.has(item.category))
-    .forEach((item,i)=>{
+  // 질환별 우선 카테고리 설정
+  const profile = (state.catProfiles||{})[state.activeCat]||{};
+  const diseases = profile.diseases||[];
+  const hasDM = diseases.includes('DM');
+  const hasCKD = diseases.includes('CKD')||diseases.includes('PKD');
+  const hasHCM = diseases.includes('HCM');
+
+  // 카테고리 우선순위: 질환에 따라 자동 설정
+  const catPriority = ['혈구','신장','간','전해질','혈당','췌장','갑상선','단백','지질','기타'];
+  if(hasDM) {
+    // 당뇨: 혈당·췌장 먼저
+    catPriority.unshift('췌장','혈당');
+  } else if(hasCKD || hasHCM) {
+    // 신부전·HCM: 신장 먼저
+    catPriority.unshift('신장');
+  }
+  const priorityOrder = [...new Set(catPriority)];
+
+  // 카테고리별로 묶어서 렌더링
+  const catEmoji2 = {'혈구':'🔴','신장':'🫘','간':'🟡','전해질':'⚡','혈당':'🩸','췌장':'💛','갑상선':'🦋','단백':'💪','지질':'💊','기타':'📋'};
+  const itemsByCat = {};
+  Object.values(map).filter(item=>btTrendAC.has(item.category)).forEach(item=>{
+    const cat = item.category||'기타';
+    if(!itemsByCat[cat]) itemsByCat[cat]=[];
+    itemsByCat[cat].push(item);
+  });
+
+  const orderedCatKeys = [...priorityOrder.filter(c=>itemsByCat[c]), ...Object.keys(itemsByCat).filter(c=>!priorityOrder.includes(c))];
+  let globalIdx = 0;
+
+  orderedCatKeys.forEach(cat => {
+    const catItems = itemsByCat[cat];
+    if(!catItems||!catItems.length) return;
+
+    // 카테고리 헤더 카드 (접기/펼치기)
+    const isFirstCat = orderedCatKeys.indexOf(cat)===0; // 첫 번째 카테고리만 기본 펼침
+    const catCard = document.createElement('div');
+    catCard.style.cssText='background:var(--bg2);border-radius:10px;padding:.6rem .85rem;margin-bottom:.4rem;cursor:pointer;display:flex;justify-content:space-between;align-items:center';
+    catCard.innerHTML = '<div style="display:flex;align-items:center;gap:6px">'
+      +'<span style="font-size:15px">'+(catEmoji2[cat]||'📋')+'</span>'
+      +'<span style="font-size:13px;font-weight:600;color:var(--text)">'+cat+'</span>'
+      +'<span style="font-size:11px;color:var(--text3)">'+catItems.length+'개 항목</span>'
+      +'</div>'
+      +'<span style="font-size:11px;color:var(--teal)" id="bt_cat_toggle_'+cat+'">'+(isFirstCat?'▲ 접기':'▼ 펼치기')+'</span>';
+
+    const catContent = document.createElement('div');
+    catContent.id = 'bt_cat_content_'+cat;
+    catContent.style.display = isFirstCat ? 'block' : 'none';
+
+    catCard.onclick = () => {
+      const isOpen = catContent.style.display !== 'none';
+      catContent.style.display = isOpen ? 'none' : 'block';
+      document.getElementById('bt_cat_toggle_'+cat).textContent = isOpen ? '▼ 펼치기' : '▲ 접기';
+    };
+
+    wrap.appendChild(catCard);
+    wrap.appendChild(catContent);
+
+    catItems.forEach((item,i)=>{
+      const idx = globalIdx++;
       const pts=item.points.sort((a,b)=>a.date>b.date?1:-1);
       if(!pts.length)return;
 
@@ -4716,8 +4781,8 @@ function renderBTTrend(){
         +(item.abbr&&item.abbr!==item.name?' ('+item.abbr+')':'')
         +' <span style="color:var(--text3);font-size:10px">'+( item.unit||'')+'</span></span>'
         +badge+'</div>'
-        +'<div class="chart-wrap" style="height:130px"><canvas id="btt_'+i+'"></canvas></div>';
-      wrap.appendChild(card);
+        +'<div class="chart-wrap" style="height:130px"><canvas id="btt_'+idx+'"></canvas></div>';
+      catContent.appendChild(card);
 
       const datasets=[{
         data:vals,
@@ -4744,11 +4809,12 @@ function renderBTTrend(){
         borderDash:[5,4],pointRadius:0,fill:false,tension:0
       });
 
-      const inst=new Chart(document.getElementById('btt_'+i),{
+      const inst=new Chart(document.getElementById('btt_'+idx),{
         type:'line',
         data:{labels:dates.map(d=>d.slice(5)),datasets},
         options:{
           responsive:true,maintainAspectRatio:false,
+          interaction:{mode:'nearest',axis:'x',intersect:false},
           plugins:{legend:{display:false},
             tooltip:{callbacks:{
               label:ctx=>{
@@ -4769,7 +4835,8 @@ function renderBTTrend(){
         }
       });
       btTrendInst.push(inst);
-    });
+    }); // catItems.forEach
+  }); // orderedCatKeys.forEach
 }
 
 
