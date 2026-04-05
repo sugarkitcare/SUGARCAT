@@ -502,7 +502,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.22</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.23</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">
@@ -914,7 +914,9 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     </div>
   </div>
 
-  <div id="chartsWrap" data-graph-card="charts"></div>
+  <div id="ketCard" data-graph-card="ket" style="display:none"><div id="ketChartWrap"></div></div>
+  <div id="wtCard" data-graph-card="wt"><div id="wtChartWrap"></div></div>
+  <div id="rrCard" data-graph-card="rr" style="display:none"><div id="rrChartWrap"></div></div>
 
   <!-- 혈액검사 추이 카드 -->
   <div class="card" id="btTrendCard2" data-graph-card="bloodtest" style="margin-top:.5rem">
@@ -2094,10 +2096,11 @@ function closeNotice(hideToday) {
 const GRAPH_CARDS = [
   // dm:당뇨 ckd:신부전 hcm:심근비대증 — true면 해당 질환일 때 표시
   { id: 'timelineCard', label: '⏱️ 하루 타임라인', dm: true,  ckd: false, hcm: false },
-  { id: 'chartsWrap',   label: '📈 케톤·체중·호흡수', dm: true, ckd: false, hcm: true  },
-  { id: 'btTrendCard2', label: '🩸 혈액검사 추이', dm: true,  ckd: true,  hcm: true  },
+  { id: 'ketCard',      label: '🟡 케톤',          dm: true,  ckd: false, hcm: false },
+  { id: 'wtCard',       label: '⚖️ 체중',           dm: true,  ckd: true,  hcm: true  },
+  { id: 'rrCard',       label: '🫁 호흡수',         dm: false, ckd: false, hcm: true  },
+  { id: 'btTrendCard2', label: '🩸 혈액검사 추이',  dm: true,  ckd: true,  hcm: true  },
 ];
-// chartsWrap은 케톤/호흡수를 묶어서 처리하므로 별도 분리
 
 // 질환별 g-chip(케톤/체중/호흡수) 자동 숨김
 function applyGraphChips() {
@@ -2159,8 +2162,13 @@ function applyGraphCards() {
     if(hidden.includes('show_'+card.id)) show = true;
     el.style.display = show ? '' : 'none';
   });
-  // g-chip도 적용
-  try{applyGraphChips();}catch(e){}
+  // g-chip 필터도 질환에 맞게 적용
+  try{
+    const ketChip=document.querySelector('.g-chip[data-g="ket"]');
+    const rrChip=document.querySelector('.g-chip[data-g="rr"]');
+    if(ketChip) ketChip.style.display=(hasDM||noDisease)?'':'none';
+    if(rrChip)  rrChip.style.display=(hasHCM||noDisease)?'':'none';
+  }catch(e){}
 }
 
 function toggleGraphEdit() {
@@ -2677,7 +2685,10 @@ function getLast(n){const d=[];for(let i=n-1;i>=0;i--){const dt=new Date();dt.se
 
 function renderGraphs(){
   gInst.forEach(c=>c.destroy());gInst=[];
-  const wrap=document.getElementById('chartsWrap');wrap.innerHTML='';
+  // 각 카드 초기화
+  const ketWrap=document.getElementById('ketChartWrap');if(ketWrap)ketWrap.innerHTML='';
+  const wtWrap=document.getElementById('wtChartWrap');if(wtWrap)wtWrap.innerHTML='';
+  const rrWrap=document.getElementById('rrChartWrap');if(rrWrap)rrWrap.innerHTML='';
   const isDark=matchMedia('(prefers-color-scheme:dark)').matches;
   const gc=isDark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.05)';
   const tc=isDark?'#B4B2A9':'#888780';
@@ -2702,6 +2713,12 @@ function renderGraphs(){
   defs.forEach(def=>{
     if(!gActive.has(def.k))return;
     const labels=days.map(d=>d.slice(5));
+    // 개별 카드 wrap 선택
+    const wrap = def.k==='ket' ? document.getElementById('ketChartWrap')
+               : def.k==='wt'  ? document.getElementById('wtChartWrap')
+               : def.k==='rr'  ? document.getElementById('rrChartWrap')
+               : null;
+    if(!wrap) return;
 
     // 호흡수: 상태별 3개 데이터셋
     if(def.multiDataset && def.fnByState) {
