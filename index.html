@@ -502,7 +502,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.24</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.25</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">
@@ -1956,7 +1956,7 @@ window.switchCat = function(c) {
   try{
     const at=document.querySelector('.nav-btn.active')?.dataset?.tab;
     if(at==='history'){renderHistory();renderRoutineSchedule();}
-    else if(at==='graph'){loadGraphHiddenFromDB().then(()=>{applyGraphCards();});renderGraphs();try{renderBTTrend();}catch(e){};}
+    else if(at==='graph'){loadGraphHiddenFromDB(c).then(()=>{applyGraphCards();});renderGraphs();try{renderBTTrend();}catch(e){};}
     else if(at==='bloodtest'){try{renderBTGraphs();renderBTHistoryList();}catch(e){};}
     else if(at==='food'){try{renderFdHistory();autoSetFdMode(c);}catch(e){};}
   }catch(e){}
@@ -2101,24 +2101,26 @@ const GRAPH_CARDS = [
   { id: 'btTrendCard2', label: '🩸 혈액검사 추이'  },
 ];
 
-// 그래프 카드 숨김 설정 — DB 우선, localStorage 폴백
-let graphHiddenCache = {}; // { activeCat: [hiddenIds] }
+// 그래프 카드 숨김 설정 — DB 우선, 고양이별 분리
+let graphHiddenCache = {}; // { '케이': [hiddenIds], '달래': [...] }
 
 function getGraphHiddenKey(cat) {
-  return 'graph_hidden_' + (cat||state.activeCat||'default');
+  // 고양이 이름 기반 키
+  return 'graph_hidden_cat_' + (cat||'default');
 }
 
-function getGraphHidden(cat) {
-  const c = cat||state.activeCat||'default';
+function getGraphHidden() {
+  // 항상 현재 activeCat 기준
+  const c = state.activeCat||'default';
   if(graphHiddenCache[c] !== undefined) return graphHiddenCache[c];
   try { return JSON.parse(localStorage.getItem(getGraphHiddenKey(c))||'[]'); } catch(e) { return []; }
 }
 
-async function saveGraphHidden(arr, cat) {
-  const c = cat||state.activeCat||'default';
+async function saveGraphHidden(arr) {
+  // 항상 현재 activeCat 기준으로 저장
+  const c = state.activeCat||'default';
   graphHiddenCache[c] = arr;
   try { localStorage.setItem(getGraphHiddenKey(c), JSON.stringify(arr)); } catch(e) {}
-  // DB 저장
   if(sbClient && currentUser) {
     try {
       await sbClient.from('user_settings').upsert({
@@ -2141,11 +2143,18 @@ async function loadGraphHiddenFromDB(cat) {
       const arr = JSON.parse(data.value);
       graphHiddenCache[c] = arr;
       try { localStorage.setItem(getGraphHiddenKey(c), data.value); } catch(e) {}
+    } else {
+      // DB에 없으면 캐시 초기화 (다른 고양이 캐시 영향 방지)
+      graphHiddenCache[c] = [];
     }
-  } catch(e) { console.warn('graph setting load error:', e); }
+  } catch(e) {
+    graphHiddenCache[c] = [];
+    console.warn('graph setting load error:', e);
+  }
 }
 
 function applyGraphCards() {
+  // 현재 activeCat 기준으로만 적용
   const hidden = getGraphHidden();
   GRAPH_CARDS.forEach(card => {
     const el = document.getElementById(card.id);
@@ -2165,10 +2174,10 @@ function toggleGraphEdit() {
 function renderGraphCardToggles() {
   const wrap = document.getElementById('graphCardToggles');
   if(!wrap) return;
+  // 현재 activeCat 기준
   const hidden = getGraphHidden();
   wrap.innerHTML = '';
   GRAPH_CARDS.forEach(card => {
-    const el = document.getElementById(card.id);
     const isVisible = !hidden.includes(card.id);
     const btn = document.createElement('button');
     btn.type = 'button';
