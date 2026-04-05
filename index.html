@@ -502,7 +502,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.23</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.24</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">
@@ -1956,7 +1956,7 @@ window.switchCat = function(c) {
   try{
     const at=document.querySelector('.nav-btn.active')?.dataset?.tab;
     if(at==='history'){renderHistory();renderRoutineSchedule();}
-    else if(at==='graph'){applyGraphCards();applyGraphChips();renderGraphs();try{renderBTTrend();}catch(e){};}
+    else if(at==='graph'){loadGraphHiddenFromDB().then(()=>{applyGraphCards();});renderGraphs();try{renderBTTrend();}catch(e){};}
     else if(at==='bloodtest'){try{renderBTGraphs();renderBTHistoryList();}catch(e){};}
     else if(at==='food'){try{renderFdHistory();autoSetFdMode(c);}catch(e){};}
   }catch(e){}
@@ -2094,81 +2094,64 @@ function closeNotice(hideToday) {
 
 /* ── 그래프탭 카드 편집 ── */
 const GRAPH_CARDS = [
-  // dm:당뇨 ckd:신부전 hcm:심근비대증 — true면 해당 질환일 때 표시
-  { id: 'timelineCard', label: '⏱️ 하루 타임라인', dm: true,  ckd: false, hcm: false },
-  { id: 'ketCard',      label: '🟡 케톤',          dm: true,  ckd: false, hcm: false },
-  { id: 'wtCard',       label: '⚖️ 체중',           dm: true,  ckd: true,  hcm: true  },
-  { id: 'rrCard',       label: '🫁 호흡수',         dm: false, ckd: false, hcm: true  },
-  { id: 'btTrendCard2', label: '🩸 혈액검사 추이',  dm: true,  ckd: true,  hcm: true  },
+  { id: 'timelineCard', label: '⏱️ 하루 타임라인' },
+  { id: 'ketCard',      label: '🟡 케톤'          },
+  { id: 'wtCard',       label: '⚖️ 체중'           },
+  { id: 'rrCard',       label: '🫁 호흡수'         },
+  { id: 'btTrendCard2', label: '🩸 혈액검사 추이'  },
 ];
 
-// 질환별 g-chip(케톤/체중/호흡수) 자동 숨김
-function applyGraphChips() {
-  const profile = (state.catProfiles||{})[state.activeCat]||{};
-  const diseases = profile.diseases||[];
-  const hasDM  = diseases.includes('DM');
-  const hasCKD = diseases.includes('CKD')||diseases.includes('PKD');
-  const hasHCM = diseases.includes('HCM');
-  // 질환 없으면 전부 표시
-  const noDisease = !hasDM && !hasCKD && !hasHCM;
+// 그래프 카드 숨김 설정 — DB 우선, localStorage 폴백
+let graphHiddenCache = {}; // { activeCat: [hiddenIds] }
 
-  // 케톤: 당뇨만 표시
-  const ketChip = document.querySelector('.g-chip[data-g="ket"]');
-  if(ketChip) ketChip.style.display = (hasDM||noDisease) ? '' : 'none';
-  // 호흡수: 심근비대증만 표시 (당뇨 숨김)
-  const rrChip = document.querySelector('.g-chip[data-g="rr"]');
-  if(rrChip) rrChip.style.display = (hasHCM||noDisease) ? '' : 'none';
-  // 체중: 항상 표시
+function getGraphHiddenKey(cat) {
+  return 'graph_hidden_' + (cat||state.activeCat||'default');
 }
 
-// 숨김 설정 저장 키
-function getGraphHiddenKey() {
-  return 'graph_hidden_' + (state.activeCat||'default');
+function getGraphHidden(cat) {
+  const c = cat||state.activeCat||'default';
+  if(graphHiddenCache[c] !== undefined) return graphHiddenCache[c];
+  try { return JSON.parse(localStorage.getItem(getGraphHiddenKey(c))||'[]'); } catch(e) { return []; }
 }
-function getGraphHidden() {
-  try { return JSON.parse(localStorage.getItem(getGraphHiddenKey())||'[]'); } catch(e) { return []; }
+
+async function saveGraphHidden(arr, cat) {
+  const c = cat||state.activeCat||'default';
+  graphHiddenCache[c] = arr;
+  try { localStorage.setItem(getGraphHiddenKey(c), JSON.stringify(arr)); } catch(e) {}
+  // DB 저장
+  if(sbClient && currentUser) {
+    try {
+      await sbClient.from('user_settings').upsert({
+        user_id: currentUser.id,
+        key: getGraphHiddenKey(c),
+        value: JSON.stringify(arr)
+      }, {onConflict:'user_id,key'});
+    } catch(e) { console.warn('graph setting save error:', e); }
+  }
 }
-function saveGraphHidden(arr) {
-  try { localStorage.setItem(getGraphHiddenKey(), JSON.stringify(arr)); } catch(e) {}
+
+async function loadGraphHiddenFromDB(cat) {
+  if(!sbClient || !currentUser) return;
+  const c = cat||state.activeCat||'default';
+  try {
+    const {data} = await sbClient.from('user_settings')
+      .select('value').eq('user_id', currentUser.id)
+      .eq('key', getGraphHiddenKey(c)).maybeSingle();
+    if(data?.value) {
+      const arr = JSON.parse(data.value);
+      graphHiddenCache[c] = arr;
+      try { localStorage.setItem(getGraphHiddenKey(c), data.value); } catch(e) {}
+    }
+  } catch(e) { console.warn('graph setting load error:', e); }
 }
 
 function applyGraphCards() {
-  const profile = (state.catProfiles||{})[state.activeCat]||{};
-  const diseases = profile.diseases||[];
-  const hasDM  = diseases.includes('DM');
-  const hasCKD = diseases.includes('CKD')||diseases.includes('PKD');
-  const hasHCM = diseases.includes('HCM');
   const hidden = getGraphHidden();
-
-  const noDisease = !hasDM && !hasCKD && !hasHCM;
-
   GRAPH_CARDS.forEach(card => {
     const el = document.getElementById(card.id);
     if(!el) return;
-    // 질환 기반 기본값
-    let show = true;
-    if(!noDisease) {
-      // 질환 있을 때: 해당 질환에 맞는 카드만 표시
-      if(hasDM  && !card.dm)  show = false;
-      if(hasCKD && !card.ckd) show = false;
-      if(hasHCM && !card.hcm) show = false;
-      // 복합질환: 하나라도 true면 표시
-      if(hasDM  && card.dm)  show = true;
-      if(hasCKD && card.ckd) show = true;
-      if(hasHCM && card.hcm) show = true;
-    }
-    // 사용자 수동 설정 우선
-    if(hidden.includes(card.id))       show = false;
-    if(hidden.includes('show_'+card.id)) show = true;
-    el.style.display = show ? '' : 'none';
+    el.style.display = hidden.includes(card.id) ? 'none' : '';
   });
-  // g-chip 필터도 질환에 맞게 적용
-  try{
-    const ketChip=document.querySelector('.g-chip[data-g="ket"]');
-    const rrChip=document.querySelector('.g-chip[data-g="rr"]');
-    if(ketChip) ketChip.style.display=(hasDM||noDisease)?'':'none';
-    if(rrChip)  rrChip.style.display=(hasHCM||noDisease)?'':'none';
-  }catch(e){}
 }
 
 function toggleGraphEdit() {
@@ -2183,39 +2166,31 @@ function renderGraphCardToggles() {
   const wrap = document.getElementById('graphCardToggles');
   if(!wrap) return;
   const hidden = getGraphHidden();
-  const profile = (state.catProfiles||{})[state.activeCat]||{};
-  const diseases = profile.diseases||[];
-  const hasDM  = diseases.includes('DM');
-  const hasCKD = diseases.includes('CKD')||diseases.includes('PKD');
-  const hasHCM = diseases.includes('HCM');
-
   wrap.innerHTML = '';
   GRAPH_CARDS.forEach(card => {
     const el = document.getElementById(card.id);
-    const isVisible = el && el.style.display !== 'none';
+    const isVisible = !hidden.includes(card.id);
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.textContent = card.label;
     btn.style.cssText = 'padding:5px 12px;border-radius:20px;font-size:11px;cursor:pointer;font-family:inherit;border:0.5px solid '
       + (isVisible ? 'var(--teal);background:var(--teal-l);color:var(--teal-d)' : 'var(--bd);background:var(--bg);color:var(--text3)');
-    btn.onclick = () => {
-      const hidden2 = getGraphHidden().filter(k => k !== card.id && k !== 'show_'+card.id);
+    btn.onclick = async () => {
+      const hidden2 = getGraphHidden().filter(k => k !== card.id);
       if(isVisible) hidden2.push(card.id);
-      else hidden2.push('show_'+card.id);
-      saveGraphHidden(hidden2);
+      await saveGraphHidden(hidden2);
       applyGraphCards();
       renderGraphCardToggles();
     };
     wrap.appendChild(btn);
   });
-
   // 초기화 버튼
   const resetBtn = document.createElement('button');
   resetBtn.type = 'button';
   resetBtn.textContent = '↺ 초기화';
   resetBtn.style.cssText = 'padding:5px 12px;border-radius:20px;font-size:11px;cursor:pointer;font-family:inherit;border:0.5px solid var(--bd);background:transparent;color:var(--text3)';
-  resetBtn.onclick = () => {
-    saveGraphHidden([]);
+  resetBtn.onclick = async () => {
+    await saveGraphHidden([]);
     applyGraphCards();
     renderGraphCardToggles();
   };
@@ -2360,7 +2335,7 @@ window.showTab = function showTab(tab, btn) {
 
     // 렌더링
     if(tab==='cgm') try{const cc=document.getElementById('cgmCat');if(cc)cc.value=state.activeCat||'';loadCGMForCat(state.activeCat).then(()=>renderCgmHistory());}catch(e){console.warn(e);}
-    if(tab==='graph') try{applyGraphCards();applyGraphChips();renderGraphs();renderBTTrend();const tlDate=document.getElementById('timelineDatePicker');if(tlDate&&!tlDate.value)tlDate.value=today();try{renderTimelineChart(document.getElementById('timelineDatePicker')?.value||today());}catch(e2){console.warn(e2);}}catch(e){console.warn(e);}
+    if(tab==='graph') try{loadGraphHiddenFromDB().then(()=>{applyGraphCards();});renderGraphs();renderBTTrend();const tlDate=document.getElementById('timelineDatePicker');if(tlDate&&!tlDate.value)tlDate.value=today();try{renderTimelineChart(document.getElementById('timelineDatePicker')?.value||today());}catch(e2){console.warn(e2);}}catch(e){console.warn(e);}
     if(tab==='history') try{renderHistory();renderRoutineSchedule();}catch(e){console.warn(e);}
     if(tab==='bloodtest') try{renderBTGraphs();renderBTHistoryList();}catch(e){console.warn(e);}
     if(tab==='food') try{renderFdHistory();autoSetFdMode(state.activeCat);}catch(e){console.warn(e);}
@@ -5729,6 +5704,7 @@ async function syncFromDB() {
     updateWtDiff();
     updateInsulinNext();
     try{renderBTHistoryList();renderBTGraphs();renderBTTrend();}catch(e){}
+    try{await loadGraphHiddenFromDB();applyGraphCards();}catch(e){}
     renderBTHistoryList();
     renderBTGraphs();
     renderBTTrend();
