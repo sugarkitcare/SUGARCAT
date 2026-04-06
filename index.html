@@ -502,7 +502,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.42</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.43</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">
@@ -3944,9 +3944,8 @@ ${(isEstC||isEstK||d.moisture==null)?`
 <div style="background:var(--bg2);border-radius:8px;padding:.5rem .75rem;margin-top:.5rem;font-size:11px;color:var(--text2);line-height:1.6">
   <span style="font-weight:600">⚠️ 추정값 안내</span><br>
   * 표시 항목은 성분표에 직접 표기되지 않아 추정한 값이에요.<br>
-  ${isEstC?"· <b>탄수화물</b>: 단백질·지방·조섬유·조회분·수분을 뺀 나머지로 계산 (등록성분 최저보증치 기준이라 실제값과 다를 수 있어요)<br>":""}
+  ${isEstC?"· <b>탄수화물</b>: 단백질·지방·조섬유·조회분·수분을 뺀 나머지로 계산. NFE(가용무질소물) 표기 사료는 식이섬유 포함으로 실제보다 높게 나올 수 있어요.<br>":""}
   ${d.moisture==null?"· <b>수분</b>: 성분표 미표기로 "+( d.type==='wet'?"습식 기본값(75%)":"건식 기본값(10%)")+" 적용<br>":""}
-  ${isEstC?"· NFE(가용무질소물) 표기 사료는 식이섬유 포함으로 실제 탄수보다 높게 표시될 수 있어요.<br>":""}
   실제 영양 분석값은 제조사 홈페이지에서 확인하세요.
 </div>`:''}` ;
 
