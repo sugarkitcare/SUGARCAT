@@ -502,7 +502,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.34</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.35</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">
@@ -3382,7 +3382,7 @@ setupDrop('fdDrop','fdFile',async file=>{
   document.getElementById('fdResult').innerHTML='';
   showStat('fdStatus','loading','AI가 성분표를 분석하고 있어요...');
   const b64=await toB64(file);const isWet=document.getElementById('fdType').value==='wet';const fdNm=document.getElementById('fdName').value||'분석 사료';
-  const sys=`사료 성분표를 분석하여 아래 JSON만 출력하세요.\n{"name":"사료명","type":"${isWet?'wet':'dry'}","moisture":수분%,"protein_af":단백질%,"fat_af":지방%,"fiber_af":조섬유%,"ash_af":조회분%,"carb_af":탄수화물%or null,"kcal_per_100g":칼로리or null,"phosphorus_af":인%or null,"sodium_af":나트륨%or null,"potassium_af":칼륨%or null,"ingredients_top5":["원료1","원료2","원료3","원료4","원료5"],"grain_free":true/false,"main_protein_source":"주단백질원","special_notes":"특이사항or 빈문자열"}`;
+  const sys=`사료 성분표를 분석하여 아래 JSON만 출력하세요.\n{"name":"사료명","type":"${isWet?'wet':'dry'}","moisture":수분%,"protein_af":단백질%,"fat_af":지방%,"fiber_af":조섬유%,"ash_af":조회분%,"carb_af":탄수화물%or null,"kcal_per_100g":칼로리or null,"phosphorus_af":인%or null,"sodium_af":나트륨%or null,"potassium_af":칼륨%or null,"ingredients_top5":["원료1","원료2","원료3","원료4","원료5"],"grain_free":true/false,"main_protein_source":"주단백질원","special_notes":"특이사항or 빈문자열"}\n중요: carb_af는 성분표에 탄수화물이 숫자로 명시된 경우에만 입력하고, 없으면 반드시 null로 설정하세요. 0으로 채우지 마세요.\nash_af(조회분)가 성분표에 없으면 null로 설정하세요.`;
   let mc=file.type.startsWith('image/')?[{type:'image',source:{type:'base64',media_type:file.type,data:b64}},{type:'text',text:`${isWet?'습식':'건식'} 사료. 사료명: ${fdNm}`}]:[{type:'document',source:{type:'base64',media_type:'application/pdf',data:b64}},{type:'text',text:`${isWet?'습식':'건식'} 사료. 사료명: ${fdNm}`}];
   try{
     const resp=await fetch('/api/proxy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1200,system:sys,messages:[{role:'user',content:mc}]})});
@@ -3827,11 +3827,13 @@ function renderCkdResult(d, area) {
 
 function renderFdResult(d){
   const m=d.moisture??75,p=d.protein_af??0,f=d.fat_af??0,fi=d.fiber_af??0,a=d.ash_af??(d.type==='wet'?2:7);
-  const carb=d.carb_af!==null&&d.carb_af!==undefined?d.carb_af:estCarb(p,f,fi,a,m);
+  // carb_af가 null이거나 0이면 추정값 사용 (0은 AI가 잘못 채운 값)
+  const hasExplicitCarb = d.carb_af !== null && d.carb_af !== undefined && d.carb_af > 0;
+  const carb = hasExplicitCarb ? d.carb_af : estCarb(p,f,fi,a,m);
   const cdm=cDM(carb,m),pdm=cDM(p,m),fdm=cDM(f,m);
   const kcal=d.kcal_per_100g??Math.round(p*3.5+f*8.5+carb*3.5);
   const lv=getLv(cdm??999);const lc=lvColor(lv);
-  const isEstC=d.carb_af===null||d.carb_af===undefined,isEstK=d.kcal_per_100g===null;
+  const isEstC=!hasExplicitCarb,isEstK=d.kcal_per_100g===null;
   const name=d.name&&d.name!=='분석 사료'?d.name:d.foodNameInput||'분석 사료';
   const vi={best:{ic:'★',t:`${name} — 당뇨 최적`,s:`탄수화물 DM ${cdm?.toFixed(1)}% (≤5% 충족)`},good:{ic:'○',t:`${name} — 당뇨 적합`,s:`탄수화물 DM ${cdm?.toFixed(1)}% (≤10% 이내)`},caution:{ic:'△',t:`${name} — 주의`,s:`탄수화물 DM ${cdm?.toFixed(1)}% (기준치 초과)`},bad:{ic:'✕',t:`${name} — 부적합`,s:`탄수화물 DM ${cdm?.toFixed(1)}% (고탄수화물)`}}[lv];
   const ps=Math.min(100,Math.round((pdm??0)/60*100));
@@ -3966,7 +3968,7 @@ function renderFdHistory(){
   hist.style.display='block';list.innerHTML='';
   fdData.forEach(h=>{
     const d=h.data;const m=d.moisture??75;const p=d.protein_af??0,f=d.fat_af??0,fi=d.fiber_af??0,a=d.ash_af??(d.type==='wet'?2:7);
-    const carb=d.carb_af??estCarb(p,f,fi,a,m);const cdm=cDM(carb,m);
+    const carb=(d.carb_af!=null&&d.carb_af>0)?d.carb_af:estCarb(d.protein_af??0,d.fat_af??0,d.fiber_af??0,d.ash_af??(d.type==='wet'?2:7),d.moisture??75);const cdm=cDM(carb,d.moisture??75);
     const kcal=d.kcal_per_100g??Math.round(p*3.5+f*8.5+carb*3.5);
     const lv=getLv(cdm??999);const lc=lvColor(lv);
     const dt=new Date(h.ts).toLocaleDateString('ko-KR',{month:'short',day:'numeric'});
@@ -4008,7 +4010,7 @@ function buildCtx(){
   if(rr)ctx+=`최근 호흡수: ${rr.rr}회/분 (${rr.stateLabel||''} ${rr.time})\n`;
   if(kcal)ctx+=`오늘 총 칼로리: ${kcal}kcal\n`;
   if(!lb&&!li&&!lw&&!rr&&!kcal)ctx+=`오늘 아직 기록 없음\n`;
-  if(fdData.length){const last=fdData[0].data;const m=last.moisture??75;const carb=last.carb_af??estCarb(last.protein_af??0,last.fat_af??0,last.fiber_af??0,last.ash_af??(last.type==='wet'?2:7),m);ctx+=`최근 분석 사료: ${fdData[0].name} (탄수 DM ${cDM(carb,m)}%)\n`;}
+  if(fdData.length){const last=fdData[0].data;const m=last.moisture??75;const carb=(last.carb_af!=null&&last.carb_af>0)?last.carb_af:estCarb(last.protein_af??0,last.fat_af??0,last.fiber_af??0,last.ash_af??(last.type==='wet'?2:7),m);ctx+=`최근 분석 사료: ${fdData[0].name} (탄수 DM ${cDM(carb,m)}%)\n`;}
   return ctx;
 }
 async function sendAI(msg){
@@ -4324,7 +4326,7 @@ function calcCalorie(){
       if(!kcalPer100)return;
       const grams=Math.round(mer/kcalPer100*100);
       const meals2=Math.round(grams/2);
-      const lv=getLv(cDM(d.carb_af||0,d.moisture||75)??999);
+      const _carb4=(d.carb_af!=null&&d.carb_af>0)?d.carb_af:estCarb(d.protein_af??0,d.fat_af??0,d.fiber_af??0,d.ash_af??(d.type==='wet'?2:7),d.moisture??75);const lv=getLv(cDM(_carb4,d.moisture||75)??999);
       const lc=lvColor(lv);
       list.innerHTML+=`<div style="display:flex;align-items:center;gap:8px;padding:.55rem .75rem;background:var(--bg2);border-radius:8px;margin-bottom:5px">
         <div style="width:8px;height:8px;border-radius:50%;background:${lc};flex-shrink:0"></div>
