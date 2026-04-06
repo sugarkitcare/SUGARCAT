@@ -502,7 +502,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.55</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.57</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">
@@ -5565,10 +5565,8 @@ function openCatProfile(cat) {
   });
   const appEl=document.getElementById('app');if(appEl)appEl.style.display='none';
   page.style.display='block';
-  // 뒤로가기용 hash - 이미 #modal이면 push 안 함
-  if(location.hash !== '#modal') {
-    history.pushState(null, '', '#modal');
-  }
+  page.style.pointerEvents='auto'; // closeModal에서 none으로 설정된 것 초기화
+
   window.scrollTo(0,0);
   // 루틴 항목 목록도 렌더링
   // 해당 고양이 루틴 불러오기
@@ -5646,40 +5644,23 @@ function toggleFavFood(name, el) {
 }
 
 
-function closeModal(id, fromHash=false){
+function closeModal(id){
   const m=document.getElementById(id);
   if(m){m.style.display='none';m.style.pointerEvents='none';}
   if(id==='catProfilePage'||id==='adminPage'){
     const appEl2=document.getElementById('app');if(appEl2)appEl2.style.display='block';
     window.scrollTo(0,0);
-    // 닫기 버튼으로 닫을 때 hash 직접 제거 (history.back() 비동기 문제 회피)
-    if(!fromHash && location.hash==='#modal') {
-      history.replaceState(null, '', location.pathname);
-    }
 
   }
 }
 // 초기 실행
 updateInsulinNext();
-// hash 기반 뒤로가기 초기화
-if(location.hash === '#modal') history.replaceState(null, '', location.pathname);
+
 // 첫 고양이 등록 입력창 Enter 키 지원
 // 뒤로가기 이벤트 처리
 // hash 변화로 뒤로가기 감지
 // 뒤로가기로 hash 사라지면 모달 닫기
-// 뒤로가기 감지 - hash 상태 무관하게 모달 열려있으면 닫기
-function _handleBackGesture() {
-  if(document.getElementById('catProfilePage')?.style.display==='block'){
-    // 쌓인 hash 모두 제거
-    history.replaceState(null, '', location.pathname);
-    closeModal('catProfilePage', true);
-  } else if(document.getElementById('adminPage')?.style.display==='block'){
-    history.replaceState(null, '', location.pathname);
-    closeModal('adminPage', true);
-  }
-}
-window.addEventListener('hashchange', _handleBackGesture);
-window.addEventListener('popstate', _handleBackGesture);
+
 
 document.addEventListener('keydown', (e) => {
   if(e.key === 'Enter' && document.getElementById('firstCatName') === document.activeElement) {
@@ -6296,10 +6277,11 @@ initSupabase();
 </div>
 
 <!-- 고양이 기본정보 페이지 (PWA 호환) -->
-<div id="catProfilePage" style="display:none;width:100%;min-height:100vh;background:var(--bg);padding:20px 16px 40px;box-sizing:border-box">
-  <div style="display:flex;align-items:center;gap:10px;margin-bottom:1.25rem;padding-top:8px">
+<div id="catProfilePage" style="display:none;width:100%;min-height:100vh;background:var(--bg);padding:0 0 40px;box-sizing:border-box">
+  <!-- 상단 고정 헤더 -->
+  <div style="position:sticky;top:0;z-index:100;background:var(--bg);border-bottom:0.5px solid var(--bd);padding:12px 16px;display:flex;align-items:center;gap:10px;margin-bottom:1.25rem">
     <button onclick="closeModal('catProfilePage')" type="button"
-      style="background:var(--bg2);border:none;font-size:16px;cursor:pointer;color:var(--teal);padding:8px 14px;line-height:1;border-radius:10px;font-family:inherit">← 뒤로</button>
+      style="background:var(--teal);border:none;font-size:14px;font-weight:600;cursor:pointer;color:#fff;padding:8px 16px;line-height:1;border-radius:10px;font-family:inherit">← 뒤로</button>
     <div id="catProfileTitle" style="font-size:16px;font-weight:600;color:var(--text)">고양이 기본 정보</div>
     <div style="display:flex;gap:6px;margin-left:auto">
       <button type="button" onclick="openAdminPage()" id="adminBtnProfile"
