@@ -502,7 +502,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.36</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.37</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">
@@ -3382,7 +3382,7 @@ setupDrop('fdDrop','fdFile',async file=>{
   document.getElementById('fdResult').innerHTML='';
   showStat('fdStatus','loading','AI가 성분표를 분석하고 있어요...');
   const b64=await toB64(file);const isWet=document.getElementById('fdType').value==='wet';const fdNm=document.getElementById('fdName').value||'분석 사료';
-  const sys=`사료 성분표를 분석하여 아래 JSON만 출력하세요.\n{"name":"사료명","type":"${isWet?'wet':'dry'}","moisture":수분%,"protein_af":단백질%,"fat_af":지방%,"fiber_af":조섬유%,"ash_af":조회분%,"carb_af":탄수화물%or null,"kcal_per_100g":칼로리or null,"phosphorus_af":인%or null,"sodium_af":나트륨%or null,"potassium_af":칼륨%or null,"ingredients_top5":["원료1","원료2","원료3","원료4","원료5"],"grain_free":true/false,"main_protein_source":"주단백질원","special_notes":"특이사항or 빈문자열"}\n수치 추출 규칙:\n1. "8%↑" "5%↓" 같은 최저/최고 보증값은 숫자만 추출 (8, 5으로)\n2. carb_af: 탄수화물(NFE/전분/가용무질소물) 수치가 있으면 반드시 입력. 없으면 null. 절대 0으로 채우지 마세요.\n3. ash_af: 조회분 수치가 있으면 입력. 없으면 null.\n4. moisture: 수분 수치가 있으면 반드시 입력. 건식은 보통 8~14%, 습식은 70~85%. 없으면 null.\n5. 모든 수치는 100g 기준 as-fed % 값으로 입력.`;
+  const sys=`사료 성분표를 분석하여 아래 JSON만 출력하세요.\n{"name":"사료명","type":"${isWet?'wet':'dry'}","moisture":수분%,"protein_af":단백질%,"fat_af":지방%,"fiber_af":조섬유%,"ash_af":조회분%,"carb_af":탄수화물%or null,"kcal_per_100g":칼로리or null,"phosphorus_af":인%or null,"sodium_af":나트륨%or null,"potassium_af":칼륨%or null,"ingredients_top5":["원료1","원료2","원료3","원료4","원료5"],"grain_free":true/false,"main_protein_source":"주단백질원","special_notes":"특이사항or 빈문자열"}\n수치 추출 규칙:\n1. "8%↑" "5%↓" 같은 최저/최고 보증값은 숫자만 추출 (8, 5으로)\n2. carb_af: 탄수화물(전분/NFE/가용무질소물) 수치가 있으면 반드시 입력. 없으면 null. 절대 0으로 채우지 마세요.\n   - 전분과 NFE(가용무질소물)가 둘 다 있으면 더 작은 값(전분)을 사용하세요.\n   - NFE는 식이섬유 포함으로 실제 탄수보다 높으므로 전분 수치가 우선이에요.\n   - 100g 기준(as-fed) 컬럼 값을 사용하고 1000kcal 기준 컬럼은 무시하세요.\n3. ash_af: 조회분 수치가 있으면 입력. 없으면 null.\n4. moisture: 수분 수치가 있으면 반드시 입력. 건식은 보통 8~14%, 습식은 70~85%. 없으면 null.\n5. 모든 수치는 100g 기준 as-fed % 값으로 입력.`;
   let mc=file.type.startsWith('image/')?[{type:'image',source:{type:'base64',media_type:file.type,data:b64}},{type:'text',text:`${isWet?'습식':'건식'} 사료. 사료명: ${fdNm}`}]:[{type:'document',source:{type:'base64',media_type:'application/pdf',data:b64}},{type:'text',text:`${isWet?'습식':'건식'} 사료. 사료명: ${fdNm}`}];
   try{
     const resp=await fetch('/api/proxy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1200,system:sys,messages:[{role:'user',content:mc}]})});
