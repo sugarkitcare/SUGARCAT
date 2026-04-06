@@ -502,7 +502,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.37</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.40</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">
@@ -1315,6 +1315,8 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 const SK='dangmyo_v2',SK_BT='bt_v2',SK_FD='fd_v2';
 let state={cats:[],activeCat:'',records:{},catProfiles:{}};
 let btData=[],fdData=[];
+let favFoods=[];
+try{const _ffd=localStorage.getItem('favFoods_v1');if(_ffd)favFoods=JSON.parse(_ffd);}catch(e){}
 try{const d=localStorage.getItem(SK);if(d)state=JSON.parse(d)}catch(e){}
 try{const d=localStorage.getItem(SK_BT);if(d){const raw=JSON.parse(d);btData=raw.map(r=>({...r,items:normalizeBTItems(r.items||[])}));}}catch(e){}
 try{const d=localStorage.getItem(SK_FD);if(d)fdData=JSON.parse(d)}catch(e){}
@@ -3371,7 +3373,12 @@ function renderBTGraphs(){
 
 /* 사료 분석 */
 const cDM=(v,m)=>v===null?null:parseFloat((v/(100-m)*100).toFixed(1));
-const estCarb=(p,f,fi,a,m)=>parseFloat(Math.max(0,100-p-f-fi-a-m).toFixed(1));
+// 숨은 탄수 추정: 100 - 단백 - 지방 - 조섬유 - 조회분 - 수분
+// ash(조회분) null이면 건식 7%, 습식 2% 기본값 사용
+const estCarb=(p,f,fi,a,m)=>{
+  const ash=a!==null&&a!==undefined?a:(m<30?7:2);
+  return parseFloat(Math.max(0,100-p-f-fi-ash-m).toFixed(1));
+};
 const getLv=cdm=>cdm<=5?'best':cdm<=10?'good':cdm<=15?'caution':'bad';
 const lvColor=lv=>({best:'#1D9E75',good:'#3B6D11',caution:'#BA7517',bad:'#D85A30'})[lv];
 
@@ -3382,7 +3389,19 @@ setupDrop('fdDrop','fdFile',async file=>{
   document.getElementById('fdResult').innerHTML='';
   showStat('fdStatus','loading','AI가 성분표를 분석하고 있어요...');
   const b64=await toB64(file);const isWet=document.getElementById('fdType').value==='wet';const fdNm=document.getElementById('fdName').value||'분석 사료';
-  const sys=`사료 성분표를 분석하여 아래 JSON만 출력하세요.\n{"name":"사료명","type":"${isWet?'wet':'dry'}","moisture":수분%,"protein_af":단백질%,"fat_af":지방%,"fiber_af":조섬유%,"ash_af":조회분%,"carb_af":탄수화물%or null,"kcal_per_100g":칼로리or null,"phosphorus_af":인%or null,"sodium_af":나트륨%or null,"potassium_af":칼륨%or null,"ingredients_top5":["원료1","원료2","원료3","원료4","원료5"],"grain_free":true/false,"main_protein_source":"주단백질원","special_notes":"특이사항or 빈문자열"}\n수치 추출 규칙:\n1. "8%↑" "5%↓" 같은 최저/최고 보증값은 숫자만 추출 (8, 5으로)\n2. carb_af: 탄수화물(전분/NFE/가용무질소물) 수치가 있으면 반드시 입력. 없으면 null. 절대 0으로 채우지 마세요.\n   - 전분과 NFE(가용무질소물)가 둘 다 있으면 더 작은 값(전분)을 사용하세요.\n   - NFE는 식이섬유 포함으로 실제 탄수보다 높으므로 전분 수치가 우선이에요.\n   - 100g 기준(as-fed) 컬럼 값을 사용하고 1000kcal 기준 컬럼은 무시하세요.\n3. ash_af: 조회분 수치가 있으면 입력. 없으면 null.\n4. moisture: 수분 수치가 있으면 반드시 입력. 건식은 보통 8~14%, 습식은 70~85%. 없으면 null.\n5. 모든 수치는 100g 기준 as-fed % 값으로 입력.`;
+  const sys=`사료 성분표를 분석하여 아래 JSON만 출력하세요.
+{"name":"사료명","type":"${isWet?'wet':'dry'}","moisture":수분%,"protein_af":단백질%,"fat_af":지방%,"fiber_af":조섬유%,"ash_af":조회분%,"carb_af":탄수화물%or null,"kcal_per_100g":칼로리or null,"phosphorus_af":인%or null,"sodium_af":나트륨%or null,"potassium_af":칼륨%or null,"ingredients_top5":["원료1","원료2","원료3","원료4","원료5"],"grain_free":true/false,"main_protein_source":"주단백질원","special_notes":"특이사항or 빈문자열"}
+수치 추출 규칙:
+1. "8%↑" "5%↓" 같은 최저/최고 보증값은 숫자만 추출 (8, 5으로)
+2. carb_af 추출 규칙 (매우 중요):
+   - 성분표에 탄수화물/전분/NFE/가용무질소물 중 하나라도 있으면 반드시 숫자로 입력하세요.
+   - 전분과 NFE 둘 다 있으면 더 작은 값(전분) 사용. NFE는 식이섬유 포함으로 과대값.
+   - 반드시 100g 기준(as-fed) 컬럼 값 사용. 1000kcal 기준 컬럼 값은 절대 사용 금지.
+   - 수치가 전혀 없을 때만 null. 절대 0으로 채우지 마세요.
+3. ash_af: 조회분 수치가 있으면 입력. 없으면 null.
+4. moisture: 수분 수치가 있으면 반드시 입력. 건식은 보통 8~14%, 습식은 70~85%. 없으면 null.
+5. 모든 수치는 100g 기준 as-fed % 값으로 입력.
+6. fiber_af: 조섬유(crude fiber) 값 입력. 식이섬유(dietary fiber)와 혼동 금지.`;
   let mc=file.type.startsWith('image/')?[{type:'image',source:{type:'base64',media_type:file.type,data:b64}},{type:'text',text:`${isWet?'습식':'건식'} 사료. 사료명: ${fdNm}`}]:[{type:'document',source:{type:'base64',media_type:'application/pdf',data:b64}},{type:'text',text:`${isWet?'습식':'건식'} 사료. 사료명: ${fdNm}`}];
   try{
     const resp=await fetch('/api/proxy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1200,system:sys,messages:[{role:'user',content:mc}]})});
@@ -3921,7 +3940,14 @@ function renderFdResult(d){
 </div>
 ${tags?`<div class="tags">${tags}</div><div style="font-size:10px;color:var(--text3);margin-bottom:.5rem">초록: 단백질원 · 주황: 탄수화물원</div>`:''}
 ${d.special_notes?`<div style="font-size:12px;color:var(--text2);line-height:1.6">${d.special_notes}</div>`:''}
-${(isEstC||isEstK||d.moisture==null)?`<div style="font-size:10px;color:var(--text3);margin-top:.4rem">* 직접 표기 없어 추정한 값이에요</div>`:''}`;
+${(isEstC||isEstK||d.moisture==null)?`
+<div style="background:var(--bg2);border-radius:8px;padding:.5rem .75rem;margin-top:.5rem;font-size:11px;color:var(--text2);line-height:1.6">
+  <span style="font-weight:600">⚠️ 추정값 안내</span><br>
+  * 표시 항목은 성분표에 직접 표기되지 않아 추정한 값이에요.<br>
+  ${isEstC?"· <b>탄수화물</b>: 단백질·지방·조섬유·조회분·수분을 뺀 나머지로 계산 (등록성분 최저보증치 기준이라 실제값과 다를 수 있어요)<br>":""}
+  ${d.moisture==null?"· <b>수분</b>: 성분표 미표기로 "+( d.type==='wet'?"습식 기본값(75%)":"건식 기본값(10%)")+" 적용<br>":""}
+  실제 영양 분석값은 제조사 홈페이지에서 확인하세요.
+</div>`:''}` ;
 
   // 포장 단위 계산기
   const calcDiv=document.createElement('div');
@@ -5607,8 +5633,6 @@ function saveCatProfile() {
 }
 
 /* ── 11번: 사료 즐겨찾기 ── */
-let favFoods=[];
-try{const d=localStorage.getItem('favFoods_v1');if(d)favFoods=JSON.parse(d);}catch(e){}
 const saveFavFoods=()=>{try{localStorage.setItem('favFoods_v1',JSON.stringify(favFoods));}catch(e){}};
 
 function toggleFavFood(name, el) {
