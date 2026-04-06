@@ -502,7 +502,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.43</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.45</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">
@@ -930,7 +930,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     <div id="btTrendCard">
       <div style="font-size:11px;color:var(--text3);margin:.5rem 0">혈액검사 탭에서 저장한 결과의 날짜별 변화를 볼 수 있어요</div>
       <!-- 카테고리 필터 -->
-      <div id="btTrendFilter" class="g-filter" style="margin-bottom:.75rem"></div>
+      <div id="btTrendFilter" class="g-filter" style="display:none;margin-bottom:.75rem"></div>
       <!-- 차트 영역 -->
       <div id="btTrendWrap"></div>
       <div id="btTrendEmpty" style="text-align:center;padding:1.5rem;color:var(--text3);font-size:12px;display:none">
@@ -5149,13 +5149,11 @@ function renderBTTrend(){
   const hasHCM = diseases.includes('HCM');
 
   // 카테고리 우선순위: 질환에 따라 자동 설정
-  const catPriority = ['혈구','신장','간','전해질','혈당','췌장','갑상선','단백','지질','기타'];
-  if(hasDM) {
-    // 당뇨: 혈당·췌장 먼저
-    catPriority.unshift('췌장','혈당');
-  } else if(hasCKD || hasHCM) {
-    // 신부전·HCM: 신장 먼저
-    catPriority.unshift('신장');
+  const catPriority = ['신장','혈당','전해질','혈구','간','단백','췌장','심장','갑상선','뇨검','혈가스','지질','기타'];
+  if(hasCKD || hasHCM) {
+    // 신부전·HCM: 신장을 혈당 앞으로
+    const idx = catPriority.indexOf('신장');
+    if(idx>0){catPriority.splice(idx,1);catPriority.unshift('신장');}
   }
   const priorityOrder = [...new Set(catPriority)];
 
@@ -5176,7 +5174,7 @@ function renderBTTrend(){
     if(!catItems||!catItems.length) return;
 
     // 카테고리 헤더 카드 (접기/펼치기)
-    const isFirstCat = orderedCatKeys.indexOf(cat)===0; // 첫 번째 카테고리만 기본 펼침
+    const isFirstCat = false; // 기본 모두 접힘
     const catCard = document.createElement('div');
     catCard.style.cssText='background:var(--bg2);border-radius:10px;padding:.6rem .85rem;margin-bottom:.4rem;cursor:pointer;display:flex;justify-content:space-between;align-items:center';
     catCard.innerHTML = '<div style="display:flex;align-items:center;gap:6px">'
