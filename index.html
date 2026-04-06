@@ -502,7 +502,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.30</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.32</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">
@@ -2345,11 +2345,52 @@ Object.entries(BT_NORM_MAP).forEach(([std, synonyms]) => {
   synonyms.forEach(syn => { BT_NORM_REVERSE[syn] = std; });
 });
 
+// abbr → category 매핑 (정규화 후 category 보정용)
+const BT_ABBR_CAT = {
+  // 신장
+  'BUN':'신장','CREA':'신장','SDMA':'신장','PHOS':'신장','BUN/CREA':'신장','MUREA':'신장',
+  // 간
+  'ALT':'간','AST':'간','ALKP':'간','GGT':'간','TBIL':'간','LDH':'간',
+  // 단백
+  'ALB':'단백','GLOB':'단백','TP':'단백','ALB/GLOB':'단백',
+  // 혈당/췌장
+  'GLU':'혈당','FRU':'혈당','Ketone':'혈당',
+  'LIPA':'췌장','AMYL':'췌장',
+  // 전해질
+  'Na':'전해질','K':'전해질','Cl':'전해질','Ca':'전해질','AnGap':'전해질','Na/K':'전해질',
+  // 혈구
+  'HCT':'혈구','HGB':'혈구','RBC':'혈구','WBC':'혈구','PLT':'혈구',
+  'MCH':'혈구','MCHC':'혈구','MCV':'혈구','RDW-CV':'혈구','MPV':'혈구',
+  'PCT':'혈구','IRF':'혈구','RETIC':'혈구','RETIC-HGB':'혈구','MRV':'혈구','RPI':'혈구','PDW-SD':'혈구',
+  // 백혈구 분획
+  'NEU':'혈구','LYM':'혈구','MONO':'혈구','EOS':'혈구','BASO':'혈구','WBC-O':'혈구',
+  '%NEU':'혈구','%LYM':'혈구','%MONO':'혈구','%EOS':'혈구','%BASO':'혈구','%RETIC':'혈구',
+  // 혈가스
+  'pH':'혈가스','pCO2':'혈가스','pO2':'혈가스','HCO3':'혈가스','sO2':'혈가스',
+  'BE':'혈가스','tCO2':'혈가스','cH+':'혈가스','Lac':'혈가스','tO2':'혈가스',
+  // 심장
+  'proBNP':'심장',
+  // 갑상선
+  'T4':'갑상선',
+  // 지질
+  'CHOL':'지질','TG':'지질',
+  // 뇨검
+  'USG':'뇨검','UPC':'뇨검','UAC':'뇨검','Blood':'뇨검','NIT':'뇨검',
+  // 기타
+  'NH3':'기타','CK':'기타','temperature':'기타',
+};
+
 // 항목 정규화 함수
 function normalizeBTItem(item) {
   const std = BT_NORM_REVERSE[item.abbr] || BT_NORM_REVERSE[item.name];
   if(std && std !== item.abbr) {
-    return { ...item, abbr: std };
+    const cat = BT_ABBR_CAT[std] || item.category || '기타';
+    return { ...item, abbr: std, category: cat };
+  }
+  // abbr 변경 없어도 category 보정
+  const cat = BT_ABBR_CAT[item.abbr];
+  if(cat && item.category !== cat) {
+    return { ...item, category: cat };
   }
   return item;
 }
@@ -3001,7 +3042,22 @@ setupDrop('btDrop','btFile',async file=>{
   const sys='혈액검사지에서 날짜별로 모든 항목을 추출하여 아래 JSON만 출력하세요.\n'+
 '날짜가 여러 개이면 날짜별로 각각 분리해서 추출하세요.\n'+
 '{"results":[{"date":"YYYY-MM-DD","items":[{"name":"항목명","abbr":"약어","value":숫자,"unit":"단위","refLow":숫자or null,"refHigh":숫자or null,"category":"신장|간|혈구|전해질|혈당|췌장|갑상선|단백|지질|기타"}]}]}\n'+
-'날짜를 모르면 date를 null로 설정하세요.';
+'날짜를 모르면 date를 null로 설정하세요.\n'+
+'category 분류 기준:\n'+
+'신장: BUN, CREA, SDMA, PHOS, BUN/CREA, MUREA (인/phosphorus 포함)\n'+
+'간: ALT, AST, ALKP, GGT, TBIL, LDH\n'+
+'혈구: HCT, HGB, RBC, WBC, PLT, MCH, MCHC, MCV, RDW, MPV, PCT, IRF, RETIC, MRV, RPI, PDW\n'+
+'백혈구분획(혈구): NEU, LYM, MONO, EOS, BASO, WBC-O 및 %, % 분획\n'+
+'전해질: Na, K, Cl, Ca, AnGap, Na/K\n'+
+'혈당: GLU, FRU, Ketone\n'+
+'췌장: LIPA, AMYL\n'+
+'갑상선: T4\n'+
+'단백: ALB, GLOB, TP, ALB/GLOB\n'+
+'지질: CHOL, TG\n'+
+'혈가스: pH, pCO2, pO2, HCO3, sO2, BE, tCO2, cH+, Lac, tO2\n'+
+'심장: proBNP\n'+
+'뇨검: USG, UPC, UPRO/UCREA, UAC, Blood, NIT\n'+
+'기타: NH3, CK, temperature, 나머지';
   let mc=file.type.startsWith('image/')?[{type:'image',source:{type:'base64',media_type:file.type,data:b64}},{type:'text',text:'모든 항목을 추출해주세요.'}]:[{type:'document',source:{type:'base64',media_type:'application/pdf',data:b64}},{type:'text',text:'모든 항목을 추출해주세요.'}];
   try{
     const resp=await fetch('/api/proxy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:4000,system:sys,messages:[{role:'user',content:mc}]})});
