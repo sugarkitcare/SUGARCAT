@@ -502,7 +502,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.52</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.53</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">
@@ -5650,8 +5650,10 @@ function closeModal(id, fromHash=false){
   if(id==='catProfilePage'||id==='adminPage'){
     const appEl2=document.getElementById('app');if(appEl2)appEl2.style.display='block';
     window.scrollTo(0,0);
-    // 닫기 버튼으로 닫을 때만 hash 제거
-    if(!fromHash && location.hash==='#modal') history.back();
+    // 닫기 버튼으로 닫을 때 hash 직접 제거 (history.back() 비동기 문제 회피)
+    if(!fromHash && location.hash==='#modal') {
+      history.replaceState(null, '', location.pathname);
+    }
 
   }
 }
@@ -5662,9 +5664,19 @@ if(location.hash === '#modal') history.replaceState(null, '', location.pathname)
 // 첫 고양이 등록 입력창 Enter 키 지원
 // 뒤로가기 이벤트 처리
 // hash 변화로 뒤로가기 감지
+// 뒤로가기로 hash 사라지면 모달 닫기
 window.addEventListener('hashchange', () => {
   if(location.hash !== '#modal') {
-    // hash가 사라졌다 = 뒤로가기
+    if(document.getElementById('catProfilePage')?.style.display==='block'){
+      closeModal('catProfilePage', true);
+    } else if(document.getElementById('adminPage')?.style.display==='block'){
+      closeModal('adminPage', true);
+    }
+  }
+});
+// popstate도 함께 감지 (일부 브라우저에서 hashchange 미발생 케이스 대비)
+window.addEventListener('popstate', () => {
+  if(location.hash !== '#modal') {
     if(document.getElementById('catProfilePage')?.style.display==='block'){
       closeModal('catProfilePage', true);
     } else if(document.getElementById('adminPage')?.style.display==='block'){
