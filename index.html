@@ -502,7 +502,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.45</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.46</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">
@@ -2831,7 +2831,7 @@ function renderTimelineChart(date) {
       // 혈당 라인+점
       {label:'혈당',
        data:bgPoints.map(p=>({x:p.x,y:p.y,_label:p._label})),
-       showLine:true, tension:.35, spanGaps:false,
+       showLine:true, tension:.35, spanGaps:true,
        borderColor:'#1D9E75', backgroundColor:'#1D9E75',
        pointRadius:5, pointHoverRadius:8, borderWidth:2, order:1},
       // 인슐린 마커 (y=15 고정, 다이아몬드)
@@ -2987,7 +2987,7 @@ function renderGraphs(){
             pointStyle:'circle',
             pointBackgroundColor:s.color,
             borderDash:s.dash,
-            spanGaps:false,borderWidth:2});
+            spanGaps:true,borderWidth:2});
         }
       });
 
@@ -3029,7 +3029,7 @@ function renderGraphs(){
 
     const datasets=[{data,borderColor:def.color,backgroundColor:def.color+'33',
       tension:.35,fill:def.type==='line',pointRadius:days.length>60?2:4,
-      pointBackgroundColor:def.color,spanGaps:false,borderRadius:def.type==='bar'?4:0,borderWidth:2}];
+      pointBackgroundColor:def.color,spanGaps:true,borderRadius:def.type==='bar'?4:0,borderWidth:2}];
 
     if(def.annotations){
       def.annotations.forEach(ann=>{
@@ -3336,7 +3336,7 @@ function renderBTGraphs(){
     const badge=st==='n'?'<span class="bn">정상</span>':st==='h'?'<span class="bh">높음</span>':'<span class="bl">낮음</span>';
     card.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem"><span class="card-title" style="margin:0">${item.name}${item.abbr&&item.abbr!==item.name?` (${item.abbr})`:''} <span style="color:var(--text3);font-size:10px">${item.unit||''}</span></span>${badge}</div><div class="chart-wrap" style="height:160px"><canvas id="btc_${idx}"></canvas></div>`;
     wrap.appendChild(card);
-    const datasets=allCats.map(cat=>{const dm={};item.points.filter(p=>p.cat===cat).forEach(p=>{dm[p.date]=p.value});return{label:cat,data:dates.map(d=>dm[d]??null),borderColor:cc[cat],backgroundColor:cc[cat]+'22',tension:.4,fill:dates.length>1,pointRadius:4,pointBackgroundColor:cc[cat],spanGaps:false}}).filter(ds=>ds.data.some(v=>v!==null));
+    const datasets=allCats.map(cat=>{const dm={};item.points.filter(p=>p.cat===cat).forEach(p=>{dm[p.date]=p.value});return{label:cat,data:dates.map(d=>dm[d]??null),borderColor:cc[cat],backgroundColor:cc[cat]+'22',tension:.4,fill:dates.length>1,pointRadius:4,pointBackgroundColor:cc[cat],spanGaps:true}}).filter(ds=>ds.data.some(v=>v!==null));
     // Y축 범위 계산 - 정상범위 참조선 포함
     const allVals=item.points.map(p=>p.value).filter(v=>v!==null);
     const minV=Math.min(...allVals,item.refLow??Infinity);
@@ -4869,7 +4869,7 @@ function renderCgmExtracted(d){
     type:'line',
     data:{labels,datasets:[
       {data:values,borderColor:'#1D9E75',backgroundColor:'rgba(29,158,117,0.08)',
-       tension:.35,fill:true,pointRadius:3,pointBackgroundColor:ptColors,pointBorderColor:ptColors,spanGaps:false},
+       tension:.35,fill:true,pointRadius:3,pointBackgroundColor:ptColors,pointBorderColor:ptColors,spanGaps:true},
       // 정상범위 상한선
       {data:values.map(()=>200),borderColor:'rgba(186,117,23,0.3)',borderDash:[4,3],
        borderWidth:1,pointRadius:0,fill:false},
@@ -5237,7 +5237,7 @@ function renderBTTrend(){
           item.refHigh!==null&&v>item.refHigh?'#D85A30':
           item.refLow!==null&&v<item.refLow?'#185FA5':'#1D9E75'
         ),
-        borderWidth:2,spanGaps:false
+        borderWidth:2,spanGaps:true
       }];
 
       // 정상범위 참조선
