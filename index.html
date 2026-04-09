@@ -502,7 +502,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.60</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.61</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">
@@ -4495,7 +4495,6 @@ const defaultItems=[
   {name:'레나딜',cat:'med'},{name:'레나메진',cat:'med'},{name:'오메가3',cat:'med'},
   {name:'유산균',cat:'med'},{name:'사메탑',cat:'med'},{name:'항생제',cat:'med'},
   {name:'세레니아',cat:'med'},{name:'미르타자핀',cat:'med'},{name:'피하수액',cat:'med'},
-  {name:'이뇨제(정기)',cat:'med',diuretic:'regular'},
   {name:'비상이뇨제',cat:'med',diuretic:'emergency'},
   {name:'간식',cat:'food'},{name:'황금푸딩',cat:'food'},{name:'물 섭취',cat:'food'},
   {name:'병원 방문',cat:'other'},{name:'배변 확인',cat:'other'},{name:'구토',cat:'other'}
@@ -4556,6 +4555,14 @@ async function loadRoutineForCat(catName) {
       routineItems = local ? JSON.parse(local) : [...defaultItems];
     } catch(e) { routineItems = [...defaultItems]; }
   }
+  // 비상이뇨제만 자동 병합 (소변 알림 연결 필요)
+  // 정기 이뇨제는 유저마다 이름이 달라 자동 추가 안 함
+  const hasEmergency = routineItems.some(i => i.diuretic === 'emergency');
+  if(!hasEmergency) {
+    routineItems.push({name:'비상이뇨제', cat:'med', diuretic:'emergency'});
+    saveRT(cat);
+  }
+
   renderRoutineChecklist();
   try{renderRoutineEditList();}catch(e){}
   try{renderRoutineSchedule();}catch(e){}
