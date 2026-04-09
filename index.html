@@ -502,7 +502,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.58</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.60</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">
@@ -548,21 +548,25 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 
 <!-- ══ 오늘 기록 ══ -->
 <div class="sec active" id="tab-daily" style="display:block">
-  <div class="metrics" id="todayMetrics">
-    <div class="metric"><div class="mv" id="mBg">--</div><div class="ml">혈당 mg/dL</div></div>
-    <div class="metric"><div class="mv" id="mKet">--</div><div class="ml">케톤 mmol/L</div></div>
-    <div class="metric"><div class="mv" id="mIns">--</div><div class="ml">인슐린 U</div></div>
-    <div class="metric purple"><div class="mv" id="mWt">--</div><div class="ml">체중 kg</div></div>
-  </div>
-
-  <!-- 오늘 기록 미니 요약 -->
+  <!-- 오늘 상태 피드백 카드 -->
+  <!-- 🐾 오늘 상태 피드백 카드 -->
   <div class="card" id="dailySummaryCard" style="margin-bottom:.75rem">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
-      <div style="font-size:12px;font-weight:500;color:var(--text2)">📋 오늘 기록</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.3rem">
+      <div style="font-size:13px;font-weight:700;color:var(--text)" id="dailySummaryTitle">🐾 오늘 상태</div>
       <div style="font-size:10px;color:var(--text3)" id="dailySummaryDate"></div>
     </div>
-    <div id="dailySummaryList" style="font-size:12px;color:var(--text);line-height:1.9">
-      <div style="color:var(--text3);text-align:center;padding:.5rem">오늘 기록이 없어요</div>
+    <!-- 오늘 수치 한줄 요약 -->
+    <div id="dailyMetricLine" style="font-size:11px;color:var(--text3);margin-bottom:.5rem;line-height:1.6"></div>
+    <!-- 피드백 알림 목록 -->
+    <div id="dailyFeedbackList" style="margin-bottom:.5rem"></div>
+    <!-- 음수량 목표 진행바 -->
+    <div id="waterGoalBar" style="display:none;margin-bottom:.5rem"></div>
+    <!-- 오늘 기록 타임라인 -->
+    <div style="border-top:0.5px solid var(--bd);padding-top:.5rem;margin-top:.25rem">
+      <div style="font-size:11px;font-weight:500;color:var(--text3);margin-bottom:.3rem">오늘 기록</div>
+      <div id="dailySummaryList" style="font-size:12px;color:var(--text);line-height:1.9">
+        <div style="color:var(--text3);text-align:center;padding:.5rem">아직 오늘 기록이 없어요</div>
+      </div>
     </div>
   </div>
 
@@ -2526,27 +2530,384 @@ function updateMetrics(){
   const li=rec.ins.length?rec.ins[rec.ins.length-1]:null;
   const lw=rec.weights.length?rec.weights[rec.weights.length-1]:null;
   if(lb){
-    document.getElementById('mBg').textContent=lb.bg||'--';
-    document.getElementById('mKet').textContent=lb.ketone!==''?lb.ketone:'--';
+    const mBg=document.getElementById('mBg');if(mBg)mBg.textContent=lb.bg||'--';
+    const mKet=document.getElementById('mKet');if(mKet)mKet.textContent=lb.ketone!==''?lb.ketone:'--';
     const st=bgSt(lb.bg,lb.ketone);
-    document.querySelector('#todayMetrics .metric:nth-child(1)').className='metric'+(st==='danger'?' danger':st==='warn'?' warn':'');
-    document.querySelector('#todayMetrics .metric:nth-child(2)').className='metric'+(lb.ketone>=2.4?' danger':lb.ketone>=0.5?' warn':'');
-  }else{document.getElementById('mBg').textContent='--';document.getElementById('mKet').textContent='--';}
-  document.getElementById('mIns').textContent=li?li.dose+'U':'--';
-  document.getElementById('mWt').textContent=lw?lw.weight+'kg':'--';
+    const m1=document.querySelector('#todayMetrics .metric:nth-child(1)');if(m1)m1.className='metric'+(st==='danger'?' danger':st==='warn'?' warn':'');
+    const m2=document.querySelector('#todayMetrics .metric:nth-child(2)');if(m2)m2.className='metric'+(lb.ketone>=2.4?' danger':lb.ketone>=0.5?' warn':'');
+  }else{}
+  const mIns=document.getElementById('mIns');if(mIns)mIns.textContent=li?li.dose+'U':'--';
+  const mWt=document.getElementById('mWt');if(mWt)mWt.textContent=lw?lw.weight+'kg':'--';
 }
 updateMetrics();
 
+/* ── 오늘 상태 피드백 카드 ── */
+
+// 최근 N일 데이터 가져오기
+function getRecentDays(n) {
+  const days = [];
+  for(let i = 0; i < n; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    days.push(d.toISOString().slice(0, 10));
+  }
+  return days;
+}
+
+// 가장 최근 체중 가져오기
+function getLatestWeight() {
+  const cat = state.activeCat;
+  const recs = state.records[cat] || {};
+  const dates = Object.keys(recs).sort().reverse();
+  for(const d of dates) {
+    const ws = recs[d].weights || [];
+    if(ws.length) return ws[ws.length-1].weight;
+  }
+  return null;
+}
+
+// 피드백 아이템 생성 헬퍼
+function makeFeedback(level, icon, title, detail) {
+  const cfg = {
+    danger: {bg:'var(--coral-l)', border:'var(--coral)', color:'var(--coral-d)'},
+    warn:   {bg:'var(--amber-l)', border:'var(--amber)', color:'var(--amber-d)'},
+    info:   {bg:'var(--blue-l)',  border:'var(--blue)',  color:'var(--blue)'},
+    ok:     {bg:'var(--teal-l)', border:'var(--teal)', color:'var(--teal-d)'},
+  }[level] || {bg:'var(--bg2)', border:'var(--bd)', color:'var(--text2)'};
+  return `<div style="background:${cfg.bg};border:1px solid ${cfg.border};border-radius:9px;padding:.55rem .75rem;margin-bottom:.4rem">
+    <div style="font-size:12px;font-weight:600;color:${cfg.color}">${icon} ${title}</div>
+    ${detail ? `<div style="font-size:11px;color:${cfg.color};margin-top:2px;line-height:1.5;opacity:0.85">${detail}</div>` : ''}
+  </div>`;
+}
+
 function renderDailySummary() {
   const el = document.getElementById('dailySummaryList');
+  const feedbackEl = document.getElementById('dailyFeedbackList');
+  const waterBarEl = document.getElementById('waterGoalBar');
   const dateEl = document.getElementById('dailySummaryDate');
+  const titleEl = document.getElementById('dailySummaryTitle');
   if(!el) return;
+
   const d = today();
   if(dateEl) dateEl.textContent = d;
   const rec = getRec(state.activeCat, d);
-  const items = [];
+  const cat = state.activeCat;
+  const prof = (state.catProfiles||{})[cat] || {};
+  const diseases = prof.diseases || [];
+  const hasDM = diseases.includes('DM');
+  const hasCKD = diseases.includes('CKD') || diseases.includes('PKD');
+  const hasHCM = diseases.includes('HCM');
+  const recs = state.records[cat] || {};
 
-  // 혈당
+  const feedbacks = []; // {level, icon, title, detail, priority}
+
+  // ─── 헬퍼: 최근 N일 평균 ───
+  function avgBgDays(n) {
+    return getRecentDays(n).map(day => {
+      const r = getRec(cat, day);
+      const arr = r.bg.filter(x => x.bg !== '').map(x => parseFloat(x.bg));
+      return arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : null;
+    }).filter(v => v !== null);
+  }
+  function avgRrDays(n, state_filter) {
+    return getRecentDays(n).map(day => {
+      const r = getRec(cat, day);
+      const arr = (r.rr||[]).filter(x => x.rr > 0 && (!state_filter || x.state === state_filter)).map(x => x.rr);
+      return arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : null;
+    }).filter(v => v !== null);
+  }
+
+  // ════════════════════════════════
+  // 1. 저혈당 (즉시 - 모든 당뇨)
+  // ════════════════════════════════
+  if(hasDM) {
+    const todayBgs = rec.bg.filter(x => x.bg !== '').map(x => parseFloat(x.bg));
+    const minBg = todayBgs.length ? Math.min(...todayBgs) : null;
+    if(minBg !== null && minBg <= 80) {
+      feedbacks.push({priority:1, html: makeFeedback('danger','🚨','저혈당 위험',
+        `오늘 혈당 ${minBg} mg/dL — 즉시 확인하세요<br>인슐린 과다 투여 가능성이 있어요`)});
+    }
+
+    // 3일 연속 고혈당
+    const bg3 = avgBgDays(3);
+    if(bg3.length === 3 && bg3.every(v => v >= 300)) {
+      feedbacks.push({priority:3, html: makeFeedback('warn','⚠️','3일째 혈당이 높아요',
+        `최근 3일 평균: ${bg3.map(v=>Math.round(v)).join(' → ')} mg/dL<br>인슐린 용량 조정이 필요할 수 있어요. 수의사와 상담해보세요`)});
+    }
+
+    // 혈당 최저점 상승 트렌드 (이번주 vs 지난주)
+    const thisWeekMins = getRecentDays(7).map(day => {
+      const r = getRec(cat, day);
+      const arr = r.bg.filter(x=>x.bg!=='').map(x=>parseFloat(x.bg));
+      return arr.length ? Math.min(...arr) : null;
+    }).filter(v=>v!==null);
+    const lastWeekMins = Array.from({length:7}, (_,i) => {
+      const d2 = new Date(); d2.setDate(d2.getDate()-7-i);
+      const day = d2.toISOString().slice(0,10);
+      const r = getRec(cat, day);
+      const arr = r.bg.filter(x=>x.bg!=='').map(x=>parseFloat(x.bg));
+      return arr.length ? Math.min(...arr) : null;
+    }).filter(v=>v!==null);
+    if(thisWeekMins.length >= 3 && lastWeekMins.length >= 3) {
+      const thisAvg = Math.round(thisWeekMins.reduce((a,b)=>a+b,0)/thisWeekMins.length);
+      const lastAvg = Math.round(lastWeekMins.reduce((a,b)=>a+b,0)/lastWeekMins.length);
+      if(thisAvg - lastAvg >= 30) {
+        feedbacks.push({priority:4, html: makeFeedback('info','📈','혈당 최저점이 오르고 있어요',
+          `지난주 최저 평균 ${lastAvg} → 이번주 ${thisAvg} mg/dL<br>인슐린 효과가 줄어들고 있을 수 있어요`)});
+      }
+    }
+
+    // 혈당 변동폭 확대
+    const thisVariances = getRecentDays(7).map(day => {
+      const r = getRec(cat, day);
+      const arr = r.bg.filter(x=>x.bg!=='').map(x=>parseFloat(x.bg));
+      return arr.length >= 2 ? Math.max(...arr) - Math.min(...arr) : null;
+    }).filter(v=>v!==null);
+    const lastVariances = Array.from({length:7}, (_,i) => {
+      const d2 = new Date(); d2.setDate(d2.getDate()-7-i);
+      const day = d2.toISOString().slice(0,10);
+      const r = getRec(cat, day);
+      const arr = r.bg.filter(x=>x.bg!=='').map(x=>parseFloat(x.bg));
+      return arr.length >= 2 ? Math.max(...arr) - Math.min(...arr) : null;
+    }).filter(v=>v!==null);
+    if(thisVariances.length >= 3 && lastVariances.length >= 3) {
+      const thisVar = Math.round(thisVariances.reduce((a,b)=>a+b,0)/thisVariances.length);
+      const lastVar = Math.round(lastVariances.reduce((a,b)=>a+b,0)/lastVariances.length);
+      if(thisVar - lastVar >= 50) {
+        feedbacks.push({priority:5, html: makeFeedback('info','📊','혈당 변동폭이 커지고 있어요',
+          `이번주 평균 편차 ±${thisVar}, 지난주 ±${lastVar} mg/dL<br>소모기 효과나 인슐린 반응 불안정일 수 있어요`)});
+      }
+    }
+
+    // 케톤 상승 트렌드
+    const ket3 = getRecentDays(3).map(day => {
+      const r = getRec(cat, day);
+      const arr = r.bg.filter(x=>x.ketone!=='').map(x=>parseFloat(x.ketone));
+      return arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : null;
+    }).filter(v=>v!==null);
+    if(ket3.length === 3 && ket3[0] > ket3[1] && ket3[1] > ket3[2] && ket3[0] >= 1.0) {
+      feedbacks.push({priority:2, html: makeFeedback('warn','⚠️','케톤이 연속으로 올라요',
+        `최근 3일: ${ket3.map(v=>v.toFixed(1)).reverse().join(' → ')} mmol/L<br>케톤산증으로 진행될 수 있어요. 수의사에게 연락하세요`)});
+    }
+
+    // 혈당 안정 피드백
+    if(feedbacks.filter(f=>f.priority<=5).length === 0) {
+      const bg3ok = avgBgDays(3);
+      if(bg3ok.length >= 2 && bg3ok.every(v => v >= 100 && v <= 300)) {
+        feedbacks.push({priority:10, html: makeFeedback('ok','✅','혈당이 안정적이에요',
+          `최근 ${bg3ok.length}일 평균: ${bg3ok.map(v=>Math.round(v)).join(', ')} mg/dL`)});
+      }
+    }
+  }
+
+  // ════════════════════════════════
+  // 2. HCM 피드백
+  // ════════════════════════════════
+  if(hasHCM) {
+    // 호흡수 즉시 경고 (수면 중 40↑)
+    const todayRrSleep = (rec.rr||[]).filter(x=>x.state==='sleep'&&x.rr>0).map(x=>x.rr);
+    if(todayRrSleep.length) {
+      const maxRr = Math.max(...todayRrSleep);
+      if(maxRr >= 40) {
+        feedbacks.push({priority:1, html: makeFeedback('danger','🚨','호흡수가 위험해요',
+          `수면 중 ${maxRr}회/분 — 즉시 병원으로 가세요<br>HCM 아이의 호흡수 40↑는 폐부종 신호일 수 있어요`)});
+      }
+    }
+
+    // 호흡수 상승 트렌드 (3일)
+    const rr3sleep = avgRrDays(3, 'sleep');
+    if(rr3sleep.length === 3) {
+      const isRising = rr3sleep[0] > rr3sleep[1] && rr3sleep[1] > rr3sleep[2];
+      if(isRising && rr3sleep[0] >= 28) {
+        feedbacks.push({priority:2, html: makeFeedback('warn','📈','수면 중 호흡수가 오르고 있어요',
+          `최근 3일: ${rr3sleep.map(v=>Math.round(v)).reverse().join('→')}회/분<br>아직 위험 범위는 아니지만 주의가 필요해요`)});
+      }
+    }
+
+    // 비상이뇨제 후 소변 없음
+    const emergName = routineItems.find(i=>i.diuretic==='emergency')?.name || '비상이뇨제';
+    const emergRecord = (rec.routines||[]).find(r=>r.items?.includes(emergName));
+    if(emergRecord) {
+      const [h,m2] = emergRecord.time.split(':').map(Number);
+      const now = new Date();
+      const investDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m2);
+      const elapsedMin = Math.floor((now - investDate) / 60000);
+      const urineAfter = (rec.urine||[]).filter(u => {
+        const [uh,um] = u.time.split(':').map(Number);
+        return uh*60+um > h*60+m2;
+      });
+      if(elapsedMin >= 120 && urineAfter.length === 0) {
+        feedbacks.push({priority:1, html: makeFeedback('danger','🚨',`비상이뇨제 투여 ${Math.floor(elapsedMin/60)}시간 경과`,
+          `아직 소변 반응이 없어요<br>즉시 수의사에게 연락하세요`)});
+      }
+    }
+
+    // 호흡수 + 체중 동시 증가
+    const rr3all = avgRrDays(3, null);
+    const wt3 = getRecentDays(3).map(day => {
+      const r = getRec(cat, day);
+      const ws = r.weights||[];
+      return ws.length ? ws[ws.length-1].weight : null;
+    }).filter(v=>v!==null);
+    if(rr3all.length === 3 && wt3.length === 3) {
+      const rrRising = rr3all[0] > rr3all[2];
+      const wtRising = wt3[0] > wt3[2];
+      if(rrRising && wtRising && rr3all[0] >= 30) {
+        feedbacks.push({priority:3, html: makeFeedback('warn','⚠️','호흡수와 체중이 같이 오르고 있어요',
+          `호흡수 ${Math.round(rr3all[2])}→${Math.round(rr3all[0])}회, 체중 ${wt3[2]}→${wt3[0]}kg<br>체액 저류 가능성이 있어요. 수의사와 상담하세요`)});
+      }
+    }
+
+    // 안정 피드백
+    if(!feedbacks.some(f=>f.priority<=3)) {
+      const rrAvg = rr3sleep.length ? Math.round(rr3sleep.reduce((a,b)=>a+b,0)/rr3sleep.length) : null;
+      if(rrAvg && rrAvg < 30) {
+        feedbacks.push({priority:10, html: makeFeedback('ok','✅','호흡수 안정적이에요',
+          `수면 중 평균 ${rrAvg}회/분 · 정상 범위예요 🫁`)});
+      }
+    }
+  }
+
+  // ════════════════════════════════
+  // 3. CKD 피드백
+  // ════════════════════════════════
+  if(hasCKD) {
+    // 음수량 목표 vs 실제
+    const latestWt = getLatestWeight();
+    const todayWater = (rec.water||[]).reduce((a,b)=>a+b.ml, 0);
+    if(latestWt) {
+      const minGoal = Math.round(latestWt * 40);
+      const maxGoal = Math.round(latestWt * 60);
+      const pct = Math.round(todayWater / minGoal * 100);
+      if(todayWater < minGoal * 0.5) {
+        feedbacks.push({priority:2, html: makeFeedback('danger','🚨','음수량이 많이 부족해요',
+          `${cat} 체중 ${latestWt}kg 기준 ${minGoal}~${maxGoal}ml 필요<br>오늘 ${todayWater}ml (목표의 ${pct}%) — ${minGoal-todayWater}ml 더 필요해요`)});
+      } else if(todayWater < minGoal * 0.7) {
+        feedbacks.push({priority:3, html: makeFeedback('warn','⚠️','음수량이 부족해요',
+          `${cat} 체중 ${latestWt}kg 기준 ${minGoal}~${maxGoal}ml 필요<br>오늘 ${todayWater}ml (목표의 ${pct}%) — ${minGoal-todayWater}ml 더 필요해요`)});
+      }
+    }
+
+    // 핍뇨 기록
+    const todayUrine = rec.urine || [];
+    const hasPiknuria = todayUrine.some(u=>u.amount==='핍뇨');
+    const hasHematuria = todayUrine.some(u=>u.amount==='혈뇨');
+    if(hasHematuria) {
+      feedbacks.push({priority:1, html: makeFeedback('danger','🔴','혈뇨가 기록됐어요',
+        '소변에 피가 섞인 경우 즉시 수의사 상담이 필요해요')});
+    }
+    if(hasPiknuria) {
+      feedbacks.push({priority:2, html: makeFeedback('warn','⚠️','핍뇨가 기록됐어요',
+        '소변량이 매우 적어요. 음수량과 함께 모니터링하고 지속되면 수의사에게 연락하세요')});
+    }
+
+    // 3일 연속 핍뇨
+    const pikDays = getRecentDays(3).filter(day => {
+      const r = getRec(cat, day);
+      return (r.urine||[]).some(u=>u.amount==='핍뇨');
+    });
+    if(pikDays.length === 3) {
+      feedbacks.push({priority:1, html: makeFeedback('danger','🚨','3일째 소변량이 적어요',
+        'CKD 아이의 핍뇨 지속은 급성 악화 신호일 수 있어요<br>즉시 수의사에게 연락하세요')});
+    }
+
+    // 음수량 3일 감소
+    const water3 = getRecentDays(3).map(day => {
+      const r = getRec(cat, day);
+      const arr = r.water||[];
+      return arr.length ? arr.reduce((a,b)=>a+b.ml,0) : null;
+    }).filter(v=>v!==null);
+    if(water3.length === 3 && water3[0] < water3[1] && water3[1] < water3[2] && water3[0] < 200) {
+      feedbacks.push({priority:3, html: makeFeedback('warn','📉','음수량이 계속 줄고 있어요',
+        `최근 3일: ${water3.reverse().join('→')}ml<br>CKD 아이는 수분 섭취가 신장 기능 유지에 핵심이에요`)});
+    }
+
+    // 체중 감소 트렌드 (2주)
+    const wt14 = getRecentDays(14).map(day => {
+      const r = getRec(cat, day);
+      const ws = r.weights||[];
+      return ws.length ? ws[ws.length-1].weight : null;
+    }).filter(v=>v!==null);
+    if(wt14.length >= 4) {
+      const first = wt14[wt14.length-1];
+      const last2 = wt14[0];
+      const dropPct = Math.round((first-last2)/first*100);
+      if(dropPct >= 5) {
+        feedbacks.push({priority:3, html: makeFeedback('warn','📉','체중이 계속 줄고 있어요',
+          `2주간 ${first}→${last2}kg (-${dropPct}%)<br>CKD 아이의 체중 감소는 근육 소실 신호일 수 있어요`)});
+      }
+    }
+  }
+
+  // ════════════════════════════════
+  // 4. 음수량 목표 진행바 (체중 있을 때)
+  // ════════════════════════════════
+  const latestWt2 = getLatestWeight();
+  const todayWaterTotal = (rec.water||[]).reduce((a,b)=>a+b.ml,0);
+  if(waterBarEl) {
+    if(latestWt2) {
+      const minGoal = Math.round(latestWt2 * 40);
+      const maxGoal = Math.round(latestWt2 * 60);
+      const pct = Math.min(100, Math.round(todayWaterTotal / minGoal * 100));
+      const barColor = pct >= 100 ? 'var(--teal)' : pct >= 70 ? 'var(--blue)' : pct >= 50 ? 'var(--amber)' : 'var(--coral)';
+      const msg = pct >= 100 ? '✅ 오늘 목표 달성했어요!' : pct >= 70 ? `💧 거의 다 왔어요! ${minGoal-todayWaterTotal}ml 더 필요해요` : pct >= 50 ? `⚠️ 목표량의 절반 수준이에요. ${minGoal-todayWaterTotal}ml 더 필요해요` : `🚨 음수량이 많이 부족해요. ${minGoal-todayWaterTotal}ml 더 필요해요`;
+      waterBarEl.style.display = 'block';
+      waterBarEl.innerHTML = `
+        <div style="font-size:11px;color:var(--text2);margin-bottom:3px">
+          💧 음수 목표 <span style="color:var(--text3)">${cat} ${latestWt2}kg 기준 ${minGoal}~${maxGoal}ml</span>
+        </div>
+        <div style="background:var(--bg2);border-radius:6px;height:8px;overflow:hidden;margin-bottom:4px">
+          <div style="width:${pct}%;height:100%;background:${barColor};border-radius:6px;transition:width .3s"></div>
+        </div>
+        <div style="font-size:11px;color:${barColor};font-weight:600">${todayWaterTotal}ml / ${minGoal}ml ${msg}</div>`;
+    } else {
+      waterBarEl.style.display = 'none';
+    }
+  }
+
+  // ════════════════════════════════
+  // 5. 기록 없음 / 전체 정상
+  // ════════════════════════════════
+  const hasAnyRecord = rec.bg.length || rec.ins.length || rec.weights.length || rec.rr?.length || (rec.water||[]).length;
+  if(!hasAnyRecord) {
+    feedbacks.push({priority:9, html: makeFeedback('info','💙',`${cat} 오늘 기록이 없어요`,
+      '기록을 시작하면 상태를 분석해드릴게요')});
+  } else if(feedbacks.length === 0) {
+    feedbacks.push({priority:10, html: makeFeedback('ok','✅',`${cat} 오늘 안정적이에요`,
+      '모든 수치가 정상 범위예요 😊')});
+  }
+
+  // 피드백 우선순위 정렬 후 표시
+  feedbacks.sort((a,b) => a.priority - b.priority);
+  if(feedbackEl) feedbackEl.innerHTML = feedbacks.map(f=>f.html).join('');
+
+  // 타이틀 업데이트
+  if(titleEl) {
+    const hasUrgent = feedbacks.some(f=>f.priority <= 2);
+    const hasWarn = feedbacks.some(f=>f.priority <= 4);
+    titleEl.textContent = hasUrgent ? `🚨 ${cat} 오늘 상태` : hasWarn ? `⚠️ ${cat} 오늘 상태` : `🐾 ${cat} 오늘 상태`;
+  }
+  // 오늘 수치 한줄 요약 업데이트
+  const metricLineEl = document.getElementById('dailyMetricLine');
+  if(metricLineEl) {
+    const parts = [];
+    const lastBg = rec.bg.filter(x=>x.bg!=='').slice(-1)[0];
+    if(lastBg) {
+      const bgColor = lastBg.bg<=80?'var(--coral)':lastBg.bg>=300?'var(--amber)':' var(--teal)';
+      parts.push(`혈당 <span style="color:${bgColor};font-weight:600">${lastBg.bg}</span> mg/dL`);
+      if(lastBg.ketone!=='') parts.push(`케톤 <span style="font-weight:600">${lastBg.ketone}</span>`);
+    }
+    const lastIns = rec.ins.slice(-1)[0];
+    if(lastIns) parts.push(`인슐린 <span style="font-weight:600">${lastIns.dose}U</span>`);
+    const lastWt = (rec.weights||[]).slice(-1)[0];
+    if(lastWt) parts.push(`체중 <span style="font-weight:600">${lastWt.weight}kg</span>`);
+    const todayWaterTotalLine = (rec.water||[]).reduce((a,b)=>a+b.ml,0);
+    if(todayWaterTotalLine>0) parts.push(`음수 <span style="font-weight:600">${todayWaterTotalLine}ml</span>`);
+    metricLineEl.innerHTML = parts.length ? parts.join(' &nbsp;·&nbsp; ') : '';
+  }
+
+  // ─── 오늘 기록 타임라인 ───
+  const items = [];
   rec.bg.forEach(r => {
     if(r.bg !== '') {
       const st = bgSt(r.bg, r.ketone);
@@ -2554,36 +2915,37 @@ function renderDailySummary() {
       items.push({ts:r.ts, html:`<span style="color:${color};font-weight:600">${r.bg}</span> mg/dL${r.ketone?' · 케톤 '+r.ketone:''}  <span style="color:var(--text3);font-size:11px">${r.time} ${r.type}</span>`});
     }
   });
-  // 인슐린
   rec.ins.forEach(r => {
     items.push({ts:r.ts, html:`💉 ${r.type} <span style="font-weight:600">${r.dose}U</span>  <span style="color:var(--text3);font-size:11px">${r.time}</span>`});
   });
-  // 식사
   rec.meals.forEach(r => {
     items.push({ts:r.ts, html:`🍽️ ${r.name||'식사'}${r.kcal?' '+r.kcal+'kcal':''}  <span style="color:var(--text3);font-size:11px">${r.time}</span>`});
   });
-  // 체중
   (rec.weights||[]).forEach(r => {
     items.push({ts:r.ts, html:`⚖️ <span style="font-weight:600">${r.weight}kg</span>  <span style="color:var(--text3);font-size:11px">${r.time}</span>`});
   });
-  // 호흡수
   if(rec.rr&&rec.rr.length) {
     const last = rec.rr[rec.rr.length-1];
     const rrColor = last.rr>=40?'var(--coral)':last.rr>=30?'var(--amber)':'var(--teal)';
-    const rrSLbl = last.stateLabel?'('+last.stateLabel+')':"";items.push({ts:last.ts, html:'\uD83E\uDEB4 <span style="color:'+rrColor+';font-weight:600">'+last.rr+'\ud68c/\uBD84</span> <span style="color:var(--text3);font-size:11px">'+rrSLbl+' '+last.time+'</span>'});
+    const rrSLbl = last.stateLabel?'('+last.stateLabel+')':"";
+    items.push({ts:last.ts, html:`🫁 <span style="color:${rrColor};font-weight:600">${last.rr}회/분</span> <span style="color:var(--text3);font-size:11px">${rrSLbl} ${last.time}</span>`});
   }
-  // 루틴 (체크된 것만)
+  (rec.water||[]).forEach(r => {
+    items.push({ts:r.ts, html:`💧 <span style="font-weight:600">+${r.ml}ml</span> <span style="color:var(--text3);font-size:11px">${r.time}</span>`});
+  });
+  (rec.urine||[]).forEach(r => {
+    const uc = r.amount==='혈뇨'?'var(--coral)':r.amount==='핍뇨'?'var(--amber)':'var(--teal)';
+    items.push({ts:r.ts, html:`🚽 <span style="color:${uc};font-weight:600">${r.amount}</span> <span style="color:var(--text3);font-size:11px">${r.time}</span>`});
+  });
   const doneSet = new Set((rec.routines||[]).flatMap(r=>r.items||[]));
-  if(doneSet.size) {
-    items.push({ts:Date.now(), html:`✅ ${[...doneSet].join(', ')}`});
-  }
+  if(doneSet.size) items.push({ts:Date.now(), html:`✅ ${[...doneSet].join(', ')}`});
 
   if(!items.length) {
     el.innerHTML = '<div style="color:var(--text3);text-align:center;padding:.5rem;font-size:12px">아직 오늘 기록이 없어요</div>';
-    return;
+  } else {
+    items.sort((a,b)=>a.ts-b.ts);
+    el.innerHTML = items.map(i=>`<div style="padding:2px 0;border-bottom:0.5px solid var(--bd)">${i.html}</div>`).join('');
   }
-  items.sort((a,b)=>a.ts-b.ts);
-  el.innerHTML = items.map(i=>`<div style="padding:2px 0;border-bottom:0.5px solid var(--bd)">${i.html}</div>`).join('');
 }
 
 function updateWtDiff(){
