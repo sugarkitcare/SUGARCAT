@@ -502,7 +502,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.61</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.62</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">
@@ -4555,12 +4555,18 @@ async function loadRoutineForCat(catName) {
       routineItems = local ? JSON.parse(local) : [...defaultItems];
     } catch(e) { routineItems = [...defaultItems]; }
   }
-  // 비상이뇨제만 자동 병합 (소변 알림 연결 필요)
-  // 정기 이뇨제는 유저마다 이름이 달라 자동 추가 안 함
-  const hasEmergency = routineItems.some(i => i.diuretic === 'emergency');
-  if(!hasEmergency) {
-    routineItems.push({name:'비상이뇨제', cat:'med', diuretic:'emergency'});
-    saveRT(cat);
+  // 비상이뇨제 자동 병합 - 최초 1회만 (삭제 후 재추가 방지)
+  const emergInitKey = 'emerg_init_' + cat;
+  const alreadyInited = localStorage.getItem(emergInitKey);
+  if(!alreadyInited) {
+    // 한번도 초기화 안 된 고양이 → 비상이뇨제 없으면 추가
+    const hasEmergency = routineItems.some(i => i.diuretic === 'emergency');
+    if(!hasEmergency) {
+      routineItems.push({name:'비상이뇨제', cat:'med', diuretic:'emergency'});
+      saveRT(cat);
+    }
+    // 초기화 완료 표시 (이후엔 자동 추가 안 함)
+    try{localStorage.setItem(emergInitKey, '1');}catch(e){}
   }
 
   renderRoutineChecklist();
