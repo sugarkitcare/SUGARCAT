@@ -502,7 +502,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.57</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.58</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">
@@ -713,6 +713,62 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     <button class="btn btn-blue" id="saveMeal">식사 저장</button>
     </div>
   </div>
+  <!-- 💧 수분 밸런스 카드 -->
+  <div class="card" id="daily-card-water">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;cursor:pointer" onclick="toggleCard('waterBody',this)">
+    <div>
+      <div style="font-size:12px;font-weight:500;color:var(--text2)">💧 수분 밸런스</div>
+      <div id="waterSummary" style="font-size:10px;color:var(--text3);margin-top:1px">음수량 · 소변 체크</div>
+    </div>
+    <span style="font-size:11px;color:var(--teal)">▼ 펼치기</span>
+  </div>
+  <div id="waterBody" style="display:none">
+
+    <!-- 음수량 -->
+    <div style="margin-bottom:.85rem">
+      <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:.4rem">💧 음수량</div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:.4rem">
+        <input type="number" id="waterInput" placeholder="ml" min="0" step="1"
+          style="width:90px;padding:8px 10px;border:0.5px solid var(--bd);border-radius:9px;font-size:14px;background:var(--bg);color:var(--text);font-family:inherit">
+        <span style="font-size:12px;color:var(--text2)">ml</span>
+        <button type="button" onclick="addWater()"
+          style="padding:8px 16px;background:var(--teal);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">+ 추가</button>
+      </div>
+      <div id="waterTotal" style="font-size:13px;color:var(--teal);font-weight:600;margin-bottom:.3rem"></div>
+      <div id="waterLog" style="font-size:11px;color:var(--text3);line-height:1.8"></div>
+    </div>
+
+    <!-- 소변 체크 -->
+    <div style="border-top:0.5px solid var(--bd);padding-top:.75rem">
+      <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:.4rem">🚽 소변 체크</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.5rem">
+        <button type="button" onclick="addUrine('소량')"
+          style="padding:7px 14px;border:0.5px solid var(--bd);border-radius:9px;font-size:12px;background:var(--bg);color:var(--text);cursor:pointer;font-family:inherit">소량</button>
+        <button type="button" onclick="addUrine('정상')"
+          style="padding:7px 14px;border:0.5px solid var(--teal);border-radius:9px;font-size:12px;background:var(--teal-l);color:var(--teal);cursor:pointer;font-family:inherit;font-weight:600">정상</button>
+        <button type="button" onclick="addUrine('다량')"
+          style="padding:7px 14px;border:0.5px solid var(--bd);border-radius:9px;font-size:12px;background:var(--bg);color:var(--text);cursor:pointer;font-family:inherit">다량</button>
+        <button type="button" onclick="addUrine('혈뇨')"
+          style="padding:7px 14px;border:0.5px solid var(--coral);border-radius:9px;font-size:12px;background:var(--coral-l);color:var(--coral);cursor:pointer;font-family:inherit;font-weight:600">🔴 혈뇨</button>
+        <button type="button" onclick="addUrine('핍뇨')"
+          style="padding:7px 14px;border:0.5px solid var(--amber);border-radius:9px;font-size:12px;background:var(--amber-l);color:var(--amber-d);cursor:pointer;font-family:inherit;font-weight:600">⚠️ 핍뇨</button>
+      </div>
+      <div id="urineTotal" style="font-size:13px;color:var(--text);font-weight:600;margin-bottom:.3rem"></div>
+      <div id="urineLog" style="font-size:11px;color:var(--text3);line-height:1.8"></div>
+    </div>
+
+    <!-- 비상이뇨제 알림 -->
+    <div id="diureticAlert" style="display:none;margin-top:.75rem;padding:.6rem .75rem;background:var(--amber-l);border-radius:9px;border:1px solid var(--amber);font-size:12px;color:var(--amber-d)">
+    </div>
+
+    <div style="margin-top:.5rem">
+      <input type="date" id="waterDate"
+        style="padding:6px 10px;border:0.5px solid var(--bd);border-radius:8px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit"
+        onchange="renderWaterLog()">
+    </div>
+  </div>
+  </div>
+
   <div class="card" id="daily-card-routine">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;cursor:pointer" onclick="toggleCard('routineBody',this)">
     <div>
@@ -892,6 +948,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     <div class="g-chip active" data-g="ket">케톤</div>
     <div class="g-chip active" data-g="wt">체중</div>
     <div class="g-chip active" data-g="rr">호흡수</div>
+    <div class="g-chip active" data-g="water">음수량</div>
   </div>
   <!-- 하루 타임라인 차트 (날짜 선택 가능) -->
   <div class="card" id="timelineCard" data-graph-card="timeline" style="margin-bottom:.75rem">
@@ -920,6 +977,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
   <div id="gKetCard" data-graph-card="ket" style="display:none"><div id="ketChartWrap"></div></div>
   <div id="gWtCard" data-graph-card="wt"><div id="wtChartWrap"></div></div>
   <div id="gRrCard" data-graph-card="rr" style="display:none"><div id="rrChartWrap"></div></div>
+  <div id="gWaterCard" data-graph-card="water" style="display:none"><div id="waterChartWrap"></div></div>
 
   <!-- 혈액검사 추이 카드 -->
   <div class="card" id="btTrendCard2" data-graph-card="bloodtest" style="margin-top:.5rem">
@@ -1328,7 +1386,7 @@ function nowTime(){const n=new Date();return String(n.getHours()).padStart(2,'0'
 const nowT=nowTime;
 function getRec(cat,date){
   if(!state.records[cat])state.records[cat]={};
-  if(!state.records[cat][date])state.records[cat][date]={bg:[],ins:[],meals:[],weights:[],routines:[]};
+  if(!state.records[cat][date])state.records[cat][date]={bg:[],ins:[],meals:[],weights:[],routines:[],water:[],urine:[]};
   const r=state.records[cat][date];
   if(!r.weights)r.weights=[];
   if(!r.routines)r.routines=[];
@@ -1349,7 +1407,7 @@ function showStat(id,type,msg){
 function hideStat(id){document.getElementById(id).style.display='none'}
 
 ['bgTime','wtTime','insTime','foodTime'].forEach(id=>document.getElementById(id).value=nowTime());
-['bgDate','wtDate','insDate','foodDate','routineDate','rrDate'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=today();});
+['bgDate','wtDate','insDate','foodDate','routineDate','rrDate','waterDate'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=today();});
 document.getElementById('btDate').value=today();
 
 /* 고양이 바 */
@@ -1686,7 +1744,7 @@ function adminFilterCat(btn) {
 
 
 /* ── 카드 순서/숨김 관리 ── */
-const DEFAULT_CARD_ORDER = ['bg','rr','ins','wt','meal','routine'];
+const DEFAULT_CARD_ORDER = ['bg','rr','ins','wt','meal','water','routine'];
 const SK_CARD_ORDER = 'cardOrder_v1';
 const SK_CARD_HIDDEN = 'cardHidden_v1';
 
@@ -1771,6 +1829,7 @@ function applyCardOrder(cat) {
     ins: document.getElementById('daily-card-ins'),
     wt: document.getElementById('daily-card-wt'),
     meal: document.getElementById('daily-card-meal'),
+    water: document.getElementById('daily-card-water'),
     routine: document.getElementById('daily-card-routine'),
   };
   // 숨김/표시 처리
@@ -1795,7 +1854,7 @@ function renderCardOrderUI(cat) {
   if(!el) return;
   const order = getCardOrder(cat||state.activeCat);
   const hidden = getCardHidden(cat||state.activeCat);
-  const labels = {bg:'혈당·케톤', rr:'🫁 호흡수 측정', ins:'💉 인슐린 투여', wt:'⚖️ 몸무게', meal:'🍽️ 식사·칼로리', routine:'💊 투약·루틴'};
+  const labels = {bg:'혈당·케톤', rr:'🫁 호흡수 측정', ins:'💉 인슐린 투여', wt:'⚖️ 몸무게', meal:'🍽️ 식사·칼로리', water:'💧 수분 밸런스', routine:'💊 투약·루틴'};
   const catKey = cat||state.activeCat;
   const visible = order.filter(k=>!hidden.includes(k));
 
@@ -1961,6 +2020,7 @@ window.switchCat = function(c) {
   try{
     const at=document.querySelector('.nav-btn.active')?.dataset?.tab;
     if(at==='history'){renderHistory();renderRoutineSchedule();}
+    if(at==='daily'){try{renderWaterLog();}catch(e){}}
     else if(at==='graph'){
       delete graphHiddenCache[c];
       loadGraphHiddenFromDB(c).then(()=>{
@@ -2110,6 +2170,7 @@ const GRAPH_CARDS = [
   { id: 'gKetCard',     label: '🟡 케톤'          },
   { id: 'gWtCard',      label: '⚖️ 체중'           },
   { id: 'gRrCard',      label: '🫁 호흡수'         },
+  { id: 'gWaterCard',   label: '💧 음수량'         },
   { id: 'btTrendCard2', label: '🩸 혈액검사 추이'  },
 ];
 
@@ -2186,9 +2247,11 @@ function applyGraphCards() {
   const ketChip = document.querySelector('.g-chip[data-g="ket"]');
   const wtChip  = document.querySelector('.g-chip[data-g="wt"]');
   const rrChip  = document.querySelector('.g-chip[data-g="rr"]');
-  if(ketChip) ketChip.style.display = hidden.includes('gKetCard') ? 'none' : '';
-  if(wtChip)  wtChip.style.display  = hidden.includes('gWtCard')  ? 'none' : '';
-  if(rrChip)  rrChip.style.display  = hidden.includes('gRrCard')  ? 'none' : '';
+  if(ketChip)   ketChip.style.display   = hidden.includes('gKetCard')   ? 'none' : '';
+  if(wtChip)    wtChip.style.display    = hidden.includes('gWtCard')    ? 'none' : '';
+  if(rrChip)    rrChip.style.display    = hidden.includes('gRrCard')    ? 'none' : '';
+  const waterChip = document.querySelector('.g-chip[data-g="water"]');
+  if(waterChip) waterChip.style.display = hidden.includes('gWaterCard') ? 'none' : '';
   // g-filter 전체가 비면 숨김
   const gFilter = document.querySelector('.g-filter');
   if(gFilter) {
@@ -2878,7 +2941,7 @@ function renderTimelineChart(date) {
 
 /* 그래프 */
 let gInst=[];let gPeriod=0;
-const gActive=new Set(['ket','wt','rr']);
+const gActive=new Set(['ket','wt','rr','water']);
 
 function setGPeriod(n,el){
   gPeriod=n;
@@ -2924,6 +2987,7 @@ function renderGraphs(){
   const ketWrap=document.getElementById('ketChartWrap');if(ketWrap)ketWrap.innerHTML='';
   const wtWrap=document.getElementById('wtChartWrap');if(wtWrap)wtWrap.innerHTML='';
   const rrWrap=document.getElementById('rrChartWrap');if(rrWrap)rrWrap.innerHTML='';
+  const waterWrap=document.getElementById('waterChartWrap');if(waterWrap)waterWrap.innerHTML='';
   const isDark=matchMedia('(prefers-color-scheme:dark)').matches;
   const gc=isDark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.05)';
   const tc=isDark?'#B4B2A9':'#888780';
@@ -2943,15 +3007,18 @@ function renderGraphs(){
      annotations:[{value:40,color:'rgba(216,90,48,0.5)',label:'40 위험'},{value:30,color:'rgba(186,117,23,0.35)',label:'30 주의'}],
      fn:d=>{const r=getRec(state.activeCat,d);const arr=(r.rr||[]).map(x=>x.rr).filter(x=>x>0);return arr.length?Math.round(arr.reduce((a,b)=>a+b)/arr.length):null},
      fnByState:(d,st)=>{const r=getRec(state.activeCat,d);const arr=(r.rr||[]).filter(x=>x.state===st).map(x=>x.rr).filter(x=>x>0);return arr.length?Math.round(arr.reduce((a,b)=>a+b)/arr.length):null}},
+    {k:'water',label:`음수량 (ml) — ${periodLabel}`,color:'#185FA5',type:'bar',
+     fn:d=>{const r=getRec(state.activeCat,d);const arr=r.water||[];return arr.length?arr.reduce((a,b)=>a+b.ml,0):null}},
   ];
 
   defs.forEach(def=>{
     if(!gActive.has(def.k))return;
     const labels=days.map(d=>d.slice(5));
     // 개별 카드 wrap 선택
-    const wrap = def.k==='ket' ? document.getElementById('ketChartWrap')
-               : def.k==='wt'  ? document.getElementById('wtChartWrap')
-               : def.k==='rr'  ? document.getElementById('rrChartWrap')
+    const wrap = def.k==='ket'   ? document.getElementById('ketChartWrap')
+               : def.k==='wt'    ? document.getElementById('wtChartWrap')
+               : def.k==='rr'    ? document.getElementById('rrChartWrap')
+               : def.k==='water' ? document.getElementById('waterChartWrap')
                : null;
     if(!wrap) return;
 
@@ -4066,6 +4133,8 @@ const defaultItems=[
   {name:'레나딜',cat:'med'},{name:'레나메진',cat:'med'},{name:'오메가3',cat:'med'},
   {name:'유산균',cat:'med'},{name:'사메탑',cat:'med'},{name:'항생제',cat:'med'},
   {name:'세레니아',cat:'med'},{name:'미르타자핀',cat:'med'},{name:'피하수액',cat:'med'},
+  {name:'이뇨제(정기)',cat:'med',diuretic:'regular'},
+  {name:'비상이뇨제',cat:'med',diuretic:'emergency'},
   {name:'간식',cat:'food'},{name:'황금푸딩',cat:'food'},{name:'물 섭취',cat:'food'},
   {name:'병원 방문',cat:'other'},{name:'배변 확인',cat:'other'},{name:'구토',cat:'other'}
 ];
@@ -4191,6 +4260,12 @@ function toggleRoutineCheck(itemName){
   try{renderDailySummary();}catch(e){}
   const isDone = rec.routines.some(r=>r.items?.length===1&&r.items[0]===itemName);
   if(isDone) toast('✅ '+itemName+' 저장됐어요','#1D9E75');
+  // 비상이뇨제 체크 시 소변 알림 트리거
+  const emergItem = routineItems.find(i=>i.name===itemName&&i.diuretic==='emergency');
+  if(emergItem && isDone) {
+    renderDiureticAlert(today_date);
+    toast('🚨 비상이뇨제 기록됨 — 소변 반응을 확인해주세요','#BA7517');
+  }
 }
 
 
@@ -4220,6 +4295,147 @@ function renderRoutineEditList(){
   });
   if(!html) html='<div style="text-align:center;padding:1rem;color:var(--text3);font-size:12px">등록된 항목이 없어요</div>';
   list.innerHTML=html;
+}
+
+
+/* ── 수분 밸런스 (음수량 + 소변) ── */
+
+function addWater() {
+  const input = document.getElementById('waterInput');
+  const ml = parseInt(input.value);
+  if(!ml || ml <= 0) { toast('음수량을 입력해주세요', '#D85A30'); return; }
+  const dateEl = document.getElementById('waterDate');
+  const date = dateEl?.value || today();
+  const rec = getRec(state.activeCat, date);
+  if(!rec.water) rec.water = [];
+  rec.water.push({ml, time: nowTime(), ts: Date.now()});
+  saveS(date);
+  input.value = '';
+  renderWaterLog();
+  toast('💧 ' + ml + 'ml 기록됐어요', '#1D9E75');
+  try{renderDailySummary();}catch(e){}
+}
+
+function addUrine(amount) {
+  const dateEl = document.getElementById('waterDate');
+  const date = dateEl?.value || today();
+  const rec = getRec(state.activeCat, date);
+  if(!rec.urine) rec.urine = [];
+  // 무뇨 경고
+  if(amount === '핍뇨') {
+    toast('⚠️ 핍뇨 기록됨 — 소변량이 매우 적어요. 음수량과 함께 모니터링하세요', '#BA7517');
+  } else if(amount === '혈뇨') {
+    toast('🔴 혈뇨 기록됨 — 수의사 상담을 권장해요', '#D85A30');
+  } else {
+    toast('🚽 소변 기록됐어요 (' + amount + ')', '#1D9E75');
+  }
+  rec.urine.push({amount, time: nowTime(), ts: Date.now()});
+  saveS(date);
+  renderWaterLog();
+  renderDiureticAlert(date);
+  try{renderDailySummary();}catch(e){}
+}
+
+function renderWaterLog() {
+  const dateEl = document.getElementById('waterDate');
+  const date = dateEl?.value || today();
+  const rec = getRec(state.activeCat, date);
+
+  // 음수량
+  const waterArr = rec.water || [];
+  const totalMl = waterArr.reduce((a, b) => a + b.ml, 0);
+  const waterTotalEl = document.getElementById('waterTotal');
+  const waterLogEl = document.getElementById('waterLog');
+  if(waterTotalEl) waterTotalEl.textContent = totalMl > 0 ? '오늘 총 ' + totalMl + 'ml' : '아직 기록 없어요';
+  if(waterLogEl) {
+    if(waterArr.length === 0) {
+      waterLogEl.innerHTML = '';
+    } else {
+      waterLogEl.innerHTML = waterArr.map((w, i) =>
+        `<span style="margin-right:8px">${w.time} +${w.ml}ml`
+        + ` <span onclick="deleteWater(${i},'${date}')" style="color:var(--coral);cursor:pointer;font-size:10px">✕</span></span>`
+      ).join('');
+    }
+  }
+
+  // 소변
+  const urineArr = rec.urine || [];
+  const urineTotalEl = document.getElementById('urineTotal');
+  const urineLogEl = document.getElementById('urineLog');
+  if(urineTotalEl) urineTotalEl.textContent = urineArr.length > 0 ? '오늘 총 ' + urineArr.length + '회' : '아직 기록 없어요';
+  if(urineLogEl) {
+    if(urineArr.length === 0) {
+      urineLogEl.innerHTML = '';
+    } else {
+      urineLogEl.innerHTML = urineArr.map((u, i) => {
+        const color = u.amount==='혈뇨' ? 'var(--coral)' : u.amount==='핍뇨'||u.amount==='소량' ? 'var(--amber)' : 'var(--teal)';
+        return `<span style="margin-right:8px;color:${color}">${u.time} ${u.amount}`
+          + ` <span onclick="deleteUrine(${i},'${date}')" style="color:var(--coral);cursor:pointer;font-size:10px">✕</span></span>`;
+      }).join('');
+    }
+  }
+
+  // 수분 요약 업데이트
+  const summaryEl = document.getElementById('waterSummary');
+  if(summaryEl) {
+    let txt = '';
+    if(totalMl > 0) txt += '음수 ' + totalMl + 'ml';
+    if(urineArr.length > 0) txt += (txt?' · ':'') + '소변 ' + urineArr.length + '회';
+    summaryEl.textContent = txt || '음수량 · 소변 체크';
+  }
+
+  // 비상이뇨제 알림
+  renderDiureticAlert(date);
+}
+
+function deleteWater(idx, date) {
+  const rec = getRec(state.activeCat, date);
+  if(rec.water) { rec.water.splice(idx, 1); saveS(date); renderWaterLog(); }
+}
+
+function deleteUrine(idx, date) {
+  const rec = getRec(state.activeCat, date);
+  if(rec.urine) { rec.urine.splice(idx, 1); saveS(date); renderWaterLog(); }
+}
+
+function renderDiureticAlert(date) {
+  const alertEl = document.getElementById('diureticAlert');
+  if(!alertEl) return;
+  const rec = getRec(state.activeCat, date || today());
+  const urineArr = rec.urine || [];
+
+  // 비상이뇨제 체크 여부 확인
+  const emergName = routineItems.find(i=>i.diuretic==='emergency')?.name || '비상이뇨제';
+  const emergRecord = (rec.routines||[]).find(r=>r.items?.includes(emergName));
+
+  if(!emergRecord) { alertEl.style.display='none'; return; }
+
+  const investTime = emergRecord.time;
+  const [h, m] = investTime.split(':').map(Number);
+  const now = new Date();
+  const investDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m);
+  const elapsedMin = Math.floor((now - investDate) / 60000);
+  const elapsedHr = Math.floor(elapsedMin / 60);
+  const elapsedRemMin = elapsedMin % 60;
+  const elapsedStr = elapsedHr > 0 ? elapsedHr + '시간 ' + elapsedRemMin + '분' : elapsedMin + '분';
+
+  const urineAfter = urineArr.filter(u => {
+    const [uh, um] = u.time.split(':').map(Number);
+    return uh * 60 + um > h * 60 + m;
+  });
+
+  alertEl.style.display = 'block';
+  if(urineAfter.length === 0) {
+    alertEl.style.background = 'var(--coral-l)';
+    alertEl.style.borderColor = 'var(--coral)';
+    alertEl.style.color = 'var(--coral-d)';
+    alertEl.innerHTML = '🚨 <b>비상이뇨제 투여 후 ' + elapsedStr + ' 경과</b><br>아직 소변 반응이 없어요. 소변 체크 후 반응 없으면 수의사에게 연락하세요.';
+  } else {
+    alertEl.style.background = 'var(--teal-l)';
+    alertEl.style.borderColor = 'var(--teal)';
+    alertEl.style.color = 'var(--teal-d)';
+    alertEl.innerHTML = '✅ <b>비상이뇨제 투여 후 ' + elapsedStr + ' 경과</b><br>소변 ' + urineAfter.length + '회 확인됐어요.';
+  }
 }
 
 function addRoutineItem(){
