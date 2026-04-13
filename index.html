@@ -515,7 +515,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.64</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.65</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">
@@ -2152,8 +2152,11 @@ function showNotice() {
   if(!notice) return;
   const hiddenUntil = localStorage.getItem('notice_hidden_' + notice.id);
   if(hiddenUntil && Date.now() < parseInt(hiddenUntil)) return;
-  const confirmed = localStorage.getItem('notice_confirmed_' + notice.id);
-  if(confirmed) return;
+  // 이미지 팝업(이벤트)은 confirmed 무시 → 매일 노출
+  if(!notice.image) {
+    const confirmed = localStorage.getItem('notice_confirmed_' + notice.id);
+    if(confirmed) return;
+  }
 
   const modal = document.getElementById('noticeModal');
   const imgWrap = document.getElementById('noticeImageWrap');
@@ -2182,13 +2185,20 @@ function closeNotice(hideToday) {
   modal.style.display = 'none';
   modal.style.pointerEvents = 'none';
   if(hideToday) {
-    // 오늘 자정까지 숨기기
+    // 오늘 하루 보지 않기 → 자정까지 숨기기
     const midnight = new Date();
     midnight.setHours(23,59,59,999);
     localStorage.setItem('notice_hidden_' + APP_NOTICE.id, String(midnight.getTime()));
   } else {
-    // 확인 → 다시 안 보임
-    localStorage.setItem('notice_confirmed_' + APP_NOTICE.id, '1');
+    // 확인 버튼 → 이미지 팝업이면 오늘 하루만 숨기기 (이벤트 기간 매일 노출)
+    //             텍스트 팝업이면 영구 확인 처리
+    if(APP_NOTICE.image) {
+      const midnight = new Date();
+      midnight.setHours(23,59,59,999);
+      localStorage.setItem('notice_hidden_' + APP_NOTICE.id, String(midnight.getTime()));
+    } else {
+      localStorage.setItem('notice_confirmed_' + APP_NOTICE.id, '1');
+    }
   }
 }
 
@@ -2605,7 +2615,18 @@ function renderChallengeBar() {
 
   const todayStr2 = today();
   // streak null = 이벤트 기간 아님 → 숨기기
-  if(streak === null) { el.style.display = 'none'; return; }
+  // 이벤트 기간 아님 → D-1(전날)에는 예고 배너 표시
+  if(streak === null) {
+    const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1);
+    const tomorrowStr = tomorrow.toISOString().slice(0,10);
+    if(tomorrowStr === CHALLENGE_START) {
+      el.style.display = 'block';
+      el.innerHTML = `<div style="background:var(--teal-l);border:1px solid var(--teal);border-radius:10px;padding:.6rem .75rem;font-size:12px;color:var(--teal);font-weight:600">🎯 내일부터 7일 케어 챌린지 시작이에요! 준비하세요 🐾</div>`;
+    } else {
+      el.style.display = 'none';
+    }
+    return;
+  }
 
   el.style.display = 'block';
 
