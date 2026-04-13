@@ -515,7 +515,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.63</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.64</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">
@@ -2571,17 +2571,17 @@ const CHALLENGE_START = '2026-04-14';
 const CHALLENGE_END   = '2026-04-23';
 
 function getChallengeStreak() {
-  // 이벤트 기간 체크
   const todayStr = today();
   if(todayStr < CHALLENGE_START || todayStr > CHALLENGE_END) return null;
 
   const cat = state.activeCat;
   if(!cat) return null;
 
-  // 오늘부터 거꾸로 연속 기록일 카운트
+  // today() 기준으로 거꾸로 연속 기록일 카운트
   let streak = 0;
-  let d = new Date();
   for(let i = 0; i < 10; i++) {
+    const d = new Date(todayStr);
+    d.setDate(d.getDate() - i);
     const dateStr = d.toISOString().slice(0,10);
     if(dateStr < CHALLENGE_START) break;
     const rec = getRec(cat, dateStr);
@@ -2592,10 +2592,8 @@ function getChallengeStreak() {
     if(hasRecord) {
       streak++;
     } else if(i > 0) {
-      // 오늘 제외하고 중간에 빈 날 있으면 연속 끊김
       break;
     }
-    d.setDate(d.getDate() - 1);
   }
   return streak;
 }
@@ -2606,10 +2604,8 @@ function renderChallengeBar() {
   if(!el) return;
 
   const todayStr2 = today();
-  if(!streak && (todayStr2 < CHALLENGE_START || todayStr2 > CHALLENGE_END)) {
-    el.style.display = 'none';
-    return;
-  }
+  // streak null = 이벤트 기간 아님 → 숨기기
+  if(streak === null) { el.style.display = 'none'; return; }
 
   el.style.display = 'block';
 
