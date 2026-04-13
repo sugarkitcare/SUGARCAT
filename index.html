@@ -433,18 +433,31 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 
 <!-- 피드백 모달 -->
 <!-- 앱 공지 팝업 -->
-<div id="noticeModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9500;pointer-events:none">
-  <div style="background:var(--bg);border-radius:16px;padding:1.5rem;max-width:360px;width:calc(100% - 2rem);margin:3rem auto;position:relative;pointer-events:auto">
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem">
-      <span style="font-size:20px">📢</span>
-      <div style="font-size:15px;font-weight:700;color:var(--text)" id="noticeTitle">업데이트 공지</div>
+<div id="noticeModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9500;pointer-events:none;overflow-y:auto;-webkit-overflow-scrolling:touch">
+  <div style="max-width:360px;width:calc(100% - 2rem);margin:2rem auto;position:relative;pointer-events:auto">
+    <!-- 이미지 팝업 -->
+    <div id="noticeImageWrap" style="display:none;border-radius:16px;overflow:hidden;position:relative">
+      <img id="noticeImage" src="" alt="이벤트" style="width:100%;display:block">
+      <div style="display:flex;gap:8px;padding:.75rem;background:var(--bg)">
+        <button type="button" onclick="closeNotice(true)"
+          style="flex:1;padding:11px;border:0.5px solid var(--bd);border-radius:10px;background:var(--bg2);color:var(--text2);font-size:13px;cursor:pointer;font-family:inherit">오늘 하루 보지 않기</button>
+        <button type="button" onclick="closeNotice(false)"
+          style="flex:1;padding:11px;border:none;border-radius:10px;background:var(--teal);color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">확인</button>
+      </div>
     </div>
-    <div id="noticeBody" style="font-size:13px;color:var(--text);line-height:1.8;margin-bottom:1.25rem;white-space:pre-line"></div>
-    <div style="display:flex;gap:8px">
-      <button type="button" onclick="closeNotice(true)"
-        style="flex:1;padding:11px;border:0.5px solid var(--bd);border-radius:10px;background:var(--bg2);color:var(--text2);font-size:13px;cursor:pointer;font-family:inherit">오늘 하루 보지 않기</button>
-      <button type="button" onclick="closeNotice(false)"
-        style="flex:1;padding:11px;border:none;border-radius:10px;background:var(--teal);color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">확인</button>
+    <!-- 텍스트 팝업 (이미지 없을 때) -->
+    <div id="noticeTextWrap" style="display:none;background:var(--bg);border-radius:16px;padding:1.5rem">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem">
+        <span style="font-size:20px">📢</span>
+        <div style="font-size:15px;font-weight:700;color:var(--text)" id="noticeTitle">업데이트 공지</div>
+      </div>
+      <div id="noticeBody" style="font-size:13px;color:var(--text);line-height:1.8;margin-bottom:1.25rem;white-space:pre-line"></div>
+      <div style="display:flex;gap:8px">
+        <button type="button" onclick="closeNotice(true)"
+          style="flex:1;padding:11px;border:0.5px solid var(--bd);border-radius:10px;background:var(--bg2);color:var(--text2);font-size:13px;cursor:pointer;font-family:inherit">오늘 하루 보지 않기</button>
+        <button type="button" onclick="closeNotice(false)"
+          style="flex:1;padding:11px;border:none;border-radius:10px;background:var(--teal);color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">확인</button>
+      </div>
     </div>
   </div>
 </div>
@@ -502,7 +515,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.62</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.63</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">
@@ -548,6 +561,8 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 
 <!-- ══ 오늘 기록 ══ -->
 <div class="sec active" id="tab-daily" style="display:block">
+  <!-- 챌린지 진행바 -->
+  <div id="challengeBar" style="display:none;margin-bottom:.5rem"></div>
   <!-- 오늘 상태 피드백 카드 -->
   <!-- 🐾 오늘 상태 피드백 카드 -->
   <div class="card" id="dailySummaryCard" style="margin-bottom:.75rem">
@@ -2112,42 +2127,52 @@ function checkAILimit(type) {
 /* ── 앱 공지 팝업 ── */
 // 공지 설정 (여기만 수정하면 됨)
 const APP_NOTICE = {
-  id: 'notice_v0418b',  // 공지 바꿀 때마다 id 변경 → 다시 표시됨
-  title: '🔧 업데이트 안내',
-  body: `베타 사용 1주일, 피드백 감사해요 🐾
+  id: 'event_challenge_0414',  // 이벤트 공지
+  image: 'https://raw.githubusercontent.com/sugarkitcare/SUGARCAT/main/event_challenge.png',
+  title: '🎉 7일 케어 챌린지 이벤트',
+  body: `시그니쳐바이 X 케어마스터즈
+7일 케어 챌린지 이벤트가 시작됐어요!
 
-여러분이 보내주신 소중한 의견을 바탕으로
-아래 내용을 업데이트할 예정이에요.
+📅 기간: 4월 14일 ~ 4월 23일
+🏆 당첨자 발표: 4월 25일
 
-📅 업데이트 기간: 4월 3일 ~ 4월 13일
+7일 연속 기록 후
+카페 이벤트 게시판에 인증하면 참여 완료!
 
-✅ 병원마다 다른 혈검 항목명 통합
-   (HCT = 헤마토크릿 → 하나의 그래프로)
-✅ 그래프 카테고리 기본 접힘
-   + 질환별 자동 우선 표시
-✅ 사료 분석 숨은 탄수 계산 개선
-✅ 기타 오류 수정
+🎁 경품
+💧 지아이캄 드롭스 5명
+💧 오라뮨 드롭스 5명
+🐟 알갈 오메가3 3명
 
-💬 업데이트 전에 추가로 원하시는 기능이나
-불편한 점이 있으시면 지금 바로 알려주세요!
-이번 업데이트에 반영하겠습니다.
-
-앱 내 💬 피드백 버튼으로 보내주시면 돼요.`
+👉 sugarcat.vercel.app`
 };
 
 function showNotice() {
   const notice = APP_NOTICE;
   if(!notice) return;
-  // 오늘 하루 보지 않기 체크
   const hiddenUntil = localStorage.getItem('notice_hidden_' + notice.id);
   if(hiddenUntil && Date.now() < parseInt(hiddenUntil)) return;
-  // 이미 확인한 공지 체크
   const confirmed = localStorage.getItem('notice_confirmed_' + notice.id);
   if(confirmed) return;
 
-  document.getElementById('noticeTitle').textContent = notice.title;
-  document.getElementById('noticeBody').textContent = notice.body;
   const modal = document.getElementById('noticeModal');
+  const imgWrap = document.getElementById('noticeImageWrap');
+  const txtWrap = document.getElementById('noticeTextWrap');
+
+  if(notice.image) {
+    // 이미지 팝업
+    const img = document.getElementById('noticeImage');
+    img.src = notice.image;
+    imgWrap.style.display = 'block';
+    txtWrap.style.display = 'none';
+  } else {
+    // 텍스트 팝업
+    document.getElementById('noticeTitle').textContent = notice.title;
+    document.getElementById('noticeBody').textContent = notice.body;
+    imgWrap.style.display = 'none';
+    txtWrap.style.display = 'block';
+  }
+
   modal.style.display = 'block';
   modal.style.pointerEvents = 'auto';
 }
@@ -2541,6 +2566,87 @@ function updateMetrics(){
 }
 updateMetrics();
 
+/* ── 7일 케어 챌린지 ── */
+const CHALLENGE_START = '2026-04-14';
+const CHALLENGE_END   = '2026-04-23';
+
+function getChallengeStreak() {
+  // 이벤트 기간 체크
+  const todayStr = today();
+  if(todayStr < CHALLENGE_START || todayStr > CHALLENGE_END) return null;
+
+  const cat = state.activeCat;
+  if(!cat) return null;
+
+  // 오늘부터 거꾸로 연속 기록일 카운트
+  let streak = 0;
+  let d = new Date();
+  for(let i = 0; i < 10; i++) {
+    const dateStr = d.toISOString().slice(0,10);
+    if(dateStr < CHALLENGE_START) break;
+    const rec = getRec(cat, dateStr);
+    const hasRecord = rec.bg.length || rec.ins.length ||
+      (rec.weights||[]).length || (rec.rr||[]).length ||
+      (rec.water||[]).length || (rec.routines||[]).length ||
+      (rec.meals||[]).length;
+    if(hasRecord) {
+      streak++;
+    } else if(i > 0) {
+      // 오늘 제외하고 중간에 빈 날 있으면 연속 끊김
+      break;
+    }
+    d.setDate(d.getDate() - 1);
+  }
+  return streak;
+}
+
+function renderChallengeBar() {
+  const streak = getChallengeStreak();
+  const el = document.getElementById('challengeBar');
+  if(!el) return;
+
+  const todayStr2 = today();
+  if(!streak && (todayStr2 < CHALLENGE_START || todayStr2 > CHALLENGE_END)) {
+    el.style.display = 'none';
+    return;
+  }
+
+  el.style.display = 'block';
+
+  if(streak === 0) {
+    el.innerHTML = `<div style="font-size:12px;color:var(--text2);padding:.5rem .75rem;background:var(--bg2);border-radius:9px">
+      🐾 오늘부터 7일 케어 챌린지 시작해봐요!
+      <span style="font-size:10px;color:var(--text3);display:block;margin-top:2px">오늘 기록을 남기면 1일차가 시작돼요</span>
+    </div>`;
+    return;
+  }
+
+  const days = ['월','화','수','목','금','토','일','월','화','목'];
+  const boxes = Array.from({length:7}, (_,i) => {
+    const done = i < streak;
+    const isToday = i === streak - 1;
+    const color = done ? 'var(--teal)' : 'var(--bg2)';
+    const border = isToday ? '2px solid var(--teal)' : done ? '2px solid var(--teal)' : '1.5px solid var(--bd)';
+    return `<div style="width:32px;height:32px;border-radius:8px;background:${color};border:${border};display:flex;align-items:center;justify-content:center;font-size:${done?'14px':'11px'};color:${done?'#fff':'var(--text3)'}">${done?'✓':''}</div>`;
+  }).join('');
+
+  const isComplete = streak >= 7;
+  const emoji = isComplete ? '🎉' : streak >= 5 ? '🔥' : streak >= 3 ? '✨' : '🌱';
+
+  el.innerHTML = `<div style="background:var(--teal-l);border:1px solid var(--teal);border-radius:10px;padding:.6rem .75rem">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
+      <div style="font-size:12px;font-weight:700;color:var(--teal)">${emoji} ${isComplete ? '7일 챌린지 완료! 🎊' : streak + '일차 진행 중!'}</div>
+      <div style="font-size:10px;color:var(--teal);opacity:.8">4/14~4/23</div>
+    </div>
+    <div style="display:flex;gap:4px;justify-content:center;margin-bottom:.4rem">${boxes}</div>
+    ${isComplete
+      ? '<div style="font-size:11px;color:var(--teal);text-align:center">카페 이벤트 게시판에 인증샷을 올려주세요! 🐾</div>'
+      : `<div style="font-size:11px;color:var(--teal);opacity:.85;text-align:center">7일 완료 후 카페에 인증하면 경품 추첨!</div>`
+    }
+  </div>`;
+}
+
+
 /* ── 오늘 상태 피드백 카드 ── */
 
 // 최근 N일 데이터 가져오기
@@ -2581,6 +2687,7 @@ function makeFeedback(level, icon, title, detail) {
 }
 
 function renderDailySummary() {
+  try{renderChallengeBar();}catch(e){}
   const el = document.getElementById('dailySummaryList');
   const feedbackEl = document.getElementById('dailyFeedbackList');
   const waterBarEl = document.getElementById('waterGoalBar');
