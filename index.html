@@ -515,7 +515,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.66</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.67</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">
@@ -2992,7 +2992,7 @@ function renderDailySummary() {
   // ════════════════════════════════
   // 5. 기록 없음 / 전체 정상
   // ════════════════════════════════
-  const hasAnyRecord = rec.bg.length || rec.ins.length || rec.weights.length || rec.rr?.length || (rec.water||[]).length;
+  const hasAnyRecord = rec.bg.length || rec.ins.length || rec.weights.length || rec.rr?.length || (rec.water||[]).length || (rec.routines||[]).length;
   if(!hasAnyRecord) {
     feedbacks.push({priority:9, html: makeFeedback('info','💙',`${cat} 오늘 기록이 없어요`,
       '기록을 시작하면 상태를 분석해드릴게요')});
