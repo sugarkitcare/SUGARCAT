@@ -352,6 +352,30 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
   </div>
 </div>
 
+<!-- 비밀번호 재설정 화면 (이메일 링크 클릭 시) -->
+<div id="newPasswordPage" style="display:none;min-height:100vh;background:var(--bg);padding:1.5rem 1rem;box-sizing:border-box;max-width:420px;margin:0 auto">
+  <div style="text-align:center;padding-top:3rem;margin-bottom:2rem">
+    <div style="font-size:2.5rem;margin-bottom:.5rem">🔑</div>
+    <div style="font-size:20px;font-weight:700;color:var(--text)">새 비밀번호 설정</div>
+    <div style="font-size:13px;color:var(--text2);margin-top:.5rem">새로 사용할 비밀번호를 입력해주세요</div>
+  </div>
+  <div style="max-width:360px;margin:0 auto">
+    <div class="ig" style="margin-bottom:.75rem"><label>새 비밀번호</label>
+      <input type="password" id="newPassword1" placeholder="새 비밀번호 (6자 이상)"
+        style="padding:10px 12px;border:0.5px solid var(--bd);border-radius:10px;font-size:14px;background:var(--bg);color:var(--text);font-family:inherit;width:100%;box-sizing:border-box">
+    </div>
+    <div class="ig" style="margin-bottom:1.25rem"><label>비밀번호 확인</label>
+      <input type="password" id="newPassword2" placeholder="비밀번호 다시 입력"
+        style="padding:10px 12px;border:0.5px solid var(--bd);border-radius:10px;font-size:14px;background:var(--bg);color:var(--text);font-family:inherit;width:100%;box-sizing:border-box">
+    </div>
+    <button type="button" onclick="submitNewPassword()"
+      style="width:100%;padding:13px;background:var(--teal);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;margin-bottom:1rem">
+      비밀번호 변경
+    </button>
+    <div id="newPasswordMsg" style="text-align:center;font-size:12px;min-height:18px;color:var(--coral)"></div>
+  </div>
+</div>
+
 <!-- 온보딩 화면 -->
 <div id="onboardingPage" style="display:none;min-height:100vh;background:var(--bg);padding:1.5rem 1rem;box-sizing:border-box;max-width:420px;margin:0 auto">
   <div style="text-align:center;padding-top:2rem;margin-bottom:2rem">
@@ -515,7 +539,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.67</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.68</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">
@@ -6399,6 +6423,36 @@ let currentUser = null;
 let authMode = 'login';
 
 // Supabase 초기화 (환경변수를 앱에서 가져오기)
+/* ── 비밀번호 재설정 (이메일 링크) ── */
+function showNewPasswordPage() {
+  document.querySelectorAll('#loginPage,#onboardingPage,#app').forEach(el=>el.style.display='none');
+  document.getElementById('newPasswordPage').style.display='block';
+}
+
+async function submitNewPassword() {
+  const pw1 = document.getElementById('newPassword1').value;
+  const pw2 = document.getElementById('newPassword2').value;
+  const msg = document.getElementById('newPasswordMsg');
+  if(!pw1 || pw1.length < 6) { msg.textContent = '비밀번호는 6자 이상이어야 해요'; return; }
+  if(pw1 !== pw2) { msg.textContent = '비밀번호가 일치하지 않아요'; return; }
+  msg.style.color = 'var(--text2)';
+  msg.textContent = '변경 중...';
+  try {
+    const { error } = await sbClient.auth.updateUser({ password: pw1 });
+    if(error) { msg.style.color='var(--coral)'; msg.textContent = '오류: ' + error.message; return; }
+    msg.style.color = 'var(--teal)';
+    msg.textContent = '비밀번호가 변경됐어요! 앱으로 이동합니다...';
+    setTimeout(() => {
+      document.getElementById('newPasswordPage').style.display = 'none';
+      const onboarded = localStorage.getItem('cm_onboarded');
+      if(onboarded) showApp(); else showOnboarding();
+    }, 1500);
+  } catch(e) {
+    msg.style.color = 'var(--coral)';
+    msg.textContent = '오류가 발생했어요. 다시 시도해주세요';
+  }
+}
+
 async function initSupabase() {
   try {
     const res = await fetch('/api/config');
@@ -6406,10 +6460,30 @@ async function initSupabase() {
       const cfg = await res.json();
       if(cfg.supabaseUrl && cfg.supabaseKey) {
         sbClient = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseKey);
+
+        // 비밀번호 재설정 링크 감지 (URL hash에 type=recovery 포함)
+        const hash = window.location.hash;
+        if(hash && hash.includes('type=recovery')) {
+          // Supabase가 hash에서 세션 자동 처리
+          const { data: { session } } = await sbClient.auth.getSession();
+          if(session) {
+            currentUser = session.user;
+            showNewPasswordPage();
+            return;
+          }
+        }
+
+        // onAuthStateChange로 recovery 이벤트 감지
+        sbClient.auth.onAuthStateChange((event, session) => {
+          if(event === 'PASSWORD_RECOVERY') {
+            currentUser = session?.user;
+            showNewPasswordPage();
+          }
+        });
+
         const { data: { session } } = await sbClient.auth.getSession();
         if(session) {
           currentUser = session.user;
-          // 온보딩 완료 여부 확인
           const onboarded = localStorage.getItem('cm_onboarded');
           if(onboarded) {
             showApp();
@@ -6423,7 +6497,6 @@ async function initSupabase() {
       }
     }
   } catch(e) {}
-  // Supabase 없으면 로컬 모드로 실행
   showApp();
 }
 
