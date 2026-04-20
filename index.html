@@ -539,7 +539,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.68</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.69</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">
@@ -6791,9 +6791,23 @@ async function syncFromDB() {
       }
     }
 
-    // 2. 일일 기록 불러오기
+    // 2. 일일 기록 불러오기 (DB 로드 성공 시에만 교체)
+    const localRecordsBackup = JSON.parse(JSON.stringify(state.records || {}));
     state.records = {};
-    await loadDailyRecords();
+    try {
+      await loadDailyRecords();
+    } catch(dbErr) {
+      // DB 로드 실패 시 로컬 데이터 복구
+      console.warn('DB 기록 로드 실패, 로컬 데이터 복구:', dbErr);
+      state.records = localRecordsBackup;
+    }
+    // DB 로드 후 빈 상태면 로컬 데이터로 복구
+    const dbRecordCount = Object.values(state.records).reduce((a,c)=>a+Object.keys(c).length,0);
+    const localRecordCount = Object.values(localRecordsBackup).reduce((a,c)=>a+Object.keys(c).length,0);
+    if(dbRecordCount === 0 && localRecordCount > 0) {
+      console.warn('DB 기록 없음, 로컬 데이터 복구');
+      state.records = localRecordsBackup;
+    }
 
     // 3. 혈액검사 불러오기
     btData = [];
