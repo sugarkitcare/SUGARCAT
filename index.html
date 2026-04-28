@@ -541,7 +541,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.74</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.75</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">
@@ -2154,35 +2154,7 @@ function checkAILimit(type) {
 // 공지 설정 (여기만 수정하면 됨)
 const APP_NOTICE = {
   id: 'event_jakshim_0429',
-  title: '🎉 작심삼일 이벤트 + 업데이트 예고',
-  body: `🏆 시그니쳐바이 X 케어마스터즈
-작심삼일 이벤트!
-
-📅 기간: 4월 29일 ~ 5월 3일
-당첨자 발표: 5월 5일
-
-3일 연속 기록 후
-카페 이벤트 게시판에 인증!
-
-🎁 경품 (8명 추첨)
-💧 지아이캄 1봉 + 오라뮨 1봉 세트
-
-━━━━━━━━━━━━━
-
-🔧 업데이트 예정이에요!
-
-✅ 체중 저장 오류 수정
-✅ 혈액검사 항목 수정 기능
-✅ 혈검 병원별 정상범위 안내
-✅ 기록 수정 기능
-✅ 호흡수 측정 완료 진동
-✅ 사료 즐겨찾기
-✅ 혈당기 날짜 자동 저장
-+ 기타 버그 수정
-
-피드백 모두 반영할게요 🙏
-
-👉 sugarcat.vercel.app`
+  image: 'https://raw.githubusercontent.com/sugarkitcare/SUGARCAT/main/event_challenge.jpg',
 };
 
 function showNotice() {
