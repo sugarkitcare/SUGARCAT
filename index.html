@@ -541,7 +541,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.76</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.77</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">
@@ -2362,7 +2362,7 @@ function renderGraphCardToggles() {
 const BT_NORM_MAP = {
   // 신장
   'BUN':       ['BUN','BUN_f'],
-  'CREA':      ['CREA','CRE_f','Creatinine','sCr'],
+  'CREA':      ['CREA','CRE','CRE_f','Creatinine','sCr','creatinine','Crea','CREAT'],
   'PHOS':      ['PHOS','IP_f','Phosphorus','Phosphorus-Inorganic'],
   'SDMA':      ['SDMA'],
   'BUN/CREA':  ['BUN/CREA','BUN/CRE','BUN/Creatinine','BUN : Creatinine Ratio','혈B/C'],
@@ -2374,6 +2374,7 @@ const BT_NORM_MAP = {
   'GGT':       ['GGT','GGT_f','Gamma Glutamyltransferase','Gamma-Glutamyltransferase','Gamma-Glutamyl Transferase','Gamma-glutamyl transferase'],
   'TBIL':      ['TBIL','T-BIL_f','T-bil','BIL-Total','Bilirubin','Bilirubin-Total'],
   'LDH':       ['LDH','혈LDG'],
+  'FSAA':      ['FSAA','fSAA','SAA','Feline SAA','Serum Amyloid A'],
   // 단백
   'ALB':       ['ALB','ALB_f','Albumin'],
   'GLOB':      ['GLOB','GLOB_f','Globulin'],
@@ -2464,7 +2465,7 @@ const BT_ABBR_CAT = {
   // 신장
   'BUN':'신장','CREA':'신장','SDMA':'신장','PHOS':'신장','BUN/CREA':'신장','MUREA':'신장',
   // 간
-  'ALT':'간','AST':'간','ALKP':'간','GGT':'간','TBIL':'간','LDH':'간',
+  'ALT':'간','AST':'간','ALKP':'간','GGT':'간','TBIL':'간','LDH':'간','FSAA':'간',
   // 단백
   'ALB':'단백','GLOB':'단백','TP':'단백','ALB/GLOB':'단백',
   // 혈당/췌장
@@ -2497,7 +2498,7 @@ const BT_ABBR_CAT = {
 // abbr → 표준 한국어 name 맵
 const BT_ABBR_NAME = {
   'BUN':'혈중요소질소','CREA':'크레아티닌','SDMA':'SDMA','PHOS':'인','BUN/CREA':'BUN/크레아티닌 비율','MUREA':'소변요소',
-  'ALT':'알라닌아미노전이효소','AST':'아스파르테이트아미노전이효소','ALKP':'알칼리인산분해효소','GGT':'감마글루타밀전이효소','TBIL':'총빌리루빈','LDH':'젖산탈수소효소',
+  'ALT':'알라닌아미노전이효소','AST':'아스파르테이트아미노전이효소','ALKP':'알칼리인산분해효소','GGT':'감마글루타밀전이효소','TBIL':'총빌리루빈','LDH':'젖산탈수소효소','FSAA':'혈청 아밀로이드 A',
   'ALB':'알부민','GLOB':'글로불린','TP':'총단백','ALB/GLOB':'알부민/글로불린 비율',
   'GLU':'혈당','FRU':'과당아민','Ketone':'케톤',
   'LIPA':'리파아제','AMYL':'아밀라아제',
@@ -5857,9 +5858,13 @@ function renderBTTrend(){
     const k = stdAbbr;
     if(!map[k])map[k]={name:BT_ABBR_NAME[stdAbbr]||item.name,abbr:k,unit:item.unit,
       category:BT_ABBR_CAT[stdAbbr]||item.category,refLow:item.refLow,refHigh:item.refHigh,points:[]};
-    if(!map[k].points.find(p=>p.date===rec.date)){
+    const existPt = map[k].points.find(p=>p.date===rec.date);
+    if(!existPt){
       map[k].points.push({date:rec.date,value:item.value});
     }
+    // refLow/refHigh가 없으면 새 데이터로 보완
+    if(item.refLow!==null&&map[k].refLow===null) map[k].refLow=item.refLow;
+    if(item.refHigh!==null&&map[k].refHigh===null) map[k].refHigh=item.refHigh;
   }));
 
   // 카테고리 필터 — 항상 현재 데이터 기준으로 갱신
@@ -6902,6 +6907,8 @@ async function loadBloodTests() {
       ts: new Date(r.created_at).getTime()
     }));
     saveBT(); // localStorage에도 캐시
+    // 그래프 탭이면 즉시 갱신
+    try{renderBTTrend();}catch(e){}
   }
 }
 
