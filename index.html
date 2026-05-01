@@ -541,7 +541,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.75</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.76</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">
@@ -5840,8 +5840,8 @@ function renderBTTrend(){
   const empty=document.getElementById('btTrendEmpty');
   if(!wrap||!filter)return;
 
-  // 현재 고양이 기준 데이터만
-  const myData=btData.filter(d=>d.cat===state.activeCat || (!d.cat && btData.length > 0));
+  // 현재 고양이 기준 데이터만 (cat 없는 데이터는 제외)
+  const myData=btData.filter(d=>d.cat===state.activeCat);
   if(!myData.length){
     wrap.innerHTML='';filter.innerHTML='';
     if(empty)empty.style.display='block';
@@ -5849,20 +5849,23 @@ function renderBTTrend(){
   }
   if(empty)empty.style.display='none';
 
-  // 항목별 날짜 데이터 집계
+  // 항목별 날짜 데이터 집계 — 키를 정규화된 abbr 기준으로 통일
   const map={};
   myData.forEach(rec=>(rec.items||[]).forEach(item=>{
-    const k=item.abbr||item.name;
-    if(!map[k])map[k]={name:item.name,abbr:k,unit:item.unit,
-      category:item.category,refLow:item.refLow,refHigh:item.refHigh,points:[]};
+    // 정규화: BT_NORM_REVERSE로 표준 abbr 확보
+    const stdAbbr = BT_NORM_REVERSE[item.abbr] || BT_NORM_REVERSE[item.name] || item.abbr || item.name;
+    const k = stdAbbr;
+    if(!map[k])map[k]={name:BT_ABBR_NAME[stdAbbr]||item.name,abbr:k,unit:item.unit,
+      category:BT_ABBR_CAT[stdAbbr]||item.category,refLow:item.refLow,refHigh:item.refHigh,points:[]};
     if(!map[k].points.find(p=>p.date===rec.date)){
       map[k].points.push({date:rec.date,value:item.value});
     }
   }));
 
-  // 카테고리 필터
+  // 카테고리 필터 — 항상 현재 데이터 기준으로 갱신
   const cats=[...new Set(Object.values(map).map(v=>v.category).filter(Boolean))];
-  if(btTrendAC.size===0) cats.forEach(c=>btTrendAC.add(c));
+  btTrendAC.clear();
+  cats.forEach(c=>btTrendAC.add(c));
 
   filter.innerHTML='';
   cats.forEach(cat=>{
