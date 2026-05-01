@@ -541,7 +541,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.77</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.79</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">
@@ -2361,44 +2361,44 @@ function renderGraphCardToggles() {
 /* ── 혈액검사 항목명 정규화 매핑 ── */
 const BT_NORM_MAP = {
   // 신장
-  'BUN':       ['BUN','BUN_f'],
-  'CREA':      ['CREA','CRE','CRE_f','Creatinine','sCr','creatinine','Crea','CREAT'],
-  'PHOS':      ['PHOS','IP_f','Phosphorus','Phosphorus-Inorganic'],
+  'BUN':       ['BUN','BUN_f','Blood Urea Nitrogen','BUN(혈청)','요소질소','Urea Nitrogen'],
+  'CREA':      ['CREA','CRE','CRE_f','Creatinine','sCr','creatinine','Crea','CREAT','CR','Cr','S-Cr','Creatinine(serum)','CRE(혈청)'],
+  'PHOS':      ['PHOS','IP_f','Phosphorus','Phosphorus-Inorganic','Phosphate','IP','무기인','인(P)','P'],
   'SDMA':      ['SDMA'],
   'BUN/CREA':  ['BUN/CREA','BUN/CRE','BUN/Creatinine','BUN : Creatinine Ratio','혈B/C'],
   'MUREA':     ['MUREA'],
   // 간
-  'ALT':       ['ALT','ALT GPT','Alanine Aminotransferase','GPT','GPTALT_f','Alanine Transaminase','Alanine aminotransferase'],
-  'AST':       ['AST','AST GOT','GOT','GOT/AST_f'],
-  'ALKP':      ['ALKP','ALP','ALP_f','Alkaline Phosphatase','Alkaline phosphatase'],
+  'ALT':       ['ALT','ALT GPT','Alanine Aminotransferase','GPT','GPTALT_f','Alanine Transaminase','Alanine aminotransferase','ALT(GPT)','GPT/ALT','SGPT'],
+  'AST':       ['AST','AST GOT','GOT','GOT/AST_f','AST(GOT)','GOT/AST','SGOT'],
+  'ALKP':      ['ALKP','ALP','ALP_f','Alkaline Phosphatase','Alkaline phosphatase','ALKP_f','Alk Phos','AlkPhos','AP'],
   'GGT':       ['GGT','GGT_f','Gamma Glutamyltransferase','Gamma-Glutamyltransferase','Gamma-Glutamyl Transferase','Gamma-glutamyl transferase'],
-  'TBIL':      ['TBIL','T-BIL_f','T-bil','BIL-Total','Bilirubin','Bilirubin-Total'],
+  'TBIL':      ['TBIL','T-BIL_f','T-bil','BIL-Total','Bilirubin','Bilirubin-Total','T.Bili','T.Bilirubin','TBil','Total Bilirubin','TBILI'],
   'LDH':       ['LDH','혈LDG'],
   'FSAA':      ['FSAA','fSAA','SAA','Feline SAA','Serum Amyloid A'],
   // 단백
-  'ALB':       ['ALB','ALB_f','Albumin'],
-  'GLOB':      ['GLOB','GLOB_f','Globulin'],
-  'TP':        ['TP','TP_f','Total Protein','Protein','Protein-Total'],
+  'ALB':       ['ALB','ALB_f','Albumin','Albumin(혈청)','Alb'],
+  'GLOB':      ['GLOB','GLOB_f','Globulin','Glob','Globulin(혈청)'],
+  'TP':        ['TP','TP_f','Total Protein','Protein','Protein-Total','T.Protein','Total Pro','T-Protein'],
   'ALB/GLOB':  ['ALB/GLOB','ALB/GLOB_f','Albumin : Globulin Ratio','Albumin/Globulin','혈A/G'],
   // 혈당/췌장
-  'GLU':       ['GLU','GLU_f','Glucose'],
+  'GLU':       ['GLU','GLU_f','Glucose','Blood Glucose','BG','Glu','혈당','Glucose(혈청)'],
   'FRU':       ['FRU','Fructosamine'],
-  'LIPA':      ['LIPA','LIP_f','LPL','Lipase','Pancreatic Lipase'],
-  'AMYL':      ['AMYL','AMY','AMY_f'],
+  'LIPA':      ['LIPA','LIP_f','LPL','Lipase','Pancreatic Lipase','DGGR Lipase','fPL','Lip','Lipase(DGGR)'],
+  'AMYL':      ['AMYL','AMY','AMY_f','Amylase','amylase'],
   'Ketone':    ['Ketone','Ketones'],
   // 전해질
-  'Na':        ['Na','Na_f','Na+','cNa+'],
-  'K':         ['K','K_f','K+','cK+'],
+  'Na':        ['Na','Na_f','Na+','cNa+','Sodium','Na(mmol/L)','나트륨'],
+  'K':         ['K','K_f','K+','cK+','Potassium','K(mmol/L)','칼륨'],
   'Cl':        ['Cl','Cl_f','Cl-','cCl-'],
-  'Ca':        ['Ca','Ca_f','Ca++','Ca(7.4)','Ca2+(7.4)','cCa2+','Corrected Calcium','Calcium[Ca++]','iCa-pH7.4','혈C-Ca'],
+  'Ca':        ['Ca','Ca_f','Ca++','Ca(7.4)','Ca2+(7.4)','cCa2+','Corrected Calcium','Calcium[Ca++]','iCa-pH7.4','혈C-Ca','Calcium','Ca(mg/dL)','칼슘','iCa'],
   'Na/K':      ['Na/K','Na/K_f','혈Na/K'],
   'AnGap':     ['AnGap','AnGap(K+)','AnGap(k+)','Anion Gap','Anion gap','Anion gap (K+)'],
   // 혈구
-  'HCT':       ['HCT','Hct','Hematocrit(Hct)','Hematocrit[Hct]'],
-  'HGB':       ['HGB','HGb','Hb','Hemoglobin(Hb)','Hemoglobin[Hb]'],
+  'HCT':       ['HCT','Hct','Hematocrit(Hct)','Hematocrit[Hct]','Ht','PCV','적혈구용적률'],
+  'HGB':       ['HGB','HGb','Hb','Hemoglobin(Hb)','Hemoglobin[Hb]','Hgb','Hemoglobin'],
   'RBC':       ['RBC','Red Blood Cell','Red Blood Cells'],
-  'WBC':       ['WBC','White Blood Cell','White Blood Cells'],
-  'PLT':       ['PLT','Platelet'],
+  'WBC':       ['WBC','White Blood Cell','White Blood Cells','WBC count','백혈구'],
+  'PLT':       ['PLT','Platelet','Platelets','Blood Platelet','혈소판'],
   'MCH':       ['MCH'],
   'MCHC':      ['MCHC'],
   'MCV':       ['MCV'],
@@ -2438,9 +2438,9 @@ const BT_NORM_MAP = {
   // 심장
   'proBNP':    ['proBNP','SNAP feline proBNP','NT-proBNP'],
   // 갑상선
-  'T4':        ['T4','TT4','V-T4'],
+  'T4':        ['T4','TT4','V-T4','Thyroxine','Total T4','T4(Total)'],
   // 지질
-  'CHOL':      ['CHOL','Cholesterol','Cholesterol-Total','T-Chol_f','TCHO'],
+  'CHOL':      ['CHOL','Cholesterol','Cholesterol-Total','T-Chol_f','TCHO','Total Cholesterol','콜레스테롤','T.Cholesterol'],
   'TG':        ['TG','TG_f','Triglyceride'],
   // 뇨검
   'USG':       ['USG'],
@@ -3874,6 +3874,8 @@ document.getElementById('btSave').onclick=async()=>{
   renderBTGraphs();
   renderBTHistoryList();
   renderBTTrend();
+  // DB 저장 후 재동기화 (약간 딜레이)
+  if(sbClient && currentUser) setTimeout(()=>loadBloodTests(), 1000);
 };
 let btGI=[],btAC=new Set();
 function renderBTGraphs(){
@@ -6898,17 +6900,25 @@ async function loadBloodTests() {
   }
   
   if(btRaw && btRaw.length > 0) {
-    btData = btRaw.map(r => ({
+    const dbEntries = btRaw.map(r => ({
       cat: r.cats?.name ||
         Object.keys(state.catProfiles||{}).find(k => (state.catProfiles||{})[k]?.dbId === r.cat_id) ||
         state.activeCat || '',
       date: r.test_date,
-      items: normalizeBTItems(r.items),  // 로드 시 정규화
+      items: normalizeBTItems(r.items),
       ts: new Date(r.created_at).getTime()
     }));
-    saveBT(); // localStorage에도 캐시
-    // 그래프 탭이면 즉시 갱신
+    // 로컬 btData와 병합 (cat+date 기준, DB 우선)
+    const merged = [...dbEntries];
+    for(const local of btData) {
+      const exists = merged.some(d => d.cat === local.cat && d.date === local.date);
+      if(!exists) merged.push(local); // 로컬에만 있는 데이터 보존
+    }
+    btData = merged.sort((a,b) => b.date < a.date ? -1 : 1);
+    saveBT();
     try{renderBTTrend();}catch(e){}
+    try{renderBTGraphs();}catch(e){}
+    try{renderBTHistoryList();}catch(e){}
   }
 }
 
