@@ -210,7 +210,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 .routine-item-del{font-size:14px;color:var(--text3);cursor:pointer;padding:0 3px;background:none;border:none}
 
 /* 토스트 */
-.toast-el{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);color:#fff;padding:9px 18px;border-radius:18px;font-size:12px;z-index:9999;white-space:nowrap;font-family:'Noto Sans KR',sans-serif}
+.toast-el{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);color:#fff;padding:11px 22px;border-radius:20px;font-size:14px;font-weight:500;z-index:9999;white-space:nowrap;font-family:'Noto Sans KR',sans-serif;box-shadow:0 4px 16px rgba(0,0,0,0.25)}
 
 /* CGM 추출 결과 테이블 */
 .cgm-table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:.75rem}
@@ -541,7 +541,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.79</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.80</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">
@@ -629,7 +629,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     <div class="row2">
       <div class="ig"><label>혈당 (mg/dL)</label><input type="number" id="bgVal" placeholder="예: 250"></div>
       <div class="ig"><label>케톤 (mmol/L)</label><input type="number" id="ketVal" placeholder="예: 0.3" step="0.1"></div>
-      <div class="ig"><label>날짜</label><input type="date" id="bgDate"></div>
+      <div class="ig"><label>날짜</label><input type="date" id="bgDate" data-keep-date="1"></div>
       <div class="ig"><label>측정 시각</label><input type="time" id="bgTime"></div>
       <div class="ig"><label>식전/식후</label><select id="bgType"><option>식전</option><option>식후2h</option><option>식후4h</option><option>기타</option></select></div>
       <div class="ig full"><label>메모</label><input type="text" id="bgNote" placeholder="식욕, 활동량, 특이사항"></div>
@@ -1452,7 +1452,7 @@ function showStat(id,type,msg){
 function hideStat(id){document.getElementById(id).style.display='none'}
 
 ['bgTime','wtTime','insTime','foodTime'].forEach(id=>document.getElementById(id).value=nowTime());
-['bgDate','wtDate','insDate','foodDate','routineDate','rrDate','waterDate'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=today();});
+['bgDate','wtDate','insDate','foodDate','routineDate','rrDate','waterDate'].forEach(id=>{const el=document.getElementById(id);if(el&&!el.dataset.keepDate)el.value=today();});
 document.getElementById('btDate').value=today();
 
 /* 고양이 바 */
@@ -1885,12 +1885,15 @@ function applyCardOrder(cat) {
   // 표시 카드만 순서 재배치
   const visibleCards = order.filter(k=>!hidden.includes(k)).map(k=>anchors[k]).filter(Boolean);
   if(!visibleCards.length) return;
-  let refNode = visibleCards[0];
-  const parent = refNode.parentNode;
+  const parent = visibleCards[0].parentNode;
   if(!parent) return;
+  // 카드들을 순서대로 parent 끝에 이동 (형제 노드 중 카드가 아닌 것 위치 유지)
+  // 기준점: 첫 번째 카드의 현재 위치 앞에 삽입
+  const anchor = visibleCards.reduce((earliest, card) => {
+    return (!earliest || Array.from(parent.children).indexOf(card) < Array.from(parent.children).indexOf(earliest)) ? card : earliest;
+  }, null);
   visibleCards.forEach(card => {
-    parent.insertBefore(card, refNode.nextSibling);
-    refNode = card;
+    parent.insertBefore(card, anchor);
   });
 }
 
@@ -2152,10 +2155,7 @@ function checkAILimit(type) {
 
 /* ── 앱 공지 팝업 ── */
 // 공지 설정 (여기만 수정하면 됨)
-const APP_NOTICE = {
-  id: 'event_jakshim_0429',
-  image: 'https://raw.githubusercontent.com/sugarkitcare/SUGARCAT/main/event_challenge.jpg',
-};
+// 이벤트 팝업 없음
 
 function showNotice() {
   const notice = APP_NOTICE;
@@ -2732,7 +2732,7 @@ function makeFeedback(level, icon, title, detail) {
 }
 
 function renderDailySummary() {
-  try{renderChallengeBar();}catch(e){}
+  // 이벤트 종료
   const el = document.getElementById('dailySummaryList');
   const feedbackEl = document.getElementById('dailyFeedbackList');
   const waterBarEl = document.getElementById('waterGoalBar');
@@ -2912,10 +2912,10 @@ function renderDailySummary() {
 
     // 안정 피드백
     if(!feedbacks.some(f=>f.priority<=3)) {
-      const rrAvg = rr3sleep.length ? Math.round(rr3sleep.reduce((a,b)=>a+b,0)/rr3sleep.length) : null;
+      const rrAvg = rr3sleep.length ? Math.min(...rr3sleep) : null; // ACVIM: 최솟값 기준
       if(rrAvg && rrAvg < 30) {
         feedbacks.push({priority:10, html: makeFeedback('ok','✅','호흡수 안정적이에요',
-          `수면 중 평균 ${rrAvg}회/분 · 정상 범위예요 🫁`)});
+          `수면 중 최저 ${rrAvg}회/분 · 정상 범위예요 🫁`)});
       }
     }
   }
@@ -3120,8 +3120,9 @@ document.getElementById('wtVal').oninput=function(){
 document.getElementById('saveBg').onclick=()=>{
   const bg=parseFloat(document.getElementById('bgVal').value),ket=parseFloat(document.getElementById('ketVal').value);
   if(isNaN(bg)&&isNaN(ket)){toast('혈당 또는 케톤을 입력해주세요','#D85A30');return}
-  getRec(state.activeCat,today()).bg.push({bg:isNaN(bg)?'':bg,ketone:isNaN(ket)?'':ket,time:document.getElementById('bgTime').value,type:document.getElementById('bgType').value,note:document.getElementById('bgNote').value,ts:Date.now()});
-  const bgD=document.getElementById('bgDate').value||today();saveS(bgD);updateMetrics();updateInsulinNext();
+  const bgD=document.getElementById('bgDate').value||today();
+  getRec(state.activeCat,bgD).bg.push({bg:isNaN(bg)?'':bg,ketone:isNaN(ket)?'':ket,time:document.getElementById('bgTime').value,type:document.getElementById('bgType').value,note:document.getElementById('bgNote').value,ts:Date.now()});
+  saveS(bgD);updateMetrics();updateInsulinNext();
   checkKetoneAlert(ket, bg);
   ['bgVal','ketVal','bgNote'].forEach(id=>document.getElementById(id).value='');toast('혈당·케톤 저장 완료!');renderDailySummary();
 };
@@ -3519,8 +3520,8 @@ function renderGraphs(){
      yMin:0,yMax:60,
      multiDataset: true,
      annotations:[{value:40,color:'rgba(216,90,48,0.5)',label:'40 위험'},{value:30,color:'rgba(186,117,23,0.35)',label:'30 주의'}],
-     fn:d=>{const r=getRec(state.activeCat,d);const arr=(r.rr||[]).map(x=>x.rr).filter(x=>x>0);return arr.length?Math.round(arr.reduce((a,b)=>a+b)/arr.length):null},
-     fnByState:(d,st)=>{const r=getRec(state.activeCat,d);const arr=(r.rr||[]).filter(x=>x.state===st).map(x=>x.rr).filter(x=>x>0);return arr.length?Math.round(arr.reduce((a,b)=>a+b)/arr.length):null}},
+     fn:d=>{const r=getRec(state.activeCat,d);const arr=(r.rr||[]).map(x=>x.rr).filter(x=>x>0);return arr.length?Math.min(...arr):null}, // ACVIM: 수면중 최솟값 기준
+     fnByState:(d,st)=>{const r=getRec(state.activeCat,d);const arr=(r.rr||[]).filter(x=>x.state===st).map(x=>x.rr).filter(x=>x>0);return arr.length?Math.min(...arr):null}},
     {k:'water',label:`음수량 (ml) — ${periodLabel}`,color:'#185FA5',type:'bar',
      fn:d=>{const r=getRec(state.activeCat,d);const arr=r.water||[];return arr.length?arr.reduce((a,b)=>a+b.ml,0):null}},
   ];
@@ -6587,7 +6588,7 @@ function showApp() {
   if(currentUser) try{loadCGMForCat(state.activeCat);}catch(e){}
   if(currentUser) try{loadCardSettingsForCat(state.activeCat);}catch(e){}
   // 공지 팝업 (로그인 후 표시)
-  setTimeout(()=>{ try{showNotice();}catch(e){} }, 800);
+  // 이벤트 없음
 }
 
 function showOnboarding() {
