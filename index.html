@@ -541,7 +541,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.81</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.82</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">
@@ -5033,7 +5033,7 @@ function renderWaterLog() {
       waterLogEl.innerHTML = '';
     } else {
       waterLogEl.innerHTML = waterArr.map((w, i) =>
-        `<span style="margin-right:8px;display:inline-flex;align-items:center;gap:4px">${w.time} +${w.ml}ml`
+        `<span data-widx="${i}" style="margin-right:4px;margin-bottom:4px;display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap">${w.time} +${w.ml}ml`
         + ` <span onclick="editWater(${i},'${date}')" style="color:var(--teal);cursor:pointer;font-size:10px">✎</span>`
         + ` <span onclick="deleteWater(${i},'${date}')" style="color:var(--coral);cursor:pointer;font-size:10px">✕</span></span>`
       ).join('');
@@ -5051,7 +5051,7 @@ function renderWaterLog() {
     } else {
       urineLogEl.innerHTML = urineArr.map((u, i) => {
         const color = u.amount==='혈뇨' ? 'var(--coral)' : u.amount==='핍뇨'||u.amount==='소량' ? 'var(--amber)' : 'var(--teal)';
-        return `<span style="margin-right:8px;color:${color};display:inline-flex;align-items:center;gap:4px">${u.time} ${u.amount}`
+        return `<span data-uidx="${i}" style="margin-right:4px;margin-bottom:4px;color:${color};display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap">${u.time} ${u.amount}`
           + ` <span onclick="editUrine(${i},'${date}')" style="color:var(--teal);cursor:pointer;font-size:10px">✎</span>`
           + ` <span onclick="deleteUrine(${i},'${date}')" style="color:var(--coral);cursor:pointer;font-size:10px">✕</span></span>`;
       }).join('');
@@ -5072,36 +5072,66 @@ function renderWaterLog() {
 }
 
 function editWater(idx, date) {
+  const logEl = document.getElementById('waterLog');
+  if(!logEl) return;
+  const target = logEl.querySelector(`span[data-widx="${idx}"]`);
+  if(!target) return;
   const rec = getRec(state.activeCat, date);
   const w = rec.water && rec.water[idx];
   if(!w) return;
-  const newMl = prompt(`음수량 수정 (현재: ${w.ml}ml)`, w.ml);
-  if(newMl === null) return;
-  const newTime = prompt(`시간 수정 (현재: ${w.time})`, w.time);
-  if(newTime === null) return;
-  const ml = parseInt(newMl);
-  if(isNaN(ml) || ml <= 0) { toast('올바른 수치를 입력해주세요', '#D85A30'); return; }
-  rec.water[idx].ml = ml;
-  rec.water[idx].time = newTime || w.time;
-  saveS(date); renderWaterLog();
-  toast('💧 음수량이 수정됐어요', '#1D9E75');
+  if(target.querySelector('input')) { renderWaterLog(); return; }
+  target.innerHTML =
+    `<input type="number" id="weml${idx}" value="${w.ml}" min="1"
+      style="width:58px;padding:3px 6px;border:1px solid var(--teal);border-radius:6px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit">ml `
+    + `<input type="time" id="wetime${idx}" value="${w.time}"
+      style="padding:3px 6px;border:1px solid var(--teal);border-radius:6px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit"> `
+    + `<span onclick="saveEditWater(${idx},'${date}')" style="color:var(--teal);cursor:pointer;font-size:11px;font-weight:600">저장</span> `
+    + `<span onclick="renderWaterLog()" style="color:var(--text3);cursor:pointer;font-size:11px">취소</span>`;
+}
+
+function saveEditWater(idx, date) {
+  const ml = parseInt(document.getElementById('weml'+idx)?.value);
+  const time = document.getElementById('wetime'+idx)?.value;
+  if(!ml || ml <= 0) { toast('올바른 수치를 입력해주세요', '#D85A30'); return; }
+  const rec = getRec(state.activeCat, date);
+  if(rec.water && rec.water[idx]) {
+    rec.water[idx].ml = ml;
+    if(time) rec.water[idx].time = time;
+    saveS(date); renderWaterLog();
+    toast('💧 음수량이 수정됐어요', '#1D9E75');
+  }
 }
 
 function editUrine(idx, date) {
+  const logEl = document.getElementById('urineLog');
+  if(!logEl) return;
+  const target = logEl.querySelector(`span[data-uidx="${idx}"]`);
+  if(!target) return;
   const rec = getRec(state.activeCat, date);
   const u = rec.urine && rec.urine[idx];
   if(!u) return;
-  const amounts = ['소량','정상','다량','혈뇨','핍뇨'];
-  const newAmount = prompt(`소변 상태 수정 (현재: ${u.amount})
-선택: 소량 / 정상 / 다량 / 혈뇨 / 핍뇨`, u.amount);
-  if(newAmount === null) return;
-  const newTime = prompt(`시간 수정 (현재: ${u.time})`, u.time);
-  if(newTime === null) return;
-  if(!amounts.includes(newAmount.trim())) { toast('소량/정상/다량/혈뇨/핍뇨 중 입력해주세요', '#D85A30'); return; }
-  rec.urine[idx].amount = newAmount.trim();
-  rec.urine[idx].time = newTime || u.time;
-  saveS(date); renderWaterLog();
-  toast('🚽 소변 기록이 수정됐어요', '#1D9E75');
+  if(target.querySelector('select')) { renderWaterLog(); return; }
+  const opts = ['소량','정상','다량','혈뇨','핍뇨']
+    .map(a=>`<option value="${a}"${a===u.amount?' selected':''}>${a}</option>`).join('');
+  target.innerHTML =
+    `<select id="ueamt${idx}"
+      style="padding:3px 6px;border:1px solid var(--teal);border-radius:6px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit">${opts}</select> `
+    + `<input type="time" id="uetime${idx}" value="${u.time}"
+      style="padding:3px 6px;border:1px solid var(--teal);border-radius:6px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit"> `
+    + `<span onclick="saveEditUrine(${idx},'${date}')" style="color:var(--teal);cursor:pointer;font-size:11px;font-weight:600">저장</span> `
+    + `<span onclick="renderWaterLog()" style="color:var(--text3);cursor:pointer;font-size:11px">취소</span>`;
+}
+
+function saveEditUrine(idx, date) {
+  const amount = document.getElementById('ueamt'+idx)?.value;
+  const time = document.getElementById('uetime'+idx)?.value;
+  const rec = getRec(state.activeCat, date);
+  if(rec.urine && rec.urine[idx]) {
+    if(amount) rec.urine[idx].amount = amount;
+    if(time) rec.urine[idx].time = time;
+    saveS(date); renderWaterLog();
+    toast('🚽 소변 기록이 수정됐어요', '#1D9E75');
+  }
 }
 
 function deleteWater(idx, date) {
@@ -5967,7 +5997,7 @@ function renderCgmHistory(){
   const gc=isDark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.05)';
   const tc=isDark?'#B4B2A9':'#888780';
   const sorted=[...cgmData].sort((a,b)=>a.date<b.date?-1:1);
-  const tLabels=sorted.map(d=>d.date.slice(5));
+  const tLabels=sorted.map(d=>(d.date||'').length>=7?d.date.slice(5):d.date||'?');
   const tAvgs=sorted.map(d=>d.avg||Math.round((d.readings||[]).reduce((a,r)=>a+r.value,0)/Math.max((d.readings||[]).length,1)));
   const tMins=sorted.map(d=>d.min||Math.min(...(d.readings||[]).map(r=>r.value)));
   const tMaxs=sorted.map(d=>d.max||Math.max(...(d.readings||[]).map(r=>r.value)));
@@ -5989,7 +6019,7 @@ function renderCgmHistory(){
   cgmData.slice(0,10).forEach(d=>{
     const avg=d.avg||Math.round((d.readings||[]).reduce((a,r)=>a+r.value,0)/Math.max((d.readings||[]).length,1));
     const color=avg<=200?'#1D9E75':avg<=300?'#BA7517':'#D85A30';
-    const dt=d.date;
+    const dt=d.date||(d.readings&&d.readings[0]?.time?.slice(0,10))||'날짜 없음';
     const item=document.createElement('div');item.className='h-item';
     item.innerHTML=`<div class="h-dot" style="background:${color}"></div>
       <div class="h-name">${d.cat} · ${dt}
