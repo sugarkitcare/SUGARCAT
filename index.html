@@ -541,7 +541,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.82</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.84</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">
@@ -810,6 +810,25 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
       </div>
       <div id="urineTotal" style="font-size:13px;color:var(--text);font-weight:600;margin-bottom:.3rem"></div>
       <div id="urineLog" style="font-size:11px;color:var(--text3);line-height:1.8"></div>
+    </div>
+
+    <!-- 대변 체크 -->
+    <div style="border-top:0.5px solid var(--bd);padding-top:.75rem;margin-top:.75rem">
+      <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:.4rem">💩 대변 체크</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.5rem">
+        <button type="button" onclick="addPoop('정상')"
+          style="padding:7px 14px;border:0.5px solid var(--teal);border-radius:9px;font-size:12px;background:var(--teal-l);color:var(--teal);cursor:pointer;font-family:inherit;font-weight:600">정상</button>
+        <button type="button" onclick="addPoop('무름')"
+          style="padding:7px 14px;border:0.5px solid var(--amber);border-radius:9px;font-size:12px;background:var(--amber-l);color:var(--amber-d);cursor:pointer;font-family:inherit">무름</button>
+        <button type="button" onclick="addPoop('설사')"
+          style="padding:7px 14px;border:0.5px solid var(--coral);border-radius:9px;font-size:12px;background:var(--coral-l);color:var(--coral);cursor:pointer;font-family:inherit;font-weight:600">⚠️ 설사</button>
+        <button type="button" onclick="addPoop('혈변')"
+          style="padding:7px 14px;border:0.5px solid var(--coral);border-radius:9px;font-size:12px;background:var(--coral-l);color:var(--coral);cursor:pointer;font-family:inherit;font-weight:600">🔴 혈변</button>
+        <button type="button" onclick="addPoop('무변')"
+          style="padding:7px 14px;border:0.5px solid var(--amber);border-radius:9px;font-size:12px;background:var(--amber-l);color:var(--amber-d);cursor:pointer;font-family:inherit">무변</button>
+      </div>
+      <div id="poopTotal" style="font-size:13px;color:var(--text);font-weight:600;margin-bottom:.3rem"></div>
+      <div id="poopLog" style="font-size:11px;color:var(--text3);line-height:1.8"></div>
     </div>
 
     <!-- 비상이뇨제 알림 -->
@@ -1635,6 +1654,25 @@ function rrFinish() {
   saveS(rrDate);
   const stateEmoji = rrState==='sleep'?'😴':rrState==='rest'?'🐱':'🏃';
   toast(`${stateEmoji} ${rrStateLabel[rrState]} 호흡수 ${rr}회/분 저장 완료!`, rr>=40?'#D85A30':rr>=30?'#BA7517':'#1D9E75');
+  // 측정 완료 피드백 - 진동(안드로이드) + 소리(iOS 포함)
+  try {
+    if(navigator.vibrate) {
+      if(rr >= 40) navigator.vibrate([200,100,200,100,200]); // 위험: 3번 강진동
+      else if(rr >= 30) navigator.vibrate([150,80,150]);      // 주의: 2번
+      else navigator.vibrate(80);                             // 정상: 1번 짧게
+    }
+  } catch(e) {}
+  try {
+    const ctx = new (window.AudioContext||window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.frequency.value = rr>=40 ? 880 : rr>=30 ? 660 : 440;
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.4);
+  } catch(e) {}
   renderDailySummary();
 }
 
@@ -3463,10 +3501,13 @@ function renderHistory(){
     el.style.cssText='display:flex;align-items:center;gap:6px;position:relative';
     const dotEl=document.createElement('div');dotEl.className='log-dot '+dot;
     const txtEl=document.createElement('div');txtEl.className='log-text';txtEl.style.flex='1';txtEl.textContent=txt;
+    const editEl=document.createElement('button');editEl.type='button';editEl.textContent='✎';
+    editEl.style.cssText='background:none;border:none;color:var(--teal);cursor:pointer;padding:2px 6px;font-size:13px;flex-shrink:0;opacity:0.8';
+    editEl.addEventListener('click',(e)=>{e.stopPropagation();editLogItem(item.type,item.ts,histDate);});
     const delEl=document.createElement('button');delEl.type='button';delEl.textContent='🗑️';
     delEl.style.cssText='background:none;border:none;color:var(--text3);cursor:pointer;padding:2px 6px;font-size:13px;flex-shrink:0;opacity:0.6';
     delEl.addEventListener('click',(e)=>{e.stopPropagation();deleteLogItem(item.type,item.ts);});
-    el.appendChild(dotEl);el.appendChild(txtEl);el.appendChild(delEl);
+    el.appendChild(dotEl);el.appendChild(txtEl);el.appendChild(editEl);el.appendChild(delEl);
     list.appendChild(el);
   });
 }
@@ -5017,6 +5058,58 @@ function addUrine(amount) {
   try{renderDailySummary();}catch(e){}
 }
 
+function addPoop(type) {
+  const dateEl = document.getElementById('waterDate');
+  const date = dateEl?.value || today();
+  const rec = getRec(state.activeCat, date);
+  if(!rec.poop) rec.poop = [];
+  rec.poop.push({type, time: nowTime(), ts: Date.now()});
+  saveS(date);
+  renderWaterLog();
+  if(type==='혈변') toast('🔴 혈변 기록됨 — 즉시 수의사 상담을 권장해요', '#D85A30');
+  else if(type==='설사') toast('⚠️ 설사 기록됨 — 지속되면 수의사에게 연락하세요', '#BA7517');
+  else if(type==='무변') toast('💩 무변 기록됐어요 — 음수량을 확인해 주세요', '#BA7517');
+  else toast('💩 대변 기록됐어요 (' + type + ')', '#1D9E75');
+  try{renderDailySummary();}catch(e){}
+}
+
+function editPoop(idx, date) {
+  const logEl = document.getElementById('poopLog');
+  if(!logEl) return;
+  const target = logEl.querySelector(`span[data-pidx="${idx}"]`);
+  if(!target) return;
+  const rec = getRec(state.activeCat, date);
+  const p = rec.poop && rec.poop[idx];
+  if(!p) return;
+  if(target.querySelector('select')) { renderWaterLog(); return; }
+  const opts = ['정상','무름','설사','혈변','무변']
+    .map(t=>`<option value="${t}"${t===p.type?' selected':''}>${t}</option>`).join('');
+  target.innerHTML =
+    `<select id="petyp${idx}"
+      style="padding:3px 6px;border:1px solid var(--teal);border-radius:6px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit">${opts}</select>`
+    + ` <input type="time" id="petim${idx}" value="${p.time||''}"
+      style="padding:3px 6px;border:1px solid var(--teal);border-radius:6px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit">`
+    + ` <span onclick="saveEditPoop(${idx},'${date}')" style="color:var(--teal);cursor:pointer;font-size:11px;font-weight:600">저장</span>`
+    + ` <span onclick="renderWaterLog()" style="color:var(--text3);cursor:pointer;font-size:11px">취소</span>`;
+}
+
+function saveEditPoop(idx, date) {
+  const type = document.getElementById('petyp'+idx)?.value;
+  const time = document.getElementById('petim'+idx)?.value;
+  const rec = getRec(state.activeCat, date);
+  if(rec.poop && rec.poop[idx]) {
+    if(type) rec.poop[idx].type = type;
+    if(time) rec.poop[idx].time = time;
+    saveS(date); renderWaterLog();
+    toast('💩 대변 기록이 수정됐어요', '#1D9E75');
+  }
+}
+
+function deletePoop(idx, date) {
+  const rec = getRec(state.activeCat, date);
+  if(rec.poop) { rec.poop.splice(idx, 1); saveS(date); renderWaterLog(); }
+}
+
 function renderWaterLog() {
   const dateEl = document.getElementById('waterDate');
   const date = dateEl?.value || today();
@@ -5058,13 +5151,28 @@ function renderWaterLog() {
     }
   }
 
+  // 대변
+  const poopArr = rec.poop || [];
+  const poopTotalEl = document.getElementById('poopTotal');
+  const poopLogEl = document.getElementById('poopLog');
+  if(poopTotalEl) poopTotalEl.textContent = poopArr.length > 0 ? '오늘 총 ' + poopArr.length + '회' : '아직 기록 없어요';
+  if(poopLogEl) {
+    poopLogEl.innerHTML = poopArr.length === 0 ? '' : poopArr.map((p, i) => {
+      const color = p.type==='혈변'||p.type==='설사' ? 'var(--coral)' : p.type==='무름'||p.type==='무변' ? 'var(--amber-d)' : 'var(--teal)';
+      return `<span data-pidx="${i}" style="margin-right:4px;margin-bottom:4px;color:${color};display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap">${p.time} ${p.type}`
+        + ` <span onclick="editPoop(${i},'${date}')" style="color:var(--teal);cursor:pointer;font-size:10px">✎</span>`
+        + ` <span onclick="deletePoop(${i},'${date}')" style="color:var(--coral);cursor:pointer;font-size:10px">✕</span></span>`;
+    }).join('');
+  }
+
   // 수분 요약 업데이트
   const summaryEl = document.getElementById('waterSummary');
   if(summaryEl) {
     let txt = '';
     if(totalMl > 0) txt += '음수 ' + totalMl + 'ml';
     if(urineArr.length > 0) txt += (txt?' · ':'') + '소변 ' + urineArr.length + '회';
-    summaryEl.textContent = txt || '음수량 · 소변 체크';
+    if(poopArr.length > 0) txt += (txt?' · ':'') + '대변 ' + poopArr.length + '회';
+    summaryEl.textContent = txt || '음수량 · 소변 · 대변 체크';
   }
 
   // 비상이뇨제 알림
@@ -6253,6 +6361,111 @@ function renderBTTrend(){
 
 
 /* ── 기록 개별 삭제 ── */
+function editLogItem(type, ts, date) {
+  const rec = getRec(state.activeCat, date);
+  let item, label;
+  if(type==='bg')     { item=rec.bg.find(r=>r.ts===ts); label='혈당·케톤'; }
+  else if(type==='ins') { item=rec.ins.find(r=>r.ts===ts); label='인슐린'; }
+  else if(type==='wt')  { item=(rec.weights||[]).find(r=>r.ts===ts); label='체중'; }
+  else if(type==='meal'){ item=rec.meals.find(r=>r.ts===ts); label='식사'; }
+  else if(type==='rr')  { item=(rec.rr||[]).find(r=>r.ts===ts); label='호흡수'; }
+  if(!item) return;
+
+  // 해당 항목의 log-item 찾기
+  const logList = document.getElementById('logList');
+  const all = [];
+  rec.bg.forEach(r=>all.push({ts:r.ts,type:'bg'}));
+  rec.ins.forEach(r=>all.push({ts:r.ts,type:'ins'}));
+  rec.meals.forEach(r=>all.push({ts:r.ts,type:'meal'}));
+  (rec.weights||[]).forEach(r=>all.push({ts:r.ts,type:'wt'}));
+  (rec.routines||[]).forEach(r=>all.push({ts:r.ts,type:'routine'}));
+  (rec.rr||[]).forEach(r=>all.push({ts:r.ts,type:'rr'}));
+  all.sort((a,b)=>b.ts-a.ts);
+  const idx = all.findIndex(x=>x.ts===ts&&x.type===type);
+  const logItems = logList.querySelectorAll('.log-item');
+  const targetEl = logItems[idx];
+  if(!targetEl) return;
+
+  let fields = '';
+  if(type==='bg') {
+    fields = `<label style="font-size:11px;color:var(--text3)">혈당</label>
+      <input type="number" id="ei_bg" value="${item.bg||''}" style="width:75px;padding:5px 8px;border:1px solid var(--teal);border-radius:7px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit">
+      <label style="font-size:11px;color:var(--text3)">케톤</label>
+      <input type="number" id="ei_ket" value="${item.ketone||''}" step="0.1" style="width:65px;padding:5px 8px;border:1px solid var(--teal);border-radius:7px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit">
+      <label style="font-size:11px;color:var(--text3)">시간</label>
+      <input type="time" id="ei_time" value="${item.time||''}" style="padding:5px 8px;border:1px solid var(--teal);border-radius:7px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit">`;
+  } else if(type==='ins') {
+    fields = `<label style="font-size:11px;color:var(--text3)">용량(U)</label>
+      <input type="number" id="ei_dose" value="${item.dose||''}" step="0.5" style="width:65px;padding:5px 8px;border:1px solid var(--teal);border-radius:7px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit">
+      <label style="font-size:11px;color:var(--text3)">시간</label>
+      <input type="time" id="ei_time" value="${item.time||''}" style="padding:5px 8px;border:1px solid var(--teal);border-radius:7px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit">`;
+  } else if(type==='wt') {
+    fields = `<label style="font-size:11px;color:var(--text3)">체중(kg)</label>
+      <input type="number" id="ei_wt" value="${item.weight||''}" step="0.01" style="width:75px;padding:5px 8px;border:1px solid var(--teal);border-radius:7px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit">
+      <label style="font-size:11px;color:var(--text3)">시간</label>
+      <input type="time" id="ei_time" value="${item.time||''}" style="padding:5px 8px;border:1px solid var(--teal);border-radius:7px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit">`;
+  } else if(type==='meal') {
+    fields = `<label style="font-size:11px;color:var(--text3)">사료명</label>
+      <input type="text" id="ei_name" value="${item.name||''}" style="width:90px;padding:5px 8px;border:1px solid var(--teal);border-radius:7px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit">
+      <label style="font-size:11px;color:var(--text3)">급여량(g)</label>
+      <input type="number" id="ei_amt" value="${item.amt||''}" style="width:60px;padding:5px 8px;border:1px solid var(--teal);border-radius:7px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit">
+      <label style="font-size:11px;color:var(--text3)">시간</label>
+      <input type="time" id="ei_time" value="${item.time||''}" style="padding:5px 8px;border:1px solid var(--teal);border-radius:7px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit">`;
+  } else if(type==='rr') {
+    fields = `<label style="font-size:11px;color:var(--text3)">호흡수(회/분)</label>
+      <input type="number" id="ei_rr" value="${item.rr||''}" style="width:65px;padding:5px 8px;border:1px solid var(--teal);border-radius:7px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit">
+      <label style="font-size:11px;color:var(--text3)">시간</label>
+      <input type="time" id="ei_time" value="${item.time||''}" style="padding:5px 8px;border:1px solid var(--teal);border-radius:7px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit">`;
+  }
+
+  targetEl.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;width:100%;padding:4px 0">
+    <span style="font-size:11px;color:var(--teal);font-weight:600">[${label} 수정]</span>
+    ${fields}
+    <button type="button" onclick="saveEditLog('${type}',${ts},'${date}')"
+      style="padding:5px 12px;background:var(--teal);color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">저장</button>
+    <button type="button" onclick="renderHistory()"
+      style="padding:5px 10px;background:none;border:0.5px solid var(--bd);border-radius:7px;font-size:12px;color:var(--text3);cursor:pointer;font-family:inherit">취소</button>
+  </div>`;
+}
+
+function saveEditLog(type, ts, date) {
+  const rec = getRec(state.activeCat, date);
+  const time = document.getElementById('ei_time')?.value;
+  if(type==='bg') {
+    const item = rec.bg.find(r=>r.ts===ts); if(!item) return;
+    const bg = document.getElementById('ei_bg')?.value;
+    const ket = document.getElementById('ei_ket')?.value;
+    if(bg !== '') item.bg = bg;
+    if(ket !== '') item.ketone = ket;
+    if(time) item.time = time;
+  } else if(type==='ins') {
+    const item = rec.ins.find(r=>r.ts===ts); if(!item) return;
+    const dose = document.getElementById('ei_dose')?.value;
+    if(dose) item.dose = parseFloat(dose);
+    if(time) item.time = time;
+  } else if(type==='wt') {
+    const item = (rec.weights||[]).find(r=>r.ts===ts); if(!item) return;
+    const wt = document.getElementById('ei_wt')?.value;
+    if(wt) item.weight = parseFloat(wt);
+    if(time) item.time = time;
+  } else if(type==='meal') {
+    const item = rec.meals.find(r=>r.ts===ts); if(!item) return;
+    const name = document.getElementById('ei_name')?.value;
+    const amt = document.getElementById('ei_amt')?.value;
+    if(name) item.name = name;
+    if(amt) item.amt = parseFloat(amt);
+    if(time) item.time = time;
+  } else if(type==='rr') {
+    const item = (rec.rr||[]).find(r=>r.ts===ts); if(!item) return;
+    const rr = document.getElementById('ei_rr')?.value;
+    if(rr) item.rr = parseInt(rr);
+    if(time) item.time = time;
+  }
+  saveS(date);
+  renderHistory();
+  toast('수정됐어요 ✅', '#1D9E75');
+}
+
 function deleteLogItem(type, ts) {
   if(!confirm('이 기록을 삭제할까요?')) return;
   const histDate=document.getElementById('histDatePicker')?.value||today();
