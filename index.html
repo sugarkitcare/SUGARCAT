@@ -541,7 +541,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.84</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.85</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">
@@ -3482,8 +3482,11 @@ function renderHistory(){
   rec.ins.forEach(r=>all.push({ts:r.ts,type:'ins',d:r}));
   rec.meals.forEach(r=>all.push({ts:r.ts,type:'meal',d:r}));
   (rec.weights||[]).forEach(r=>all.push({ts:r.ts,type:'wt',d:r}));
-    (rec.routines||[]).forEach(r=>all.push({ts:r.ts,type:'routine',d:r}));
+  (rec.routines||[]).forEach(r=>all.push({ts:r.ts,type:'routine',d:r}));
   (rec.rr||[]).forEach(r=>all.push({ts:r.ts,type:'rr',d:r}));
+  (rec.water||[]).forEach((r,i)=>all.push({ts:r.ts,type:'water',d:r,idx:i}));
+  (rec.urine||[]).forEach((r,i)=>all.push({ts:r.ts,type:'urine',d:r,idx:i}));
+  (rec.poop||[]).forEach((r,i)=>all.push({ts:r.ts,type:'poop',d:r,idx:i}));
   all.sort((a,b)=>b.ts-a.ts);
   if(!all.length){list.innerHTML='<div class="empty">오늘 기록이 없어요</div>';return}
   list.innerHTML='';
@@ -3495,19 +3498,35 @@ function renderHistory(){
     else if(item.type==='wt'){dot='ld-wt';txt=`[체중] ${d.time} | ${d.weight}kg${d.note?' · '+d.note:''}`;}
     else if(item.type==='routine'){dot='ld-m';txt=`[투약·루틴] ${d.time} | ${d.items.join(', ')}${d.memo?' · '+d.memo:''}`;}
     else if(item.type==='rr'){dot=d.rr>=40?'ld-d':d.rr>=30?'ld-w':'ld-n';const sLbl=d.stateLabel||'';txt=`[호흡수] ${d.time} | ${d.rr}회/분 ${sLbl?'('+sLbl+')':''}${d.rr>=40?' ⚠️위험':d.rr>=30?' △주의':''}`;}
+    else if(item.type==='water'){dot='ld-n';txt=`[음수] ${d.time} | ${d.ml}ml`;}
+    else if(item.type==='urine'){dot=d.amount==='혈뇨'?'ld-d':d.amount==='핍뇨'||d.amount==='소량'?'ld-w':'ld-n';txt=`[소변] ${d.time} | ${d.amount}`;}
+    else if(item.type==='poop'){dot=d.type==='혈변'||d.type==='설사'?'ld-d':d.type==='무름'||d.type==='무변'?'ld-w':'ld-n';txt=`[대변] ${d.time} | ${d.type}`;}
 
     const el=document.createElement('div');
     el.className='log-item';
     el.style.cssText='display:flex;align-items:center;gap:6px;position:relative';
     const dotEl=document.createElement('div');dotEl.className='log-dot '+dot;
     const txtEl=document.createElement('div');txtEl.className='log-text';txtEl.style.flex='1';txtEl.textContent=txt;
-    const editEl=document.createElement('button');editEl.type='button';editEl.textContent='✎';
-    editEl.style.cssText='background:none;border:none;color:var(--teal);cursor:pointer;padding:2px 6px;font-size:13px;flex-shrink:0;opacity:0.8';
-    editEl.addEventListener('click',(e)=>{e.stopPropagation();editLogItem(item.type,item.ts,histDate);});
+    // 수분항목은 수분밸런스탭에서 인라인 수정 가능 — 기록조회에선 삭제만
+    const isWater=item.type==='water'||item.type==='urine'||item.type==='poop';
+    if(!isWater){
+      const editEl=document.createElement('button');editEl.type='button';editEl.textContent='✎';
+      editEl.style.cssText='background:none;border:none;color:var(--teal);cursor:pointer;padding:2px 6px;font-size:13px;flex-shrink:0;opacity:0.8';
+      editEl.addEventListener('click',(e)=>{e.stopPropagation();editLogItem(item.type,item.ts,histDate);});
+      el.appendChild(dotEl);el.appendChild(txtEl);el.appendChild(editEl);
+    } else {
+      el.appendChild(dotEl);el.appendChild(txtEl);
+    }
     const delEl=document.createElement('button');delEl.type='button';delEl.textContent='🗑️';
     delEl.style.cssText='background:none;border:none;color:var(--text3);cursor:pointer;padding:2px 6px;font-size:13px;flex-shrink:0;opacity:0.6';
-    delEl.addEventListener('click',(e)=>{e.stopPropagation();deleteLogItem(item.type,item.ts);});
-    el.appendChild(dotEl);el.appendChild(txtEl);el.appendChild(editEl);el.appendChild(delEl);
+    delEl.addEventListener('click',(e)=>{
+      e.stopPropagation();
+      if(item.type==='water') deleteWater(item.idx,histDate);
+      else if(item.type==='urine') deleteUrine(item.idx,histDate);
+      else if(item.type==='poop') deletePoop(item.idx,histDate);
+      else deleteLogItem(item.type,item.ts);
+    });
+    el.appendChild(delEl);
     list.appendChild(el);
   });
 }
