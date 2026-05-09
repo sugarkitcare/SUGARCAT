@@ -541,7 +541,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.85</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.87</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">
@@ -1012,11 +1012,11 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
   <!-- 카드 편집 패널 -->
   <div id="graphEditPanel" style="display:none;background:var(--bg2);border-radius:10px;padding:.75rem;margin-bottom:.6rem">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
-      <div style="font-size:12px;font-weight:500;color:var(--text2)" id="graphEditTitle">그래프 카드 표시 설정</div>
+      <div style="font-size:13px;font-weight:600;color:var(--text)" id="graphEditTitle">그래프 카드 표시 설정</div>
       <button type="button" id="graphSaveBtn" onclick="saveGraphEdit()"
         style="padding:5px 14px;background:var(--teal);color:#fff;border:none;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">저장</button>
     </div>
-    <div style="display:flex;flex-wrap:wrap;gap:8px" id="graphCardToggles"></div>
+    <div id="graphCardToggles"></div>
   </div>
   <div class="g-filter">
     <div class="g-chip active" data-g="ket">케톤</div>
@@ -1024,10 +1024,10 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     <div class="g-chip active" data-g="rr">호흡수</div>
     <div class="g-chip active" data-g="water">음수량</div>
   </div>
-  <!-- 하루 타임라인 차트 (날짜 선택 가능) -->
+  <!-- 당뇨 타임라인 차트 (날짜 선택 가능) -->
   <div class="card" id="timelineCard" data-graph-card="timeline" style="margin-bottom:.75rem">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem;cursor:pointer" onclick="toggleCard('timelineBody',this)">
-      <div style="font-size:13px;font-weight:500;color:var(--text)">⏱️ 하루 타임라인</div>
+      <div style="font-size:13px;font-weight:500;color:var(--text)">💉 당뇨 타임라인</div>
       <span style="font-size:11px;color:var(--teal)">▲ 접기</span>
     </div>
     <div id="timelineBody">
@@ -1039,7 +1039,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
         <button type="button" onclick="document.getElementById('timelineDatePicker').value=today();try{renderTimelineChart(today());}catch(e){}"
           style="padding:4px 10px;border:0.5px solid var(--bd);border-radius:7px;background:transparent;color:var(--teal);font-size:11px;cursor:pointer;font-family:inherit">오늘</button>
       </div>
-      <div style="font-size:11px;color:var(--text3);margin-bottom:.5rem">혈당(선+점)·인슐린(◆)·식사(▲)를 시간대별로 확인해요</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:.5rem">혈당·인슐린·식사를 시간대별로 확인해요 (당뇨묘 전용)</div>
       <div class="chart-wrap" style="height:200px"><canvas id="timelineChart"></canvas></div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:.4rem;font-size:10px;color:var(--text2)">
         <span>🟢 혈당 (mg/dL)</span><span>🔶 인슐린 (마커)</span><span>🔷 식사 (마커)</span>
@@ -1949,42 +1949,51 @@ function renderCardOrderUI(cat) {
   const labels = {bg:'혈당·케톤', rr:'🫁 호흡수 측정', ins:'💉 인슐린 투여', wt:'⚖️ 몸무게', meal:'🍽️ 식사·칼로리', water:'💧 수분 밸런스', routine:'💊 투약·루틴'};
   const catKey = cat||state.activeCat;
   const visible = order.filter(k=>!hidden.includes(k));
+  const allOrder = [...order]; // 전체 순서 (숨긴 것 포함)
 
   let html = '';
-  // 표시 중인 카드
-  visible.forEach((k,i) => {
-    const canUp = i > 0;
-    const canDown = i < visible.length - 1;
-    html += `<div style="display:flex;align-items:center;gap:6px;padding:9px 12px;background:var(--bg2);border-radius:9px;margin-bottom:5px">
-      <span style="font-size:12px;color:var(--text3);min-width:16px">${i+1}</span>
-      <span style="flex:1;font-size:13px;color:var(--text)">${labels[k]||k}</span>
-      <div style="display:flex;gap:4px;flex-shrink:0">
+  // 전체 카드를 순서대로 표시 (토글 + 순서 조정)
+  allOrder.forEach((k, i) => {
+    const isOn = !hidden.includes(k);
+    const visIdx = visible.indexOf(k);
+    const canUp = isOn && visIdx > 0;
+    const canDown = isOn && visIdx < visible.length - 1;
+    html += `<div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--bg2);border-radius:9px;margin-bottom:5px;opacity:${isOn?'1':'0.5'}">
+      <!-- 토글 -->
+      <button type="button" onclick="toggleCardVisible('${k}','${catKey}')"
+        style="position:relative;width:42px;height:24px;border-radius:12px;border:none;background:${isOn?'var(--teal)':'var(--bd)'};cursor:pointer;transition:background .2s;flex-shrink:0;padding:0">
+        <span style="position:absolute;top:3px;left:${isOn?'20px':'3px'};width:18px;height:18px;border-radius:50%;background:#fff;transition:left .2s;display:block"></span>
+      </button>
+      <span style="flex:1;font-size:13px;color:${isOn?'var(--text)':'var(--text3)'};font-weight:${isOn?'500':'400'}">${labels[k]||k}</span>
+      <!-- 순서 버튼 (on인 카드만) -->
+      <div style="display:flex;gap:3px;flex-shrink:0">
         <button type="button" onclick="moveCard('${k}',-1,'${catKey}')"
-          style="width:30px;height:30px;border:0.5px solid var(--bd);border-radius:7px;background:${canUp?'var(--bg)':'transparent'};color:${canUp?'var(--text2)':'var(--bd)'};font-size:14px;cursor:${canUp?'pointer':'default'};display:flex;align-items:center;justify-content:center"
+          style="width:28px;height:28px;border:0.5px solid var(--bd);border-radius:7px;background:${canUp?'var(--bg)':'transparent'};color:${canUp?'var(--text2)':'var(--bd)'};font-size:13px;cursor:${canUp?'pointer':'default'};display:flex;align-items:center;justify-content:center"
           ${canUp?'':'disabled'}>↑</button>
         <button type="button" onclick="moveCard('${k}',1,'${catKey}')"
-          style="width:30px;height:30px;border:0.5px solid var(--bd);border-radius:7px;background:${canDown?'var(--bg)':'transparent'};color:${canDown?'var(--text2)':'var(--bd)'};font-size:14px;cursor:${canDown?'pointer':'default'};display:flex;align-items:center;justify-content:center"
+          style="width:28px;height:28px;border:0.5px solid var(--bd);border-radius:7px;background:${canDown?'var(--bg)':'transparent'};color:${canDown?'var(--text2)':'var(--bd)'};font-size:13px;cursor:${canDown?'pointer':'default'};display:flex;align-items:center;justify-content:center"
           ${canDown?'':'disabled'}>↓</button>
-        <button type="button" onclick="hideCard('${k}','${catKey}')"
-          style="width:30px;height:30px;border:0.5px solid var(--coral);border-radius:7px;background:transparent;color:var(--coral);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center"
-          title="숨기기">✕</button>
       </div>
     </div>`;
   });
-
-  // 숨긴 카드
-  if(hidden.length) {
-    html += `<div style="font-size:11px;color:var(--text3);margin:8px 0 4px">숨긴 카드</div>`;
-    hidden.forEach(k => {
-      html += `<div style="display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--bg2);border-radius:9px;margin-bottom:5px;opacity:0.55">
-        <span style="flex:1;font-size:13px;color:var(--text2)">${labels[k]||k}</span>
-        <button type="button" onclick="showCard('${k}','${catKey}')"
-          style="padding:4px 10px;border:0.5px solid var(--teal);border-radius:7px;background:transparent;color:var(--teal);font-size:11px;cursor:pointer;font-family:inherit">복원</button>
-      </div>`;
-    });
-  }
-
   el.innerHTML = html;
+}
+
+function toggleCardVisible(cardKey, cat) {
+  const hidden = getCardHidden(cat);
+  if(hidden.includes(cardKey)) {
+    // on으로
+    const newHidden = hidden.filter(k=>k!==cardKey);
+    saveCardHidden(cat, newHidden);
+    toast('"' + cardKey + '" 카드가 표시돼요');
+  } else {
+    // off로
+    hidden.push(cardKey);
+    saveCardHidden(cat, hidden);
+    toast('"' + cardKey + '" 카드가 숨겨졌어요');
+  }
+  renderCardOrderUI(cat);
+  applyCardOrder(cat);
 }
 
 function hideCard(cardKey, cat) {
@@ -2297,7 +2306,7 @@ function closeNotice(hideToday) {
 
 /* ── 그래프탭 카드 편집 ── */
 const GRAPH_CARDS = [
-  { id: 'timelineCard', label: '⏱️ 하루 타임라인' },
+  { id: 'timelineCard', label: '💉 당뇨 타임라인' },
   { id: 'gKetCard',     label: '🟡 케톤'          },
   { id: 'gWtCard',      label: '⚖️ 체중'           },
   { id: 'gRrCard',      label: '🫁 호흡수'         },
@@ -2407,36 +2416,39 @@ function toggleGraphEdit() {
 function renderGraphCardToggles() {
   const wrap = document.getElementById('graphCardToggles');
   if(!wrap) return;
-  // 현재 activeCat 기준
   const hidden = getGraphHidden();
   wrap.innerHTML = '';
   GRAPH_CARDS.forEach(card => {
     const isVisible = !hidden.includes(card.id);
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.textContent = card.label;
-    btn.style.cssText = 'padding:5px 12px;border-radius:20px;font-size:11px;cursor:pointer;font-family:inherit;border:0.5px solid '
-      + (isVisible ? 'var(--teal);background:var(--teal-l);color:var(--teal-d)' : 'var(--bd);background:var(--bg);color:var(--text3)');
-    btn.onclick = async () => {
-      const hidden2 = getGraphHidden().filter(k => k !== card.id);
-      if(isVisible) hidden2.push(card.id);
-      await saveGraphHidden(hidden2);
-      applyGraphCards();
-      renderGraphCardToggles();
-    };
-    wrap.appendChild(btn);
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--bg);border-radius:9px;margin-bottom:5px;opacity:' + (isVisible?'1':'0.55');
+    row.innerHTML = `<span style="font-size:13px;color:${isVisible?'var(--text)':'var(--text3)'};font-weight:${isVisible?'500':'400'}">${card.label}</span>
+      <button type="button" onclick="toggleGraphCardById('${card.id}')"
+        style="position:relative;width:42px;height:24px;border-radius:12px;border:none;background:${isVisible?'var(--teal)':'var(--bd)'};cursor:pointer;flex-shrink:0;padding:0">
+        <span style="position:absolute;top:3px;left:${isVisible?'20px':'3px'};width:18px;height:18px;border-radius:50%;background:#fff;display:block"></span>
+      </button>`;
+    wrap.appendChild(row);
   });
-  // 초기화 버튼
-  const resetBtn = document.createElement('button');
-  resetBtn.type = 'button';
-  resetBtn.textContent = '↺ 초기화';
-  resetBtn.style.cssText = 'padding:5px 12px;border-radius:20px;font-size:11px;cursor:pointer;font-family:inherit;border:0.5px solid var(--bd);background:transparent;color:var(--text3)';
-  resetBtn.onclick = async () => {
-    await saveGraphHidden([]);
-    applyGraphCards();
-    renderGraphCardToggles();
-  };
-  wrap.appendChild(resetBtn);
+  // 초기화
+  const resetRow = document.createElement('div');
+  resetRow.style.cssText = 'margin-top:4px;text-align:right';
+  resetRow.innerHTML = `<button type="button" onclick="resetGraphCards()"
+    style="padding:5px 12px;border:0.5px solid var(--bd);border-radius:8px;background:transparent;color:var(--text3);font-size:11px;cursor:pointer;font-family:inherit">🔄 전체 표시 초기화</button>`;
+  wrap.appendChild(resetRow);
+}
+
+async function toggleGraphCardById(cardId) {
+  const hidden2 = getGraphHidden().filter(k => k !== cardId);
+  if(!getGraphHidden().includes(cardId)) hidden2.push(cardId);
+  await saveGraphHidden(hidden2);
+  applyGraphCards();
+  renderGraphCardToggles();
+}
+
+async function resetGraphCards() {
+  await saveGraphHidden([]);
+  applyGraphCards();
+  renderGraphCardToggles();
 }
 
 
@@ -7667,10 +7679,10 @@ initSupabase();
   <div class="ig" style="margin-bottom:1rem"><label>메모</label><input type="text" id="cpMemo" placeholder="특이사항, 알레르기 등"></div>
   <button onclick="saveCatProfile()" class="btn btn-teal" style="width:100%;padding:14px">저장</button>
 
-  <!-- 카드 순서 설정 -->
+  <!-- 카드 순서/표시 설정 -->
   <div style="margin-top:1.5rem;padding-top:1rem;border-top:0.5px solid var(--bd)">
-    <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:.25rem">📋 오늘기록 카드 순서</div>
-    <div style="font-size:11px;color:var(--text3);margin-bottom:.75rem">↑↓ 버튼으로 카드 순서를 바꿀 수 있어요 · 질환 설정 기반으로 자동 정렬돼요</div>
+    <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:.25rem">📋 오늘기록 카드 설정</div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:.75rem">토글로 카드 표시 여부를 설정하고 ↑↓로 순서를 바꿀 수 있어요</div>
     <div id="cardOrderUI"></div>
     <button type="button" onclick="resetCardOrder(currentProfileCat)"
       style="padding:6px 14px;border:0.5px solid var(--bd);border-radius:8px;background:transparent;color:var(--text3);font-size:11px;cursor:pointer;font-family:inherit;margin-top:6px">
