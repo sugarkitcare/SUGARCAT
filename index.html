@@ -541,7 +541,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.88</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.92</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">
@@ -676,11 +676,12 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
           <div id="rrTimerFill" style="height:100%;width:0%;background:var(--teal);transition:width .5s linear;border-radius:3px"></div>
         </div>
         <div id="rrTimerLabel" style="font-size:11px;color:var(--text3);margin-bottom:.5rem">시작 전</div>
-        <!-- 큰 탭 버튼 -->
+        <!-- 넓은 탭 영역 -->
         <button id="rrTapBtn" type="button" onclick="rrTap()"
-          style="width:140px;height:140px;border-radius:50%;border:4px solid var(--teal);background:var(--bg);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0 auto;font-family:inherit;transition:transform .1s,background .1s;touch-action:manipulation;-webkit-user-select:none;user-select:none">
-          <div id="rrCount" style="font-size:42px;font-weight:700;color:var(--teal);line-height:1">0</div>
-          <div style="font-size:11px;color:var(--text3);margin-top:4px">탭하여 시작</div>
+          style="width:100%;min-height:140px;border-radius:18px;border:3px solid var(--teal);background:var(--bg);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:inherit;transition:transform .08s,background .1s;touch-action:manipulation;-webkit-user-select:none;user-select:none;padding:20px 0;box-sizing:border-box;active:background:var(--teal-l)">
+          <div id="rrCount" style="font-size:52px;font-weight:700;color:var(--teal);line-height:1">0</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:6px">탭하여 시작</div>
+          <div style="font-size:10px;color:var(--teal);opacity:.6;margin-top:3px">🫁 호흡할 때마다 탭</div>
         </button>
         <div id="rrResult" style="display:none;margin-top:.75rem;padding:.6rem 1rem;border-radius:10px;font-size:14px;font-weight:600"></div>
       </div>
@@ -688,6 +689,34 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <input type="date" id="rrDate" style="padding:6px 10px;border:0.5px solid var(--bd);border-radius:8px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit">
         <button type="button" onclick="rrReset()" style="padding:6px 14px;border:0.5px solid var(--bd);border-radius:8px;background:transparent;color:var(--text2);font-size:12px;cursor:pointer;font-family:inherit">초기화</button>
+      </div>
+      <!-- 피드백 설정 토글 -->
+      <div style="margin-top:.75rem;padding:.6rem .75rem;background:var(--bg2);border-radius:10px">
+        <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:.5rem">🔔 탭 피드백 설정</div>
+        <div style="display:flex;flex-direction:column;gap:.4rem">
+          <!-- 소리 피드백 -->
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div>
+              <div style="font-size:12px;color:var(--text)">🔊 소리 피드백</div>
+              <div style="font-size:10px;color:var(--text3)">무음 모드에서도 작동해요</div>
+            </div>
+            <button type="button" id="rrSoundToggle" onclick="toggleRRFeedback('sound')"
+              style="position:relative;width:42px;height:24px;border-radius:12px;border:none;cursor:pointer;padding:0;flex-shrink:0">
+              <span id="rrSoundKnob" style="position:absolute;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;display:block;transition:left .15s"></span>
+            </button>
+          </div>
+          <!-- 진동 피드백 -->
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div>
+              <div style="font-size:12px;color:var(--text)">📳 진동 피드백</div>
+              <div style="font-size:10px;color:var(--text3)">안드로이드만 지원 · 햅틱 설정이 켜져있어야 해요</div>
+            </div>
+            <button type="button" id="rrVibToggle" onclick="toggleRRFeedback('vibrate')"
+              style="position:relative;width:42px;height:24px;border-radius:12px;border:none;cursor:pointer;padding:0;flex-shrink:0">
+              <span id="rrVibKnob" style="position:absolute;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;display:block;transition:left .15s"></span>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -1481,6 +1510,7 @@ function showStat(id,type,msg){
 function hideStat(id){document.getElementById(id).style.display='none'}
 
 ['bgTime','wtTime','insTime','foodTime'].forEach(id=>document.getElementById(id).value=nowTime());
+try { applyRRFeedbackUI(); } catch(e) {}
 ['bgDate','wtDate','insDate','foodDate','routineDate','rrDate','waterDate'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=today();});
 document.getElementById('btDate').value=today();
 
@@ -1575,6 +1605,15 @@ function bgSt(bg,ket){if(ket>=2.4||bg>=400)return'danger';if(ket>=0.5||bg>=300)r
 
 /* ── 호흡수 측정 ── */
 let rrTimer = null;
+// 호흡수 피드백 설정
+const SK_RR_FEEDBACK = 'rrFeedback_v1';
+function getRRFeedback() {
+  try { return JSON.parse(localStorage.getItem(SK_RR_FEEDBACK)) || {sound: true, vibrate: true}; }
+  catch(e) { return {sound: true, vibrate: true}; }
+}
+function saveRRFeedback(obj) {
+  try { localStorage.setItem(SK_RR_FEEDBACK, JSON.stringify(obj)); } catch(e) {}
+}
 let rrCount2 = 0;
 let rrSeconds = 0;
 let rrRunning = false;
@@ -1619,8 +1658,22 @@ function rrTap() {
   // 카운트
   rrCount2++;
   document.getElementById('rrCount').textContent = rrCount2;
-  // 카운팅 햅틱 피드백 (안드로이드, 15ms 아주 짧은 진동)
-  try { if(navigator.vibrate) navigator.vibrate(15); } catch(e) {}
+  // 카운팅 피드백 (설정에 따라)
+  const _fb = getRRFeedback();
+  if(_fb.vibrate) { try { if(navigator.vibrate) navigator.vibrate(40); } catch(e) {} }
+  if(_fb.sound) {
+    try {
+      const _ctx = new (window.AudioContext||window.webkitAudioContext)();
+      const _osc = _ctx.createOscillator();
+      const _gain = _ctx.createGain();
+      _osc.connect(_gain); _gain.connect(_ctx.destination);
+      _osc.frequency.value = 600;
+      _gain.gain.setValueAtTime(0.05, _ctx.currentTime);
+      _gain.gain.exponentialRampToValueAtTime(0.001, _ctx.currentTime + 0.06);
+      _osc.start(_ctx.currentTime);
+      _osc.stop(_ctx.currentTime + 0.06);
+    } catch(e) {}
+  }
   // 탭 시각 피드백
   btn.style.transform = 'scale(0.95)';
   setTimeout(()=>btn.style.transform='scale(1)', 100);
@@ -1656,27 +1709,56 @@ function rrFinish() {
   saveS(rrDate);
   const stateEmoji = rrState==='sleep'?'😴':rrState==='rest'?'🐱':'🏃';
   toast(`${stateEmoji} ${rrStateLabel[rrState]} 호흡수 ${rr}회/분 저장 완료!`, rr>=40?'#D85A30':rr>=30?'#BA7517':'#1D9E75');
-  // 측정 완료 피드백 - 진동(안드로이드) + 소리(iOS 포함)
-  try {
-    if(navigator.vibrate) {
-      // 1분 완료: 긴 진동으로 확실하게 알림
-      if(rr >= 40) navigator.vibrate([300,100,300,100,300]); // 위험: 3번 강진동
-      else if(rr >= 30) navigator.vibrate([250,100,250]);     // 주의: 2번 중진동
-      else navigator.vibrate(300);                            // 정상: 1번 긴 진동
-    }
-  } catch(e) {}
-  try {
-    const ctx = new (window.AudioContext||window.webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain); gain.connect(ctx.destination);
-    osc.frequency.value = rr>=40 ? 880 : rr>=30 ? 660 : 440;
-    gain.gain.setValueAtTime(0.3, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.4);
-  } catch(e) {}
+  // 측정 완료 피드백 (설정에 따라)
+  const _fb2 = getRRFeedback();
+  if(_fb2.vibrate) {
+    try {
+      if(navigator.vibrate) {
+        if(rr >= 40) navigator.vibrate([300,100,300,100,300]);
+        else if(rr >= 30) navigator.vibrate([250,100,250]);
+        else navigator.vibrate(300);
+      }
+    } catch(e) {}
+  }
+  if(_fb2.sound) {
+    try {
+      const ctx = new (window.AudioContext||window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.value = rr>=40 ? 880 : rr>=30 ? 660 : 440;
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+      osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.4);
+    } catch(e) {}
+  }
   renderDailySummary();
+}
+
+function applyRRFeedbackUI() {
+  const fb = getRRFeedback();
+  const soundBtn = document.getElementById('rrSoundToggle');
+  const soundKnob = document.getElementById('rrSoundKnob');
+  const vibBtn = document.getElementById('rrVibToggle');
+  const vibKnob = document.getElementById('rrVibKnob');
+  if(soundBtn && soundKnob) {
+    soundBtn.style.background = fb.sound ? 'var(--teal)' : 'var(--bd)';
+    soundKnob.style.left = fb.sound ? '20px' : '3px';
+  }
+  if(vibBtn && vibKnob) {
+    vibBtn.style.background = fb.vibrate ? 'var(--teal)' : 'var(--bd)';
+    vibKnob.style.left = fb.vibrate ? '20px' : '3px';
+  }
+}
+
+function toggleRRFeedback(key) {
+  const fb = getRRFeedback();
+  fb[key] = !fb[key];
+  saveRRFeedback(fb);
+  applyRRFeedbackUI();
+  toast(key === 'sound'
+    ? (fb.sound ? '🔊 소리 피드백 켜졌어요' : '🔇 소리 피드백 꺼졌어요')
+    : (fb.vibrate ? '📳 진동 피드백 켜졌어요' : '📴 진동 피드백 꺼졌어요'), '#1D9E75');
 }
 
 function rrReset() {
