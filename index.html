@@ -510,7 +510,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.95</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.96</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">
@@ -5160,7 +5160,7 @@ function renderWaterLog() {
     } else {
       waterLogEl.innerHTML = waterArr.map((w, i) =>
         `<span data-widx="${i}" style="margin-right:4px;margin-bottom:4px;display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap">${w.time} +${w.ml}ml`
-        + ` <span onclick="editWater(${i},'${date}')" style="color:var(--teal);cursor:pointer;font-size:10px">✎</span>`
+        + ` <span onclick="editWater(${i},'${date}')" style="color:var(--amber);cursor:pointer;font-size:10px">✎</span>`
         + ` <span onclick="deleteWater(${i},'${date}')" style="color:var(--coral);cursor:pointer;font-size:10px">✕</span></span>`
       ).join('');
     }
@@ -5178,7 +5178,7 @@ function renderWaterLog() {
       urineLogEl.innerHTML = urineArr.map((u, i) => {
         const color = u.amount==='혈뇨' ? 'var(--coral)' : u.amount==='핍뇨'||u.amount==='소량' ? 'var(--amber)' : 'var(--teal)';
         return `<span data-uidx="${i}" style="margin-right:4px;margin-bottom:4px;color:${color};display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap">${u.time} ${u.amount}`
-          + ` <span onclick="editUrine(${i},'${date}')" style="color:var(--teal);cursor:pointer;font-size:10px">✎</span>`
+          + ` <span onclick="editUrine(${i},'${date}')" style="color:var(--amber);cursor:pointer;font-size:10px">✎</span>`
           + ` <span onclick="deleteUrine(${i},'${date}')" style="color:var(--coral);cursor:pointer;font-size:10px">✕</span></span>`;
       }).join('');
     }
@@ -5193,7 +5193,7 @@ function renderWaterLog() {
     poopLogEl.innerHTML = poopArr.length === 0 ? '' : poopArr.map((p, i) => {
       const color = p.type==='혈변'||p.type==='설사' ? 'var(--coral)' : p.type==='무름'||p.type==='무변' ? 'var(--amber-d)' : 'var(--teal)';
       return `<span data-pidx="${i}" style="margin-right:4px;margin-bottom:4px;color:${color};display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap">${p.time} ${p.type}`
-        + ` <span onclick="editPoop(${i},'${date}')" style="color:var(--teal);cursor:pointer;font-size:10px">✎</span>`
+        + ` <span onclick="editPoop(${i},'${date}')" style="color:var(--amber);cursor:pointer;font-size:10px">✎</span>`
         + ` <span onclick="deletePoop(${i},'${date}')" style="color:var(--coral);cursor:pointer;font-size:10px">✕</span></span>`;
     }).join('');
   }
