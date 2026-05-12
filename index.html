@@ -456,37 +456,6 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 </div>
 
 <!-- 피드백 모달 -->
-<!-- 앱 공지 팝업 -->
-<div id="noticeModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9500;pointer-events:none;align-items:center;justify-content:center;padding:1rem">
-  <div style="max-width:360px;width:100%;position:relative;pointer-events:auto;max-height:calc(100vh - 2rem);display:flex;flex-direction:column">
-    <!-- 이미지 팝업 -->
-    <div id="noticeImageWrap" style="display:none;border-radius:16px;overflow:hidden;background:var(--bg);display:flex;flex-direction:column">
-      <div style="overflow-y:auto;flex:1">
-        <img id="noticeImage" src="" alt="이벤트" style="width:100%;display:block">
-      </div>
-      <div style="display:flex;gap:8px;padding:.75rem;background:var(--bg);border-top:0.5px solid var(--bd);flex-shrink:0">
-        <button type="button" onclick="closeNotice(true)"
-          style="flex:1;padding:11px;border:0.5px solid var(--bd);border-radius:10px;background:var(--bg2);color:var(--text2);font-size:13px;cursor:pointer;font-family:inherit">오늘 하루 보지 않기</button>
-        <button type="button" onclick="closeNotice(false)"
-          style="flex:1;padding:11px;border:none;border-radius:10px;background:var(--teal);color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">확인</button>
-      </div>
-    </div>
-    <!-- 텍스트 팝업 (이미지 없을 때) -->
-    <div id="noticeTextWrap" style="display:none;background:var(--bg);border-radius:16px;padding:1.5rem;overflow-y:auto;max-height:calc(100vh - 2rem)">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem">
-        <span style="font-size:20px">📢</span>
-        <div style="font-size:15px;font-weight:700;color:var(--text)" id="noticeTitle">업데이트 공지</div>
-      </div>
-      <div id="noticeBody" style="font-size:13px;color:var(--text);line-height:1.8;margin-bottom:1.25rem;white-space:pre-line"></div>
-      <div style="display:flex;gap:8px">
-        <button type="button" onclick="closeNotice(true)"
-          style="flex:1;padding:11px;border:0.5px solid var(--bd);border-radius:10px;background:var(--bg2);color:var(--text2);font-size:13px;cursor:pointer;font-family:inherit">오늘 하루 보지 않기</button>
-        <button type="button" onclick="closeNotice(false)"
-          style="flex:1;padding:11px;border:none;border-radius:10px;background:var(--teal);color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">확인</button>
-      </div>
-    </div>
-  </div>
-</div>
 
 <div id="feedbackModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9000;overflow-y:auto;-webkit-overflow-scrolling:touch;pointer-events:none">
   <div style="background:var(--bg);border-radius:16px 16px 0 0;padding:1.5rem 1.25rem;position:absolute;bottom:0;left:0;right:0;max-height:90vh;overflow-y:auto">
@@ -541,7 +510,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.94</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.95</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">
@@ -2334,69 +2303,6 @@ function checkAILimit(type) {
     return false;
   }
   return true;
-}
-
-
-/* ── 앱 공지 팝업 ── */
-// 공지 설정 (여기만 수정하면 됨)
-const APP_NOTICE = {
-  id: 'event_jakshim_0429',
-  image: 'https://raw.githubusercontent.com/sugarkitcare/SUGARCAT/main/event_challenge.jpg',
-};
-
-function showNotice() {
-  const notice = APP_NOTICE;
-  if(!notice) return;
-  const hiddenUntil = localStorage.getItem('notice_hidden_' + notice.id);
-  if(hiddenUntil && Date.now() < parseInt(hiddenUntil)) return;
-  // 이미지 팝업(이벤트)은 confirmed 무시 → 매일 노출
-  if(!notice.image) {
-    const confirmed = localStorage.getItem('notice_confirmed_' + notice.id);
-    if(confirmed) return;
-  }
-
-  const modal = document.getElementById('noticeModal');
-  const imgWrap = document.getElementById('noticeImageWrap');
-  const txtWrap = document.getElementById('noticeTextWrap');
-
-  if(notice.image) {
-    // 이미지 팝업
-    const img = document.getElementById('noticeImage');
-    img.src = notice.image;
-    imgWrap.style.display = 'block';
-    txtWrap.style.display = 'none';
-  } else {
-    // 텍스트 팝업
-    document.getElementById('noticeTitle').textContent = notice.title;
-    document.getElementById('noticeBody').textContent = notice.body;
-    imgWrap.style.display = 'none';
-    txtWrap.style.display = 'block';
-  }
-
-  modal.style.display = 'flex';
-  modal.style.pointerEvents = 'auto';
-}
-
-function closeNotice(hideToday) {
-  const modal = document.getElementById('noticeModal');
-  modal.style.display = 'none';
-  modal.style.pointerEvents = 'none';
-  if(hideToday) {
-    // 오늘 하루 보지 않기 → 자정까지 숨기기
-    const midnight = new Date();
-    midnight.setHours(23,59,59,999);
-    localStorage.setItem('notice_hidden_' + APP_NOTICE.id, String(midnight.getTime()));
-  } else {
-    // 확인 버튼 → 이미지 팝업이면 오늘 하루만 숨기기 (이벤트 기간 매일 노출)
-    //             텍스트 팝업이면 영구 확인 처리
-    if(APP_NOTICE.image) {
-      const midnight = new Date();
-      midnight.setHours(23,59,59,999);
-      localStorage.setItem('notice_hidden_' + APP_NOTICE.id, String(midnight.getTime()));
-    } else {
-      localStorage.setItem('notice_confirmed_' + APP_NOTICE.id, '1');
-    }
-  }
 }
 
 
@@ -7143,8 +7049,6 @@ function showApp() {
   try { renderDailySummary(); } catch(e) {}
   if(currentUser) try{loadCGMForCat(state.activeCat);}catch(e){}
   if(currentUser) try{loadCardSettingsForCat(state.activeCat);}catch(e){}
-  // 공지 팝업 (로그인 후 표시)
-  setTimeout(()=>{ try{showNotice();}catch(e){} }, 800);
 }
 
 function showOnboarding() {
