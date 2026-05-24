@@ -510,7 +510,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.5.03</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.5.04</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">
@@ -798,19 +798,19 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
       <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:.4rem">🚽 소변 체크</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.4rem">
         <button type="button" onclick="selectUrine('소량')"
-          style="padding:7px 14px;border:0.5px solid var(--bd);border-radius:9px;font-size:12px;background:var(--bg);color:var(--text);cursor:pointer;font-family:inherit">소량</button>
+          style="padding:7px 14px;border:0.5px solid var(--amber);border-radius:9px;font-size:12px;background:var(--amber-l);color:var(--amber-d);cursor:pointer;font-family:inherit">소량</button>
         <button type="button" onclick="selectUrine('정상')"
           style="padding:7px 14px;border:0.5px solid var(--teal);border-radius:9px;font-size:12px;background:var(--teal-l);color:var(--teal);cursor:pointer;font-family:inherit;font-weight:600">정상</button>
         <button type="button" onclick="selectUrine('다량')"
-          style="padding:7px 14px;border:0.5px solid var(--bd);border-radius:9px;font-size:12px;background:var(--bg);color:var(--text);cursor:pointer;font-family:inherit">다량</button>
+          style="padding:7px 14px;border:0.5px solid var(--teal);border-radius:9px;font-size:12px;background:var(--teal-l);color:var(--teal);cursor:pointer;font-family:inherit;font-weight:600">다량</button>
         <button type="button" onclick="selectUrine('혈뇨')"
           style="padding:7px 14px;border:0.5px solid var(--coral);border-radius:9px;font-size:12px;background:var(--coral-l);color:var(--coral);cursor:pointer;font-family:inherit;font-weight:600">🔴 혈뇨</button>
         <button type="button" onclick="selectUrine('핍뇨')"
-          style="padding:7px 14px;border:0.5px solid var(--amber);border-radius:9px;font-size:12px;background:var(--amber-l);color:var(--amber-d);cursor:pointer;font-family:inherit;font-weight:600">⚠️ 핍뇨</button>
+          style="padding:7px 14px;border:0.5px solid var(--coral);border-radius:9px;font-size:12px;background:var(--coral-l);color:var(--coral);cursor:pointer;font-family:inherit;font-weight:600">🔴 핍뇨</button>
         <button type="button" onclick="selectUrine('단백뇨')"
-          style="padding:7px 14px;border:0.5px solid var(--amber);border-radius:9px;font-size:12px;background:var(--amber-l);color:var(--amber-d);cursor:pointer;font-family:inherit;font-weight:600">단백뇨</button>
+          style="padding:7px 14px;border:0.5px solid var(--amber);border-radius:9px;font-size:12px;background:var(--amber-l);color:var(--amber-d);cursor:pointer;font-family:inherit">단백뇨</button>
         <button type="button" onclick="selectUrine('뇨당')"
-          style="padding:7px 14px;border:0.5px solid var(--amber);border-radius:9px;font-size:12px;background:var(--amber-l);color:var(--amber-d);cursor:pointer;font-family:inherit;font-weight:600">뇨당</button>
+          style="padding:7px 14px;border:0.5px solid var(--amber);border-radius:9px;font-size:12px;background:var(--amber-l);color:var(--amber-d);cursor:pointer;font-family:inherit">뇨당</button>
       </div>
       <div id="urineTimePanel" style="display:none;margin-bottom:.4rem;background:var(--bg2);border-radius:9px;padding:.5rem .65rem;border:0.5px solid var(--bd)">
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
@@ -834,18 +834,20 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.4rem">
         <button type="button" onclick="selectPoop('정상')"
           style="padding:7px 14px;border:0.5px solid var(--teal);border-radius:9px;font-size:12px;background:var(--teal-l);color:var(--teal);cursor:pointer;font-family:inherit;font-weight:600">정상</button>
-        <button type="button" onclick="selectPoop('무름')"
-          style="padding:7px 14px;border:0.5px solid var(--amber);border-radius:9px;font-size:12px;background:var(--amber-l);color:var(--amber-d);cursor:pointer;font-family:inherit">무름</button>
-        <button type="button" onclick="selectPoop('설사')"
-          style="padding:7px 14px;border:0.5px solid var(--coral);border-radius:9px;font-size:12px;background:var(--coral-l);color:var(--coral);cursor:pointer;font-family:inherit;font-weight:600">⚠️ 설사</button>
-        <button type="button" onclick="selectPoop('혈변')"
-          style="padding:7px 14px;border:0.5px solid var(--coral);border-radius:9px;font-size:12px;background:var(--coral-l);color:var(--coral);cursor:pointer;font-family:inherit;font-weight:600">🔴 혈변</button>
-        <button type="button" onclick="selectPoop('무변')"
-          style="padding:7px 14px;border:0.5px solid var(--amber);border-radius:9px;font-size:12px;background:var(--amber-l);color:var(--amber-d);cursor:pointer;font-family:inherit">무변</button>
         <button type="button" onclick="selectPoop('약간무름')"
           style="padding:7px 14px;border:0.5px solid var(--amber);border-radius:9px;font-size:12px;background:var(--amber-l);color:var(--amber-d);cursor:pointer;font-family:inherit">약간무름</button>
         <button type="button" onclick="selectPoop('끝만무름')"
           style="padding:7px 14px;border:0.5px solid var(--amber);border-radius:9px;font-size:12px;background:var(--amber-l);color:var(--amber-d);cursor:pointer;font-family:inherit">끝만무름</button>
+        <button type="button" onclick="selectPoop('무름')"
+          style="padding:7px 14px;border:0.5px solid var(--amber);border-radius:9px;font-size:12px;background:var(--amber-l);color:var(--amber-d);cursor:pointer;font-family:inherit">무름</button>
+        <button type="button" onclick="selectPoop('설사')"
+          style="padding:7px 14px;border:0.5px solid var(--coral);border-radius:9px;font-size:12px;background:var(--coral-l);color:var(--coral);cursor:pointer;font-family:inherit;font-weight:600">🔴 설사</button>
+        <button type="button" onclick="selectPoop('혈변')"
+          style="padding:7px 14px;border:0.5px solid var(--coral);border-radius:9px;font-size:12px;background:var(--coral-l);color:var(--coral);cursor:pointer;font-family:inherit;font-weight:600">🔴 혈변</button>
+        <button type="button" onclick="selectPoop('토끼똥/변비')"
+          style="padding:7px 14px;border:0.5px solid var(--amber);border-radius:9px;font-size:12px;background:var(--amber-l);color:var(--amber-d);cursor:pointer;font-family:inherit">토끼똥/변비</button>
+        <button type="button" onclick="selectPoop('무변')"
+          style="padding:7px 14px;border:0.5px solid var(--amber);border-radius:9px;font-size:12px;background:var(--amber-l);color:var(--amber-d);cursor:pointer;font-family:inherit">무변</button>
       </div>
       <div id="poopTimePanel" style="display:none;margin-bottom:.4rem;background:var(--bg2);border-radius:9px;padding:.5rem .65rem;border:0.5px solid var(--bd)">
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
@@ -5273,6 +5275,7 @@ function addPoop(type, time) {
   renderWaterLog();
   if(type==='혈변') toast('🔴 혈변 기록됨 — 즉시 수의사 상담을 권장해요', '#D85A30');
   else if(type==='설사') toast('⚠️ 설사 기록됨 — 지속되면 수의사에게 연락하세요', '#BA7517');
+  else if(type==='토끼똥/변비') toast('⚠️ 토끼똥/변비 기록됨 — 변비 여부를 확인해주세요', '#BA7517');
   else if(type==='무변') toast('💩 무변 기록됐어요 — 음수량을 확인해 주세요', '#BA7517');
   else toast('💩 대변 기록됐어요 (' + type + ')', '#1D9E75');
   try{renderDailySummary();}catch(e){}
@@ -5287,7 +5290,7 @@ function editPoop(idx, date) {
   const p = rec.poop && rec.poop[idx];
   if(!p) return;
   if(target.querySelector('select')) { renderWaterLog(); return; }
-  const opts = ['정상','약간무름','끝만무름','무름','설사','혈변','무변']
+  const opts = ['정상','약간무름','끝만무름','무름','설사','혈변','토끼똥/변비','무변']
     .map(t=>`<option value="${t}"${t===p.type?' selected':''}>${t}</option>`).join('');
   target.innerHTML =
     `<select id="petyp${idx}"
