@@ -510,7 +510,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.5.00</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.5.01</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">
@@ -1492,7 +1492,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script>
 
-const SK='dangmyo_v2',SK_BT='bt_v2',SK_FD='fd_v2';
+const SK='dangmyo_v2',SK_BT='bt_v2',SK_FD='fd_v2',SK_CONFIG='cm_sb_cfg';
 let state={cats:[],activeCat:'',records:{},catProfiles:{}};
 let btData=[],fdData=[];
 let favFoods=[];
@@ -7091,51 +7091,59 @@ async function submitNewPassword() {
   }
 }
 
+// 공통 인증 흐름: sbClient 초기화 후 세션 확인 → 앱/로그인/온보딩 분기
+async function _checkAuthAndShow() {
+  const hash = window.location.hash;
+  if(hash && hash.includes('type=recovery')) {
+    const { data: { session } } = await sbClient.auth.getSession();
+    if(session) { currentUser = session.user; showNewPasswordPage(); return; }
+  }
+  sbClient.auth.onAuthStateChange((event, session) => {
+    if(event === 'PASSWORD_RECOVERY') { currentUser = session?.user; showNewPasswordPage(); }
+  });
+  const { data: { session } } = await sbClient.auth.getSession();
+  if(session) {
+    currentUser = session.user;
+    if(localStorage.getItem('cm_onboarded')) showApp(); else showOnboarding();
+  } else {
+    showLogin();
+  }
+}
+
 async function initSupabase() {
+  // 1. 캐시된 config 우선 사용 (재방문 시 네트워크 요청 없이 즉시 초기화)
+  let cachedCfg = null;
+  try {
+    const raw = localStorage.getItem(SK_CONFIG);
+    if(raw) cachedCfg = JSON.parse(raw);
+  } catch(e) {}
+
+  if(cachedCfg?.supabaseUrl && cachedCfg?.supabaseKey) {
+    // 캐시로 Supabase 클라이언트 즉시 생성 → localStorage 데이터로 앱 바로 렌더링
+    sbClient = window.supabase.createClient(cachedCfg.supabaseUrl, cachedCfg.supabaseKey);
+    await _checkAuthAndShow();
+    // 백그라운드에서 config 갱신 (캐시 최신화, 앱 표시 블로킹 없음)
+    fetch('/api/config').then(r => r.ok ? r.json() : null).then(fresh => {
+      if(fresh?.supabaseUrl && fresh?.supabaseKey)
+        try { localStorage.setItem(SK_CONFIG, JSON.stringify(fresh)); } catch(e) {}
+    }).catch(() => {});
+    return;
+  }
+
+  // 2. 최초 방문: 네트워크에서 config 가져오고 캐싱
   try {
     const res = await fetch('/api/config');
     if(res.ok) {
-      const cfg = await res.json();
-      if(cfg.supabaseUrl && cfg.supabaseKey) {
-        sbClient = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseKey);
-
-        // 비밀번호 재설정 링크 감지 (URL hash에 type=recovery 포함)
-        const hash = window.location.hash;
-        if(hash && hash.includes('type=recovery')) {
-          // Supabase가 hash에서 세션 자동 처리
-          const { data: { session } } = await sbClient.auth.getSession();
-          if(session) {
-            currentUser = session.user;
-            showNewPasswordPage();
-            return;
-          }
-        }
-
-        // onAuthStateChange로 recovery 이벤트 감지
-        sbClient.auth.onAuthStateChange((event, session) => {
-          if(event === 'PASSWORD_RECOVERY') {
-            currentUser = session?.user;
-            showNewPasswordPage();
-          }
-        });
-
-        const { data: { session } } = await sbClient.auth.getSession();
-        if(session) {
-          currentUser = session.user;
-          const onboarded = localStorage.getItem('cm_onboarded');
-          if(onboarded) {
-            showApp();
-          } else {
-            showOnboarding();
-          }
-        } else {
-          showLogin();
-        }
+      const fresh = await res.json();
+      if(fresh?.supabaseUrl && fresh?.supabaseKey) {
+        try { localStorage.setItem(SK_CONFIG, JSON.stringify(fresh)); } catch(e) {}
+        sbClient = window.supabase.createClient(fresh.supabaseUrl, fresh.supabaseKey);
+        await _checkAuthAndShow();
         return;
       }
     }
   } catch(e) {}
-  showApp();
+  showApp(); // 오프라인/오류 시 localStorage 데이터로 fallback
 }
 
 
@@ -7427,9 +7435,11 @@ async function syncFromDB() {
       }
     }
 
-    // 2. 일일 기록 불러오기 (DB 로드 성공 시에만 교체)
+    // 2. 일일 기록 불러오기 (DB 완료 전까지 localStorage 유지 → 화면 깜빡임 방지)
     const localRecordsBackup = JSON.parse(JSON.stringify(state.records || {}));
-    state.records = {};
+    const dbRecords = {}; // DB 데이터를 별도 객체에 적재
+    const origRecords = state.records;
+    state.records = dbRecords; // loadDailyRecords가 dbRecords에 기록
     try {
       await loadDailyRecords();
     } catch(dbErr) {
