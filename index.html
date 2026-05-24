@@ -510,7 +510,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.5.05</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.5.06</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">
@@ -3349,7 +3349,7 @@ function renderDailySummary() {
   }
 
   // ════════════════════════════════
-  // 5. 주간 비교 (체중/음수량/소변/대변)
+  // 5. 주간 비교 (혈당/CGM/체중/음수량/소변/대변)
   // ════════════════════════════════
   {
     const weekDays = (offset) => Array.from({length:7}, (_,i) => {
@@ -3357,6 +3357,65 @@ function renderDailySummary() {
       return d2.toISOString().slice(0,10);
     });
     const twDays = weekDays(0), lwDays = weekDays(1);
+
+    // 혈당(수동) 주간 비교 — 3일 이상 데이터 있을 때만
+    const twBgWeek = twDays.map(day=>{
+      const vals=getRec(cat,day).bg.filter(x=>x.bg!=='').map(x=>parseFloat(x.bg));
+      return vals.length?vals:null;
+    }).filter(v=>v!==null);
+    if(twBgWeek.length>=3){
+      const twFlat=twBgWeek.flat();
+      const tAvgBg=Math.round(twFlat.reduce((a,b)=>a+b,0)/twFlat.length);
+      const tMaxBg=Math.max(...twFlat), tMinBg=Math.min(...twFlat);
+      const lwBgWeek=lwDays.map(day=>{
+        const vals=getRec(cat,day).bg.filter(x=>x.bg!=='').map(x=>parseFloat(x.bg));
+        return vals.length?vals:null;
+      }).filter(v=>v!==null);
+      if(lwBgWeek.length>=3){
+        const lwFlat=lwBgWeek.flat();
+        const lAvgBg=Math.round(lwFlat.reduce((a,b)=>a+b,0)/lwFlat.length);
+        const lMaxBg=Math.max(...lwFlat), lMinBg=Math.min(...lwFlat);
+        const pct=Math.round(Math.abs((tAvgBg-lAvgBg)/lAvgBg*100));
+        if(pct>=10){const dir=tAvgBg>lAvgBg?'▲':'▼';const lv=tAvgBg>lAvgBg?'warn':'ok';
+          feedbacks.push({priority:6,html:makeFeedback(lv,'📊','혈당 주간 변화',
+            `지난주 평균 ${lAvgBg} → 이번주 ${tAvgBg} mg/dL (${dir} ${pct}%)<br>최고 ${lMaxBg}→${tMaxBg} · 최저 ${lMinBg}→${tMinBg} mg/dL`)});}
+        else feedbacks.push({priority:10,html:makeFeedback('ok','📊','이번주 평균혈당',
+          `${tAvgBg} mg/dL · 최고 ${tMaxBg} · 최저 ${tMinBg}`)});
+      } else feedbacks.push({priority:10,html:makeFeedback('ok','📊','이번주 평균혈당',
+        `${tAvgBg} mg/dL · 최고 ${tMaxBg} · 최저 ${tMinBg}`)});
+    }
+
+    // CGM 주간 비교
+    {
+      const catCgm=(typeof cgmData!=='undefined'?cgmData:[]).filter(c=>(c.cat||'').trim()===cat.trim());
+      const cgmWeek=(days)=>days.map(day=>{
+        const e=catCgm.find(c=>c.date===day);
+        if(!e)return null;
+        const vals=(e.readings||[]).map(r=>r.value).filter(v=>v>0);
+        const avg=e.avg||(vals.length?Math.round(vals.reduce((a,b)=>a+b,0)/vals.length):null);
+        const minV=e.min||(vals.length?Math.min(...vals):null);
+        const maxV=e.max||(vals.length?Math.max(...vals):null);
+        return avg?{avg,min:minV,max:maxV}:null;
+      }).filter(v=>v!==null);
+      const twCgm=cgmWeek(twDays), lwCgm=cgmWeek(lwDays);
+      if(twCgm.length>=1){
+        const tAvg=Math.round(twCgm.reduce((a,b)=>a+b.avg,0)/twCgm.length);
+        const tMax=Math.max(...twCgm.map(c=>c.max||0));
+        const tMin=Math.min(...twCgm.map(c=>c.min||999));
+        if(lwCgm.length>=1){
+          const lAvg=Math.round(lwCgm.reduce((a,b)=>a+b.avg,0)/lwCgm.length);
+          const lMax=Math.max(...lwCgm.map(c=>c.max||0));
+          const lMin=Math.min(...lwCgm.map(c=>c.min||999));
+          const pct=Math.round(Math.abs((tAvg-lAvg)/lAvg*100));
+          if(pct>=10){const dir=tAvg>lAvg?'▲':'▼';const lv=tAvg>lAvg?'warn':'ok';
+            feedbacks.push({priority:5,html:makeFeedback(lv,'📡','CGM 주간 변화',
+              `지난주 평균 ${lAvg} → 이번주 ${tAvg} mg/dL (${dir} ${pct}%)<br>최고 ${lMax}→${tMax} · 최저 ${lMin}→${tMin} mg/dL`)});}
+          else feedbacks.push({priority:10,html:makeFeedback('ok','📡','이번주 CGM 평균',
+            `${tAvg} mg/dL · 최고 ${tMax} · 최저 ${tMin}`)});
+        } else feedbacks.push({priority:10,html:makeFeedback('ok','📡','이번주 CGM 평균',
+          `${tAvg} mg/dL · 최고 ${tMax} · 최저 ${tMin}`)});
+      }
+    }
 
     // 체중 주간 비교
     const twWt = twDays.map(day=>{const ws=getRec(cat,day).weights||[];return ws.length?ws[ws.length-1].weight:null;}).filter(v=>v!==null);
