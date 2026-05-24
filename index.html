@@ -510,7 +510,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.5.01</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.5.02</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">
@@ -6703,30 +6703,7 @@ function renderBTHistoryList() {
     // 클릭 - 결과 보기
     item.querySelector('div[style*="flex:1"]').addEventListener('click', ()=>{
       btEx = bt;
-      // 결과 표시
-      const btResult = document.getElementById('btResult');
-      const tbody = document.getElementById('btBody');
-      if(!btResult||!tbody) return;
-      const prevRec = btData.filter(d=>d.cat===bt.cat&&d.date<bt.date).sort((a,b)=>b.date<a.date?-1:1)[0];
-      tbody.innerHTML = '';
-      (bt.items||[]).forEach(item=>{
-        const s=item.refLow!==null&&item.value<item.refLow?'l':item.refHigh!==null&&item.value>item.refHigh?'h':'n';
-        const badge=s==='n'?'<span class="bn">정상</span>':s==='h'?'<span class="bh">높음</span>':'<span class="bl">낮음</span>';
-        const ref=item.refLow!==null||item.refHigh!==null?`${item.refLow??''}~${item.refHigh??''}`:'–';
-        let changeTd='<td style="color:var(--text3);font-size:11px">–</td>';
-        if(prevRec){
-          const prevItem=prevRec.items.find(i=>(i.abbr||i.name)===(item.abbr||item.name));
-          if(prevItem&&prevItem.value!==null){
-            const diff=parseFloat((item.value-prevItem.value).toFixed(2));
-            const arrow=diff>0?'▲':diff<0?'▼':'━';
-            const c=diff>0?'var(--coral)':diff<0?'var(--blue)':'var(--text3)';
-            changeTd=`<td style="font-size:11px;color:${c};white-space:nowrap">${arrow}${Math.abs(diff)}</td>`;
-          }
-        }
-        tbody.innerHTML+=`<tr><td>${item.name}${item.abbr&&item.abbr!==item.name?` <span style="color:var(--text3);font-size:10px">(${item.abbr})</span>`:''}</td><td style="font-weight:500">${item.value}</td><td style="color:var(--text2)">${item.unit||'–'}</td><td style="color:var(--text2)">${ref}</td><td>${badge}</td>${changeTd}</tr>`;
-      });
-      document.getElementById('btResultLabel').textContent=`${bt.cat} · ${bt.date} (${(bt.items||[]).length}개 항목)`;
-      btResult.style.display='block';
+      renderBTResultTable(bt);
       window.scrollTo({top:0,behavior:'smooth'});
     });
     // 삭제 버튼
@@ -6764,6 +6741,74 @@ function renderBTHistoryList() {
     });
     list.appendChild(item);
   });
+}
+
+// 혈액검사 결과 테이블 렌더링 (이력 클릭 시 + 수치 수정 후 재렌더링)
+function renderBTResultTable(bt) {
+  const btResult = document.getElementById('btResult');
+  const tbody = document.getElementById('btBody');
+  if(!btResult || !tbody) return;
+  // 업로드 흐름에서 카드뷰가 표시 중이면 원래 테이블 뷰로 복원
+  const tableWrap = tbody.closest('div[style*="overflow"]');
+  if(tableWrap) tableWrap.style.display = '';
+  const cc = document.getElementById('btCatCards');
+  if(cc) cc.innerHTML = '';
+  const prevRec = btData.filter(d=>d.cat===bt.cat&&d.date<bt.date).sort((a,b)=>b.date<a.date?-1:1)[0];
+  tbody.innerHTML = '';
+  (bt.items||[]).forEach((item, idx) => {
+    const s = item.refLow!==null&&item.value<item.refLow?'l':item.refHigh!==null&&item.value>item.refHigh?'h':'n';
+    const badge = s==='n'?'<span class="bn">정상</span>':s==='h'?'<span class="bh">높음</span>':'<span class="bl">낮음</span>';
+    const ref = item.refLow!==null||item.refHigh!==null?`${item.refLow??''}~${item.refHigh??''}`:'–';
+    let changeTd = '<td style="color:var(--text3);font-size:11px">–</td>';
+    if(prevRec){
+      const prevItem = prevRec.items.find(i=>(i.abbr||i.name)===(item.abbr||item.name));
+      if(prevItem&&prevItem.value!==null){
+        const diff = parseFloat((item.value-prevItem.value).toFixed(2));
+        const arrow = diff>0?'▲':diff<0?'▼':'━';
+        const c = diff>0?'var(--coral)':diff<0?'var(--blue)':'var(--text3)';
+        changeTd = `<td style="font-size:11px;color:${c};white-space:nowrap">${arrow}${Math.abs(diff)}</td>`;
+      }
+    }
+    const nameCell = `${item.name}${item.abbr&&item.abbr!==item.name?` <span style="color:var(--text3);font-size:10px">(${item.abbr})</span>`:''}`;
+    const valueCell = `<td id="btv_${idx}" style="font-weight:500;white-space:nowrap">${item.value} <span onclick="editBTItem(${idx})" style="cursor:pointer;color:var(--text3);font-size:11px;opacity:0.6" title="수치 수정">✎</span></td>`;
+    tbody.innerHTML += `<tr><td>${nameCell}</td>${valueCell}<td style="color:var(--text2)">${item.unit||'–'}</td><td style="color:var(--text2)">${ref}</td><td>${badge}</td>${changeTd}</tr>`;
+  });
+  document.getElementById('btResultLabel').textContent = `${bt.cat} · ${bt.date} (${(bt.items||[]).length}개 항목)`;
+  btResult.style.display = 'block';
+}
+
+function editBTItem(idx) {
+  const td = document.getElementById('btv_' + idx);
+  if(!td || td.querySelector('input')) return;
+  const item = btEx?.items?.[idx];
+  if(!item) return;
+  td.innerHTML = `<input id="btvIn_${idx}" type="number" value="${item.value}" step="any"
+    style="width:70px;padding:3px 6px;border:1px solid var(--teal);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit"
+    onkeydown="if(event.key==='Enter')saveBTItem(${idx});if(event.key==='Escape')cancelBTItem()">
+    <span onclick="saveBTItem(${idx})" style="color:var(--teal);cursor:pointer;font-weight:600;font-size:13px;margin-left:3px">✓</span>
+    <span onclick="cancelBTItem()" style="color:var(--text3);cursor:pointer;font-size:13px;margin-left:2px">✕</span>`;
+  const inp = document.getElementById('btvIn_' + idx);
+  if(inp) { inp.focus(); inp.select(); }
+}
+
+function saveBTItem(idx) {
+  const inp = document.getElementById('btvIn_' + idx);
+  if(!inp || !btEx) return;
+  const newVal = parseFloat(inp.value);
+  if(isNaN(newVal)) { toast('올바른 수치를 입력해주세요', '#D85A30'); return; }
+  btEx.items[idx].value = newVal;
+  const ei = btData.findIndex(d => d.cat === btEx.cat && d.date === btEx.date);
+  if(ei > -1) btData[ei] = btEx;
+  saveBT();
+  try { saveBloodTestToDB(btEx); } catch(e) {}
+  renderBTResultTable(btEx);
+  renderBTHistoryList();
+  try { renderBTTrend(); } catch(e) {}
+  toast('수치가 수정됐어요 ✅');
+}
+
+function cancelBTItem() {
+  if(btEx) renderBTResultTable(btEx);
 }
 
 /* ── 5번: 카드 접기/펼치기 ── */
