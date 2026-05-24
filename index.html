@@ -510,7 +510,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.97</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.98</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">
@@ -1453,8 +1453,9 @@ try{const d=localStorage.getItem(SK_FD);if(d)fdData=JSON.parse(d)}catch(e){}
 const saveS=(date)=>{try{localStorage.setItem(SK,JSON.stringify(state))}catch(e){}; if(typeof saveToDB==='function'){saveToDB(date);}};
 const saveBT=()=>{try{localStorage.setItem(SK_BT,JSON.stringify(btData))}catch(e){};if(document.getElementById('tab-graph')?.classList.contains('active'))renderBTTrend();renderBTHistoryList();};
 const saveFD=()=>{try{localStorage.setItem(SK_FD,JSON.stringify(fdData))}catch(e){}};
-const today=()=>new Date().toISOString().slice(0,10);
-function nowTime(){const n=new Date();return String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');}
+function kstNow(){return new Date(Date.now()+9*3600000);}
+const today=()=>kstNow().toISOString().slice(0,10);
+function nowTime(){const n=kstNow();return String(n.getUTCHours()).padStart(2,'0')+':'+String(n.getUTCMinutes()).padStart(2,'0');}
 const nowT=nowTime;
 function getRec(cat,date){
   if(!state.records[cat])state.records[cat]={};
@@ -2274,7 +2275,7 @@ const AI_LIMIT_LABELS = {
 };
 
 function getAIUsageKey(type) {
-  const today = new Date().toISOString().slice(0,10);
+  const today = kstNow().toISOString().slice(0,10);
   const uid = currentUser?.id || 'guest';
   return `ai_usage_${uid}_${type}_${today}`;
 }
@@ -2725,7 +2726,7 @@ function renderChallengeBar() {
   // streak null = 이벤트 기간 아님 → 숨기기
   // 이벤트 기간 아님 → D-1(전날)에는 예고 배너 표시
   if(streak === null) {
-    const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1);
+    const tomorrow = kstNow(); tomorrow.setUTCDate(tomorrow.getUTCDate()+1);
     const tomorrowStr = tomorrow.toISOString().slice(0,10);
     if(tomorrowStr === CHALLENGE_START) {
       el.style.display = 'block';
@@ -2794,8 +2795,8 @@ function renderChallengeBar() {
 function getRecentDays(n) {
   const days = [];
   for(let i = 0; i < n; i++) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
+    const d = kstNow();
+    d.setUTCDate(d.getUTCDate() - i);
     days.push(d.toISOString().slice(0, 10));
   }
   return days;
@@ -2997,7 +2998,7 @@ function renderDailySummary() {
       return arr.length ? Math.min(...arr) : null;
     }).filter(v=>v!==null);
     const lastWeekMins = Array.from({length:7}, (_,i) => {
-      const d2 = new Date(); d2.setDate(d2.getDate()-7-i);
+      const d2 = kstNow(); d2.setUTCDate(d2.getUTCDate()-7-i);
       const day = d2.toISOString().slice(0,10);
       const r = getRec(cat, day);
       const arr = r.bg.filter(x=>x.bg!=='').map(x=>parseFloat(x.bg));
@@ -3019,7 +3020,7 @@ function renderDailySummary() {
       return arr.length >= 2 ? Math.max(...arr) - Math.min(...arr) : null;
     }).filter(v=>v!==null);
     const lastVariances = Array.from({length:7}, (_,i) => {
-      const d2 = new Date(); d2.setDate(d2.getDate()-7-i);
+      const d2 = kstNow(); d2.setUTCDate(d2.getUTCDate()-7-i);
       const day = d2.toISOString().slice(0,10);
       const r = getRec(cat, day);
       const arr = r.bg.filter(x=>x.bg!=='').map(x=>parseFloat(x.bg));
@@ -3084,9 +3085,8 @@ function renderDailySummary() {
     const emergRecord = (rec.routines||[]).find(r=>r.items?.includes(emergName));
     if(emergRecord) {
       const [h,m2] = emergRecord.time.split(':').map(Number);
-      const now = new Date();
-      const investDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m2);
-      const elapsedMin = Math.floor((now - investDate) / 60000);
+      const nowKST = kstNow();
+      const elapsedMin = Math.floor(nowKST.getUTCHours() * 60 + nowKST.getUTCMinutes() - (h * 60 + m2));
       const urineAfter = (rec.urine||[]).filter(u => {
         const [uh,um] = u.time.split(':').map(Number);
         return uh*60+um > h*60+m2;
@@ -3708,9 +3708,9 @@ function getDateRange(){
     const all=getAllDates();
     if(!all.length)return getLast(30);
     const start=new Date(all[0]);
-    const end=new Date();
+    const end=kstNow();
     const days=[];
-    for(let d=new Date(start);d<=end;d.setDate(d.getDate()+1)){
+    for(let d=new Date(start);d<=end;d.setUTCDate(d.getUTCDate()+1)){
       days.push(d.toISOString().slice(0,10));
     }
     return days;
@@ -3718,7 +3718,7 @@ function getDateRange(){
   return getLast(gPeriod);
 }
 
-function getLast(n){const d=[];for(let i=n-1;i>=0;i--){const dt=new Date();dt.setDate(dt.getDate()-i);d.push(dt.toISOString().slice(0,10))}return d}
+function getLast(n){const d=[];for(let i=n-1;i>=0;i--){const dt=kstNow();dt.setUTCDate(dt.getUTCDate()-i);d.push(dt.toISOString().slice(0,10))}return d}
 
 
 function renderGraphs(){
@@ -5299,9 +5299,8 @@ function renderDiureticAlert(date) {
 
   const investTime = emergRecord.time;
   const [h, m] = investTime.split(':').map(Number);
-  const now = new Date();
-  const investDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m);
-  const elapsedMin = Math.floor((now - investDate) / 60000);
+  const nowKST = kstNow();
+  const elapsedMin = Math.floor(nowKST.getUTCHours() * 60 + nowKST.getUTCMinutes() - (h * 60 + m));
   const elapsedHr = Math.floor(elapsedMin / 60);
   const elapsedRemMin = elapsedMin % 60;
   const elapsedStr = elapsedHr > 0 ? elapsedHr + '시간 ' + elapsedRemMin + '분' : elapsedMin + '분';
