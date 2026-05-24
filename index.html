@@ -510,7 +510,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.98</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.4.99</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">
@@ -780,10 +780,12 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     <!-- 음수량 -->
     <div style="margin-bottom:.85rem">
       <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:.4rem">💧 음수량</div>
-      <div style="display:flex;gap:8px;align-items:center;margin-bottom:.4rem">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:.4rem;flex-wrap:wrap">
         <input type="number" id="waterInput" placeholder="ml" min="0" step="1"
-          style="width:90px;padding:8px 10px;border:0.5px solid var(--bd);border-radius:9px;font-size:14px;background:var(--bg);color:var(--text);font-family:inherit">
+          style="width:80px;padding:8px 10px;border:0.5px solid var(--bd);border-radius:9px;font-size:14px;background:var(--bg);color:var(--text);font-family:inherit">
         <span style="font-size:12px;color:var(--text2)">ml</span>
+        <input type="time" id="waterTimeInput"
+          style="padding:7px 8px;border:0.5px solid var(--bd);border-radius:9px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit">
         <button type="button" onclick="addWater()"
           style="padding:8px 16px;background:var(--teal);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">+ 추가</button>
       </div>
@@ -794,17 +796,29 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     <!-- 소변 체크 -->
     <div style="border-top:0.5px solid var(--bd);padding-top:.75rem">
       <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:.4rem">🚽 소변 체크</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.5rem">
-        <button type="button" onclick="addUrine('소량')"
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.4rem">
+        <button type="button" onclick="selectUrine('소량')"
           style="padding:7px 14px;border:0.5px solid var(--bd);border-radius:9px;font-size:12px;background:var(--bg);color:var(--text);cursor:pointer;font-family:inherit">소량</button>
-        <button type="button" onclick="addUrine('정상')"
+        <button type="button" onclick="selectUrine('정상')"
           style="padding:7px 14px;border:0.5px solid var(--teal);border-radius:9px;font-size:12px;background:var(--teal-l);color:var(--teal);cursor:pointer;font-family:inherit;font-weight:600">정상</button>
-        <button type="button" onclick="addUrine('다량')"
+        <button type="button" onclick="selectUrine('다량')"
           style="padding:7px 14px;border:0.5px solid var(--bd);border-radius:9px;font-size:12px;background:var(--bg);color:var(--text);cursor:pointer;font-family:inherit">다량</button>
-        <button type="button" onclick="addUrine('혈뇨')"
+        <button type="button" onclick="selectUrine('혈뇨')"
           style="padding:7px 14px;border:0.5px solid var(--coral);border-radius:9px;font-size:12px;background:var(--coral-l);color:var(--coral);cursor:pointer;font-family:inherit;font-weight:600">🔴 혈뇨</button>
-        <button type="button" onclick="addUrine('핍뇨')"
+        <button type="button" onclick="selectUrine('핍뇨')"
           style="padding:7px 14px;border:0.5px solid var(--amber);border-radius:9px;font-size:12px;background:var(--amber-l);color:var(--amber-d);cursor:pointer;font-family:inherit;font-weight:600">⚠️ 핍뇨</button>
+      </div>
+      <div id="urineTimePanel" style="display:none;margin-bottom:.4rem;background:var(--bg2);border-radius:9px;padding:.5rem .65rem;border:0.5px solid var(--bd)">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <span style="font-size:12px;color:var(--text2)">소변 종류:</span>
+          <span id="urineTypeLabel" style="font-size:12px;font-weight:600;color:var(--text)"></span>
+          <input type="time" id="urineTimeInput"
+            style="padding:5px 8px;border:0.5px solid var(--bd);border-radius:7px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit">
+          <button type="button" onclick="confirmAddUrine()"
+            style="padding:5px 14px;background:var(--teal);color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">저장</button>
+          <button type="button" onclick="document.getElementById('urineTimePanel').style.display='none'"
+            style="padding:5px 10px;background:none;border:0.5px solid var(--bd);border-radius:7px;font-size:12px;color:var(--text3);cursor:pointer;font-family:inherit">취소</button>
+        </div>
       </div>
       <div id="urineTotal" style="font-size:13px;color:var(--text);font-weight:600;margin-bottom:.3rem"></div>
       <div id="urineLog" style="font-size:11px;color:var(--text3);line-height:1.8"></div>
@@ -813,17 +827,29 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     <!-- 대변 체크 -->
     <div style="border-top:0.5px solid var(--bd);padding-top:.75rem;margin-top:.75rem">
       <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:.4rem">💩 대변 체크</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.5rem">
-        <button type="button" onclick="addPoop('정상')"
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.4rem">
+        <button type="button" onclick="selectPoop('정상')"
           style="padding:7px 14px;border:0.5px solid var(--teal);border-radius:9px;font-size:12px;background:var(--teal-l);color:var(--teal);cursor:pointer;font-family:inherit;font-weight:600">정상</button>
-        <button type="button" onclick="addPoop('무름')"
+        <button type="button" onclick="selectPoop('무름')"
           style="padding:7px 14px;border:0.5px solid var(--amber);border-radius:9px;font-size:12px;background:var(--amber-l);color:var(--amber-d);cursor:pointer;font-family:inherit">무름</button>
-        <button type="button" onclick="addPoop('설사')"
+        <button type="button" onclick="selectPoop('설사')"
           style="padding:7px 14px;border:0.5px solid var(--coral);border-radius:9px;font-size:12px;background:var(--coral-l);color:var(--coral);cursor:pointer;font-family:inherit;font-weight:600">⚠️ 설사</button>
-        <button type="button" onclick="addPoop('혈변')"
+        <button type="button" onclick="selectPoop('혈변')"
           style="padding:7px 14px;border:0.5px solid var(--coral);border-radius:9px;font-size:12px;background:var(--coral-l);color:var(--coral);cursor:pointer;font-family:inherit;font-weight:600">🔴 혈변</button>
-        <button type="button" onclick="addPoop('무변')"
+        <button type="button" onclick="selectPoop('무변')"
           style="padding:7px 14px;border:0.5px solid var(--amber);border-radius:9px;font-size:12px;background:var(--amber-l);color:var(--amber-d);cursor:pointer;font-family:inherit">무변</button>
+      </div>
+      <div id="poopTimePanel" style="display:none;margin-bottom:.4rem;background:var(--bg2);border-radius:9px;padding:.5rem .65rem;border:0.5px solid var(--bd)">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <span style="font-size:12px;color:var(--text2)">대변 종류:</span>
+          <span id="poopTypeLabel" style="font-size:12px;font-weight:600;color:var(--text)"></span>
+          <input type="time" id="poopTimeInput"
+            style="padding:5px 8px;border:0.5px solid var(--bd);border-radius:7px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit">
+          <button type="button" onclick="confirmAddPoop()"
+            style="padding:5px 14px;background:var(--teal);color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">저장</button>
+          <button type="button" onclick="document.getElementById('poopTimePanel').style.display='none'"
+            style="padding:5px 10px;background:none;border:0.5px solid var(--bd);border-radius:7px;font-size:12px;color:var(--text3);cursor:pointer;font-family:inherit">취소</button>
+        </div>
       </div>
       <div id="poopTotal" style="font-size:13px;color:var(--text);font-weight:600;margin-bottom:.3rem"></div>
       <div id="poopLog" style="font-size:11px;color:var(--text3);line-height:1.8"></div>
@@ -1059,6 +1085,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     </div>
     <div id="btTrendCard">
       <div style="font-size:11px;color:var(--text3);margin:.5rem 0">혈액검사 탭에서 저장한 결과의 날짜별 변화를 볼 수 있어요</div>
+      <div style="font-size:11px;color:var(--amber-d);margin-bottom:.5rem">⚠️ 병원마다 정상범위 기준이 다를 수 있어요</div>
       <!-- 카테고리 필터 -->
       <div id="btTrendFilter" class="g-filter" style="display:none;margin-bottom:.75rem"></div>
       <!-- 차트 영역 -->
@@ -1128,8 +1155,31 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     <div class="drop-zone" id="btDrop">
       <div class="drop-title">혈액검사지 업로드</div>
       <div class="drop-sub">이미지(JPG·PNG) 또는 PDF</div>
-      <label class="drop-lbl" for="btFile">파일 선택</label>
+      <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+        <label class="drop-lbl" for="btFile">파일 선택</label>
+        <button type="button" onclick="showBTManualEntry()" class="drop-lbl" style="cursor:pointer;margin:0">✏️ 직접 입력</button>
+      </div>
       <input type="file" id="btFile" accept="image/*,application/pdf" style="display:none">
+    </div>
+    <!-- 직접 입력 폼 -->
+    <div id="btManualEntry" style="display:none;border:0.5px solid var(--bd);border-radius:10px;padding:.85rem;margin-top:.75rem;background:var(--bg2)">
+      <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:.65rem">✏️ 혈액검사 직접 입력</div>
+      <div class="row2" style="margin-bottom:.6rem">
+        <div class="ig"><label>검사 날짜</label><input type="date" id="btManualDate"></div>
+        <div class="ig"><label>고양이</label><select id="btManualCat" style="padding:8px 10px;border:0.5px solid var(--bd);border-radius:9px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit;width:100%"></select></div>
+      </div>
+      <div style="display:grid;grid-template-columns:2fr 1.2fr 1fr auto;gap:4px;margin-bottom:.3rem;font-size:10px;color:var(--text3);padding:0 2px">
+        <span>항목명</span><span>수치</span><span>단위</span><span></span>
+      </div>
+      <div id="btManualRows"></div>
+      <button type="button" onclick="addBTManualRow()"
+        style="margin-top:.3rem;padding:6px 14px;background:none;border:0.5px solid var(--teal);border-radius:8px;font-size:12px;color:var(--teal);cursor:pointer;font-family:inherit;font-weight:600">+ 항목 추가</button>
+      <div style="display:flex;gap:8px;margin-top:.75rem">
+        <button type="button" onclick="saveBTManual()"
+          style="flex:1;padding:9px;background:var(--teal);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">저장</button>
+        <button type="button" onclick="document.getElementById('btManualEntry').style.display='none'"
+          style="padding:9px 16px;background:none;border:0.5px solid var(--bd);border-radius:9px;font-size:13px;color:var(--text3);cursor:pointer;font-family:inherit">취소</button>
+      </div>
     </div>
     <img id="btPreview" class="img-prev" style="display:none">
     <div class="row2" style="margin-bottom:.75rem">
@@ -1163,8 +1213,8 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     <div id="btChartsWrap"></div>
   </div>
 
-  <!-- 혈액검사 저장 이력 목록 (혈액검사 탭에서 숨김 - 그래프 탭에서 확인) -->
-  <div class="card" style="margin-top:.5rem;display:none" id="btHistoryCard">
+  <!-- 혈액검사 저장 이력 목록 -->
+  <div class="card" style="margin-top:.5rem" id="btHistoryCard">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem">
       <div class="card-title" style="margin:0">📋 저장된 검사 이력</div>
       <button type="button" onclick="if(confirm('전체 혈액검사 이력을 삭제할까요?')){btData=[];saveBT();
@@ -1453,6 +1503,74 @@ try{const d=localStorage.getItem(SK_FD);if(d)fdData=JSON.parse(d)}catch(e){}
 const saveS=(date)=>{try{localStorage.setItem(SK,JSON.stringify(state))}catch(e){}; if(typeof saveToDB==='function'){saveToDB(date);}};
 const saveBT=()=>{try{localStorage.setItem(SK_BT,JSON.stringify(btData))}catch(e){};if(document.getElementById('tab-graph')?.classList.contains('active'))renderBTTrend();renderBTHistoryList();};
 const saveFD=()=>{try{localStorage.setItem(SK_FD,JSON.stringify(fdData))}catch(e){}};
+
+let _btManualRowId = 0;
+function showBTManualEntry() {
+  const el = document.getElementById('btManualEntry');
+  if(!el) return;
+  const isHidden = el.style.display === 'none';
+  el.style.display = isHidden ? 'block' : 'none';
+  if(!isHidden) return;
+  const d = document.getElementById('btManualDate');
+  if(d && !d.value) d.value = today();
+  const catSel = document.getElementById('btManualCat');
+  if(catSel) {
+    catSel.innerHTML = (state.cats||[]).filter(Boolean).map(c=>`<option value="${c}">${c}</option>`).join('');
+    if(state.activeCat) catSel.value = state.activeCat;
+  }
+  const rowsEl = document.getElementById('btManualRows');
+  if(rowsEl && rowsEl.children.length === 0) {
+    addBTManualRow(); addBTManualRow(); addBTManualRow();
+  }
+}
+function addBTManualRow() {
+  const el = document.getElementById('btManualRows');
+  if(!el) return;
+  const id = _btManualRowId++;
+  const div = document.createElement('div');
+  div.id = 'btMR_' + id;
+  div.style.cssText = 'display:grid;grid-template-columns:2fr 1.2fr 1fr auto;gap:4px;margin-bottom:.35rem;align-items:center';
+  div.innerHTML = `<input type="text" placeholder="항목명 (예: BUN)" id="btMN${id}"
+      style="padding:7px 8px;border:0.5px solid var(--bd);border-radius:8px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit">`
+    + `<input type="number" placeholder="수치" id="btMV${id}" step="any"
+      style="padding:7px 8px;border:0.5px solid var(--bd);border-radius:8px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit">`
+    + `<input type="text" placeholder="단위" id="btMU${id}"
+      style="padding:7px 8px;border:0.5px solid var(--bd);border-radius:8px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit">`
+    + `<span onclick="document.getElementById('btMR_${id}').remove()"
+      style="color:var(--text3);cursor:pointer;font-size:18px;text-align:center;line-height:1">×</span>`;
+  el.appendChild(div);
+}
+function saveBTManual() {
+  const date = document.getElementById('btManualDate')?.value;
+  const cat = document.getElementById('btManualCat')?.value;
+  if(!date || !cat) { toast('날짜와 고양이를 선택해주세요', '#D85A30'); return; }
+  const rowsEl = document.getElementById('btManualRows');
+  if(!rowsEl) return;
+  const items = [];
+  rowsEl.querySelectorAll('[id^="btMR_"]').forEach(row => {
+    const rid = row.id.replace('btMR_', '');
+    const name = document.getElementById('btMN' + rid)?.value.trim();
+    const val = parseFloat(document.getElementById('btMV' + rid)?.value);
+    const unit = document.getElementById('btMU' + rid)?.value.trim() || '';
+    if(name && !isNaN(val)) items.push({name, value: val, unit, abbr: name});
+  });
+  if(!items.length) { toast('입력된 항목이 없어요', '#D85A30'); return; }
+  const normalized = normalizeBTItems(items);
+  const entry = {cat, date, items: normalized, ts: Date.now()};
+  const ei = btData.findIndex(d => d.cat === cat && d.date === date);
+  if(ei > -1) btData[ei] = entry; else btData.unshift(entry);
+  saveBT();
+  try { saveBloodTestToDB(entry); } catch(e) {}
+  renderBTHistoryList();
+  renderBTGraphs();
+  renderBTTrend();
+  document.getElementById('btManualEntry').style.display = 'none';
+  // 폼 초기화
+  const rowsCont = document.getElementById('btManualRows');
+  if(rowsCont) rowsCont.innerHTML = '';
+  toast('혈액검사 기록이 저장됐어요 ✅');
+}
+
 function kstNow(){return new Date(Date.now()+9*3600000);}
 const today=()=>kstNow().toISOString().slice(0,10);
 function nowTime(){const n=kstNow();return String(n.getUTCHours()).padStart(2,'0')+':'+String(n.getUTCMinutes()).padStart(2,'0');}
@@ -5061,22 +5179,44 @@ function addWater() {
   if(!ml || ml <= 0) { toast('음수량을 입력해주세요', '#D85A30'); return; }
   const dateEl = document.getElementById('waterDate');
   const date = dateEl?.value || today();
+  const timeInput = document.getElementById('waterTimeInput');
+  const time = timeInput?.value || nowTime();
   const rec = getRec(state.activeCat, date);
   if(!rec.water) rec.water = [];
-  rec.water.push({ml, time: nowTime(), ts: Date.now()});
+  rec.water.push({ml, time, ts: Date.now()});
   saveS(date);
   input.value = '';
+  if(timeInput) timeInput.value = nowTime();
   renderWaterLog();
   toast('💧 ' + ml + 'ml 기록됐어요', '#1D9E75');
   try{renderDailySummary();}catch(e){}
 }
 
-function addUrine(amount) {
+let _pendingUrine = null;
+function selectUrine(amount) {
+  _pendingUrine = amount;
+  const label = document.getElementById('urineTypeLabel');
+  const timeInput = document.getElementById('urineTimeInput');
+  const panel = document.getElementById('urineTimePanel');
+  if(!panel) { addUrine(amount); return; }
+  if(label) label.textContent = amount;
+  if(timeInput) timeInput.value = nowTime();
+  panel.style.display = 'block';
+}
+function confirmAddUrine() {
+  if(!_pendingUrine) return;
+  const time = document.getElementById('urineTimeInput')?.value || nowTime();
+  const panel = document.getElementById('urineTimePanel');
+  if(panel) panel.style.display = 'none';
+  addUrine(_pendingUrine, time);
+  _pendingUrine = null;
+}
+function addUrine(amount, time) {
+  const t = time || nowTime();
   const dateEl = document.getElementById('waterDate');
   const date = dateEl?.value || today();
   const rec = getRec(state.activeCat, date);
   if(!rec.urine) rec.urine = [];
-  // 무뇨 경고
   if(amount === '핍뇨') {
     toast('⚠️ 핍뇨 기록됨 — 소변량이 매우 적어요. 음수량과 함께 모니터링하세요', '#BA7517');
   } else if(amount === '혈뇨') {
@@ -5084,19 +5224,39 @@ function addUrine(amount) {
   } else {
     toast('🚽 소변 기록됐어요 (' + amount + ')', '#1D9E75');
   }
-  rec.urine.push({amount, time: nowTime(), ts: Date.now()});
+  rec.urine.push({amount, time: t, ts: Date.now()});
   saveS(date);
   renderWaterLog();
   renderDiureticAlert(date);
   try{renderDailySummary();}catch(e){}
 }
 
-function addPoop(type) {
+let _pendingPoop = null;
+function selectPoop(type) {
+  _pendingPoop = type;
+  const label = document.getElementById('poopTypeLabel');
+  const timeInput = document.getElementById('poopTimeInput');
+  const panel = document.getElementById('poopTimePanel');
+  if(!panel) { addPoop(type); return; }
+  if(label) label.textContent = type;
+  if(timeInput) timeInput.value = nowTime();
+  panel.style.display = 'block';
+}
+function confirmAddPoop() {
+  if(!_pendingPoop) return;
+  const time = document.getElementById('poopTimeInput')?.value || nowTime();
+  const panel = document.getElementById('poopTimePanel');
+  if(panel) panel.style.display = 'none';
+  addPoop(_pendingPoop, time);
+  _pendingPoop = null;
+}
+function addPoop(type, time) {
+  const t = time || nowTime();
   const dateEl = document.getElementById('waterDate');
   const date = dateEl?.value || today();
   const rec = getRec(state.activeCat, date);
   if(!rec.poop) rec.poop = [];
-  rec.poop.push({type, time: nowTime(), ts: Date.now()});
+  rec.poop.push({type, time: t, ts: Date.now()});
   saveS(date);
   renderWaterLog();
   if(type==='혈변') toast('🔴 혈변 기록됨 — 즉시 수의사 상담을 권장해요', '#D85A30');
@@ -5147,6 +5307,9 @@ function renderWaterLog() {
   const dateEl = document.getElementById('waterDate');
   const date = dateEl?.value || today();
   const rec = getRec(state.activeCat, date);
+  // 시간 입력 기본값 초기화
+  const wtInput = document.getElementById('waterTimeInput');
+  if(wtInput && !wtInput.value) wtInput.value = nowTime();
 
   // 음수량
   const waterArr = rec.water || [];
