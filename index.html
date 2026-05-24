@@ -510,7 +510,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.5.04</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.5.05</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">
@@ -3349,7 +3349,74 @@ function renderDailySummary() {
   }
 
   // ════════════════════════════════
-  // 5. 기록 없음 / 전체 정상
+  // 5. 주간 비교 (체중/음수량/소변/대변)
+  // ════════════════════════════════
+  {
+    const weekDays = (offset) => Array.from({length:7}, (_,i) => {
+      const d2 = kstNow(); d2.setUTCDate(d2.getUTCDate() - offset*7 - i);
+      return d2.toISOString().slice(0,10);
+    });
+    const twDays = weekDays(0), lwDays = weekDays(1);
+
+    // 체중 주간 비교
+    const twWt = twDays.map(day=>{const ws=getRec(cat,day).weights||[];return ws.length?ws[ws.length-1].weight:null;}).filter(v=>v!==null);
+    const lwWt = lwDays.map(day=>{const ws=getRec(cat,day).weights||[];return ws.length?ws[ws.length-1].weight:null;}).filter(v=>v!==null);
+    if(twWt.length>=2){
+      const tAvg=+(twWt.reduce((a,b)=>a+b,0)/twWt.length).toFixed(2);
+      if(lwWt.length>=2){
+        const lAvg=+(lwWt.reduce((a,b)=>a+b,0)/lwWt.length).toFixed(2);
+        const pct=Math.round(Math.abs((tAvg-lAvg)/lAvg*100));
+        if(pct>=10){const dir=tAvg>lAvg?'▲':'▼';const lv=tAvg>lAvg?'warn':'info';
+          feedbacks.push({priority:6,html:makeFeedback(lv,'⚖️','체중 주간 변화',`지난주 평균 ${lAvg}kg → 이번주 ${tAvg}kg (${dir} ${pct}%)`)});}
+        else feedbacks.push({priority:10,html:makeFeedback('ok','⚖️','이번주 평균 체중',`${tAvg}kg`)});
+      } else feedbacks.push({priority:10,html:makeFeedback('ok','⚖️','이번주 평균 체중',`${tAvg}kg`)});
+    }
+
+    // 음수량 주간 비교
+    const twW = twDays.map(day=>{const arr=getRec(cat,day).water||[];return arr.length?arr.reduce((a,b)=>a+b.ml,0):null;}).filter(v=>v!==null);
+    const lwW = lwDays.map(day=>{const arr=getRec(cat,day).water||[];return arr.length?arr.reduce((a,b)=>a+b.ml,0):null;}).filter(v=>v!==null);
+    if(twW.length>=2){
+      const tAvg=Math.round(twW.reduce((a,b)=>a+b,0)/twW.length);
+      if(lwW.length>=2){
+        const lAvg=Math.round(lwW.reduce((a,b)=>a+b,0)/lwW.length);
+        const pct=Math.round(Math.abs((tAvg-lAvg)/lAvg*100));
+        if(pct>=10){const dir=tAvg>lAvg?'▲':'▼';const lv=tAvg<lAvg?'warn':'ok';
+          feedbacks.push({priority:6,html:makeFeedback(lv,'💧','음수량 주간 변화',`지난주 일평균 ${lAvg}ml → 이번주 ${tAvg}ml (${dir} ${pct}%)`)});}
+        else feedbacks.push({priority:10,html:makeFeedback('ok','💧','이번주 일평균 음수량',`${tAvg}ml`)});
+      } else feedbacks.push({priority:10,html:makeFeedback('ok','💧','이번주 일평균 음수량',`${tAvg}ml`)});
+    }
+
+    // 소변 횟수 주간 비교
+    const twU = twDays.map(day=>{const arr=getRec(cat,day).urine||[];return arr.length?arr.length:null;}).filter(v=>v!==null);
+    const lwU = lwDays.map(day=>{const arr=getRec(cat,day).urine||[];return arr.length?arr.length:null;}).filter(v=>v!==null);
+    if(twU.length>=2){
+      const tAvg=+(twU.reduce((a,b)=>a+b,0)/twU.length).toFixed(1);
+      if(lwU.length>=2){
+        const lAvg=+(lwU.reduce((a,b)=>a+b,0)/lwU.length).toFixed(1);
+        const pct=Math.round(Math.abs((tAvg-lAvg)/lAvg*100));
+        if(pct>=10){const dir=tAvg>lAvg?'▲':'▼';const lv=tAvg<lAvg?'warn':'ok';
+          feedbacks.push({priority:6,html:makeFeedback(lv,'🚽','소변 횟수 주간 변화',`지난주 하루평균 ${lAvg}회 → 이번주 ${tAvg}회 (${dir} ${pct}%)`)});}
+        else feedbacks.push({priority:10,html:makeFeedback('ok','🚽','이번주 하루평균 소변',`${tAvg}회`)});
+      } else feedbacks.push({priority:10,html:makeFeedback('ok','🚽','이번주 하루평균 소변',`${tAvg}회`)});
+    }
+
+    // 대변 횟수 주간 비교
+    const twP = twDays.map(day=>{const arr=getRec(cat,day).poop||[];return arr.length?arr.length:null;}).filter(v=>v!==null);
+    const lwP = lwDays.map(day=>{const arr=getRec(cat,day).poop||[];return arr.length?arr.length:null;}).filter(v=>v!==null);
+    if(twP.length>=2){
+      const tAvg=+(twP.reduce((a,b)=>a+b,0)/twP.length).toFixed(1);
+      if(lwP.length>=2){
+        const lAvg=+(lwP.reduce((a,b)=>a+b,0)/lwP.length).toFixed(1);
+        const pct=Math.round(Math.abs((tAvg-lAvg)/lAvg*100));
+        if(pct>=10){const dir=tAvg>lAvg?'▲':'▼';const lv=tAvg<lAvg?'warn':'ok';
+          feedbacks.push({priority:6,html:makeFeedback(lv,'💩','대변 횟수 주간 변화',`지난주 하루평균 ${lAvg}회 → 이번주 ${tAvg}회 (${dir} ${pct}%)`)});}
+        else feedbacks.push({priority:10,html:makeFeedback('ok','💩','이번주 하루평균 대변',`${tAvg}회`)});
+      } else feedbacks.push({priority:10,html:makeFeedback('ok','💩','이번주 하루평균 대변',`${tAvg}회`)});
+    }
+  }
+
+  // ════════════════════════════════
+  // 6. 기록 없음 / 전체 정상
   // ════════════════════════════════
   const hasAnyRecord = rec.bg.length || rec.ins.length || rec.weights.length || rec.rr?.length || (rec.water||[]).length || (rec.routines||[]).length;
   if(!hasAnyRecord) {
