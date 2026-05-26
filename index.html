@@ -510,7 +510,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.5.08</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.5.09</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">
@@ -2039,7 +2039,12 @@ function getCardOrder(cat) {
   const c = cat||state.activeCat;
   try {
     const saved = localStorage.getItem(SK_CARD_ORDER+'_'+c);
-    if(saved) return JSON.parse(saved);
+    if(saved) {
+      const parsed = JSON.parse(saved);
+      // 저장 이후 새로 추가된 카드 키(water 등)가 없으면 뒤에 보충
+      const missing = DEFAULT_CARD_ORDER.filter(k => !parsed.includes(k));
+      return missing.length ? [...parsed, ...missing] : parsed;
+    }
   } catch(e) {}
   return autoCardOrder(c);
 }
@@ -2137,9 +2142,8 @@ function applyCardOrder(cat) {
     if(cardSet.has(child)) { seenCard = true; continue; }
     if(seenCard) { insertAnchor = child; break; }
   }
-  // order에 없는 카드(신규 추가된 키 등)는 뒤에 붙임
-  const fullOrder = [...order, ...Object.keys(anchors).filter(k => !order.includes(k))];
-  fullOrder.map(k => anchors[k]).filter(Boolean)
+  // getCardOrder()에서 이미 누락 키를 보충하므로 order를 그대로 사용
+  order.map(k => anchors[k]).filter(Boolean)
     .forEach(card => parent.insertBefore(card, insertAnchor));
 }
 
