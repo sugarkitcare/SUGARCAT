@@ -510,7 +510,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.5.09</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.5.10</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">
@@ -1573,7 +1573,7 @@ function saveBTManual() {
   try { saveBloodTestToDB(entry); } catch(e) {}
   renderBTHistoryList();
   renderBTGraphs();
-  renderBTTrend();
+  if(document.getElementById('tab-graph')?.classList.contains('active')) renderBTTrend();
   document.getElementById('btManualEntry').style.display = 'none';
   // 폼 초기화
   const rowsCont = document.getElementById('btManualRows');
@@ -4230,7 +4230,7 @@ setupDrop('btDrop','btFile',async file=>{
       saveBT();
       renderBTGraphs();
       renderBTHistoryList();
-      renderBTTrend();
+      if(document.getElementById('tab-graph')?.classList.contains('active')) renderBTTrend();
       toast(resultsToSave.length+'개 날짜 결과 저장 완료! 그래프 탭에서 확인해보세요 📊');
       // 저장 후 결과 영역 숨기기
       document.getElementById('btResult').style.display='none';
@@ -4365,7 +4365,7 @@ document.getElementById('btSave').onclick=async()=>{
   toast('혈액검사 저장 완료! ☁️');
   renderBTGraphs();
   renderBTHistoryList();
-  renderBTTrend();
+  if(document.getElementById('tab-graph')?.classList.contains('active')) renderBTTrend();
   // DB 저장 후 재동기화 (약간 딜레이)
   if(sbClient && currentUser) setTimeout(()=>loadBloodTests(), 1000);
 };
@@ -6510,7 +6510,8 @@ let btTrendInst=[];
 const btTrendAC=new Set();
 
 function renderBTTrend(){
-  btTrendInst.forEach(c=>c.destroy()); btTrendInst=[];
+  try { btTrendInst.forEach(c=>c.destroy()); } catch(e) {}
+  btTrendInst=[];
   const wrap=document.getElementById('btTrendWrap');
   const filter=document.getElementById('btTrendFilter');
   const empty=document.getElementById('btTrendEmpty');
@@ -6520,10 +6521,12 @@ function renderBTTrend(){
   const myData=btData.filter(d=>d.cat===state.activeCat);
   if(!myData.length){
     wrap.innerHTML='';filter.innerHTML='';
+    filter.style.display='none';
     if(empty)empty.style.display='block';
     return;
   }
   if(empty)empty.style.display='none';
+  filter.style.display='';
 
   // 항목별 날짜 데이터 집계 — 키를 정규화된 abbr 기준으로 통일
   const map={};
@@ -7747,7 +7750,7 @@ async function loadBloodTests() {
     }
     btData = merged.sort((a,b) => b.date < a.date ? -1 : 1);
     saveBT();
-    try{renderBTTrend();}catch(e){}
+    if(document.getElementById('tab-graph')?.classList.contains('active')) { try{renderBTTrend();}catch(e){} }
     try{renderBTGraphs();}catch(e){}
     try{renderBTHistoryList();}catch(e){}
   }
