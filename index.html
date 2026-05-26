@@ -510,7 +510,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.5.06</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.5.07</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">
@@ -2087,7 +2087,7 @@ function autoCardOrder(cat) {
   const diseases = (state.catProfiles?.[cat]?.diseases) || [];
   const hasDM = diseases.includes('당뇨(DM)');
   const hasHCM = diseases.includes('심비대증(HCM)');
-  const tail = ['wt','meal','routine'];
+  const tail = ['wt','meal','water','routine'];
   if(hasDM && hasHCM) return ['bg','rr','ins',...tail];
   if(hasDM) return ['bg','ins','rr',...tail];
   if(hasHCM) return ['rr','bg','ins',...tail];
@@ -7143,6 +7143,7 @@ function openCatProfile(cat) {
 function saveCatProfile() {
   if(!state.catProfiles)state.catProfiles={};
   const diseases=[...document.querySelectorAll('#cpDiseaseTags .routine-tag.selected')].map(t=>t.dataset.val);
+  const oldDiseases = (state.catProfiles[currentProfileCat]||{}).diseases || [];
   // 이름 변경 처리
   const newName = document.getElementById('cpCatName').value.trim();
   if(newName && newName !== currentProfileCat) {
@@ -7175,16 +7176,15 @@ function saveCatProfile() {
   saveS();
   // DB에도 저장
   upsertCatToDB(currentProfileCat);
-  // 질환 변경 → 저장된 카드 순서 초기화 후 자동 정렬 재적용
-  try {
-    localStorage.removeItem(SK_CARD_ORDER+'_'+currentProfileCat);
-    // 숨김은 유지 (사용자가 의도적으로 숨긴 것)
-  } catch(e) {}
-  // DB 카드 순서도 초기화
-  if(sbClient&&currentUser) {
-    sbClient.from('user_settings').delete()
-      .eq('user_id',currentUser.id).eq('key','card_order_'+currentProfileCat)
-      .then(()=>{});
+  // 질환이 실제로 변경됐을 때만 카드 순서 초기화 (숨김은 유지)
+  const diseasesChanged = JSON.stringify([...oldDiseases].sort()) !== JSON.stringify([...diseases].sort());
+  if(diseasesChanged) {
+    try { localStorage.removeItem(SK_CARD_ORDER+'_'+currentProfileCat); } catch(e) {}
+    if(sbClient&&currentUser) {
+      sbClient.from('user_settings').delete()
+        .eq('user_id',currentUser.id).eq('key','card_order_'+currentProfileCat)
+        .then(()=>{});
+    }
   }
   closeModal('catProfilePage');
   // 카드 순서 재적용
