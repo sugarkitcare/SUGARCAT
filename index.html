@@ -510,7 +510,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.5.07</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.5.08</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">
@@ -2124,15 +2124,23 @@ function applyCardOrder(cat) {
     if(!el) return;
     el.style.display = hidden.includes(k) ? 'none' : '';
   });
-  // 표시 카드만 순서 재배치
-  const visibleCards = order.filter(k=>!hidden.includes(k)).map(k=>anchors[k]).filter(Boolean);
-  if(!visibleCards.length) return;
-  const parent = visibleCards[0].parentNode;
+  // DOM 재배치: 숨김 포함 전체 순서로 재배치해야 숨김 해제 시 위치도 정확함
+  const allCardEls = Object.values(anchors).filter(Boolean);
+  if(!allCardEls.length) return;
+  const parent = allCardEls[0].parentNode;
   if(!parent) return;
-  // 첫 번째 카드의 현재 위치를 기준점으로 삼아 순서대로 삽입
-  const firstIdx = Array.from(parent.children).indexOf(visibleCards[0]);
-  const anchor = parent.children[firstIdx] || null;
-  visibleCards.forEach(card => parent.insertBefore(card, anchor));
+  // 카드 블록 이후에 오는 첫 비-카드 형제를 안정적 삽입 기준점으로 사용
+  const cardSet = new Set(allCardEls);
+  let insertAnchor = null;
+  let seenCard = false;
+  for(const child of Array.from(parent.children)) {
+    if(cardSet.has(child)) { seenCard = true; continue; }
+    if(seenCard) { insertAnchor = child; break; }
+  }
+  // order에 없는 카드(신규 추가된 키 등)는 뒤에 붙임
+  const fullOrder = [...order, ...Object.keys(anchors).filter(k => !order.includes(k))];
+  fullOrder.map(k => anchors[k]).filter(Boolean)
+    .forEach(card => parent.insertBefore(card, insertAnchor));
 }
 
 function renderCardOrderUI(cat) {
