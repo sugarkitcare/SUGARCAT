@@ -510,7 +510,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 <div class="app" id="app">
 <div class="hdr">
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.5.10</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
+  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.5.11</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
   <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
   <button type="button" onclick="openFeedback()"
     style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">
@@ -1515,6 +1515,19 @@ const saveBT=()=>{try{localStorage.setItem(SK_BT,JSON.stringify(btData))}catch(e
 const saveFD=()=>{try{localStorage.setItem(SK_FD,JSON.stringify(fdData))}catch(e){}};
 
 let _btManualRowId = 0;
+
+// 같은 날짜 혈액검사 항목 병합 — abbr(또는 name) 기준, 새 값 우선
+function mergeBTItems(existing, incoming) {
+  const merged = [...(existing || [])];
+  for(const item of (incoming || [])) {
+    const key = item.abbr || item.name;
+    const idx = merged.findIndex(e => (e.abbr || e.name) === key);
+    if(idx > -1) merged[idx] = item;
+    else merged.push(item);
+  }
+  return merged;
+}
+
 function showBTManualEntry() {
   const el = document.getElementById('btManualEntry');
   if(!el) return;
@@ -1566,9 +1579,17 @@ function saveBTManual() {
   });
   if(!items.length) { toast('입력된 항목이 없어요', '#D85A30'); return; }
   const normalized = normalizeBTItems(items);
-  const entry = {cat, date, items: normalized, ts: Date.now()};
   const ei = btData.findIndex(d => d.cat === cat && d.date === date);
-  if(ei > -1) btData[ei] = entry; else btData.unshift(entry);
+  let entry;
+  const isMerge = ei > -1;
+  if(isMerge) {
+    const mergedItems = mergeBTItems(btData[ei].items, normalized);
+    entry = {...btData[ei], items: mergedItems, ts: Date.now()};
+    btData[ei] = entry;
+  } else {
+    entry = {cat, date, items: normalized, ts: Date.now()};
+    btData.unshift(entry);
+  }
   saveBT();
   try { saveBloodTestToDB(entry); } catch(e) {}
   renderBTHistoryList();
@@ -1578,7 +1599,7 @@ function saveBTManual() {
   // 폼 초기화
   const rowsCont = document.getElementById('btManualRows');
   if(rowsCont) rowsCont.innerHTML = '';
-  toast('혈액검사 기록이 저장됐어요 ✅');
+  toast(isMerge ? `같은 날짜 항목과 병합됐어요 ✅ (총 ${entry.items.length}개)` : '혈액검사 기록이 저장됐어요 ✅');
 }
 
 function kstNow(){return new Date(Date.now()+9*3600000);}
@@ -4220,10 +4241,17 @@ setupDrop('btDrop','btFile',async file=>{
     if(resultsToSave.length>1){
       resultsToSave.forEach(r=>{
         const ei=btData.findIndex(d=>d.cat===r.cat&&d.date===r.date);
-        const entry=Object.assign({},r,{ts:Date.now()});
-        if(ei>-1)btData[ei]=entry;else btData.unshift(entry);
-        // DB에도 각 날짜별로 저장
-        saveBloodTestToDB(r);
+        let entry;
+        if(ei>-1) {
+          const mergedItems=mergeBTItems(btData[ei].items,r.items);
+          entry=Object.assign({},btData[ei],{items:mergedItems,ts:Date.now()});
+          btData[ei]=entry;
+        } else {
+          entry=Object.assign({},r,{ts:Date.now()});
+          btData.unshift(entry);
+        }
+        // DB에도 각 날짜별로 저장 (병합된 항목으로)
+        saveBloodTestToDB(entry);
       });
       // 저장 전 정규화
       btData = btData.map(d => ({...d, items: normalizeBTItems(d.items)}));
@@ -4348,8 +4376,14 @@ setupDrop('btDrop','btFile',async file=>{
 document.getElementById('btSave').onclick=async()=>{
   if(!btEx)return;
   const ei=btData.findIndex(d=>d.cat===btEx.cat&&d.date===btEx.date);
-  if(ei>-1)btData[ei]=Object.assign({},btEx,{ts:Date.now()});
-  else btData.unshift(Object.assign({},btEx,{ts:Date.now()}));
+  const isMerge=ei>-1;
+  if(isMerge) {
+    const mergedItems=mergeBTItems(btData[ei].items,btEx.items);
+    btEx=Object.assign({},btEx,{items:mergedItems,ts:Date.now()});
+    btData[ei]=btEx;
+  } else {
+    btData.unshift(Object.assign({},btEx,{ts:Date.now()}));
+  }
   saveBT();
   // 고양이 DB 등록 확인 후 혈액검사 저장
   if(sbClient && currentUser) {
@@ -4362,7 +4396,7 @@ document.getElementById('btSave').onclick=async()=>{
   document.getElementById('btResult').style.display='none';
   const cc=document.getElementById('btCatCards');if(cc)cc.innerHTML='';
   const tw=document.querySelector('#btResult div[style*="overflow"]');if(tw)tw.style.display='';
-  toast('혈액검사 저장 완료! ☁️');
+  toast(isMerge ? '같은 날짜 항목과 병합해서 저장했어요 ☁️' : '혈액검사 저장 완료! ☁️');
   renderBTGraphs();
   renderBTHistoryList();
   if(document.getElementById('tab-graph')?.classList.contains('active')) renderBTTrend();
