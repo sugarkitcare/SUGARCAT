@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<link rel="stylesheet" href="cm.css">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="manifest" href="/manifest.json">
@@ -508,50 +509,51 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 </div>
 
 <div class="app" id="app">
-<div class="hdr">
-  <div style="display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div class="hdr-title">🐾 케어마스터즈 <span style="font-size:10px;background:var(--teal);color:#fff;padding:2px 7px;border-radius:10px;vertical-align:middle;font-weight:500">BETA v0.5.11</span></div><div class="hdr-sub">수치로 관리하는 환묘 질환 케어</div></div>
-  <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
-  <button type="button" onclick="openFeedback()"
-    style="padding:5px 12px;border:0.5px solid var(--teal);border-radius:8px;color:var(--teal);font-size:11px;font-weight:500;background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;touch-action:manipulation">
-    💬 피드백
-  </button>
-  <button id="logoutBtn" onclick="handleLogout()" type="button"
-    style="display:none;padding:5px 10px;border:0.5px solid var(--bd);border-radius:8px;background:transparent;color:var(--text2);font-size:11px;cursor:pointer;font-family:inherit;white-space:nowrap">로그아웃</button>
+<div class="cm-appbar">
+  <div class="cm-appbar__top">
+    <div class="cm-brand hdr-title">
+      <svg class="cm-brand__mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="17" rx="4.5" ry="3"/><ellipse cx="7.5" cy="11.5" rx="1.8" ry="2.4"/><ellipse cx="16.5" cy="11.5" rx="1.8" ry="2.4"/><ellipse cx="10.5" cy="8" rx="1.4" ry="2"/><ellipse cx="13.5" cy="8" rx="1.4" ry="2"/></svg>
+      <span class="cm-brand__name">케어마스터즈</span>
+      <span class="cm-beta">BETA v0.5.11</span>
+    </div>
+    <div class="cm-appbar__actions">
+      <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">💬 피드백</button>
+      <button id="logoutBtn" onclick="handleLogout()" type="button" class="cm-ghost" style="display:none">로그아웃</button>
+    </div>
+  </div>
+  <div class="cm-appbar__sub">수치로 관리하는 환묘 질환 케어</div>
 </div>
-</div>
-</div>
-<div class="cat-bar" id="catBar">
-  <div id="catSlot0" style="display:none;align-items:center;gap:4px" class="cat-chip">
+<div class="cm-pets" id="catBar">
+  <div id="catSlot0" style="display:none;align-items:center;gap:4px" class="cm-pet">
     <button type="button" id="catName0" onclick="switchCat(this.dataset.cat)" data-cat="" style="cursor:pointer;background:none;border:none;font-family:inherit;font-size:inherit;color:inherit;padding:0;font-weight:inherit"></button>
     <button type="button" id="catSettings0" onclick="openCatProfile(document.getElementById('catName0').dataset.cat)" style="font-size:14px;background:none;border:none;cursor:pointer;padding:2px 5px;min-width:26px;min-height:26px;color:inherit;opacity:0.7">⚙</button>
     <button type="button" id="catDel0" onclick="deleteCat(document.getElementById('catName0').dataset.cat)" style="font-size:15px;background:none;border:none;cursor:pointer;padding:2px 5px;min-width:26px;min-height:26px;color:inherit;opacity:0.6">×</button>
   </div>
-  <div id="catSlot1" style="display:none;align-items:center;gap:4px" class="cat-chip">
+  <div id="catSlot1" style="display:none;align-items:center;gap:4px" class="cm-pet">
     <button type="button" id="catName1" onclick="switchCat(this.dataset.cat)" data-cat="" style="cursor:pointer;background:none;border:none;font-family:inherit;font-size:inherit;color:inherit;padding:0;font-weight:inherit"></button>
     <button type="button" id="catSettings1" onclick="openCatProfile(document.getElementById('catName1').dataset.cat)" style="font-size:14px;background:none;border:none;cursor:pointer;padding:2px 5px;min-width:26px;min-height:26px;color:inherit;opacity:0.7">⚙</button>
     <button type="button" id="catDel1" onclick="deleteCat(document.getElementById('catName1').dataset.cat)" style="font-size:15px;background:none;border:none;cursor:pointer;padding:2px 5px;min-width:26px;min-height:26px;color:inherit;opacity:0.6">×</button>
   </div>
-  <div id="catSlot2" style="display:none;align-items:center;gap:4px" class="cat-chip">
+  <div id="catSlot2" style="display:none;align-items:center;gap:4px" class="cm-pet">
     <button type="button" id="catName2" onclick="switchCat(this.dataset.cat)" data-cat="" style="cursor:pointer;background:none;border:none;font-family:inherit;font-size:inherit;color:inherit;padding:0;font-weight:inherit"></button>
     <button type="button" id="catSettings2" onclick="openCatProfile(document.getElementById('catName2').dataset.cat)" style="font-size:14px;background:none;border:none;cursor:pointer;padding:2px 5px;min-width:26px;min-height:26px;color:inherit;opacity:0.7">⚙</button>
     <button type="button" id="catDel2" onclick="deleteCat(document.getElementById('catName2').dataset.cat)" style="font-size:15px;background:none;border:none;cursor:pointer;padding:2px 5px;min-width:26px;min-height:26px;color:inherit;opacity:0.6">×</button>
   </div>
-  <div id="catSlot3" style="display:none;align-items:center;gap:4px" class="cat-chip">
+  <div id="catSlot3" style="display:none;align-items:center;gap:4px" class="cm-pet">
     <button type="button" id="catName3" onclick="switchCat(this.dataset.cat)" data-cat="" style="cursor:pointer;background:none;border:none;font-family:inherit;font-size:inherit;color:inherit;padding:0;font-weight:inherit"></button>
     <button type="button" id="catSettings3" onclick="openCatProfile(document.getElementById('catName3').dataset.cat)" style="font-size:14px;background:none;border:none;cursor:pointer;padding:2px 5px;min-width:26px;min-height:26px;color:inherit;opacity:0.7">⚙</button>
     <button type="button" id="catDel3" onclick="deleteCat(document.getElementById('catName3').dataset.cat)" style="font-size:15px;background:none;border:none;cursor:pointer;padding:2px 5px;min-width:26px;min-height:26px;color:inherit;opacity:0.6">×</button>
   </div>
   <div id="catAddSlot"></div>
 </div>
-<div class="nav" id="mainNav">
-  <button class="nav-btn active" data-tab="daily" onclick="showTab('daily',this)">오늘기록</button>
-  <button class="nav-btn" data-tab="cgm" onclick="showTab('cgm',this)">CGM</button>
-  <button class="nav-btn" data-tab="graph" onclick="showTab('graph',this)">그래프</button>
-  <button class="nav-btn" data-tab="history" onclick="showTab('history',this)">기록조회</button>
-  <button class="nav-btn" data-tab="bloodtest" onclick="showTab('bloodtest',this)">혈액검사</button>
-  <button class="nav-btn" data-tab="food" onclick="showTab('food',this)">사료분석</button>
-  <button class="nav-btn" data-tab="ai" onclick="showTab('ai',this)">AI 해석</button>
+<div class="cm-tabs" id="mainNav">
+  <button class="cm-tab nav-btn active" data-tab="daily" onclick="showTab('daily',this)">오늘기록</button>
+  <button class="cm-tab nav-btn" data-tab="cgm" onclick="showTab('cgm',this)">CGM</button>
+  <button class="cm-tab nav-btn" data-tab="graph" onclick="showTab('graph',this)">그래프</button>
+  <button class="cm-tab nav-btn" data-tab="history" onclick="showTab('history',this)">기록조회</button>
+  <button class="cm-tab nav-btn" data-tab="bloodtest" onclick="showTab('bloodtest',this)">혈액검사</button>
+  <button class="cm-tab nav-btn" data-tab="food" onclick="showTab('food',this)">사료분석</button>
+  <button class="cm-tab nav-btn" data-tab="ai" onclick="showTab('ai',this)">AI 해석</button>
 </div>
 
 <!-- ══ 오늘 기록 ══ -->
