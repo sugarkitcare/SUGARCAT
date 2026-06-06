@@ -514,7 +514,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     <div class="cm-brand hdr-title">
       <svg class="cm-brand__mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="17" rx="4.5" ry="3"/><ellipse cx="7.5" cy="11.5" rx="1.8" ry="2.4"/><ellipse cx="16.5" cy="11.5" rx="1.8" ry="2.4"/><ellipse cx="10.5" cy="8" rx="1.4" ry="2"/><ellipse cx="13.5" cy="8" rx="1.4" ry="2"/></svg>
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">BETA v0.5.18</span>
+      <span class="cm-beta">v0.5.19</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">💬 피드백</button>
@@ -547,13 +547,13 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
   <div id="catAddSlot"></div>
 </div>
 <div class="cm-tabs" id="mainNav">
-  <button class="cm-tab nav-btn active" data-tab="daily" onclick="showTab('daily',this)">오늘기록</button>
-  <button class="cm-tab nav-btn" data-tab="cgm" onclick="showTab('cgm',this)">CGM</button>
-  <button class="cm-tab nav-btn" data-tab="graph" onclick="showTab('graph',this)">그래프</button>
-  <button class="cm-tab nav-btn" data-tab="history" onclick="showTab('history',this)">기록조회</button>
-  <button class="cm-tab nav-btn" data-tab="bloodtest" onclick="showTab('bloodtest',this)">혈액검사</button>
-  <button class="cm-tab nav-btn" data-tab="food" onclick="showTab('food',this)">사료분석</button>
-  <button class="cm-tab nav-btn" data-tab="ai" onclick="showTab('ai',this)">AI 해석</button>
+  <button class="cm-tab active" data-tab="daily" onclick="showTab('daily',this)">오늘기록</button>
+  <button class="cm-tab" data-tab="cgm" onclick="showTab('cgm',this)">CGM</button>
+  <button class="cm-tab" data-tab="graph" onclick="showTab('graph',this)">그래프</button>
+  <button class="cm-tab" data-tab="history" onclick="showTab('history',this)">기록조회</button>
+  <button class="cm-tab" data-tab="bloodtest" onclick="showTab('bloodtest',this)">혈액검사</button>
+  <button class="cm-tab" data-tab="food" onclick="showTab('food',this)">사료분석</button>
+  <button class="cm-tab" data-tab="ai" onclick="showTab('ai',this)">AI 해석</button>
 </div>
 
 <!-- ══ 오늘 기록 ══ -->
@@ -2378,12 +2378,12 @@ window.switchCat = function(c) {
   try{ if(currentUser){loadCardSettingsForCat(c);}else{applyCardOrder(c);} }catch(e){}
   try{const cc=document.getElementById('cgmCat');if(cc)cc.value=c;}catch(e){}
   try{loadCGMForCat(c).then(()=>{
-    const at=document.querySelector('.nav-btn.active')?.dataset?.tab;
+    const at=document.querySelector('.cm-tab.active')?.dataset?.tab;
     if(at==='cgm')renderCgmHistory();
     if(at==='graph')try{renderTimelineChart(document.getElementById('timelineDatePicker')?.value||today());}catch(e){}
   });}catch(e){}
   try{
-    const at=document.querySelector('.nav-btn.active')?.dataset?.tab;
+    const at=document.querySelector('.cm-tab.active')?.dataset?.tab;
     if(at==='history'){renderHistory();renderRoutineSchedule();}
     if(at==='daily'){try{renderWaterLog();}catch(e){}}
     else if(at==='graph'){
@@ -3654,7 +3654,7 @@ window.showTab = function showTab(tab, btn) {
       secs[i].style.display='none';
     }
     // 모든 버튼 비활성화
-    var btns = document.querySelectorAll('.nav-btn');
+    var btns = document.querySelectorAll('.cm-tab');
     for(var j=0; j<btns.length; j++) btns[j].classList.remove('active');
     // 선택 탭 표시
     var tabEl = document.getElementById('tab-'+tab);

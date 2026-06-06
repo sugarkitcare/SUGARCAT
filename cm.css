@@ -104,8 +104,8 @@
 /* ---------- app bar ---------- */
 /* 다크모드 body 색 상속 방지: 항상 라이트 크림 배경 고정 */
 .cm-appbar{ padding:6px 20px 14px; background:var(--cm-bg-soft); color:var(--cm-ink); }
-.cm-appbar__top{ display:flex; align-items:center; gap:8px; flex-wrap:nowrap; }
-.cm-brand{ display:flex; align-items:center; gap:9px; flex-shrink:0; overflow:hidden; }
+.cm-appbar__top{ display:flex; align-items:center; gap:8px; flex-wrap:nowrap; max-width:100%; }
+.cm-brand{ display:flex; align-items:center; gap:9px; flex:1 1 auto; min-width:0; overflow:hidden; }
 .cm-brand__mark{ width:28px; height:28px; flex:0 0 auto; color:var(--cm-green-700); }
 .cm-brand__name{ font-size:16px; font-weight:800; color:var(--cm-green-800); letter-spacing:-0.02em;
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -559,9 +559,7 @@
    인라인 <style>의 .nav-btn(0,1,0)/.nav-btn.active(0,2,0)를
    cm.css가 먼저 로드돼도 이기도록 부모 선택자 결합
    =========================================================== */
-/* nav-btn의 flex:1을 직접 차단 — .cm-tabs .nav-btn (0,2,0) > .nav-btn (0,1,0) */
-.cm-tabs .nav-btn{ flex:0 0 auto !important; }
-/* .nav-btn(0,1,0)을 완전히 덮어씀 — (0,2,0) 이상 specificity 유지 */
+/* .cm-tab.active 상태 — JS가 active 클래스를 토글함 */
 .cm-tabs .cm-tab{
   flex:0 0 auto !important;
   font-size:12px !important; font-weight:600 !important;
