@@ -514,7 +514,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     <div class="cm-brand hdr-title">
       <svg class="cm-brand__mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="17" rx="4.5" ry="3"/><ellipse cx="7.5" cy="11.5" rx="1.8" ry="2.4"/><ellipse cx="16.5" cy="11.5" rx="1.8" ry="2.4"/><ellipse cx="10.5" cy="8" rx="1.4" ry="2"/><ellipse cx="13.5" cy="8" rx="1.4" ry="2"/></svg>
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.27</span>
+      <span class="cm-beta">v0.5.28</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">💬 피드백</button>
@@ -611,9 +611,9 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     </div>
     <!-- 피드백 슬라이더 -->
     <div id="heroFeedbackBar" style="margin-top:14px;min-height:44px;display:none">
-      <div id="heroFeedbackSlide" style="background:var(--cm-clay-tint);border:1px solid var(--cm-clay-edge);border-radius:13px;padding:11px 14px;font-size:13px;font-weight:700;color:var(--cm-clay-ink);transition:opacity .4s ease;opacity:1;line-height:1.4">
-        <div id="heroFeedbackTitle" style="font-weight:800;font-size:13.5px"></div>
-        <div id="heroFeedbackDetail" style="font-size:12px;font-weight:500;margin-top:3px;color:var(--cm-ink-soft)"></div>
+      <div id="heroFeedbackSlide" style="background:var(--cm-clay-tint);border:1px solid var(--cm-clay-edge);border-radius:13px;padding:11px 14px;font-size:13px;font-weight:700;color:var(--cm-clay-ink);line-height:1.4">
+        <div id="heroFeedbackTitle" style="font-weight:800;font-size:13.5px;transition:opacity .4s ease;opacity:1"></div>
+        <div id="heroFeedbackDetail" style="font-size:12px;font-weight:500;margin-top:3px;color:var(--cm-ink-soft);transition:opacity .4s ease;opacity:1"></div>
       </div>
     </div>
     <!-- JS 참조 ID 유지 (숨김) -->
@@ -3725,12 +3725,14 @@ function renderDailySummary() {
       };
       var showHeroSlide = function(i) {
         var f = feedbacks[i]; if(!f) return;
-        slideEl.style.opacity = '0';
+        titleEl2.style.opacity = '0';
+        detailEl.style.opacity = '0';
         setTimeout(function() {
           titleEl2.textContent = stripEmoji(f.title||'');
           detailEl.innerHTML = stripEmoji(f.detail||'');
           applyTone(f.level);
-          slideEl.style.opacity = '1';
+          titleEl2.style.opacity = '1';
+          detailEl.style.opacity = '1';
         }, 400);
       };
       showHeroSlide(0);
