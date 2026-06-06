@@ -127,7 +127,7 @@
   background:var(--cm-bg-soft); overflow-x:auto; -webkit-overflow-scrolling:touch;
   scrollbar-width:none; }
 .cm-pets::-webkit-scrollbar{ display:none; }
-.cm-pet{ display:flex; align-items:center; gap:5px; padding:6px 11px; border-radius:999px;
+.cm-pet{ display:flex; align-items:center; gap:5px; padding:5px 9px; border-radius:999px;
   font-size:13px; font-weight:700; background:var(--cm-surface); color:var(--cm-ink-soft);
   border:1px solid var(--cm-line);
   white-space:nowrap; height:auto; line-height:1; flex-shrink:0;
@@ -135,7 +135,9 @@
 /* 내부 버튼 min-height 제압해서 칩 세로 팽창 방지 */
 .cm-pet button{ min-height:0 !important; min-width:0 !important; }
 .cm-pet small{ font-size:10px; font-weight:600; color:var(--cm-faint); }
-.cm-pet__gear{ width:14px; height:14px; opacity:.5; }
+.cm-pet__gear{ width:12px; height:12px; opacity:.5; }
+/* JS가 display:block으로 오버라이드하는 것 차단 — cmb-alert 배너와 중복 */
+#waterGoalBar{ display:none !important; }
 .cm-pet--on{ background:var(--cm-green-700); color:#fff; border-color:var(--cm-green-700);
   box-shadow:0 6px 14px rgba(35,91,67,.28); }
 .cm-pet--on small{ color:rgba(255,255,255,.72); }
