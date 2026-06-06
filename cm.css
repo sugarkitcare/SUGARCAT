@@ -144,15 +144,14 @@
 .cm-pet--add{ border-style:dashed; color:var(--cm-green-700); font-weight:600; background:transparent; }
 
 /* ---------- tab bar ---------- */
-/* 다크모드 대응: bg2/bd/text3/teal 등 기존 테마 변수 사용 */
-.cm-tabs{ display:flex; gap:2px; margin:0 0 1rem; padding:5px; background:var(--bg2);
-  border:1px solid var(--bd); border-radius:16px; overflow-x:auto; scrollbar-width:none;
-  -webkit-overflow-scrolling:touch; }
-.cm-tabs::-webkit-scrollbar{ display:none; }
-.cm-tab{ flex:0 0 auto; font-size:12px; font-weight:600; color:var(--text3);
-  padding:7px 8px; border-radius:11px; white-space:nowrap; background:transparent; border:none; }
-.cm-tab--on{ background:var(--bg); color:var(--teal); font-weight:800;
-  box-shadow:0 1px 3px rgba(0,0,0,.08); }
+/* 균등폭 세그먼트 한 줄 — overflow 스크롤 없음 */
+.cm-tabs{ display:flex; gap:2px; margin:0 12px 1rem; padding:4px; background:var(--bg2);
+  border:1px solid var(--bd); border-radius:14px; }
+.cm-tab{ flex:1; font-size:11.5px; font-weight:600; color:var(--text3);
+  padding:8px 4px; border-radius:10px; white-space:nowrap; background:transparent;
+  border:none; text-align:center; min-width:0; overflow:hidden; }
+.cm-tab--on{ background:var(--bg); color:var(--teal); font-weight:700;
+  box-shadow:0 1px 4px rgba(0,0,0,.10); }
 
 /* ---------- body ---------- */
 .cm-body{ padding:16px; display:flex; flex-direction:column; gap:14px; }
@@ -564,18 +563,19 @@
    =========================================================== */
 /* .cm-tab.active 상태 — JS가 active 클래스를 토글함 */
 .cm-tabs .cm-tab{
-  flex:0 0 auto !important;
-  font-size:12px !important; font-weight:600 !important;
+  flex:1 !important;
+  font-size:11.5px !important; font-weight:600 !important;
   color:var(--text3) !important;
-  padding:7px 8px !important; border-radius:11px !important;
+  padding:8px 4px !important; border-radius:10px !important;
   white-space:nowrap !important; background:transparent !important;
   border:none !important; box-shadow:none !important;
+  text-align:center !important; min-width:0 !important; overflow:hidden !important;
 }
 .cm-tabs .cm-tab.active{
   background:var(--bg) !important;
   color:var(--teal) !important;
-  font-weight:800 !important;
-  box-shadow:0 1px 3px rgba(0,0,0,.08) !important;
+  font-weight:700 !important;
+  box-shadow:0 1px 4px rgba(0,0,0,.10) !important;
 }
 .cm-pets .cm-pet.active{
   background:var(--cm-green-700); color:#fff; border-color:var(--cm-green-700);
