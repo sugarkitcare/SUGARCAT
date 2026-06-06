@@ -146,8 +146,8 @@
   border:1px solid var(--bd); border-radius:16px; overflow-x:auto; scrollbar-width:none;
   -webkit-overflow-scrolling:touch; }
 .cm-tabs::-webkit-scrollbar{ display:none; }
-.cm-tab{ flex:0 0 auto; font-size:13px; font-weight:600; color:var(--text3);
-  padding:7px 10px; border-radius:11px; white-space:nowrap; background:transparent; border:none; }
+.cm-tab{ flex:0 0 auto; font-size:12px; font-weight:600; color:var(--text3);
+  padding:7px 8px; border-radius:11px; white-space:nowrap; background:transparent; border:none; }
 .cm-tab--on{ background:var(--bg); color:var(--teal); font-weight:800;
   box-shadow:0 1px 3px rgba(0,0,0,.08); }
 
@@ -562,9 +562,9 @@
 /* .nav-btn(0,1,0)을 완전히 덮어씀 — (0,2,0) 이상 specificity 유지 */
 .cm-tabs .cm-tab{
   flex:0 0 auto !important;
-  font-size:13px !important; font-weight:600 !important;
+  font-size:12px !important; font-weight:600 !important;
   color:var(--text3) !important;
-  padding:7px 10px !important; border-radius:11px !important;
+  padding:7px 8px !important; border-radius:11px !important;
   white-space:nowrap !important; background:transparent !important;
   border:none !important; box-shadow:none !important;
 }
