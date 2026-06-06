@@ -514,7 +514,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     <div class="cm-brand hdr-title">
       <svg class="cm-brand__mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="17" rx="4.5" ry="3"/><ellipse cx="7.5" cy="11.5" rx="1.8" ry="2.4"/><ellipse cx="16.5" cy="11.5" rx="1.8" ry="2.4"/><ellipse cx="10.5" cy="8" rx="1.4" ry="2"/><ellipse cx="13.5" cy="8" rx="1.4" ry="2"/></svg>
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.22</span>
+      <span class="cm-beta">v0.5.23</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">💬 피드백</button>
@@ -562,24 +562,84 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
   <div id="challengeBar" style="display:none;margin-bottom:.5rem"></div>
   <!-- 오늘 상태 피드백 카드 -->
   <!-- 🐾 오늘 상태 피드백 카드 -->
-  <div class="card" id="dailySummaryCard" style="margin-bottom:.75rem">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.3rem">
-      <div style="font-size:13px;font-weight:700;color:var(--text)" id="dailySummaryTitle">🐾 오늘 상태</div>
-      <div style="font-size:10px;color:var(--text3)" id="dailySummaryDate"></div>
-    </div>
-    <!-- 오늘 수치 한줄 요약 -->
-    <div id="dailyMetricLine" style="font-size:11px;color:var(--text3);margin-bottom:.5rem;line-height:1.6"></div>
-    <!-- 피드백 알림 목록 -->
-    <div id="dailyFeedbackList" style="margin-bottom:.5rem"></div>
-    <!-- 음수량 목표 진행바 -->
-    <div id="waterGoalBar" style="display:none;margin-bottom:.5rem"></div>
-    <!-- 오늘 기록 타임라인 -->
-    <div style="border-top:0.5px solid var(--bd);padding-top:.5rem;margin-top:.25rem">
-      <div style="font-size:11px;font-weight:500;color:var(--text3);margin-bottom:.3rem">오늘 기록</div>
-      <div id="dailySummaryList" style="font-size:12px;color:var(--text);line-height:1.9">
-        <div style="color:var(--text3);text-align:center;padding:.5rem">아직 오늘 기록이 없어요</div>
+  <!-- ══ 히어로 요약 카드 ══ -->
+  <div class="cmb-hero" id="dailySummaryCard" style="margin-bottom:.75rem">
+    <!-- 상단 -->
+    <div class="cmb-hero__top">
+      <div class="cm-ic cm-ic--ghost cm-ic--sm">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2l-5 9h4l-3 7 8-10h-5l3-6z"/>
+        </svg>
+      </div>
+      <div style="min-width:0">
+        <div style="font-size:14px;font-weight:800;color:var(--cm-ink)" id="dailySummaryTitle">오늘 요약</div>
+        <div style="font-size:11px;color:var(--cm-faint);margin-top:1px" id="dailySummaryDate"></div>
       </div>
     </div>
+    <!-- 중앙: 원형 게이지 + 소변/대변/체중 -->
+    <div class="cmb-focus">
+      <div class="cmb-ring">
+        <svg viewBox="0 0 118 118" width="118" height="118">
+          <circle cx="59" cy="59" r="50" fill="none" stroke="var(--cm-surface-2)" stroke-width="11"/>
+          <circle id="heroGaugeArc" cx="59" cy="59" r="50" fill="none"
+            stroke="var(--cm-clay)" stroke-width="11"
+            stroke-dasharray="314.16" stroke-dashoffset="314.16"
+            stroke-linecap="round" transform="rotate(-90 59 59)"/>
+        </svg>
+        <div class="cmb-ring__c">
+          <div class="cmb-ring__v" id="heroWaterMl">0</div>
+          <div class="cmb-ring__l">음수량 ml</div>
+          <div class="cmb-ring__g" id="heroWaterTarget">목표 —</div>
+        </div>
+      </div>
+      <div class="cmb-side">
+        <div class="cmb-poo">
+          <div class="cmb-poo__l">소변 상태</div>
+          <div class="cmb-poo__v" id="heroUrineVal"><span class="dot"></span>—</div>
+        </div>
+        <div class="cmb-mini">
+          <div>
+            <div class="l">대변</div>
+            <div class="v" id="heroStoolVal">—</div>
+          </div>
+          <div>
+            <div class="l">체중</div>
+            <div class="v" id="heroWeightVal">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- 하단 알림 -->
+    <div class="cmb-alert" id="heroAlert" style="display:none">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+        <circle cx="10" cy="10" r="8"/><path d="M10 6.5v3"/><circle cx="10" cy="13.5" r=".6" fill="currentColor" stroke="none"/>
+      </svg>
+      <span id="heroAlertText">음수 부족</span>
+    </div>
+    <!-- JS 참조 ID 유지 (숨김) -->
+    <div id="dailyFeedbackList" style="display:none"></div>
+    <div id="waterGoalBar" style="display:none"></div>
+    <div id="dailyMetricLine" style="display:none"></div>
+    <div id="dailySummaryList" style="display:none"></div>
+  </div>
+  <!-- ══ 주간 스트립 ══ -->
+  <div class="cm-card cm-card--flat wk" onclick="showTab('graph',document.querySelector('[data-tab=graph]'))" style="margin-bottom:.75rem">
+    <div class="wk__ai">이번 주 추이</div>
+    <div class="wk__stats">
+      <div class="wk__s">
+        <span class="wk__sl">소변</span>
+        <span class="wk__sv" id="wkUrine">—</span>
+      </div>
+      <div class="wk__s">
+        <span class="wk__sl">일평균 음수</span>
+        <span class="wk__sv" id="wkWater">—</span>
+      </div>
+      <div class="wk__s">
+        <span class="wk__sl">대변</span>
+        <span class="wk__sv" id="wkStool">—</span>
+      </div>
+    </div>
+    <div class="wk__foot">탭하면 그래프로 ›</div>
   </div>
 
   <!-- 8번: 인슐린 투여 예정 표시 -->
@@ -3590,6 +3650,76 @@ function renderDailySummary() {
     items.sort((a,b)=>a.ts-b.ts);
     el.innerHTML = items.map(i=>`<div style="padding:2px 0;border-bottom:0.5px solid var(--bd)">${i.html}</div>`).join('');
   }
+
+  // ── 히어로 카드 업데이트 (append only) ──
+  try {
+    const C = 314.16;
+    const latestWtHero = latestWt2 || getLatestWeight();
+    const waterTarget = latestWtHero ? Math.round(latestWtHero * 40) : 0;
+    const heroPct = waterTarget > 0 ? Math.min(100, Math.round(todayWaterTotal / waterTarget * 100)) : 0;
+
+    // 원형 게이지
+    const arc = document.getElementById('heroGaugeArc');
+    if(arc) {
+      arc.style.strokeDashoffset = C * (1 - heroPct / 100);
+      arc.style.stroke = heroPct >= 100 ? 'var(--cm-green-500)' : heroPct >= 70 ? 'var(--cm-amber)' : 'var(--cm-clay)';
+    }
+    // 음수량 수치 + 목표
+    const mlEl = document.getElementById('heroWaterMl');
+    if(mlEl) mlEl.textContent = todayWaterTotal || 0;
+    const tgtEl = document.getElementById('heroWaterTarget');
+    if(tgtEl) tgtEl.textContent = waterTarget ? '목표 ' + waterTarget + 'ml' : '목표 —';
+
+    // 소변 상태
+    const urineArr = rec.urine || [];
+    const urineEl = document.getElementById('heroUrineVal');
+    if(urineEl) {
+      if(!urineArr.length) {
+        urineEl.innerHTML = '<span class="dot" style="background:var(--cm-line-2)"></span>기록 없음';
+      } else {
+        const lastU = urineArr[urineArr.length-1];
+        const alertU = lastU.amount==='혈뇨'||lastU.amount==='핍뇨';
+        const dotClr = alertU ? 'var(--cm-clay)' : 'var(--cm-green-500)';
+        urineEl.innerHTML = '<span class="dot" style="background:'+dotClr+'"></span>'+urineArr.length+'회 · '+lastU.amount;
+      }
+    }
+
+    // 대변
+    const poopArr = rec.poop || [];
+    const stoolEl = document.getElementById('heroStoolVal');
+    if(stoolEl) stoolEl.textContent = poopArr.length ? poopArr.length+'회 · '+poopArr[poopArr.length-1].type : '—';
+
+    // 체중
+    const wtEl = document.getElementById('heroWeightVal');
+    if(wtEl) {
+      const lastWtRec = (rec.weights||[]).slice(-1)[0];
+      wtEl.textContent = lastWtRec ? lastWtRec.weight+'kg' : latestWtHero ? latestWtHero+'kg' : '—';
+    }
+
+    // 알림 배너
+    const alertEl = document.getElementById('heroAlert');
+    const alertTxtEl = document.getElementById('heroAlertText');
+    if(alertEl) {
+      if(waterTarget > 0 && heroPct < 100) {
+        if(alertTxtEl) alertTxtEl.textContent = (waterTarget-todayWaterTotal)+'ml 더 필요해요';
+        alertEl.style.display = 'flex';
+      } else {
+        alertEl.style.display = 'none';
+      }
+    }
+
+    // 주간 스트립
+    const wkDays = Array.from({length:7}, function(_,i){ var d2=kstNow(); d2.setUTCDate(d2.getUTCDate()-i); return d2.toISOString().slice(0,10); });
+    var wkWV=wkDays.map(function(dy){var a=getRec(cat,dy).water||[];return a.length?a.reduce(function(s,b){return s+b.ml;},0):null;}).filter(function(v){return v!==null;});
+    var wkUV=wkDays.map(function(dy){var n=(getRec(cat,dy).urine||[]).length;return n?n:null;}).filter(function(v){return v!==null;});
+    var wkPV=wkDays.map(function(dy){var n=(getRec(cat,dy).poop||[]).length;return n?n:null;}).filter(function(v){return v!==null;});
+    var wkWE=document.getElementById('wkWater');
+    if(wkWE) wkWE.textContent=wkWV.length?Math.round(wkWV.reduce(function(a,b){return a+b;},0)/wkWV.length)+'ml':'—';
+    var wkUE=document.getElementById('wkUrine');
+    if(wkUE) wkUE.textContent=wkUV.length?(wkUV.reduce(function(a,b){return a+b;},0)/wkUV.length).toFixed(1)+'회/일':'—';
+    var wkPE=document.getElementById('wkStool');
+    if(wkPE) wkPE.textContent=wkPV.length?(wkPV.reduce(function(a,b){return a+b;},0)/wkPV.length).toFixed(1)+'회/일':'—';
+  } catch(e) { console.warn('hero update:', e); }
 }
 
 function updateWtDiff(){
