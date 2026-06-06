@@ -514,7 +514,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     <div class="cm-brand hdr-title">
       <svg class="cm-brand__mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="17" rx="4.5" ry="3"/><ellipse cx="7.5" cy="11.5" rx="1.8" ry="2.4"/><ellipse cx="16.5" cy="11.5" rx="1.8" ry="2.4"/><ellipse cx="10.5" cy="8" rx="1.4" ry="2"/><ellipse cx="13.5" cy="8" rx="1.4" ry="2"/></svg>
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.33</span>
+      <span class="cm-beta">v0.5.34</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">💬 피드백</button>
@@ -5592,26 +5592,31 @@ function renderRoutineEditList(){
 /* ── 수분 밸런스 (음수량 + 소변) ── */
 
 function addWater() {
-  const input = document.getElementById('waterInput');
-  const ml = parseInt(input.value);
+  var sheetMlEl = document.getElementById('sheetWaterMl');
+  var input = sheetMlEl || document.getElementById('waterInput');
+  var ml = parseInt(input ? input.value : '');
   if(!ml || ml <= 0) { toast('음수량을 입력해주세요', '#D85A30'); return; }
-  const dateEl = document.getElementById('waterDate');
-  const date = dateEl?.value || today();
-  const timeInput = document.getElementById('waterTimeInput');
-  const time = timeInput?.value || nowTime();
-  const rec = getRec(state.activeCat, date);
+  var sheetDateEl = document.getElementById('sheetWaterDate');
+  var sheetTimeEl = document.getElementById('sheetWaterTime');
+  var dateEl = sheetDateEl || document.getElementById('waterDate');
+  var date = (dateEl && dateEl.value) ? dateEl.value : today();
+  var timeInput = sheetTimeEl || document.getElementById('waterTimeInput');
+  var time = (timeInput && timeInput.value) ? timeInput.value : nowTime();
+  var rec = getRec(state.activeCat, date);
   if(!rec.water) rec.water = [];
-  rec.water.push({ml, time, ts: Date.now()});
+  rec.water.push({ml:ml, time:time, ts: Date.now()});
   saveS(date);
-  input.value = '';
+  if(input) input.value = '';
   if(timeInput) timeInput.value = nowTime();
   renderWaterLog();
-  toast('💧 ' + ml + 'ml 기록됐어요', '#1D9E75');
+  toast(ml + 'ml 기록됐어요', '#1D9E75');
   try{renderDailySummary();}catch(e){}
 }
 
 let _pendingUrine = null;
 function selectUrine(amount) {
+  var sheetTimeEl = document.getElementById('sheetExcretaTime');
+  if(sheetTimeEl) { addUrine(amount, sheetTimeEl.value || nowTime()); return; }
   _pendingUrine = amount;
   const label = document.getElementById('urineTypeLabel');
   const timeInput = document.getElementById('urineTimeInput');
@@ -5631,8 +5636,9 @@ function confirmAddUrine() {
 }
 function addUrine(amount, time) {
   const t = time || nowTime();
-  const dateEl = document.getElementById('waterDate');
-  const date = dateEl?.value || today();
+  var sheetDateEl = document.getElementById('sheetExcretaDate');
+  var dateEl2 = sheetDateEl || document.getElementById('waterDate');
+  const date = (dateEl2 && dateEl2.value) ? dateEl2.value : today();
   const rec = getRec(state.activeCat, date);
   if(!rec.urine) rec.urine = [];
   if(amount === '핍뇨') {
@@ -5655,6 +5661,8 @@ function addUrine(amount, time) {
 
 let _pendingPoop = null;
 function selectPoop(type) {
+  var sheetTimeEl = document.getElementById('sheetExcretaTime');
+  if(sheetTimeEl) { addPoop(type, sheetTimeEl.value || nowTime()); return; }
   _pendingPoop = type;
   const label = document.getElementById('poopTypeLabel');
   const timeInput = document.getElementById('poopTimeInput');
@@ -5674,8 +5682,9 @@ function confirmAddPoop() {
 }
 function addPoop(type, time) {
   const t = time || nowTime();
-  const dateEl = document.getElementById('waterDate');
-  const date = dateEl?.value || today();
+  var sheetDateEl = document.getElementById('sheetExcretaDate');
+  var dateEl2 = sheetDateEl || document.getElementById('waterDate');
+  const date = (dateEl2 && dateEl2.value) ? dateEl2.value : today();
   const rec = getRec(state.activeCat, date);
   if(!rec.poop) rec.poop = [];
   rec.poop.push({type, time: t, ts: Date.now()});
@@ -8196,27 +8205,85 @@ initSupabase();
 
 // ── Daily Sheet ──
 var _dsOrigin = null;
+function _dsDateTimeRow(dateId, timeId) {
+  return '<div style="display:flex;gap:8px;align-items:center;background:var(--cm-surface-2);border-radius:13px;padding:11px 13px;margin-bottom:12px">' +
+    '<input type="date" id="'+dateId+'" style="flex:1;min-width:0;border:none;background:none;font-family:inherit;font-size:14px;font-weight:700;color:var(--cm-ink)">' +
+    '<input type="time" id="'+timeId+'" style="flex:1;min-width:0;border:none;background:none;font-family:inherit;font-size:14px;font-weight:700;color:var(--cm-ink)">' +
+    '<button type="button" class="wl-now" onclick="document.getElementById(\''+timeId+'\').value=nowTime()">지금</button>' +
+    '</div>';
+}
+function _dsWaterBodyHtml() {
+  return _dsDateTimeRow('sheetWaterDate','sheetWaterTime') +
+    '<div style="display:flex;align-items:center;gap:12px;background:var(--cm-surface-2);border-radius:16px;padding:14px 16px;margin-bottom:12px">' +
+      '<input type="number" id="sheetWaterMl" placeholder="0" min="0" step="1" style="flex:1;border:none;background:none;font-family:inherit;font-size:36px;font-weight:800;color:var(--cm-ink);text-align:center;min-width:0">' +
+      '<span style="font-size:14px;font-weight:700;color:var(--cm-faint)">ml</span>' +
+    '</div>' +
+    '<div class="wl-presets">' +
+      '<button onclick="document.getElementById(\'sheetWaterMl\').value=20">20ml</button>' +
+      '<button onclick="document.getElementById(\'sheetWaterMl\').value=30">30ml</button>' +
+      '<button onclick="document.getElementById(\'sheetWaterMl\').value=50">50ml</button>' +
+      '<button onclick="document.getElementById(\'sheetWaterMl\').value=80">80ml</button>' +
+    '</div>';
+}
+function _dsExcretaBodyHtml() {
+  var cs = function(bc,bg,c){return 'padding:8px 14px;border:0.5px solid '+bc+';border-radius:9px;font-size:12px;background:'+bg+';color:'+c+';cursor:pointer;font-family:inherit;font-weight:500';};
+  return _dsDateTimeRow('sheetExcretaDate','sheetExcretaTime') +
+    '<div style="font-size:13px;font-weight:700;color:var(--cm-ink-soft);margin-bottom:8px">소변</div>' +
+    '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">' +
+      '<button onclick="selectUrine(\'소량\')" style="'+cs('var(--amber)','var(--amber-l)','var(--amber-d)')+'">소량</button>' +
+      '<button onclick="selectUrine(\'정상\')" style="'+cs('var(--teal)','var(--teal-l)','var(--teal)')+'">정상</button>' +
+      '<button onclick="selectUrine(\'다량\')" style="'+cs('var(--teal)','var(--teal-l)','var(--teal)')+'">다량</button>' +
+      '<button onclick="selectUrine(\'혈뇨\')" style="'+cs('var(--coral)','var(--coral-l)','var(--coral)')+'">혈뇨</button>' +
+      '<button onclick="selectUrine(\'핍뇨\')" style="'+cs('var(--coral)','var(--coral-l)','var(--coral)')+'">핍뇨</button>' +
+      '<button onclick="selectUrine(\'단백뇨\')" style="'+cs('var(--amber)','var(--amber-l)','var(--amber-d)')+'">단백뇨</button>' +
+      '<button onclick="selectUrine(\'뇨당\')" style="'+cs('var(--amber)','var(--amber-l)','var(--amber-d)')+'">뇨당</button>' +
+    '</div>' +
+    '<div style="font-size:13px;font-weight:700;color:var(--cm-ink-soft);margin-bottom:8px">대변</div>' +
+    '<div style="display:flex;gap:6px;flex-wrap:wrap">' +
+      '<button onclick="selectPoop(\'정상\')" style="'+cs('var(--teal)','var(--teal-l)','var(--teal)')+'">정상</button>' +
+      '<button onclick="selectPoop(\'약간무름\')" style="'+cs('var(--amber)','var(--amber-l)','var(--amber-d)')+'">약간무름</button>' +
+      '<button onclick="selectPoop(\'끝만무름\')" style="'+cs('var(--amber)','var(--amber-l)','var(--amber-d)')+'">끝만무름</button>' +
+      '<button onclick="selectPoop(\'무름\')" style="'+cs('var(--amber)','var(--amber-l)','var(--amber-d)')+'">무름</button>' +
+      '<button onclick="selectPoop(\'설사\')" style="'+cs('var(--coral)','var(--coral-l)','var(--coral)')+'">설사</button>' +
+      '<button onclick="selectPoop(\'혈변\')" style="'+cs('var(--coral)','var(--coral-l)','var(--coral)')+'">혈변</button>' +
+      '<button onclick="selectPoop(\'토끼똥/변비\')" style="'+cs('var(--amber)','var(--amber-l)','var(--amber-d)')+'">토끼똥/변비</button>' +
+      '<button onclick="selectPoop(\'무변\')" style="'+cs('var(--amber)','var(--amber-l)','var(--amber-d)')+'">무변</button>' +
+    '</div>';
+}
 window.openDailySheet = function(type) {
   var MAP = {
-    water:   {title:'음수량',       sub:'하루 목표 대비',   bodyId:'waterBody'},
-    excreta: {title:'소변 · 대변',  sub:'소변·대변 체크',   bodyId:'waterBody'},
-    med:     {title:'투약 · 루틴',  sub:'탭해서 투약 체크', bodyId:'routineBody'},
-    breath:  {title:'호흡수 측정',  sub:'호흡할 때마다 탭', bodyId:'rrCard'},
-    weight:  {title:'몸무게',       sub:'체중 기록',         bodyId:'wtCard'},
-    meal:    {title:'식사 · 칼로리',sub:'급여량 기록',       bodyId:'mealCard'},
-    glucose: {title:'혈당 · 케톤',  sub:'측정값 입력',       bodyId:'bgCard'},
-    insulin: {title:'인슐린 투여',  sub:'투여량 기록',       bodyId:'insCard'},
+    water:   {title:'음수량',        sub:'하루 목표 대비',   bodyId:null},
+    excreta: {title:'소변 · 대변',   sub:'소변·대변 체크',   bodyId:null},
+    med:     {title:'투약 · 루틴',   sub:'탭해서 투약 체크', bodyId:'routineBody'},
+    breath:  {title:'호흡수 측정',   sub:'호흡할 때마다 탭', bodyId:'rrCard'},
+    weight:  {title:'몸무게',        sub:'체중 기록',         bodyId:'wtCard'},
+    meal:    {title:'식사 · 칼로리', sub:'급여량 기록',       bodyId:'mealCard'},
+    glucose: {title:'혈당 · 케톤',   sub:'측정값 입력',       bodyId:'bgCard'},
+    insulin: {title:'인슐린 투여',   sub:'투여량 기록',       bodyId:'insCard'},
   };
   var cfg = MAP[type]; if(!cfg) return;
-  var formEl = document.getElementById(cfg.bodyId);
-  if(!formEl) return;
   var sheetBody = document.getElementById('dailySheetBody');
   var sheetHead = document.getElementById('dailySheetHead');
+  var sheetFoot = document.getElementById('dailySheetFoot');
   if(!sheetBody || !sheetHead) return;
-  _dsOrigin = {el:formEl, parent:formEl.parentNode, next:formEl.nextSibling};
-  formEl.style.display = 'block';
-  sheetBody.innerHTML = '';
-  sheetBody.appendChild(formEl);
+  if(type === 'water') {
+    sheetBody.innerHTML = _dsWaterBodyHtml();
+    if(sheetFoot) sheetFoot.innerHTML = '<button class="cm-btn cm-btn--block" onclick="addWater()" type="button">기록하기</button>';
+    var wd = document.getElementById('sheetWaterDate'); if(wd) wd.value = today();
+    var wt2 = document.getElementById('sheetWaterTime'); if(wt2) wt2.value = nowTime();
+  } else if(type === 'excreta') {
+    sheetBody.innerHTML = _dsExcretaBodyHtml();
+    if(sheetFoot) sheetFoot.innerHTML = '';
+    var ed = document.getElementById('sheetExcretaDate'); if(ed) ed.value = today();
+    var et = document.getElementById('sheetExcretaTime'); if(et) et.value = nowTime();
+  } else {
+    var formEl = document.getElementById(cfg.bodyId); if(!formEl) return;
+    _dsOrigin = {el:formEl, parent:formEl.parentNode, next:formEl.nextSibling};
+    formEl.style.display = 'block';
+    sheetBody.innerHTML = '';
+    sheetBody.appendChild(formEl);
+    if(sheetFoot) sheetFoot.innerHTML = '';
+  }
   sheetHead.innerHTML =
     '<div class="tx"><b>'+cfg.title+'</b><span>'+cfg.sub+'</span></div>'+
     '<button class="sheet__close" onclick="closeDailySheet()" type="button" style="font-size:18px;line-height:1;padding:4px 8px">×</button>';
