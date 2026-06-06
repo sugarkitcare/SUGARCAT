@@ -104,7 +104,7 @@
 /* ---------- app bar ---------- */
 /* 다크모드 body 색 상속 방지: 항상 라이트 크림 배경 고정 */
 .cm-appbar{ padding:6px 20px 14px; background:var(--cm-bg-soft); color:var(--cm-ink); }
-.cm-appbar__top{ display:flex; align-items:center; gap:10px; }
+.cm-appbar__top{ display:flex; align-items:center; gap:8px; flex-wrap:nowrap; }
 .cm-brand{ display:flex; align-items:center; gap:9px; flex-shrink:0; overflow:hidden; }
 .cm-brand__mark{ width:28px; height:28px; flex:0 0 auto; color:var(--cm-green-700); }
 .cm-brand__name{ font-size:18px; font-weight:800; color:var(--cm-green-800); letter-spacing:-0.02em;
@@ -114,8 +114,8 @@
   white-space:nowrap; flex-shrink:0; }
 .cm-appbar__sub{ font-size:13px; color:var(--cm-faint); margin-top:6px; font-weight:500; }
 .cm-appbar__actions{ margin-left:auto; display:flex; gap:8px; flex-shrink:0; }
-.cm-ghost{ font-size:12.5px; font-weight:600; color:var(--cm-ink-soft); background:var(--cm-surface);
-  border:1px solid var(--cm-line); border-radius:999px; padding:6px 11px;
+.cm-ghost{ font-size:11px; font-weight:600; color:var(--cm-ink-soft); background:var(--cm-surface);
+  border:1px solid var(--cm-line); border-radius:999px; padding:5px 8px;
   white-space:nowrap; cursor:pointer; }
 .cm-ghost--green{ color:var(--cm-green-700); border-color:var(--cm-green-edge); background:var(--cm-green-tint); }
 
@@ -141,15 +141,15 @@
 .cm-pet--add{ border-style:dashed; color:var(--cm-green-700); font-weight:600; background:transparent; }
 
 /* ---------- tab bar ---------- */
-/* margin-bottom으로 아래 컨텐츠와 여백 확보, 좌우 margin 제거(app 컨테이너 패딩 활용) */
-.cm-tabs{ display:flex; gap:2px; margin:0 0 1rem; padding:5px; background:var(--cm-surface-2);
-  border:1px solid var(--cm-line); border-radius:16px; overflow-x:auto; scrollbar-width:none;
-  color:var(--cm-faint); }
+/* 다크모드 대응: bg2/bd/text3/teal 등 기존 테마 변수 사용 */
+.cm-tabs{ display:flex; gap:2px; margin:0 0 1rem; padding:5px; background:var(--bg2);
+  border:1px solid var(--bd); border-radius:16px; overflow-x:auto; scrollbar-width:none;
+  -webkit-overflow-scrolling:touch; }
 .cm-tabs::-webkit-scrollbar{ display:none; }
-.cm-tab{ flex:0 0 auto; font-size:14px; font-weight:600; color:var(--cm-faint);
-  padding:9px 13px; border-radius:11px; white-space:nowrap; background:transparent; border:none; }
-.cm-tab--on{ background:var(--cm-surface); color:var(--cm-green-700); font-weight:800;
-  box-shadow:var(--cm-shadow-sm); }
+.cm-tab{ flex:0 0 auto; font-size:13px; font-weight:600; color:var(--text3);
+  padding:7px 10px; border-radius:11px; white-space:nowrap; background:transparent; border:none; }
+.cm-tab--on{ background:var(--bg); color:var(--teal); font-weight:800;
+  box-shadow:0 1px 3px rgba(0,0,0,.08); }
 
 /* ---------- body ---------- */
 .cm-body{ padding:16px; display:flex; flex-direction:column; gap:14px; }
@@ -562,17 +562,17 @@
 /* .nav-btn(0,1,0)을 완전히 덮어씀 — (0,2,0) 이상 specificity 유지 */
 .cm-tabs .cm-tab{
   flex:0 0 auto !important;
-  font-size:14px !important; font-weight:600 !important;
-  color:var(--cm-faint) !important;
-  padding:9px 13px !important; border-radius:11px !important;
+  font-size:13px !important; font-weight:600 !important;
+  color:var(--text3) !important;
+  padding:7px 10px !important; border-radius:11px !important;
   white-space:nowrap !important; background:transparent !important;
   border:none !important; box-shadow:none !important;
 }
 .cm-tabs .cm-tab.active{
-  background:var(--cm-surface) !important;
-  color:var(--cm-green-700) !important;
+  background:var(--bg) !important;
+  color:var(--teal) !important;
   font-weight:800 !important;
-  box-shadow:var(--cm-shadow-sm) !important;
+  box-shadow:0 1px 3px rgba(0,0,0,.08) !important;
 }
 .cm-pets .cm-pet.active{
   background:var(--cm-green-700); color:#fff; border-color:var(--cm-green-700);
