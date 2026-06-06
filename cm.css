@@ -104,19 +104,21 @@
 /* ---------- app bar ---------- */
 /* 다크모드 body 색 상속 방지: 항상 라이트 크림 배경 고정 */
 .cm-appbar{ padding:6px 20px 14px; background:var(--cm-bg-soft); color:var(--cm-ink); }
-.cm-appbar__top{ display:flex; align-items:center; gap:8px; flex-wrap:nowrap; max-width:100%; }
-.cm-brand{ display:flex; align-items:center; gap:9px; flex:1 1 auto; min-width:0; overflow:hidden; }
-.cm-brand__mark{ width:28px; height:28px; flex:0 0 auto; color:var(--cm-green-700); }
+.cm-appbar__top{ display:flex; align-items:center; gap:8px; flex-wrap:nowrap; }
+/* flex-shrink:0 — 브랜드명이 눌려 잘리지 않도록 */
+.cm-brand{ display:flex; align-items:center; gap:7px; flex-shrink:0; }
+.cm-brand__mark{ width:26px; height:26px; flex:0 0 auto; color:var(--cm-green-700); }
 .cm-brand__name{ font-size:16px; font-weight:800; color:var(--cm-green-800); letter-spacing:-0.02em;
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  white-space:nowrap; }
 .cm-beta{ font-size:10px; font-weight:700; color:var(--cm-green-700); background:var(--cm-green-tint);
-  border:1px solid var(--cm-green-edge); padding:3px 8px; border-radius:999px; letter-spacing:0;
+  border:1px solid var(--cm-green-edge); padding:2px 7px; border-radius:999px; letter-spacing:0;
   white-space:nowrap; flex-shrink:0; }
-.cm-appbar__sub{ font-size:13px; color:var(--cm-faint); margin-top:6px; font-weight:500; }
-.cm-appbar__actions{ margin-left:auto; display:flex; gap:8px; flex-shrink:0; }
-.cm-ghost{ font-size:11px; font-weight:600; color:var(--cm-ink-soft); background:var(--cm-surface);
-  border:1px solid var(--cm-line); border-radius:999px; padding:5px 8px;
-  white-space:nowrap; cursor:pointer; }
+.cm-appbar__sub{ font-size:12px; color:var(--cm-faint); margin-top:5px; font-weight:500; }
+.cm-appbar__actions{ margin-left:auto; display:flex; gap:5px; flex-shrink:0; }
+/* 아이콘+텍스트 버튼 최소화 */
+.cm-ghost{ font-size:10.5px; font-weight:600; color:var(--cm-ink-soft); background:var(--cm-surface);
+  border:1px solid var(--cm-line); border-radius:999px; padding:4px 7px;
+  white-space:nowrap; cursor:pointer; line-height:1.4; }
 .cm-ghost--green{ color:var(--cm-green-700); border-color:var(--cm-green-edge); background:var(--cm-green-tint); }
 
 /* ---------- cat pills ---------- */
@@ -125,13 +127,14 @@
   background:var(--cm-bg-soft); overflow-x:auto; -webkit-overflow-scrolling:touch;
   scrollbar-width:none; }
 .cm-pets::-webkit-scrollbar{ display:none; }
-.cm-pet{ display:flex; align-items:center; gap:8px; padding:9px 14px; border-radius:999px;
-  font-size:15px; font-weight:700; background:var(--cm-surface); color:var(--cm-ink-soft);
+.cm-pet{ display:flex; align-items:center; gap:5px; padding:6px 11px; border-radius:999px;
+  font-size:13px; font-weight:700; background:var(--cm-surface); color:var(--cm-ink-soft);
   border:1px solid var(--cm-line);
-  /* 세로 팽창 방지 */
   white-space:nowrap; height:auto; line-height:1; flex-shrink:0;
   box-sizing:border-box; }
-.cm-pet small{ font-size:11px; font-weight:600; color:var(--cm-faint); }
+/* 내부 버튼 min-height 제압해서 칩 세로 팽창 방지 */
+.cm-pet button{ min-height:0 !important; min-width:0 !important; }
+.cm-pet small{ font-size:10px; font-weight:600; color:var(--cm-faint); }
 .cm-pet__gear{ width:18px; height:18px; opacity:.5; }
 .cm-pet--on{ background:var(--cm-green-700); color:#fff; border-color:var(--cm-green-700);
   box-shadow:0 6px 14px rgba(35,91,67,.28); }
