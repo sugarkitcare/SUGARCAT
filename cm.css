@@ -598,3 +598,4 @@
 }
 .cm-pets .cm-pet.active button{ color:#fff; }
 #dailyFeedbackList{ display:none !important; }
+.cm-card.cm-card--flat{ margin-bottom:.75rem !important; }

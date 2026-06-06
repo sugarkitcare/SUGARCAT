@@ -514,7 +514,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     <div class="cm-brand hdr-title">
       <svg class="cm-brand__mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="17" rx="4.5" ry="3"/><ellipse cx="7.5" cy="11.5" rx="1.8" ry="2.4"/><ellipse cx="16.5" cy="11.5" rx="1.8" ry="2.4"/><ellipse cx="10.5" cy="8" rx="1.4" ry="2"/><ellipse cx="13.5" cy="8" rx="1.4" ry="2"/></svg>
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.31</span>
+      <span class="cm-beta">v0.5.32</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">💬 피드백</button>
@@ -633,10 +633,10 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     </div>
   </div>
 
-  <div class="card" id="daily-card-bg">
+  <div class="cm-card cm-card--flat" id="daily-card-bg">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.65rem;cursor:pointer" onclick="toggleCard('bgCard',this)">
-      <span style="font-size:12px;font-weight:500;color:var(--text2)">혈당 · 케톤</span>
-      <span style="font-size:11px;color:var(--teal)">▼ 펼치기</span>
+      <span style="font-size:14px;font-weight:700;color:var(--cm-ink)">혈당 · 케톤</span>
+      <span style="font-size:12px;font-weight:700;color:var(--cm-green-700)">펼치기</span>
     </div>
     <div id="bgCard" style="display:none">
     <div class="kg-row"><span class="kg kg1">정상 &lt;0.5</span><span class="kg kg2">주의 0.5~2.3</span><span class="kg kg3">위험 ≥2.4</span></div>
@@ -653,10 +653,10 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
   </div>
 
   <!-- 호흡수 측정 카드 -->
-  <div class="card" id="daily-card-rr">
+  <div class="cm-card cm-card--flat" id="daily-card-rr">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;cursor:pointer" onclick="toggleCard('rrCard',this)">
-      <span style="font-size:12px;font-weight:500;color:var(--text2)">🫁 호흡수 측정</span>
-      <span style="font-size:11px;color:var(--teal)">▼ 펼치기</span>
+      <span style="font-size:14px;font-weight:700;color:var(--cm-ink)">🫁 호흡수 측정</span>
+      <span style="font-size:12px;font-weight:700;color:var(--cm-green-700)">펼치기</span>
     </div>
     <div id="rrCard" style="display:none">
       <!-- 경고 기준 -->
@@ -735,10 +735,10 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     </div>
   </div>
 
-  <div class="card" id="daily-card-wt">
+  <div class="cm-card cm-card--flat" id="daily-card-wt">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.65rem;cursor:pointer" onclick="toggleCard('wtCard',this)">
-      <span style="font-size:12px;font-weight:500;color:var(--text2)">몸무게</span>
-      <span style="font-size:11px;color:var(--teal)">▼ 펼치기</span>
+      <span style="font-size:14px;font-weight:700;color:var(--cm-ink)">몸무게</span>
+      <span style="font-size:12px;font-weight:700;color:var(--cm-green-700)">펼치기</span>
     </div>
     <div id="wtCard" style="display:none">
     <div class="row2">
@@ -751,10 +751,10 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     <button class="btn btn-purple" id="saveWt">체중 저장</button>
     </div>
   </div>
-  <div class="card" id="daily-card-ins">
+  <div class="cm-card cm-card--flat" id="daily-card-ins">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.65rem;cursor:pointer" onclick="toggleCard('insCard',this)">
-      <span style="font-size:12px;font-weight:500;color:var(--text2)">인슐린 투여</span>
-      <span style="font-size:11px;color:var(--teal)">▼ 펼치기</span>
+      <span style="font-size:14px;font-weight:700;color:var(--cm-ink)">인슐린 투여</span>
+      <span style="font-size:12px;font-weight:700;color:var(--cm-green-700)">펼치기</span>
     </div>
     <div id="insCard" style="display:none">
     <div class="row2">
@@ -785,10 +785,10 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     <button class="btn btn-amber" id="saveIns">인슐린 저장</button>
     </div>
   </div>
-  <div class="card" id="daily-card-meal">
+  <div class="cm-card cm-card--flat" id="daily-card-meal">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.65rem;cursor:pointer" onclick="toggleCard('mealCard',this)">
-      <span style="font-size:12px;font-weight:500;color:var(--text2)">식사 · 칼로리</span>
-      <span style="font-size:11px;color:var(--teal)">▼ 펼치기</span>
+      <span style="font-size:14px;font-weight:700;color:var(--cm-ink)">식사 · 칼로리</span>
+      <span style="font-size:12px;font-weight:700;color:var(--cm-green-700)">펼치기</span>
     </div>
     <div id="mealCard" style="display:none">
     <div style="margin-bottom:.5rem">
@@ -812,13 +812,13 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     </div>
   </div>
   <!-- 💧 수분 밸런스 카드 -->
-  <div class="card" id="daily-card-water">
+  <div class="cm-card cm-card--flat" id="daily-card-water">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;cursor:pointer" onclick="toggleCard('waterBody',this)">
     <div>
-      <div style="font-size:12px;font-weight:500;color:var(--text2)">💧 수분 밸런스</div>
+      <div style="font-size:14px;font-weight:700;color:var(--cm-ink)">💧 수분 밸런스</div>
       <div id="waterSummary" style="font-size:10px;color:var(--text3);margin-top:1px">음수량 · 소변 체크</div>
     </div>
-    <span style="font-size:11px;color:var(--teal)">▼ 펼치기</span>
+    <span style="font-size:12px;font-weight:700;color:var(--cm-green-700)">펼치기</span>
   </div>
   <div id="waterBody" style="display:none">
 
@@ -922,10 +922,10 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
   </div>
   </div>
 
-  <div class="card" id="daily-card-routine">
+  <div class="cm-card cm-card--flat" id="daily-card-routine">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;cursor:pointer" onclick="toggleCard('routineBody',this)">
     <div>
-      <div style="font-size:12px;font-weight:500;color:var(--text2)">💊 투약·보조제·루틴</div>
+      <div style="font-size:14px;font-weight:700;color:var(--cm-ink)">💊 투약·보조제·루틴</div>
       <div style="font-size:10px;color:var(--text3);margin-top:1px">탭해서 오늘 투약 체크</div>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
@@ -933,7 +933,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
         style="font-size:10px;color:var(--teal);background:var(--teal-l);border:0.5px solid var(--teal);border-radius:7px;cursor:pointer;font-family:inherit;padding:3px 8px">
         ⚙️ 항목 설정
       </button>
-      <span style="font-size:11px;color:var(--teal)">▼ 펼치기</span>
+      <span style="font-size:12px;font-weight:700;color:var(--cm-green-700)">펼치기</span>
     </div>
   </div>
   <div id="routineBody" style="display:none">
