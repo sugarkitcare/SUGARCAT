@@ -514,7 +514,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     <div class="cm-brand hdr-title">
       <svg class="cm-brand__mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="17" rx="4.5" ry="3"/><ellipse cx="7.5" cy="11.5" rx="1.8" ry="2.4"/><ellipse cx="16.5" cy="11.5" rx="1.8" ry="2.4"/><ellipse cx="10.5" cy="8" rx="1.4" ry="2"/><ellipse cx="13.5" cy="8" rx="1.4" ry="2"/></svg>
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.35</span>
+      <span class="cm-beta">v0.5.36</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">💬 피드백</button>
@@ -631,9 +631,10 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
       <div class="cm-sechead__t">기록 항목</div>
       <div class="cm-sechead__s">탭하면 바로 입력해요</div>
     </div>
+    <button class="cm-editbtn" id="tileEditBtn" type="button" onclick="toggleTileEditMode()">편집</button>
   </div>
   <div class="tgrid" id="dailyTileGrid" style="margin-bottom:1rem">
-    <button class="tile" onclick="openDailySheet('water')">
+    <button class="tile" data-tile="water" onclick="openDailySheet('water')">
       <div class="tile__top">
         <div class="cm-ic cm-ic--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6c2.8 3.4 6 7 6 10.1a6 6 0 0 1-12 0C6 10.6 9.2 7 12 3.6Z"/></svg></div>
         <svg class="tile__chev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 5l7 7-7 7"/></svg>
@@ -641,7 +642,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
       <div class="tile__title">음수량</div>
       <div class="tile__status" id="tileWaterStatus" data-tone="muted">기록 전</div>
     </button>
-    <button class="tile" onclick="openDailySheet('excreta')">
+    <button class="tile" data-tile="excreta" onclick="openDailySheet('excreta')">
       <div class="tile__top">
         <div class="cm-ic cm-ic--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5c2.4 3 5 6 5 8.6a5 5 0 0 1-10 0c0-2.6 2.6-5.6 5-8.6Z"/></svg></div>
         <svg class="tile__chev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 5l7 7-7 7"/></svg>
@@ -649,7 +650,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
       <div class="tile__title">소변·대변</div>
       <div class="tile__status" id="tileExcretaStatus" data-tone="muted">기록 전</div>
     </button>
-    <button class="tile" onclick="openDailySheet('med')">
+    <button class="tile" data-tile="med" onclick="openDailySheet('med')">
       <div class="tile__top">
         <div class="cm-ic cm-ic--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 14.5 14.5 4.5a4.95 4.95 0 0 1 7 7l-10 10a4.95 4.95 0 0 1-7-7Z"/><path d="M8 8 16 16"/></svg></div>
         <svg class="tile__chev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 5l7 7-7 7"/></svg>
@@ -657,7 +658,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
       <div class="tile__title">투약·루틴</div>
       <div class="tile__status" id="tileMedStatus" data-tone="muted">투약 전</div>
     </button>
-    <button class="tile" onclick="openDailySheet('breath')">
+    <button class="tile" data-tile="breath" onclick="openDailySheet('breath')">
       <div class="tile__top">
         <div class="cm-ic cm-ic--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v7M9 8.5c0 0-3 .8-3.7 4.3C4.8 15.6 5 19 7.4 19c1.7 0 1.9-1.5 2-3 .1-1.6 0-5.2-0.4-7.5M15 8.5c0 0 3 .8 3.7 4.3C19.2 15.6 19 19 16.6 19c-1.7 0-1.9-1.5-2-3-.1-1.6 0-5.2.4-7.5"/></svg></div>
         <svg class="tile__chev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 5l7 7-7 7"/></svg>
@@ -665,7 +666,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
       <div class="tile__title">호흡수 측정</div>
       <div class="tile__status" id="tileBreathStatus" data-tone="muted">측정 전</div>
     </button>
-    <button class="tile" onclick="openDailySheet('weight')">
+    <button class="tile" data-tile="weight" onclick="openDailySheet('weight')">
       <div class="tile__top">
         <div class="cm-ic cm-ic--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5h16a1.5 1.5 0 0 1 1.5 1.5v11a1.5 1.5 0 0 1-1.5 1.5H4A1.5 1.5 0 0 1 2.5 18.5v-11A1.5 1.5 0 0 1 4 5.5Z"/><path d="M8.3 12.2a3.7 3.7 0 0 1 7.4 0M12 12.2l2.2-1.7"/></svg></div>
         <svg class="tile__chev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 5l7 7-7 7"/></svg>
@@ -673,7 +674,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
       <div class="tile__title">몸무게</div>
       <div class="tile__status" id="tileWeightStatus" data-tone="muted">기록 전</div>
     </button>
-    <button class="tile" onclick="openDailySheet('meal')">
+    <button class="tile" data-tile="meal" onclick="openDailySheet('meal')">
       <div class="tile__top">
         <div class="cm-ic cm-ic--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2.6 11.5h18.8a9.4 9.4 0 0 1-18.8 0ZM12 4.2c0 1.4-1.4 1.4-1.4 2.8M15.2 5.2c0 1.1-1.1 1.1-1.1 2.2"/></svg></div>
         <svg class="tile__chev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 5l7 7-7 7"/></svg>
@@ -681,7 +682,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
       <div class="tile__title">식사·칼로리</div>
       <div class="tile__status" id="tileMealStatus" data-tone="muted">급여 전</div>
     </button>
-    <button class="tile" onclick="openDailySheet('glucose')">
+    <button class="tile" data-tile="glucose" onclick="openDailySheet('glucose')">
       <div class="tile__top">
         <div class="cm-ic cm-ic--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 3h7M10 3v5l-4.2 9A2.4 2.4 0 0 0 8 20.5h8a2.4 2.4 0 0 0 2.2-3.5L14 8V3"/></svg></div>
         <svg class="tile__chev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 5l7 7-7 7"/></svg>
@@ -689,7 +690,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
       <div class="tile__title">혈당·케톤</div>
       <div class="tile__status" id="tileGlucoseStatus" data-tone="muted">기록 전</div>
     </button>
-    <button class="tile" onclick="openDailySheet('insulin')">
+    <button class="tile" data-tile="insulin" onclick="openDailySheet('insulin')">
       <div class="tile__top">
         <div class="cm-ic cm-ic--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21l4-4M14.5 4.5 19.5 9.5M7 17 17 7M16 6 18.2 8.2M9.4 13.6 11.4 15.6M12.4 10.6 14.4 12.6"/></svg></div>
         <svg class="tile__chev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 5l7 7-7 7"/></svg>
@@ -2493,6 +2494,7 @@ window.switchCat = function(c) {
   try{loadRoutineForCat(c);}catch(e){}
   try{renderDailySummary();}catch(e){}
   try{ if(currentUser){loadCardSettingsForCat(c);}else{applyCardOrder(c);} }catch(e){}
+  try{ renderTileGrid(c); }catch(e){}
   try{const cc=document.getElementById('cgmCat');if(cc)cc.value=c;}catch(e){}
   try{loadCGMForCat(c).then(()=>{
     const at=document.querySelector('.cm-tab.active')?.dataset?.tab;
@@ -3903,7 +3905,7 @@ window.showTab = function showTab(tab, btn) {
     if(tab==='history') try{renderHistory();renderRoutineSchedule();}catch(e){console.warn(e);}
     if(tab==='bloodtest') try{renderBTGraphs();renderBTHistoryList();}catch(e){console.warn(e);}
     if(tab==='food') try{renderFdHistory();autoSetFdMode(state.activeCat);}catch(e){console.warn(e);}
-    if(tab==='daily') try{updateMetrics();renderRoutineChecklist();renderDailySummary();applyCardOrder(state.activeCat);}catch(e){console.warn(e);}
+    if(tab==='daily') try{updateMetrics();renderRoutineChecklist();renderDailySummary();applyCardOrder(state.activeCat);renderTileGrid(state.activeCat);}catch(e){console.warn(e);}
   } catch(e) { console.error('showTab 오류:', tab, e); }
 }
 
@@ -8203,6 +8205,147 @@ async function migrateBloodTestsToDB() {
 
 initSupabase();
 
+// ── Tile Config ──
+var _tileEditMode = false;
+var _tileDragSrc = null;
+var ALL_TILE_KEYS = ['water','excreta','med','breath','weight','meal','glucose','insulin'];
+
+function saveTileConfig(cat, order, hidden) {
+  var key = 'tileConfig_v1_' + cat;
+  var val = {order: order, hidden: hidden};
+  try { localStorage.setItem(key, JSON.stringify(val)); } catch(e) {}
+  if(typeof sbClient !== 'undefined' && typeof currentUser !== 'undefined' && currentUser) {
+    try {
+      sbClient.from('user_settings').upsert({
+        user_id: currentUser.id, key: 'tile_config_' + cat,
+        value: val, updated_at: new Date().toISOString()
+      }, {onConflict: 'user_id,key'});
+    } catch(e) {}
+  }
+}
+
+function loadTileConfig(cat) {
+  var key = 'tileConfig_v1_' + cat;
+  try {
+    var raw = localStorage.getItem(key);
+    if(raw) return JSON.parse(raw);
+  } catch(e) {}
+  var prof = ((state.catProfiles || {})[cat]) || {};
+  var diseases = prof.diseases || [];
+  var hasDM = diseases.indexOf('DM') !== -1;
+  var order = ['water','excreta','med','breath','weight','meal'];
+  if(hasDM) { order.push('glucose'); order.push('insulin'); }
+  return {order: order, hidden: []};
+}
+
+function renderTileGrid(cat) {
+  var grid = document.getElementById('dailyTileGrid');
+  if(!grid) return;
+  var c = cat || state.activeCat;
+  var cfg = loadTileConfig(c);
+  var order = cfg.order.slice();
+  var hidden = cfg.hidden || [];
+  ALL_TILE_KEYS.forEach(function(id) {
+    if(order.indexOf(id) === -1) order.push(id);
+  });
+  order.forEach(function(id) {
+    var t = grid.querySelector('[data-tile="' + id + '"]');
+    if(t) grid.appendChild(t);
+  });
+  grid.querySelectorAll('.tile[data-tile]').forEach(function(t) {
+    t.style.display = hidden.indexOf(t.dataset.tile) !== -1 ? 'none' : '';
+  });
+}
+
+function toggleTileEditMode() {
+  _tileEditMode = !_tileEditMode;
+  var btn = document.getElementById('tileEditBtn');
+  var grid = document.getElementById('dailyTileGrid');
+  if(!grid || !btn) return;
+  var c = state.activeCat;
+
+  if(_tileEditMode) {
+    btn.textContent = '완료';
+    var cfg = loadTileConfig(c);
+    var hidden = cfg.hidden || [];
+    // reorder all tiles for editing
+    var editOrder = cfg.order.slice();
+    ALL_TILE_KEYS.forEach(function(id) { if(editOrder.indexOf(id) === -1) editOrder.push(id); });
+    editOrder.forEach(function(id) {
+      var t = grid.querySelector('[data-tile="' + id + '"]');
+      if(t) grid.appendChild(t);
+    });
+    // apply edit UI to all tiles
+    grid.querySelectorAll('.tile[data-tile]').forEach(function(t) {
+      var id = t.dataset.tile;
+      t.style.display = '';
+      t.classList.add('tile--edit');
+      if(hidden.indexOf(id) !== -1) t.classList.add('tile--add');
+      t._savedOnclick = t.onclick;
+      t.onclick = null;
+      // ➖ remove button
+      var rm = document.createElement('button');
+      rm.type = 'button'; rm.className = 'tile__rm';
+      rm.innerHTML = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14"/></svg>';
+      (function(tile) {
+        rm.addEventListener('click', function(e) { e.stopPropagation(); tile.classList.toggle('tile--add'); });
+      })(t);
+      t.insertBefore(rm, t.firstChild);
+      // drag grip
+      var grip = document.createElement('div');
+      grip.className = 'tile__grip';
+      grip.textContent = '≡';
+      grip.style.cssText = 'font-size:18px;line-height:1;text-align:center;padding:3px 0;touch-action:none;cursor:grab';
+      t.appendChild(grip);
+      // touch drag handlers
+      (function(tile) {
+        tile._thStart = function(e) {
+          if(e.target.closest('.tile__rm')) return;
+          _tileDragSrc = tile; tile.style.opacity = '0.5'; e.stopPropagation();
+        };
+        tile._thMove = function(e) {
+          if(!_tileDragSrc) return;
+          e.preventDefault();
+          var touch = e.touches[0];
+          var el = document.elementFromPoint(touch.clientX, touch.clientY);
+          var target = el ? el.closest('.tile[data-tile]') : null;
+          if(target && target !== _tileDragSrc) {
+            var tiles = Array.from(grid.querySelectorAll('.tile[data-tile]'));
+            var si = tiles.indexOf(_tileDragSrc), di = tiles.indexOf(target);
+            if(si < di) grid.insertBefore(_tileDragSrc, target.nextSibling);
+            else grid.insertBefore(_tileDragSrc, target);
+          }
+        };
+        tile._thEnd = function() {
+          if(_tileDragSrc) { _tileDragSrc.style.opacity = ''; _tileDragSrc = null; }
+        };
+        tile.addEventListener('touchstart', tile._thStart, {passive: true});
+        tile.addEventListener('touchmove', tile._thMove, {passive: false});
+        tile.addEventListener('touchend', tile._thEnd);
+      })(t);
+    });
+
+  } else {
+    // exit edit mode — save config
+    btn.textContent = '편집';
+    var newOrder = [], newHidden = [];
+    grid.querySelectorAll('.tile[data-tile]').forEach(function(t) {
+      var id = t.dataset.tile;
+      newOrder.push(id);
+      if(t.classList.contains('tile--add')) newHidden.push(id);
+      t.classList.remove('tile--edit', 'tile--add');
+      t.onclick = t._savedOnclick || null; delete t._savedOnclick;
+      var rm = t.querySelector('.tile__rm'); if(rm) rm.remove();
+      var grip = t.querySelector('.tile__grip'); if(grip) grip.remove();
+      if(t._thStart) { t.removeEventListener('touchstart', t._thStart); delete t._thStart; }
+      if(t._thMove) { t.removeEventListener('touchmove', t._thMove); delete t._thMove; }
+      if(t._thEnd) { t.removeEventListener('touchend', t._thEnd); delete t._thEnd; }
+    });
+    saveTileConfig(c, newOrder, newHidden);
+    renderTileGrid(c);
+  }
+}
+
 // ── Daily Sheet ──
 var _dsOrigin = null;
 function _dsDateTimeRow(dateId, timeId) {
@@ -8440,8 +8583,8 @@ window.closeDailySheet = function() {
   <div class="ig" style="margin-bottom:1rem"><label>메모</label><input type="text" id="cpMemo" placeholder="특이사항, 알레르기 등"></div>
   <button onclick="saveCatProfile()" class="btn btn-teal" style="width:100%;padding:14px">저장</button>
 
-  <!-- 카드 순서/표시 설정 -->
-  <div style="margin-top:1.5rem;padding-top:1rem;border-top:0.5px solid var(--bd)">
+  <!-- 카드 순서/표시 설정 — 타일 편집 모드로 대체됨 -->
+  <div style="display:none;margin-top:1.5rem;padding-top:1rem;border-top:0.5px solid var(--bd)">
     <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:.25rem">📋 오늘기록 카드 설정</div>
     <div style="font-size:11px;color:var(--text3);margin-bottom:.75rem">토글로 카드 표시 여부를 설정하고 ↑↓로 순서를 바꿀 수 있어요</div>
     <div id="cardOrderUI"></div>
