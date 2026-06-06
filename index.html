@@ -514,7 +514,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     <div class="cm-brand hdr-title">
       <svg class="cm-brand__mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="17" rx="4.5" ry="3"/><ellipse cx="7.5" cy="11.5" rx="1.8" ry="2.4"/><ellipse cx="16.5" cy="11.5" rx="1.8" ry="2.4"/><ellipse cx="10.5" cy="8" rx="1.4" ry="2"/><ellipse cx="13.5" cy="8" rx="1.4" ry="2"/></svg>
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.36</span>
+      <span class="cm-beta">v0.5.37</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">💬 피드백</button>
@@ -8291,17 +8291,21 @@ function toggleTileEditMode() {
         rm.addEventListener('click', function(e) { e.stopPropagation(); tile.classList.toggle('tile--add'); });
       })(t);
       t.insertBefore(rm, t.firstChild);
-      // drag grip
+      // drag grip — SVG 6-dot handle
       var grip = document.createElement('div');
       grip.className = 'tile__grip';
-      grip.textContent = '≡';
-      grip.style.cssText = 'font-size:18px;line-height:1;text-align:center;padding:3px 0;touch-action:none;cursor:grab';
+      grip.style.cssText = 'display:flex;align-items:center;justify-content:center;min-height:44px;touch-action:none;cursor:grab;padding:4px 0';
+      grip.innerHTML = '<svg viewBox="0 0 16 24" width="14" height="20" fill="var(--cm-faint)"><circle cx="5" cy="6" r="2"/><circle cx="11" cy="6" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="11" cy="12" r="2"/><circle cx="5" cy="18" r="2"/><circle cx="11" cy="18" r="2"/></svg>';
       t.appendChild(grip);
       // touch drag handlers
       (function(tile) {
+        var _prevTarget = null;
         tile._thStart = function(e) {
           if(e.target.closest('.tile__rm')) return;
-          _tileDragSrc = tile; tile.style.opacity = '0.5'; e.stopPropagation();
+          _tileDragSrc = tile;
+          tile.style.cssText += ';opacity:0.4;border:2px dashed var(--cm-green-700);transform:scale(1.03);box-shadow:0 8px 24px rgba(35,91,67,.22);z-index:10;position:relative';
+          if(navigator.vibrate) navigator.vibrate(10);
+          e.stopPropagation();
         };
         tile._thMove = function(e) {
           if(!_tileDragSrc) return;
@@ -8309,6 +8313,12 @@ function toggleTileEditMode() {
           var touch = e.touches[0];
           var el = document.elementFromPoint(touch.clientX, touch.clientY);
           var target = el ? el.closest('.tile[data-tile]') : null;
+          // drop indicator
+          if(target !== _prevTarget) {
+            if(_prevTarget && _prevTarget !== _tileDragSrc) _prevTarget.style.boxShadow = '';
+            if(target && target !== _tileDragSrc) target.style.boxShadow = '0 0 0 2px var(--cm-green-700)';
+            _prevTarget = target;
+          }
           if(target && target !== _tileDragSrc) {
             var tiles = Array.from(grid.querySelectorAll('.tile[data-tile]'));
             var si = tiles.indexOf(_tileDragSrc), di = tiles.indexOf(target);
@@ -8317,7 +8327,21 @@ function toggleTileEditMode() {
           }
         };
         tile._thEnd = function() {
-          if(_tileDragSrc) { _tileDragSrc.style.opacity = ''; _tileDragSrc = null; }
+          if(!_tileDragSrc) return;
+          // clear drop indicator
+          if(_prevTarget && _prevTarget !== _tileDragSrc) _prevTarget.style.boxShadow = '';
+          _prevTarget = null;
+          // drop animation
+          _tileDragSrc.style.opacity = '';
+          _tileDragSrc.style.border = '';
+          _tileDragSrc.style.boxShadow = '';
+          _tileDragSrc.style.position = '';
+          _tileDragSrc.style.zIndex = '';
+          _tileDragSrc.style.transform = 'scale(1.03)';
+          var dropped = _tileDragSrc;
+          if(navigator.vibrate) navigator.vibrate(15);
+          setTimeout(function() { dropped.style.transform = ''; }, 150);
+          _tileDragSrc = null;
         };
         tile.addEventListener('touchstart', tile._thStart, {passive: true});
         tile.addEventListener('touchmove', tile._thMove, {passive: false});
@@ -8337,6 +8361,8 @@ function toggleTileEditMode() {
       t.onclick = t._savedOnclick || null; delete t._savedOnclick;
       var rm = t.querySelector('.tile__rm'); if(rm) rm.remove();
       var grip = t.querySelector('.tile__grip'); if(grip) grip.remove();
+      t.style.opacity = ''; t.style.border = ''; t.style.transform = '';
+      t.style.boxShadow = ''; t.style.position = ''; t.style.zIndex = '';
       if(t._thStart) { t.removeEventListener('touchstart', t._thStart); delete t._thStart; }
       if(t._thMove) { t.removeEventListener('touchmove', t._thMove); delete t._thMove; }
       if(t._thEnd) { t.removeEventListener('touchend', t._thEnd); delete t._thEnd; }
