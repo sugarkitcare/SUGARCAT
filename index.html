@@ -514,7 +514,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     <div class="cm-brand hdr-title">
       <svg class="cm-brand__mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="17" rx="4.5" ry="3"/><ellipse cx="7.5" cy="11.5" rx="1.8" ry="2.4"/><ellipse cx="16.5" cy="11.5" rx="1.8" ry="2.4"/><ellipse cx="10.5" cy="8" rx="1.4" ry="2"/><ellipse cx="13.5" cy="8" rx="1.4" ry="2"/></svg>
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.26</span>
+      <span class="cm-beta">v0.5.27</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">💬 피드백</button>
@@ -609,12 +609,12 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
         </div>
       </div>
     </div>
-    <!-- 하단 알림 -->
-    <div class="cmb-alert" id="heroAlert" style="display:none">
-      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-        <circle cx="10" cy="10" r="8"/><path d="M10 6.5v3"/><circle cx="10" cy="13.5" r=".6" fill="currentColor" stroke="none"/>
-      </svg>
-      <span id="heroAlertText">음수 부족</span>
+    <!-- 피드백 슬라이더 -->
+    <div id="heroFeedbackBar" style="margin-top:14px;min-height:44px;display:none">
+      <div id="heroFeedbackSlide" style="background:var(--cm-clay-tint);border:1px solid var(--cm-clay-edge);border-radius:13px;padding:11px 14px;font-size:13px;font-weight:700;color:var(--cm-clay-ink);transition:opacity .4s ease;opacity:1;line-height:1.4">
+        <div id="heroFeedbackTitle" style="font-weight:800;font-size:13.5px"></div>
+        <div id="heroFeedbackDetail" style="font-size:12px;font-weight:500;margin-top:3px;color:var(--cm-ink-soft)"></div>
+      </div>
     </div>
     <!-- JS 참조 ID 유지 (숨김) -->
     <div id="waterGoalBar" style="display:none"></div>
@@ -3045,10 +3045,11 @@ function makeFeedback(level, icon, title, detail) {
     info:   {bg:'var(--blue-l)',  border:'var(--blue)',  color:'var(--blue)'},
     ok:     {bg:'var(--teal-l)', border:'var(--teal)', color:'var(--teal-d)'},
   }[level] || {bg:'var(--bg2)', border:'var(--bd)', color:'var(--text2)'};
-  return `<div style="background:${cfg.bg};border:1px solid ${cfg.border};border-radius:9px;padding:.55rem .75rem;margin-bottom:.4rem">
+  const html = `<div style="background:${cfg.bg};border:1px solid ${cfg.border};border-radius:9px;padding:.55rem .75rem;margin-bottom:.4rem">
     <div style="font-size:12px;font-weight:600;color:${cfg.color}">${icon} ${title}</div>
     ${detail ? `<div style="font-size:11px;color:${cfg.color};margin-top:2px;line-height:1.5;opacity:0.85">${detail}</div>` : ''}
   </div>`;
+  return {html, level, title, detail: detail||''};
 }
 
 function renderDailySummary() {
@@ -3152,29 +3153,29 @@ function renderDailySummary() {
 
       const isUrgentFlag = urgent.length > 0;
       if(isUrgentFlag) {
-        feedbacks.push({priority: 1, html: makeFeedback('danger','🚨','혈액검사 위험 수치',
+        feedbacks.push({priority: 1, ...makeFeedback('danger','🚨','혈액검사 위험 수치',
           urgent.join(' · ') + '<br>즉시 수의사에게 연락하세요')});
       }
       if(worsened.length > 0) {
-        feedbacks.push({priority: isUrgentFlag ? 3 : 4, html: makeFeedback('warn','⚠️',
+        feedbacks.push({priority: isUrgentFlag ? 3 : 4, ...makeFeedback('warn','⚠️',
           '이전 혈검보다 수치 악화',
           worsened.join(' · ') + `<br>(${prevBT.date} 대비) 담당 수의사와 확인해 주세요`)});
       }
       if(improved.length > 0 && worsened.length === 0 && !isUrgentFlag) {
-        feedbacks.push({priority: 9, html: makeFeedback('ok','✅','혈액검사 수치 개선',
+        feedbacks.push({priority: 9, ...makeFeedback('ok','✅','혈액검사 수치 개선',
           improved.join(' · ') + `<br>(${prevBT.date} 대비) 좋아지고 있어요 🎉`)});
       }
       if(urgent.length === 0 && worsened.length === 0 && improved.length === 0) {
-        feedbacks.push({priority: 9, html: makeFeedback('ok','✅','혈액검사 큰 변화 없음',
+        feedbacks.push({priority: 9, ...makeFeedback('ok','✅','혈액검사 큰 변화 없음',
           `${prevBT.date} 대비 주요 수치 안정적이에요`)});
       }
     } else {
       // 이전 혈검 없음 — 절대값 기준으로만 판단
       if(urgent.length > 0) {
-        feedbacks.push({priority: 1, html: makeFeedback('danger','🚨','혈액검사 위험 수치',
+        feedbacks.push({priority: 1, ...makeFeedback('danger','🚨','혈액검사 위험 수치',
           urgent.join(' · ') + '<br>즉시 수의사에게 연락하세요')});
       } else {
-        feedbacks.push({priority: 9, html: makeFeedback('ok','📋','오늘 혈액검사 기록됨',
+        feedbacks.push({priority: 9, ...makeFeedback('ok','📋','오늘 혈액검사 기록됨',
           `${todayBT.items.length}개 항목 기록 · 다음 검사와 비교할게요`)});
       }
     }
@@ -3203,14 +3204,14 @@ function renderDailySummary() {
     const todayBgs = rec.bg.filter(x => x.bg !== '').map(x => parseFloat(x.bg));
     const minBg = todayBgs.length ? Math.min(...todayBgs) : null;
     if(minBg !== null && minBg <= 80) {
-      feedbacks.push({priority:1, html: makeFeedback('danger','🚨','저혈당 위험',
+      feedbacks.push({priority:1, ...makeFeedback('danger','🚨','저혈당 위험',
         `오늘 혈당 ${minBg} mg/dL — 즉시 확인하세요<br>인슐린 과다 투여 가능성이 있어요`)});
     }
 
     // 3일 연속 고혈당
     const bg3 = avgBgDays(3);
     if(bg3.length === 3 && bg3.every(v => v >= 300)) {
-      feedbacks.push({priority:3, html: makeFeedback('warn','⚠️','3일째 혈당이 높아요',
+      feedbacks.push({priority:3, ...makeFeedback('warn','⚠️','3일째 혈당이 높아요',
         `최근 3일 평균: ${bg3.map(v=>Math.round(v)).join(' → ')} mg/dL<br>인슐린 용량 조정이 필요할 수 있어요. 수의사와 상담해보세요`)});
     }
 
@@ -3231,7 +3232,7 @@ function renderDailySummary() {
       const thisAvg = Math.round(thisWeekMins.reduce((a,b)=>a+b,0)/thisWeekMins.length);
       const lastAvg = Math.round(lastWeekMins.reduce((a,b)=>a+b,0)/lastWeekMins.length);
       if(thisAvg - lastAvg >= 30) {
-        feedbacks.push({priority:4, html: makeFeedback('info','📈','혈당 최저점이 오르고 있어요',
+        feedbacks.push({priority:4, ...makeFeedback('info','📈','혈당 최저점이 오르고 있어요',
           `지난주 최저 평균 ${lastAvg} → 이번주 ${thisAvg} mg/dL<br>인슐린 효과가 줄어들고 있을 수 있어요`)});
       }
     }
@@ -3253,7 +3254,7 @@ function renderDailySummary() {
       const thisVar = Math.round(thisVariances.reduce((a,b)=>a+b,0)/thisVariances.length);
       const lastVar = Math.round(lastVariances.reduce((a,b)=>a+b,0)/lastVariances.length);
       if(thisVar - lastVar >= 50) {
-        feedbacks.push({priority:5, html: makeFeedback('info','📊','혈당 변동폭이 커지고 있어요',
+        feedbacks.push({priority:5, ...makeFeedback('info','📊','혈당 변동폭이 커지고 있어요',
           `이번주 평균 편차 ±${thisVar}, 지난주 ±${lastVar} mg/dL<br>소모기 효과나 인슐린 반응 불안정일 수 있어요`)});
       }
     }
@@ -3265,7 +3266,7 @@ function renderDailySummary() {
       return arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : null;
     }).filter(v=>v!==null);
     if(ket3.length === 3 && ket3[0] > ket3[1] && ket3[1] > ket3[2] && ket3[0] >= 1.0) {
-      feedbacks.push({priority:2, html: makeFeedback('warn','⚠️','케톤이 연속으로 올라요',
+      feedbacks.push({priority:2, ...makeFeedback('warn','⚠️','케톤이 연속으로 올라요',
         `최근 3일: ${ket3.map(v=>v.toFixed(1)).reverse().join(' → ')} mmol/L<br>케톤산증으로 진행될 수 있어요. 수의사에게 연락하세요`)});
     }
 
@@ -3273,7 +3274,7 @@ function renderDailySummary() {
     if(feedbacks.filter(f=>f.priority<=5).length === 0) {
       const bg3ok = avgBgDays(3);
       if(bg3ok.length >= 2 && bg3ok.every(v => v >= 100 && v <= 300)) {
-        feedbacks.push({priority:10, html: makeFeedback('ok','✅','혈당이 안정적이에요',
+        feedbacks.push({priority:10, ...makeFeedback('ok','✅','혈당이 안정적이에요',
           `최근 ${bg3ok.length}일 평균: ${bg3ok.map(v=>Math.round(v)).join(', ')} mg/dL`)});
       }
     }
@@ -3288,7 +3289,7 @@ function renderDailySummary() {
     if(todayRrSleep.length) {
       const maxRr = Math.max(...todayRrSleep);
       if(maxRr >= 40) {
-        feedbacks.push({priority:1, html: makeFeedback('danger','🚨','호흡수가 위험해요',
+        feedbacks.push({priority:1, ...makeFeedback('danger','🚨','호흡수가 위험해요',
           `수면 중 ${maxRr}회/분 — 즉시 병원으로 가세요<br>HCM 아이의 호흡수 40↑는 폐부종 신호일 수 있어요`)});
       }
     }
@@ -3298,7 +3299,7 @@ function renderDailySummary() {
     if(rr3sleep.length === 3) {
       const isRising = rr3sleep[0] > rr3sleep[1] && rr3sleep[1] > rr3sleep[2];
       if(isRising && rr3sleep[0] >= 28) {
-        feedbacks.push({priority:2, html: makeFeedback('warn','📈','수면 중 호흡수가 오르고 있어요',
+        feedbacks.push({priority:2, ...makeFeedback('warn','📈','수면 중 호흡수가 오르고 있어요',
           `최근 3일: ${rr3sleep.map(v=>Math.round(v)).reverse().join('→')}회/분<br>아직 위험 범위는 아니지만 주의가 필요해요`)});
       }
     }
@@ -3315,7 +3316,7 @@ function renderDailySummary() {
         return uh*60+um > h*60+m2;
       });
       if(elapsedMin >= 120 && urineAfter.length === 0) {
-        feedbacks.push({priority:1, html: makeFeedback('danger','🚨',`비상이뇨제 투여 ${Math.floor(elapsedMin/60)}시간 경과`,
+        feedbacks.push({priority:1, ...makeFeedback('danger','🚨',`비상이뇨제 투여 ${Math.floor(elapsedMin/60)}시간 경과`,
           `아직 소변 반응이 없어요<br>즉시 수의사에게 연락하세요`)});
       }
     }
@@ -3331,7 +3332,7 @@ function renderDailySummary() {
       const rrRising = rr3all[0] > rr3all[2];
       const wtRising = wt3[0] > wt3[2];
       if(rrRising && wtRising && rr3all[0] >= 30) {
-        feedbacks.push({priority:3, html: makeFeedback('warn','⚠️','호흡수와 체중이 같이 오르고 있어요',
+        feedbacks.push({priority:3, ...makeFeedback('warn','⚠️','호흡수와 체중이 같이 오르고 있어요',
           `호흡수 ${Math.round(rr3all[2])}→${Math.round(rr3all[0])}회, 체중 ${wt3[2]}→${wt3[0]}kg<br>체액 저류 가능성이 있어요. 수의사와 상담하세요`)});
       }
     }
@@ -3340,7 +3341,7 @@ function renderDailySummary() {
     if(!feedbacks.some(f=>f.priority<=3)) {
       const rrAvg = rr3sleep.length ? Math.min(...rr3sleep) : null;
       if(rrAvg && rrAvg < 30) {
-        feedbacks.push({priority:10, html: makeFeedback('ok','✅','호흡수 안정적이에요',
+        feedbacks.push({priority:10, ...makeFeedback('ok','✅','호흡수 안정적이에요',
           `수면 중 최저 ${rrAvg}회/분 · 정상 범위예요 🫁`)});
       }
     }
@@ -3358,10 +3359,10 @@ function renderDailySummary() {
       const maxGoal = Math.round(latestWt * 60);
       const pct = Math.round(todayWater / minGoal * 100);
       if(todayWater < minGoal * 0.5) {
-        feedbacks.push({priority:2, html: makeFeedback('danger','🚨','음수량이 많이 부족해요',
+        feedbacks.push({priority:2, ...makeFeedback('danger','🚨','음수량이 많이 부족해요',
           `${cat} 체중 ${latestWt}kg 기준 ${minGoal}~${maxGoal}ml 필요<br>오늘 ${todayWater}ml (목표의 ${pct}%) — ${minGoal-todayWater}ml 더 필요해요`)});
       } else if(todayWater < minGoal * 0.7) {
-        feedbacks.push({priority:3, html: makeFeedback('warn','⚠️','음수량이 부족해요',
+        feedbacks.push({priority:3, ...makeFeedback('warn','⚠️','음수량이 부족해요',
           `${cat} 체중 ${latestWt}kg 기준 ${minGoal}~${maxGoal}ml 필요<br>오늘 ${todayWater}ml (목표의 ${pct}%) — ${minGoal-todayWater}ml 더 필요해요`)});
       }
     }
@@ -3371,11 +3372,11 @@ function renderDailySummary() {
     const hasPiknuria = todayUrine.some(u=>u.amount==='핍뇨');
     const hasHematuria = todayUrine.some(u=>u.amount==='혈뇨');
     if(hasHematuria) {
-      feedbacks.push({priority:1, html: makeFeedback('danger','🔴','혈뇨가 기록됐어요',
+      feedbacks.push({priority:1, ...makeFeedback('danger','🔴','혈뇨가 기록됐어요',
         '소변에 피가 섞인 경우 즉시 수의사 상담이 필요해요')});
     }
     if(hasPiknuria) {
-      feedbacks.push({priority:2, html: makeFeedback('warn','⚠️','핍뇨가 기록됐어요',
+      feedbacks.push({priority:2, ...makeFeedback('warn','⚠️','핍뇨가 기록됐어요',
         '소변량이 매우 적어요. 음수량과 함께 모니터링하고 지속되면 수의사에게 연락하세요')});
     }
 
@@ -3385,7 +3386,7 @@ function renderDailySummary() {
       return (r.urine||[]).some(u=>u.amount==='핍뇨');
     });
     if(pikDays.length === 3) {
-      feedbacks.push({priority:1, html: makeFeedback('danger','🚨','3일째 소변량이 적어요',
+      feedbacks.push({priority:1, ...makeFeedback('danger','🚨','3일째 소변량이 적어요',
         'CKD 아이의 핍뇨 지속은 급성 악화 신호일 수 있어요<br>즉시 수의사에게 연락하세요')});
     }
 
@@ -3396,7 +3397,7 @@ function renderDailySummary() {
       return arr.length ? arr.reduce((a,b)=>a+b.ml,0) : null;
     }).filter(v=>v!==null);
     if(water3.length === 3 && water3[0] < water3[1] && water3[1] < water3[2] && water3[0] < 200) {
-      feedbacks.push({priority:3, html: makeFeedback('warn','📉','음수량이 계속 줄고 있어요',
+      feedbacks.push({priority:3, ...makeFeedback('warn','📉','음수량이 계속 줄고 있어요',
         `최근 3일: ${water3.reverse().join('→')}ml<br>CKD 아이는 수분 섭취가 신장 기능 유지에 핵심이에요`)});
     }
 
@@ -3411,7 +3412,7 @@ function renderDailySummary() {
       const last2 = wt14[0];
       const dropPct = Math.round((first-last2)/first*100);
       if(dropPct >= 5) {
-        feedbacks.push({priority:3, html: makeFeedback('warn','📉','체중이 계속 줄고 있어요',
+        feedbacks.push({priority:3, ...makeFeedback('warn','📉','체중이 계속 줄고 있어요',
           `2주간 ${first}→${last2}kg (-${dropPct}%)<br>CKD 아이의 체중 감소는 근육 소실 신호일 수 있어요`)});
       }
     }
@@ -3472,11 +3473,11 @@ function renderDailySummary() {
         const lMaxBg=Math.max(...lwFlat), lMinBg=Math.min(...lwFlat);
         const pct=Math.round(Math.abs((tAvgBg-lAvgBg)/lAvgBg*100));
         if(pct>=10){const dir=tAvgBg>lAvgBg?'▲':'▼';const lv=tAvgBg>lAvgBg?'warn':'ok';
-          feedbacks.push({priority:6,html:makeFeedback(lv,'📊','혈당 주간 변화',
+          feedbacks.push({priority:6,...makeFeedback(lv,'📊','혈당 주간 변화',
             `지난주 평균 ${lAvgBg} → 이번주 ${tAvgBg} mg/dL (${dir} ${pct}%)<br>최고 ${lMaxBg}→${tMaxBg} · 최저 ${lMinBg}→${tMinBg} mg/dL`)});}
-        else feedbacks.push({priority:10,html:makeFeedback('ok','📊','이번주 평균혈당',
+        else feedbacks.push({priority:10,...makeFeedback('ok','📊','이번주 평균혈당',
           `${tAvgBg} mg/dL · 최고 ${tMaxBg} · 최저 ${tMinBg}`)});
-      } else feedbacks.push({priority:10,html:makeFeedback('ok','📊','이번주 평균혈당',
+      } else feedbacks.push({priority:10,...makeFeedback('ok','📊','이번주 평균혈당',
         `${tAvgBg} mg/dL · 최고 ${tMaxBg} · 최저 ${tMinBg}`)});
     }
 
@@ -3503,11 +3504,11 @@ function renderDailySummary() {
           const lMin=Math.min(...lwCgm.map(c=>c.min||999));
           const pct=Math.round(Math.abs((tAvg-lAvg)/lAvg*100));
           if(pct>=10){const dir=tAvg>lAvg?'▲':'▼';const lv=tAvg>lAvg?'warn':'ok';
-            feedbacks.push({priority:5,html:makeFeedback(lv,'📡','CGM 주간 변화',
+            feedbacks.push({priority:5,...makeFeedback(lv,'📡','CGM 주간 변화',
               `지난주 평균 ${lAvg} → 이번주 ${tAvg} mg/dL (${dir} ${pct}%)<br>최고 ${lMax}→${tMax} · 최저 ${lMin}→${tMin} mg/dL`)});}
-          else feedbacks.push({priority:10,html:makeFeedback('ok','📡','이번주 CGM 평균',
+          else feedbacks.push({priority:10,...makeFeedback('ok','📡','이번주 CGM 평균',
             `${tAvg} mg/dL · 최고 ${tMax} · 최저 ${tMin}`)});
-        } else feedbacks.push({priority:10,html:makeFeedback('ok','📡','이번주 CGM 평균',
+        } else feedbacks.push({priority:10,...makeFeedback('ok','📡','이번주 CGM 평균',
           `${tAvg} mg/dL · 최고 ${tMax} · 최저 ${tMin}`)});
       }
     }
@@ -3521,9 +3522,9 @@ function renderDailySummary() {
         const lAvg=+(lwWt.reduce((a,b)=>a+b,0)/lwWt.length).toFixed(2);
         const pct=Math.round(Math.abs((tAvg-lAvg)/lAvg*100));
         if(pct>=10){const dir=tAvg>lAvg?'▲':'▼';const lv=tAvg>lAvg?'warn':'info';
-          feedbacks.push({priority:6,html:makeFeedback(lv,'⚖️','체중 주간 변화',`지난주 평균 ${lAvg}kg → 이번주 ${tAvg}kg (${dir} ${pct}%)`)});}
-        else feedbacks.push({priority:10,html:makeFeedback('ok','⚖️','이번주 평균 체중',`${tAvg}kg`)});
-      } else feedbacks.push({priority:10,html:makeFeedback('ok','⚖️','이번주 평균 체중',`${tAvg}kg`)});
+          feedbacks.push({priority:6,...makeFeedback(lv,'⚖️','체중 주간 변화',`지난주 평균 ${lAvg}kg → 이번주 ${tAvg}kg (${dir} ${pct}%)`)});}
+        else feedbacks.push({priority:10,...makeFeedback('ok','⚖️','이번주 평균 체중',`${tAvg}kg`)});
+      } else feedbacks.push({priority:10,...makeFeedback('ok','⚖️','이번주 평균 체중',`${tAvg}kg`)});
     }
 
     // 음수량 주간 비교
@@ -3535,9 +3536,9 @@ function renderDailySummary() {
         const lAvg=Math.round(lwW.reduce((a,b)=>a+b,0)/lwW.length);
         const pct=Math.round(Math.abs((tAvg-lAvg)/lAvg*100));
         if(pct>=10){const dir=tAvg>lAvg?'▲':'▼';const lv=tAvg<lAvg?'warn':'ok';
-          feedbacks.push({priority:6,html:makeFeedback(lv,'💧','음수량 주간 변화',`지난주 일평균 ${lAvg}ml → 이번주 ${tAvg}ml (${dir} ${pct}%)`)});}
-        else feedbacks.push({priority:10,html:makeFeedback('ok','💧','이번주 일평균 음수량',`${tAvg}ml`)});
-      } else feedbacks.push({priority:10,html:makeFeedback('ok','💧','이번주 일평균 음수량',`${tAvg}ml`)});
+          feedbacks.push({priority:6,...makeFeedback(lv,'💧','음수량 주간 변화',`지난주 일평균 ${lAvg}ml → 이번주 ${tAvg}ml (${dir} ${pct}%)`)});}
+        else feedbacks.push({priority:10,...makeFeedback('ok','💧','이번주 일평균 음수량',`${tAvg}ml`)});
+      } else feedbacks.push({priority:10,...makeFeedback('ok','💧','이번주 일평균 음수량',`${tAvg}ml`)});
     }
 
     // 소변 횟수 주간 비교
@@ -3549,9 +3550,9 @@ function renderDailySummary() {
         const lAvg=+(lwU.reduce((a,b)=>a+b,0)/lwU.length).toFixed(1);
         const pct=Math.round(Math.abs((tAvg-lAvg)/lAvg*100));
         if(pct>=10){const dir=tAvg>lAvg?'▲':'▼';const lv=tAvg<lAvg?'warn':'ok';
-          feedbacks.push({priority:6,html:makeFeedback(lv,'🚽','소변 횟수 주간 변화',`지난주 하루평균 ${lAvg}회 → 이번주 ${tAvg}회 (${dir} ${pct}%)`)});}
-        else feedbacks.push({priority:10,html:makeFeedback('ok','🚽','이번주 하루평균 소변',`${tAvg}회`)});
-      } else feedbacks.push({priority:10,html:makeFeedback('ok','🚽','이번주 하루평균 소변',`${tAvg}회`)});
+          feedbacks.push({priority:6,...makeFeedback(lv,'🚽','소변 횟수 주간 변화',`지난주 하루평균 ${lAvg}회 → 이번주 ${tAvg}회 (${dir} ${pct}%)`)});}
+        else feedbacks.push({priority:10,...makeFeedback('ok','🚽','이번주 하루평균 소변',`${tAvg}회`)});
+      } else feedbacks.push({priority:10,...makeFeedback('ok','🚽','이번주 하루평균 소변',`${tAvg}회`)});
     }
 
     // 대변 횟수 주간 비교
@@ -3563,9 +3564,9 @@ function renderDailySummary() {
         const lAvg=+(lwP.reduce((a,b)=>a+b,0)/lwP.length).toFixed(1);
         const pct=Math.round(Math.abs((tAvg-lAvg)/lAvg*100));
         if(pct>=10){const dir=tAvg>lAvg?'▲':'▼';const lv=tAvg<lAvg?'warn':'ok';
-          feedbacks.push({priority:6,html:makeFeedback(lv,'💩','대변 횟수 주간 변화',`지난주 하루평균 ${lAvg}회 → 이번주 ${tAvg}회 (${dir} ${pct}%)`)});}
-        else feedbacks.push({priority:10,html:makeFeedback('ok','💩','이번주 하루평균 대변',`${tAvg}회`)});
-      } else feedbacks.push({priority:10,html:makeFeedback('ok','💩','이번주 하루평균 대변',`${tAvg}회`)});
+          feedbacks.push({priority:6,...makeFeedback(lv,'💩','대변 횟수 주간 변화',`지난주 하루평균 ${lAvg}회 → 이번주 ${tAvg}회 (${dir} ${pct}%)`)});}
+        else feedbacks.push({priority:10,...makeFeedback('ok','💩','이번주 하루평균 대변',`${tAvg}회`)});
+      } else feedbacks.push({priority:10,...makeFeedback('ok','💩','이번주 하루평균 대변',`${tAvg}회`)});
     }
   }
 
@@ -3574,10 +3575,10 @@ function renderDailySummary() {
   // ════════════════════════════════
   const hasAnyRecord = rec.bg.length || rec.ins.length || rec.weights.length || rec.rr?.length || (rec.water||[]).length || (rec.routines||[]).length;
   if(!hasAnyRecord) {
-    feedbacks.push({priority:9, html: makeFeedback('info','💙',`${cat} 오늘 기록이 없어요`,
+    feedbacks.push({priority:9, ...makeFeedback('info','💙',`${cat} 오늘 기록이 없어요`,
       '기록을 시작하면 상태를 분석해드릴게요')});
   } else if(feedbacks.length === 0) {
-    feedbacks.push({priority:10, html: makeFeedback('ok','✅',`${cat} 오늘 안정적이에요`,
+    feedbacks.push({priority:10, ...makeFeedback('ok','✅',`${cat} 오늘 안정적이에요`,
       '모든 수치가 정상 범위예요 😊')});
   }
 
@@ -3699,16 +3700,50 @@ function renderDailySummary() {
       wtEl.textContent = lastWtRec ? lastWtRec.weight+'kg' : latestWtHero ? latestWtHero+'kg' : '—';
     }
 
-    // 알림 배너
-    const alertEl = document.getElementById('heroAlert');
-    const alertTxtEl = document.getElementById('heroAlertText');
-    if(alertEl) {
-      if(waterTarget > 0 && heroPct < 100) {
-        if(alertTxtEl) alertTxtEl.textContent = (waterTarget-todayWaterTotal)+'ml 더 필요해요';
-        alertEl.style.display = 'flex';
-      } else {
-        alertEl.style.display = 'none';
+    // 피드백 슬라이더
+    var slideEl = document.getElementById('heroFeedbackSlide');
+    var titleEl2 = document.getElementById('heroFeedbackTitle');
+    var detailEl = document.getElementById('heroFeedbackDetail');
+    var barEl = document.getElementById('heroFeedbackBar');
+    if(slideEl && feedbacks.length > 0) {
+      if(barEl) barEl.style.display = 'block';
+      var _fi = 0;
+      var stripEmoji = function(str) {
+        return (str||'').replace(/[\u{1F300}-\u{1FFFF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{FE00}-\u{FE0F}]|[\u{1F900}-\u{1F9FF}]|[✅⚠️🚨📋📈📊💧🔴📉🫁🐱]/gu, '').trim();
+      };
+      var applyTone = function(level) {
+        var tones = {
+          danger:{bg:'var(--cm-clay-tint)',bd:'var(--cm-clay-edge)',clr:'var(--cm-clay-ink)'},
+          warn:  {bg:'var(--cm-amber-tint)',bd:'var(--cm-amber-edge)',clr:'#7E5C16'},
+          ok:    {bg:'var(--cm-green-tint)',bd:'var(--cm-green-edge)',clr:'var(--cm-green-ink)'},
+          info:  {bg:'var(--cm-surface-2)',bd:'var(--cm-line)',clr:'var(--cm-ink-soft)'}
+        };
+        var t = tones[level] || tones.info;
+        slideEl.style.background = t.bg;
+        slideEl.style.borderColor = t.bd;
+        slideEl.style.color = t.clr;
+      };
+      var showHeroSlide = function(i) {
+        var f = feedbacks[i]; if(!f) return;
+        slideEl.style.opacity = '0';
+        setTimeout(function() {
+          titleEl2.textContent = stripEmoji(f.title||'');
+          detailEl.innerHTML = stripEmoji(f.detail||'');
+          applyTone(f.level);
+          slideEl.style.opacity = '1';
+        }, 400);
+      };
+      showHeroSlide(0);
+      if(window._heroFeedTimer) clearInterval(window._heroFeedTimer);
+      if(feedbacks.length > 1) {
+        window._heroFeedTimer = setInterval(function() {
+          _fi = (_fi + 1) % feedbacks.length;
+          showHeroSlide(_fi);
+        }, 4000);
       }
+    } else if(barEl) {
+      barEl.style.display = 'none';
+      if(window._heroFeedTimer) { clearInterval(window._heroFeedTimer); window._heroFeedTimer = null; }
     }
 
     // 주간 스트립
