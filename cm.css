@@ -102,24 +102,35 @@
 .cm-batt i{ position:absolute; inset:2px; width:60%; border-radius:1.5px; background:var(--cm-ink); }
 
 /* ---------- app bar ---------- */
-.cm-appbar{ padding:6px 20px 14px; }
+/* 다크모드 body 색 상속 방지: 항상 라이트 크림 배경 고정 */
+.cm-appbar{ padding:6px 20px 14px; background:var(--cm-bg-soft); color:var(--cm-ink); }
 .cm-appbar__top{ display:flex; align-items:center; gap:10px; }
-.cm-brand{ display:flex; align-items:center; gap:9px; }
-.cm-brand__mark{ width:30px; height:30px; flex:0 0 auto; color:var(--cm-green-700); }
-.cm-brand__name{ font-size:22px; font-weight:800; color:var(--cm-green-800); letter-spacing:-0.02em; }
+.cm-brand{ display:flex; align-items:center; gap:9px; flex-shrink:0; overflow:hidden; }
+.cm-brand__mark{ width:28px; height:28px; flex:0 0 auto; color:var(--cm-green-700); }
+.cm-brand__name{ font-size:18px; font-weight:800; color:var(--cm-green-800); letter-spacing:-0.02em;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .cm-beta{ font-size:11px; font-weight:700; color:var(--cm-green-700); background:var(--cm-green-tint);
-  border:1px solid var(--cm-green-edge); padding:3px 8px; border-radius:999px; letter-spacing:0; }
-.cm-appbar__sub{ font-size:13.5px; color:var(--cm-faint); margin-top:7px; font-weight:500; }
-.cm-appbar__actions{ margin-left:auto; display:flex; gap:8px; }
+  border:1px solid var(--cm-green-edge); padding:3px 8px; border-radius:999px; letter-spacing:0;
+  white-space:nowrap; flex-shrink:0; }
+.cm-appbar__sub{ font-size:13px; color:var(--cm-faint); margin-top:6px; font-weight:500; }
+.cm-appbar__actions{ margin-left:auto; display:flex; gap:8px; flex-shrink:0; }
 .cm-ghost{ font-size:12.5px; font-weight:600; color:var(--cm-ink-soft); background:var(--cm-surface);
-  border:1px solid var(--cm-line); border-radius:999px; padding:6px 11px; }
+  border:1px solid var(--cm-line); border-radius:999px; padding:6px 11px;
+  white-space:nowrap; cursor:pointer; }
 .cm-ghost--green{ color:var(--cm-green-700); border-color:var(--cm-green-edge); background:var(--cm-green-tint); }
 
 /* ---------- cat pills ---------- */
-.cm-pets{ display:flex; gap:9px; padding:2px 20px 14px; align-items:center; }
+/* 다크모드 body 색 상속 방지 + 가로 스크롤 지원 */
+.cm-pets{ display:flex; gap:9px; padding:2px 20px 14px; align-items:center;
+  background:var(--cm-bg-soft); overflow-x:auto; -webkit-overflow-scrolling:touch;
+  scrollbar-width:none; }
+.cm-pets::-webkit-scrollbar{ display:none; }
 .cm-pet{ display:flex; align-items:center; gap:8px; padding:9px 14px; border-radius:999px;
   font-size:15px; font-weight:700; background:var(--cm-surface); color:var(--cm-ink-soft);
-  border:1px solid var(--cm-line); }
+  border:1px solid var(--cm-line);
+  /* 세로 팽창 방지 */
+  white-space:nowrap; height:auto; line-height:1; flex-shrink:0;
+  box-sizing:border-box; }
 .cm-pet small{ font-size:11px; font-weight:600; color:var(--cm-faint); }
 .cm-pet__gear{ width:18px; height:18px; opacity:.5; }
 .cm-pet--on{ background:var(--cm-green-700); color:#fff; border-color:var(--cm-green-700);
@@ -130,11 +141,13 @@
 .cm-pet--add{ border-style:dashed; color:var(--cm-green-700); font-weight:600; background:transparent; }
 
 /* ---------- tab bar ---------- */
-.cm-tabs{ display:flex; gap:2px; margin:0 16px; padding:5px; background:var(--cm-surface-2);
-  border:1px solid var(--cm-line); border-radius:16px; overflow-x:auto; scrollbar-width:none; }
+/* margin-bottom으로 아래 컨텐츠와 여백 확보, 좌우 margin 제거(app 컨테이너 패딩 활용) */
+.cm-tabs{ display:flex; gap:2px; margin:0 0 1rem; padding:5px; background:var(--cm-surface-2);
+  border:1px solid var(--cm-line); border-radius:16px; overflow-x:auto; scrollbar-width:none;
+  color:var(--cm-faint); }
 .cm-tabs::-webkit-scrollbar{ display:none; }
 .cm-tab{ flex:0 0 auto; font-size:14px; font-weight:600; color:var(--cm-faint);
-  padding:9px 13px; border-radius:11px; white-space:nowrap; }
+  padding:9px 13px; border-radius:11px; white-space:nowrap; background:transparent; border:none; }
 .cm-tab--on{ background:var(--cm-surface); color:var(--cm-green-700); font-weight:800;
   box-shadow:var(--cm-shadow-sm); }
 
@@ -546,14 +559,20 @@
    인라인 <style>의 .nav-btn(0,1,0)/.nav-btn.active(0,2,0)를
    cm.css가 먼저 로드돼도 이기도록 부모 선택자 결합
    =========================================================== */
+/* .nav-btn(0,1,0)을 완전히 덮어씀 — (0,2,0) 이상 specificity 유지 */
 .cm-tabs .cm-tab{
-  flex:0 0 auto; font-size:14px; font-weight:600; color:var(--cm-faint);
-  padding:9px 13px; border-radius:11px; white-space:nowrap;
-  background:transparent; border:none; box-shadow:none;
+  flex:0 0 auto !important;
+  font-size:14px !important; font-weight:600 !important;
+  color:var(--cm-faint) !important;
+  padding:9px 13px !important; border-radius:11px !important;
+  white-space:nowrap !important; background:transparent !important;
+  border:none !important; box-shadow:none !important;
 }
 .cm-tabs .cm-tab.active{
-  background:var(--cm-surface); color:var(--cm-green-700); font-weight:800;
-  box-shadow:var(--cm-shadow-sm);
+  background:var(--cm-surface) !important;
+  color:var(--cm-green-700) !important;
+  font-weight:800 !important;
+  box-shadow:var(--cm-shadow-sm) !important;
 }
 .cm-pets .cm-pet.active{
   background:var(--cm-green-700); color:#fff; border-color:var(--cm-green-700);
