@@ -514,7 +514,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     <div class="cm-brand hdr-title">
       <svg class="cm-brand__mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="17" rx="4.5" ry="3"/><ellipse cx="7.5" cy="11.5" rx="1.8" ry="2.4"/><ellipse cx="16.5" cy="11.5" rx="1.8" ry="2.4"/><ellipse cx="10.5" cy="8" rx="1.4" ry="2"/><ellipse cx="13.5" cy="8" rx="1.4" ry="2"/></svg>
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.32</span>
+      <span class="cm-beta">v0.5.33</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">💬 피드백</button>
@@ -624,6 +624,80 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
   <!-- ══ 주간 스트립 ══ -->
   <!-- ══ 피드백 카드 목록 (숨김) ══ -->
   <div id="dailyFeedbackList" style="display:none;margin-bottom:.75rem"></div>
+
+  <!-- ══ 기록 타일 그리드 ══ -->
+  <div class="cm-sechead" style="padding:2px 2px 0;margin-bottom:10px">
+    <div>
+      <div class="cm-sechead__t">기록 항목</div>
+      <div class="cm-sechead__s">탭하면 바로 입력해요</div>
+    </div>
+  </div>
+  <div class="tgrid" id="dailyTileGrid" style="margin-bottom:1rem">
+    <button class="tile" onclick="openDailySheet('water')">
+      <div class="tile__top">
+        <div class="cm-ic cm-ic--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6c2.8 3.4 6 7 6 10.1a6 6 0 0 1-12 0C6 10.6 9.2 7 12 3.6Z"/></svg></div>
+        <svg class="tile__chev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 5l7 7-7 7"/></svg>
+      </div>
+      <div class="tile__title">음수량</div>
+      <div class="tile__status" id="tileWaterStatus" data-tone="muted">기록 전</div>
+    </button>
+    <button class="tile" onclick="openDailySheet('excreta')">
+      <div class="tile__top">
+        <div class="cm-ic cm-ic--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5c2.4 3 5 6 5 8.6a5 5 0 0 1-10 0c0-2.6 2.6-5.6 5-8.6Z"/></svg></div>
+        <svg class="tile__chev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 5l7 7-7 7"/></svg>
+      </div>
+      <div class="tile__title">소변·대변</div>
+      <div class="tile__status" id="tileExcretaStatus" data-tone="muted">기록 전</div>
+    </button>
+    <button class="tile" onclick="openDailySheet('med')">
+      <div class="tile__top">
+        <div class="cm-ic cm-ic--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 14.5 14.5 4.5a4.95 4.95 0 0 1 7 7l-10 10a4.95 4.95 0 0 1-7-7Z"/><path d="M8 8 16 16"/></svg></div>
+        <svg class="tile__chev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 5l7 7-7 7"/></svg>
+      </div>
+      <div class="tile__title">투약·루틴</div>
+      <div class="tile__status" id="tileMedStatus" data-tone="muted">투약 전</div>
+    </button>
+    <button class="tile" onclick="openDailySheet('breath')">
+      <div class="tile__top">
+        <div class="cm-ic cm-ic--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v7M9 8.5c0 0-3 .8-3.7 4.3C4.8 15.6 5 19 7.4 19c1.7 0 1.9-1.5 2-3 .1-1.6 0-5.2-0.4-7.5M15 8.5c0 0 3 .8 3.7 4.3C19.2 15.6 19 19 16.6 19c-1.7 0-1.9-1.5-2-3-.1-1.6 0-5.2.4-7.5"/></svg></div>
+        <svg class="tile__chev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 5l7 7-7 7"/></svg>
+      </div>
+      <div class="tile__title">호흡수 측정</div>
+      <div class="tile__status" id="tileBreathStatus" data-tone="muted">측정 전</div>
+    </button>
+    <button class="tile" onclick="openDailySheet('weight')">
+      <div class="tile__top">
+        <div class="cm-ic cm-ic--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5h16a1.5 1.5 0 0 1 1.5 1.5v11a1.5 1.5 0 0 1-1.5 1.5H4A1.5 1.5 0 0 1 2.5 18.5v-11A1.5 1.5 0 0 1 4 5.5Z"/><path d="M8.3 12.2a3.7 3.7 0 0 1 7.4 0M12 12.2l2.2-1.7"/></svg></div>
+        <svg class="tile__chev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 5l7 7-7 7"/></svg>
+      </div>
+      <div class="tile__title">몸무게</div>
+      <div class="tile__status" id="tileWeightStatus" data-tone="muted">기록 전</div>
+    </button>
+    <button class="tile" onclick="openDailySheet('meal')">
+      <div class="tile__top">
+        <div class="cm-ic cm-ic--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2.6 11.5h18.8a9.4 9.4 0 0 1-18.8 0ZM12 4.2c0 1.4-1.4 1.4-1.4 2.8M15.2 5.2c0 1.1-1.1 1.1-1.1 2.2"/></svg></div>
+        <svg class="tile__chev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 5l7 7-7 7"/></svg>
+      </div>
+      <div class="tile__title">식사·칼로리</div>
+      <div class="tile__status" id="tileMealStatus" data-tone="muted">급여 전</div>
+    </button>
+    <button class="tile" onclick="openDailySheet('glucose')">
+      <div class="tile__top">
+        <div class="cm-ic cm-ic--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 3h7M10 3v5l-4.2 9A2.4 2.4 0 0 0 8 20.5h8a2.4 2.4 0 0 0 2.2-3.5L14 8V3"/></svg></div>
+        <svg class="tile__chev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 5l7 7-7 7"/></svg>
+      </div>
+      <div class="tile__title">혈당·케톤</div>
+      <div class="tile__status" id="tileGlucoseStatus" data-tone="muted">기록 전</div>
+    </button>
+    <button class="tile" onclick="openDailySheet('insulin')">
+      <div class="tile__top">
+        <div class="cm-ic cm-ic--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21l4-4M14.5 4.5 19.5 9.5M7 17 17 7M16 6 18.2 8.2M9.4 13.6 11.4 15.6M12.4 10.6 14.4 12.6"/></svg></div>
+        <svg class="tile__chev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 5l7 7-7 7"/></svg>
+      </div>
+      <div class="tile__title">인슐린 투여</div>
+      <div class="tile__status" id="tileInsulinStatus" data-tone="muted">투여 전</div>
+    </button>
+  </div>
 
   <!-- 8번: 인슐린 투여 예정 표시 -->
   <div id="insulinNextBanner" style="display:none;background:var(--amber-l);border-radius:10px;padding:.65rem 1rem;margin-bottom:.75rem;font-size:12px;color:var(--amber-d)">
@@ -3730,6 +3804,26 @@ function renderDailySummary() {
     var wkPE=document.getElementById('wkStool');
     if(wkPE) wkPE.textContent=wkPV.length?(wkPV.reduce(function(a,b){return a+b;},0)/wkPV.length).toFixed(1)+'회/일':'—';
   } catch(e) { console.warn('hero update:', e); }
+  // ── 타일 상태 업데이트 ──
+  try {
+    var tRec=getRec(cat,d);
+    var tw=document.getElementById('tileWaterStatus');
+    if(tw){var twt=(tRec.water||[]).reduce(function(a,b){return a+b.ml;},0);if(twt>0){tw.textContent=twt+'ml';tw.dataset.tone='good';}else{tw.textContent='기록 전';tw.dataset.tone='muted';}}
+    var tex=document.getElementById('tileExcretaStatus');
+    if(tex){var tuc=(tRec.urine||[]).length,tpc=(tRec.poop||[]).length;if(tuc||tpc){tex.textContent='소변 '+tuc+'회 · 대변 '+tpc+'회';tex.dataset.tone='good';}else{tex.textContent='기록 전';tex.dataset.tone='muted';}}
+    var tmd=document.getElementById('tileMedStatus');
+    if(tmd){var tdn=new Set((tRec.routines||[]).flatMap(function(r){return r.items||[];})).size;if(tdn>0){tmd.textContent=tdn+'개 완료';tmd.dataset.tone='good';}else{tmd.textContent='투약 전';tmd.dataset.tone='muted';}}
+    var tbr=document.getElementById('tileBreathStatus');
+    if(tbr){var trrA=tRec.rr||[],tlr=trrA.length?trrA[trrA.length-1]:null;if(tlr){tbr.textContent=tlr.rr+' 회/분';tbr.dataset.tone=tlr.rr>=40?'alert':tlr.rr>=30?'warn':'good';}else{tbr.textContent='측정 전';tbr.dataset.tone='muted';}}
+    var twg=document.getElementById('tileWeightStatus');
+    if(twg){var tlwt=(tRec.weights||[]).slice(-1)[0];if(tlwt){twg.textContent=tlwt.weight+' kg';twg.dataset.tone='good';}else{twg.textContent='기록 전';twg.dataset.tone='muted';}}
+    var tml=document.getElementById('tileMealStatus');
+    if(tml){var tms=tRec.meals||[];if(tms.length){var ttkc=tms.reduce(function(a,b){return a+(b.kcal||0);},0);tml.textContent=tms.length+'회'+(ttkc?' · '+ttkc+'kcal':'');tml.dataset.tone='good';}else{tml.textContent='급여 전';tml.dataset.tone='muted';}}
+    var tgl=document.getElementById('tileGlucoseStatus');
+    if(tgl){var tlbg=(tRec.bg||[]).filter(function(x){return x.bg!=='';}).slice(-1)[0];if(tlbg){var tbgv=parseFloat(tlbg.bg);tgl.textContent=tbgv+' mg/dL';tgl.dataset.tone=tbgv<=80?'alert':tbgv>=300?'warn':'good';}else{tgl.textContent='기록 전';tgl.dataset.tone='muted';}}
+    var tins2=document.getElementById('tileInsulinStatus');
+    if(tins2){var tlins=(tRec.ins||[]).slice(-1)[0];if(tlins){tins2.textContent=tlins.dose+'U · '+(tlins.type||'').substring(0,4);tins2.dataset.tone='good';}else{tins2.textContent='투여 전';tins2.dataset.tone='muted';}}
+  } catch(e) { console.warn('tile status:', e); }
 }
 
 function updateWtDiff(){
@@ -8099,6 +8193,53 @@ async function migrateBloodTestsToDB() {
 
 
 initSupabase();
+
+// ── Daily Sheet ──
+var _dsOrigin = null;
+window.openDailySheet = function(type) {
+  var MAP = {
+    water:   {title:'음수량',       sub:'하루 목표 대비',   bodyId:'waterBody'},
+    excreta: {title:'소변 · 대변',  sub:'소변·대변 체크',   bodyId:'waterBody'},
+    med:     {title:'투약 · 루틴',  sub:'탭해서 투약 체크', bodyId:'routineBody'},
+    breath:  {title:'호흡수 측정',  sub:'호흡할 때마다 탭', bodyId:'rrCard'},
+    weight:  {title:'몸무게',       sub:'체중 기록',         bodyId:'wtCard'},
+    meal:    {title:'식사 · 칼로리',sub:'급여량 기록',       bodyId:'mealCard'},
+    glucose: {title:'혈당 · 케톤',  sub:'측정값 입력',       bodyId:'bgCard'},
+    insulin: {title:'인슐린 투여',  sub:'투여량 기록',       bodyId:'insCard'},
+  };
+  var cfg = MAP[type]; if(!cfg) return;
+  var formEl = document.getElementById(cfg.bodyId);
+  if(!formEl) return;
+  var sheetBody = document.getElementById('dailySheetBody');
+  var sheetHead = document.getElementById('dailySheetHead');
+  if(!sheetBody || !sheetHead) return;
+  _dsOrigin = {el:formEl, parent:formEl.parentNode, next:formEl.nextSibling};
+  formEl.style.display = 'block';
+  sheetBody.innerHTML = '';
+  sheetBody.appendChild(formEl);
+  sheetHead.innerHTML =
+    '<div class="tx"><b>'+cfg.title+'</b><span>'+cfg.sub+'</span></div>'+
+    '<button class="sheet__close" onclick="closeDailySheet()" type="button" style="font-size:18px;line-height:1;padding:4px 8px">×</button>';
+  var back = document.getElementById('dailySheetBack');
+  var sheet = document.getElementById('dailySheet');
+  if(back) back.dataset.open = '1';
+  if(sheet) sheet.dataset.open = '1';
+  document.body.style.overflow = 'hidden';
+};
+window.closeDailySheet = function() {
+  var back = document.getElementById('dailySheetBack');
+  var sheet = document.getElementById('dailySheet');
+  if(back) back.dataset.open = '0';
+  if(sheet) sheet.dataset.open = '0';
+  document.body.style.overflow = '';
+  if(_dsOrigin) {
+    var el=_dsOrigin.el, parent=_dsOrigin.parent, next=_dsOrigin.next;
+    el.style.display = 'none';
+    if(next && next.parentNode === parent) parent.insertBefore(el, next);
+    else parent.appendChild(el);
+    _dsOrigin = null;
+  }
+};
 </script>
 
 
@@ -8316,6 +8457,15 @@ initSupabase();
 
   <!-- 피드백 목록 -->
   <div id="adminFeedbackList"></div>
+</div>
+
+<!-- ══ 오늘기록 바텀시트 ══ -->
+<div class="sheet-back" id="dailySheetBack" data-open="0" onclick="closeDailySheet()"></div>
+<div class="sheet" id="dailySheet" data-open="0">
+  <div class="sheet__handle"></div>
+  <div class="sheet__head" id="dailySheetHead"></div>
+  <div class="sheet__body" id="dailySheetBody"></div>
+  <div class="sheet__foot" id="dailySheetFoot"></div>
 </div>
 
 </body>
