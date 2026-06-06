@@ -105,7 +105,7 @@
 /* 다크모드 body 색 상속 방지: 항상 라이트 크림 배경 고정 */
 .cm-appbar{ padding:6px 20px 14px; background:var(--cm-bg-soft); color:var(--cm-ink); }
 .cm-appbar__top{ display:flex; align-items:center; gap:8px; flex-wrap:nowrap; }
-.cm-brand{ display:flex; align-items:center; gap:9px; flex:1 1 auto; min-width:0; overflow:hidden; }
+.cm-brand{ display:flex; align-items:center; gap:9px; flex-shrink:0; overflow:hidden; }
 .cm-brand__mark{ width:28px; height:28px; flex:0 0 auto; color:var(--cm-green-700); }
 .cm-brand__name{ font-size:18px; font-weight:800; color:var(--cm-green-800); letter-spacing:-0.02em;
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
