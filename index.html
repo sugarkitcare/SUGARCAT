@@ -514,7 +514,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     <div class="cm-brand hdr-title">
       <svg class="cm-brand__mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="17" rx="4.5" ry="3"/><ellipse cx="7.5" cy="11.5" rx="1.8" ry="2.4"/><ellipse cx="16.5" cy="11.5" rx="1.8" ry="2.4"/><ellipse cx="10.5" cy="8" rx="1.4" ry="2"/><ellipse cx="13.5" cy="8" rx="1.4" ry="2"/></svg>
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.34</span>
+      <span class="cm-beta">v0.5.35</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">💬 피드백</button>
@@ -8206,7 +8206,7 @@ initSupabase();
 // ── Daily Sheet ──
 var _dsOrigin = null;
 function _dsDateTimeRow(dateId, timeId) {
-  return '<div style="display:flex;gap:8px;align-items:center;background:var(--cm-surface-2);border-radius:13px;padding:11px 13px;margin-bottom:12px">' +
+  return '<div style="display:flex;gap:8px;align-items:center;background:var(--cm-surface-2);border:1px solid var(--cm-line);border-radius:13px;padding:11px 13px;margin-bottom:12px">' +
     '<input type="date" id="'+dateId+'" style="flex:1;min-width:0;border:none;background:none;font-family:inherit;font-size:14px;font-weight:700;color:var(--cm-ink)">' +
     '<input type="time" id="'+timeId+'" style="flex:1;min-width:0;border:none;background:none;font-family:inherit;font-size:14px;font-weight:700;color:var(--cm-ink)">' +
     '<button type="button" class="wl-now" onclick="document.getElementById(\''+timeId+'\').value=nowTime()">지금</button>' +
@@ -8214,7 +8214,7 @@ function _dsDateTimeRow(dateId, timeId) {
 }
 function _dsWaterBodyHtml() {
   return _dsDateTimeRow('sheetWaterDate','sheetWaterTime') +
-    '<div style="display:flex;align-items:center;gap:12px;background:var(--cm-surface-2);border-radius:16px;padding:14px 16px;margin-bottom:12px">' +
+    '<div style="display:flex;align-items:center;gap:12px;background:var(--cm-surface-2);border:1px solid var(--cm-line);border-radius:13px;padding:14px 16px;margin-bottom:12px">' +
       '<input type="number" id="sheetWaterMl" placeholder="0" min="0" step="1" style="flex:1;border:none;background:none;font-family:inherit;font-size:36px;font-weight:800;color:var(--cm-ink);text-align:center;min-width:0">' +
       '<span style="font-size:14px;font-weight:700;color:var(--cm-faint)">ml</span>' +
     '</div>' +
@@ -8226,28 +8226,32 @@ function _dsWaterBodyHtml() {
     '</div>';
 }
 function _dsExcretaBodyHtml() {
-  var cs = function(bc,bg,c){return 'padding:8px 14px;border:0.5px solid '+bc+';border-radius:9px;font-size:12px;background:'+bg+';color:'+c+';cursor:pointer;font-family:inherit;font-weight:500';};
+  var sBase = 'padding:8px 14px;border-radius:11px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;border:1px solid ';
+  var sTan   = sBase+'var(--cm-tan-edge);background:var(--cm-tan-bg);color:#6B5E40';
+  var sAmber = sBase+'var(--cm-amber-edge);background:var(--cm-amber-tint);color:#7E5C16';
+  var sClay  = sBase+'var(--cm-clay-edge);background:var(--cm-clay-tint);color:var(--cm-clay-ink)';
+  var lbl = 'font-size:12.5px;font-weight:700;color:var(--cm-ink-soft);margin-bottom:8px';
   return _dsDateTimeRow('sheetExcretaDate','sheetExcretaTime') +
-    '<div style="font-size:13px;font-weight:700;color:var(--cm-ink-soft);margin-bottom:8px">소변</div>' +
+    '<div style="'+lbl+'">소변</div>' +
     '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">' +
-      '<button onclick="selectUrine(\'소량\')" style="'+cs('var(--amber)','var(--amber-l)','var(--amber-d)')+'">소량</button>' +
-      '<button onclick="selectUrine(\'정상\')" style="'+cs('var(--teal)','var(--teal-l)','var(--teal)')+'">정상</button>' +
-      '<button onclick="selectUrine(\'다량\')" style="'+cs('var(--teal)','var(--teal-l)','var(--teal)')+'">다량</button>' +
-      '<button onclick="selectUrine(\'혈뇨\')" style="'+cs('var(--coral)','var(--coral-l)','var(--coral)')+'">혈뇨</button>' +
-      '<button onclick="selectUrine(\'핍뇨\')" style="'+cs('var(--coral)','var(--coral-l)','var(--coral)')+'">핍뇨</button>' +
-      '<button onclick="selectUrine(\'단백뇨\')" style="'+cs('var(--amber)','var(--amber-l)','var(--amber-d)')+'">단백뇨</button>' +
-      '<button onclick="selectUrine(\'뇨당\')" style="'+cs('var(--amber)','var(--amber-l)','var(--amber-d)')+'">뇨당</button>' +
+      '<button onclick="selectUrine(\'소량\')"  style="'+sAmber+'">소량</button>' +
+      '<button onclick="selectUrine(\'정상\')"  style="'+sTan+'">정상</button>' +
+      '<button onclick="selectUrine(\'다량\')"  style="'+sTan+'">다량</button>' +
+      '<button onclick="selectUrine(\'혈뇨\')"  style="'+sClay+'">혈뇨</button>' +
+      '<button onclick="selectUrine(\'핍뇨\')"  style="'+sClay+'">핍뇨</button>' +
+      '<button onclick="selectUrine(\'단백뇨\')" style="'+sAmber+'">단백뇨</button>' +
+      '<button onclick="selectUrine(\'뇨당\')"  style="'+sAmber+'">뇨당</button>' +
     '</div>' +
-    '<div style="font-size:13px;font-weight:700;color:var(--cm-ink-soft);margin-bottom:8px">대변</div>' +
+    '<div style="'+lbl+'">대변</div>' +
     '<div style="display:flex;gap:6px;flex-wrap:wrap">' +
-      '<button onclick="selectPoop(\'정상\')" style="'+cs('var(--teal)','var(--teal-l)','var(--teal)')+'">정상</button>' +
-      '<button onclick="selectPoop(\'약간무름\')" style="'+cs('var(--amber)','var(--amber-l)','var(--amber-d)')+'">약간무름</button>' +
-      '<button onclick="selectPoop(\'끝만무름\')" style="'+cs('var(--amber)','var(--amber-l)','var(--amber-d)')+'">끝만무름</button>' +
-      '<button onclick="selectPoop(\'무름\')" style="'+cs('var(--amber)','var(--amber-l)','var(--amber-d)')+'">무름</button>' +
-      '<button onclick="selectPoop(\'설사\')" style="'+cs('var(--coral)','var(--coral-l)','var(--coral)')+'">설사</button>' +
-      '<button onclick="selectPoop(\'혈변\')" style="'+cs('var(--coral)','var(--coral-l)','var(--coral)')+'">혈변</button>' +
-      '<button onclick="selectPoop(\'토끼똥/변비\')" style="'+cs('var(--amber)','var(--amber-l)','var(--amber-d)')+'">토끼똥/변비</button>' +
-      '<button onclick="selectPoop(\'무변\')" style="'+cs('var(--amber)','var(--amber-l)','var(--amber-d)')+'">무변</button>' +
+      '<button onclick="selectPoop(\'정상\')"      style="'+sTan+'">정상</button>' +
+      '<button onclick="selectPoop(\'약간무름\')"  style="'+sAmber+'">약간무름</button>' +
+      '<button onclick="selectPoop(\'끝만무름\')"  style="'+sAmber+'">끝만무름</button>' +
+      '<button onclick="selectPoop(\'무름\')"      style="'+sAmber+'">무름</button>' +
+      '<button onclick="selectPoop(\'설사\')"      style="'+sClay+'">설사</button>' +
+      '<button onclick="selectPoop(\'혈변\')"      style="'+sClay+'">혈변</button>' +
+      '<button onclick="selectPoop(\'토끼똥/변비\')" style="'+sAmber+'">토끼똥/변비</button>' +
+      '<button onclick="selectPoop(\'무변\')"      style="'+sAmber+'">무변</button>' +
     '</div>';
 }
 window.openDailySheet = function(type) {
