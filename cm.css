@@ -107,9 +107,9 @@
 .cm-appbar__top{ display:flex; align-items:center; gap:8px; flex-wrap:nowrap; }
 .cm-brand{ display:flex; align-items:center; gap:9px; flex-shrink:0; overflow:hidden; }
 .cm-brand__mark{ width:28px; height:28px; flex:0 0 auto; color:var(--cm-green-700); }
-.cm-brand__name{ font-size:18px; font-weight:800; color:var(--cm-green-800); letter-spacing:-0.02em;
+.cm-brand__name{ font-size:16px; font-weight:800; color:var(--cm-green-800); letter-spacing:-0.02em;
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.cm-beta{ font-size:11px; font-weight:700; color:var(--cm-green-700); background:var(--cm-green-tint);
+.cm-beta{ font-size:10px; font-weight:700; color:var(--cm-green-700); background:var(--cm-green-tint);
   border:1px solid var(--cm-green-edge); padding:3px 8px; border-radius:999px; letter-spacing:0;
   white-space:nowrap; flex-shrink:0; }
 .cm-appbar__sub{ font-size:13px; color:var(--cm-faint); margin-top:6px; font-weight:500; }
