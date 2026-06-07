@@ -563,7 +563,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.81</span>
+      <span class="cm-beta">v0.5.82</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -3250,6 +3250,17 @@ function getLatestWeight() {
     if(ws.length) return ws[ws.length-1].weight;
   }
   return null;
+}
+
+// 생일로 나이 구간 계산 (calcAge 드롭다운 value 반환)
+function getBirthAgeGroup(cat) {
+  const birth = state.catProfiles?.[cat||state.activeCat]?.birth;
+  if(!birth) return null;
+  const ageYears = (Date.now() - new Date(birth).getTime()) / (1000*60*60*24*365.25);
+  if(ageYears < 1)  return 'kitten';
+  if(ageYears < 7)  return 'young';
+  if(ageYears < 11) return 'senior';
+  return 'geriatric';
 }
 
 // 피드백 아이템 생성 헬퍼
@@ -6214,6 +6225,10 @@ function initCalcResult(){
     const latestWt=getLatestWeight();
     wtEl.value=latestWt!=null?latestWt:'3.5';
   }
+  const ageGroup=getBirthAgeGroup(state.activeCat);
+  if(ageGroup){const ageEl=document.getElementById('calcAge');if(ageEl)ageEl.value=ageGroup;}
+  const neuter=state.catProfiles?.[state.activeCat]?.neuter;
+  if(neuter==='yes'||neuter==='no'){const neuterEl=document.getElementById('calcNeuter');if(neuterEl)neuterEl.value=neuter;}
   try{calcCalorie();}catch(e){}
 }
 
