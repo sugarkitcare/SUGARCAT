@@ -563,7 +563,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.63</span>
+      <span class="cm-beta">v0.5.64</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -1205,8 +1205,13 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
 
 <!-- ══ 그래프 ══ -->
 <div class="sec" id="tab-graph" style="display:none">
+  <!-- 세그먼트: 생체지표 / 혈액검사 -->
+  <div class="f-seg" style="margin-bottom:.6rem">
+    <button id="gSegBio" type="button" data-on="1" onclick="setGSeg('bio')">생체 지표</button>
+    <button id="gSegBT"  type="button" data-on="0" onclick="setGSeg('bt')">혈액검사</button>
+  </div>
   <!-- 기간 필터 -->
-  <div style="display:flex;align-items:center;gap:10px;margin-bottom:.75rem">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:.75rem" id="gPeriodBar">
     <div class="f-seg" style="flex:1">
       <button id="gp7" type="button" data-on="0" onclick="setGPeriod(7,this)">7일</button>
       <button id="gp30" type="button" data-on="0" onclick="setGPeriod(30,this)">30일</button>
@@ -1226,13 +1231,6 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
         style="padding:5px 14px;background:var(--cm-green-700);color:#fff;border:none;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">저장</button>
     </div>
     <div id="graphCardToggles"></div>
-  </div>
-  <!-- 그래프 타입 칩 -->
-  <div class="cm-chips" id="gTypeChips" style="margin-bottom:.75rem">
-    <button class="cm-chip" type="button" data-g="ket" data-on="1">케톤</button>
-    <button class="cm-chip" type="button" data-g="wt" data-on="1">체중</button>
-    <button class="cm-chip" type="button" data-g="rr" data-on="1">호흡수</button>
-    <button class="cm-chip" type="button" data-g="water" data-on="1">음수량</button>
   </div>
   <!-- 당뇨 타임라인 차트 -->
   <div class="cm-card cm-card--flat" id="timelineCard" data-graph-card="timeline">
@@ -2669,12 +2667,12 @@ function checkAILimit(type) {
 
 /* ── 그래프탭 카드 편집 ── */
 const GRAPH_CARDS = [
-  { id: 'timelineCard', label: '💉 당뇨 타임라인' },
-  { id: 'gKetCard',     label: '🟡 케톤'          },
-  { id: 'gWtCard',      label: '⚖️ 체중'           },
-  { id: 'gRrCard',      label: '🫁 호흡수'         },
-  { id: 'gWaterCard',   label: '💧 음수량'         },
-  { id: 'btTrendCard2', label: '🩸 혈액검사 추이'  },
+  { id: 'timelineCard', label: '당뇨 타임라인', icon: 'activity', seg: 'bio' },
+  { id: 'gKetCard',     label: '케톤',          icon: 'flask',    seg: 'bio' },
+  { id: 'gWtCard',      label: '체중',          icon: 'scale',    seg: 'bio' },
+  { id: 'gRrCard',      label: '호흡수',        icon: 'lungs',    seg: 'bio' },
+  { id: 'gWaterCard',   label: '음수량',        icon: 'droplet',  seg: 'bio' },
+  { id: 'btTrendCard2', label: '혈액검사 추이', icon: 'drops2',   seg: 'bt'  },
 ];
 
 // 그래프 카드 숨김 설정 — DB 우선, 고양이별 분리
@@ -2739,28 +2737,29 @@ function saveGraphEdit() {
   toast('그래프 설정이 저장됐어요 ✅');
 }
 
+let gSegMode = 'bio';
+
+function setGSeg(mode) {
+  gSegMode = mode;
+  document.querySelectorAll('#gSegBio,#gSegBT').forEach(b => b.dataset.on = '0');
+  const activeBtn = document.getElementById(mode === 'bio' ? 'gSegBio' : 'gSegBT');
+  if(activeBtn) activeBtn.dataset.on = '1';
+  // 기간 필터는 생체지표 세그먼트에서만 표시
+  const periodBar = document.getElementById('gPeriodBar');
+  if(periodBar) periodBar.style.display = mode === 'bio' ? '' : 'none';
+  applyGraphCards();
+  if(mode === 'bt') try { renderBTTrend(); } catch(e) {}
+}
+
 function applyGraphCards() {
   const hidden = getGraphHidden();
   GRAPH_CARDS.forEach(card => {
     const el = document.getElementById(card.id);
     if(!el) return;
-    el.style.display = hidden.includes(card.id) ? 'none' : '';
+    const hiddenByEdit = hidden.includes(card.id);
+    const hiddenBySeg  = card.seg && card.seg !== gSegMode;
+    el.style.display = (hiddenByEdit || hiddenBySeg) ? 'none' : '';
   });
-  // 타입 칩 필터도 카드 숨김에 맞게 연동
-  const ketChip = document.querySelector('.cm-chip[data-g="ket"]');
-  const wtChip  = document.querySelector('.cm-chip[data-g="wt"]');
-  const rrChip  = document.querySelector('.cm-chip[data-g="rr"]');
-  if(ketChip)   ketChip.style.display   = hidden.includes('gKetCard')   ? 'none' : '';
-  if(wtChip)    wtChip.style.display    = hidden.includes('gWtCard')    ? 'none' : '';
-  if(rrChip)    rrChip.style.display    = hidden.includes('gRrCard')    ? 'none' : '';
-  const waterChip = document.querySelector('.cm-chip[data-g="water"]');
-  if(waterChip) waterChip.style.display = hidden.includes('gWaterCard') ? 'none' : '';
-  // gTypeChips 전체가 비면 숨김
-  const gTypeChips = document.getElementById('gTypeChips');
-  if(gTypeChips) {
-    const anyVisible = [ketChip,wtChip,rrChip,waterChip].some(c=>c&&c.style.display!=='none');
-    gTypeChips.style.display = anyVisible ? '' : 'none';
-  }
 }
 
 function toggleGraphEdit() {
@@ -2781,22 +2780,37 @@ function renderGraphCardToggles() {
   if(!wrap) return;
   const hidden = getGraphHidden();
   wrap.innerHTML = '';
+
+  const _editIconPaths = {
+    activity: 'M3 12h3.2l2.4-7 4 14 2.6-7H21',
+    flask:    'M8.5 3h7 M10 3v5l-4.2 9A2.4 2.4 0 0 0 8 20.5h8a2.4 2.4 0 0 0 2.2-3.5L14 8V3',
+    scale:    'M8.3 12.2a3.7 3.7 0 0 1 7.4 0 M12 12.2l2.2-1.7',
+    lungs:    'M12 4v7 M9 8.5c0 0-3 .8-3.7 4.3C4.8 15.6 5 19 7.4 19c1.7 0 1.9-1.5 2-3 .1-1.6 0-5.2-.4-7.5 M15 8.5c0 0 3 .8 3.7 4.3C19.2 15.6 19 19 16.6 19c-1.7 0-1.9-1.5-2-3-.1-1.6 0-5.2.4-7.5',
+    droplet:  'M12 3.6c2.8 3.4 6 7 6 10.1a6 6 0 0 1-12 0C6 10.6 9.2 7 12 3.6Z',
+    drops2:   'M12 3.5c2.4 3 5 6 5 8.6a5 5 0 0 1-10 0c0-2.6 2.6-5.6 5-8.6Z M9.5 12.5a2.5 2.5 0 0 0 2.5 2.5',
+  };
+  const editSvg = name => `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex:0 0 auto"><path d="${_editIconPaths[name]||''}"/></svg>`;
+
   GRAPH_CARDS.forEach(card => {
     const isVisible = !hidden.includes(card.id);
     const row = document.createElement('div');
-    row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--bg);border-radius:9px;margin-bottom:5px;opacity:' + (isVisible?'1':'0.55');
-    row.innerHTML = `<span style="font-size:13px;color:${isVisible?'var(--text)':'var(--text3)'};font-weight:${isVisible?'500':'400'}">${card.label}</span>
-      <button type="button" onclick="toggleGraphCardById('${card.id}')"
-        style="position:relative;width:42px;height:24px;border-radius:12px;border:none;background:${isVisible?'var(--teal)':'var(--bd)'};cursor:pointer;flex-shrink:0;padding:0">
-        <span style="position:absolute;top:3px;left:${isVisible?'20px':'3px'};width:18px;height:18px;border-radius:50%;background:#fff;display:block"></span>
-      </button>`;
+    row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--cm-surface);border-radius:9px;margin-bottom:5px;opacity:' + (isVisible?'1':'0.55');
+    row.innerHTML =
+      `<span style="color:${isVisible?'var(--cm-green-700)':'var(--cm-faint)'}">${editSvg(card.icon)}</span>`
+      + `<span style="font-size:13px;color:${isVisible?'var(--cm-ink)':'var(--cm-faint)'};font-weight:${isVisible?'600':'400'};flex:1">${card.label}</span>`
+      + `<button type="button" onclick="toggleGraphCardById('${card.id}')"
+          style="position:relative;width:42px;height:24px;border-radius:12px;border:none;background:${isVisible?'var(--cm-green-700)':'var(--cm-line)'};cursor:pointer;flex-shrink:0;padding:0">
+          <span style="position:absolute;top:3px;left:${isVisible?'20px':'3px'};width:18px;height:18px;border-radius:50%;background:#fff;display:block"></span>
+        </button>`;
     wrap.appendChild(row);
   });
-  // 초기화
+
+  // 초기화 버튼
+  const _refreshSvg = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4v6h6 M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>';
   const resetRow = document.createElement('div');
   resetRow.style.cssText = 'margin-top:4px;text-align:right';
   resetRow.innerHTML = `<button type="button" onclick="resetGraphCards()"
-    style="padding:5px 12px;border:0.5px solid var(--bd);border-radius:8px;background:transparent;color:var(--text3);font-size:11px;cursor:pointer;font-family:inherit">🔄 전체 표시 초기화</button>`;
+    style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border:1px solid var(--cm-line);border-radius:8px;background:transparent;color:var(--cm-faint);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">${_refreshSvg} 전체 표시 초기화</button>`;
   wrap.appendChild(resetRow);
 }
 
@@ -4356,13 +4370,6 @@ function setGPeriod(n,el){
   renderGraphs();
 }
 
-document.querySelectorAll('#gTypeChips .cm-chip').forEach(c=>{
-  c.onclick=()=>{const k=c.dataset.g;
-    if(!k)return;
-    if(gActive.has(k)){if(gActive.size>1)gActive.delete(k);else return}else gActive.add(k);
-    c.dataset.on=gActive.has(k)?'1':'0';renderGraphs();
-  };
-});
 
 function getAllDates(){
   const recs=state.records[state.activeCat]||{};
