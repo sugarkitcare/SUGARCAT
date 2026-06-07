@@ -233,6 +233,7 @@
   justify-content:center; box-shadow:0 6px 14px rgba(35,91,67,.24); transition:transform .08s; white-space:nowrap; }
 .cm-btn:active{ transform:scale(.97); }
 .cm-btn--soft{ background:var(--cm-green-tint); color:var(--cm-green-700); box-shadow:none; border:1px solid var(--cm-green-edge); }
+.cm-btn--sm{ font-size:13px; padding:7px 14px; border-radius:10px; box-shadow:none; }
 .cm-btn--block{ width:100%; }
 
 /* ---------- stat number ---------- */
