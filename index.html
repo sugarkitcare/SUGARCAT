@@ -563,10 +563,10 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.55</span>
+      <span class="cm-beta">v0.5.56</span>
     </div>
     <div class="cm-appbar__actions">
-      <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">💬 피드백</button>
+      <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
       <button id="logoutBtn" onclick="handleLogout()" type="button" class="cm-ghost" style="display:none">로그아웃</button>
     </div>
   </div>
@@ -615,9 +615,9 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cmb-hero" id="dailySummaryCard" style="margin-bottom:.75rem">
     <!-- 상단 -->
     <div class="cmb-hero__top">
-      <div class="cm-ic cm-ic--ghost cm-ic--sm">
-        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 2l-5 9h4l-3 7 8-10h-5l3-6z"/>
+      <div class="cm-ic">
+        <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3.2l1.9 5.6L19.5 10l-5.6 1.8L12 17.5l-1.9-5.7L4.5 10l5.6-1.2Z"/>
         </svg>
       </div>
       <div style="min-width:0">
@@ -686,7 +686,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
       <div class="cm-sechead__t">기록 항목</div>
       <div class="cm-sechead__s">탭하면 바로 입력해요</div>
     </div>
-    <button class="cm-editbtn" id="tileEditBtn" type="button" onclick="toggleTileEditMode()">편집</button>
+    <button class="cm-editbtn" id="tileEditBtn" type="button" onclick="toggleTileEditMode()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h9 M18 8h2 M4 16h4 M13 16h7"/></svg> 편집</button>
   </div>
   <div class="tgrid" id="dailyTileGrid" style="margin-bottom:.4rem">
     <button class="tile" data-tile="water" onclick="openDailySheet('water')">
@@ -3212,11 +3212,11 @@ function renderDailySummary() {
   if(!el) return;
 
   const d = heroDateStr();
-  if(dateEl) dateEl.textContent = d;
   const rec = getRec(state.activeCat, d);
   const cat = state.activeCat;
   const prof = (state.catProfiles||{})[cat] || {};
   const diseases = prof.diseases || [];
+  if(titleEl) titleEl.textContent = (cat || '고양이') + ' 오늘 상태';
   const hasDM = diseases.includes('DM');
   const hasCKD = diseases.includes('CKD') || diseases.includes('PKD');
   const hasHCM = diseases.includes('HCM');
@@ -3812,11 +3812,18 @@ function renderDailySummary() {
     const waterTarget = latestWtHero ? Math.round(latestWtHero * 40) : 0;
     const heroPct = waterTarget > 0 ? Math.min(100, Math.round(todayWaterTotal / waterTarget * 100)) : 0;
 
+    // 부제목: 날짜 + 체중 + 질환
+    var _dp = d.split('-');
+    var _dl = parseInt(_dp[1]) + '월 ' + parseInt(_dp[2]) + '일';
+    var _wl = latestWtHero ? latestWtHero + 'kg' : '';
+    var _dzl = diseases.length > 0 ? diseases[0] : '';
+    if(dateEl) dateEl.textContent = [_dl, _wl, _dzl].filter(Boolean).join(' · ');
+
     // 원형 게이지
     const arc = document.getElementById('heroGaugeArc');
     if(arc) {
       arc.style.strokeDashoffset = C * (1 - heroPct / 100);
-      arc.style.stroke = heroPct >= 100 ? 'var(--cm-green-500)' : heroPct >= 70 ? 'var(--cm-amber)' : 'var(--cm-clay)';
+      arc.style.stroke = heroPct >= 100 ? 'var(--cm-green-500)' : 'var(--cm-clay)';
     }
     // 음수량 수치 + 목표
     const mlEl = document.getElementById('heroWaterMl');
@@ -3898,24 +3905,25 @@ function renderDailySummary() {
     if(wkPE) wkPE.textContent=wkPV.length?(wkPV.reduce(function(a,b){return a+b;},0)/wkPV.length).toFixed(1)+'회/일':'—';
   } catch(e) { console.warn('hero update:', e); }
   // ── 타일 상태 업데이트 ──
+  function _tit(k,t){var ic=document.querySelector('[data-tile="'+k+'"] .cm-ic');if(!ic)return;ic.classList.remove('cm-ic--clay','cm-ic--amber');if(t==='alert')ic.classList.add('cm-ic--clay');else if(t==='warn')ic.classList.add('cm-ic--amber');}
   try {
     var tRec=getRec(cat,d);
     var tw=document.getElementById('tileWaterStatus');
-    if(tw){var twt=(tRec.water||[]).reduce(function(a,b){return a+b.ml;},0);if(twt>0){tw.textContent=twt+'ml';tw.dataset.tone='good';}else{tw.textContent='기록 전';tw.dataset.tone='muted';}}
+    if(tw){var twt=(tRec.water||[]).reduce(function(a,b){return a+b.ml;},0);if(twt>0){tw.textContent=twt+'ml';tw.dataset.tone='good';_tit('water','good');}else{tw.textContent='기록 전';tw.dataset.tone='muted';_tit('water','muted');}}
     var tex=document.getElementById('tileExcretaStatus');
-    if(tex){var tuc=(tRec.urine||[]).length,tpc=(tRec.poop||[]).length;if(tuc||tpc){tex.textContent='소변 '+tuc+'회 · 대변 '+tpc+'회';tex.dataset.tone='good';}else{tex.textContent='기록 전';tex.dataset.tone='muted';}}
+    if(tex){var tuc=(tRec.urine||[]).length,tpc=(tRec.poop||[]).length;if(tuc||tpc){tex.textContent='소변 '+tuc+'회 · 대변 '+tpc+'회';tex.dataset.tone='good';_tit('excreta','good');}else{tex.textContent='기록 전';tex.dataset.tone='muted';_tit('excreta','muted');}}
     var tmd=document.getElementById('tileMedStatus');
-    if(tmd){var tdn=new Set((tRec.routines||[]).flatMap(function(r){return r.items||[];})).size;if(tdn>0){tmd.textContent=tdn+'개 완료';tmd.dataset.tone='good';}else{tmd.textContent='투약 전';tmd.dataset.tone='muted';}}
+    if(tmd){var tdn=new Set((tRec.routines||[]).flatMap(function(r){return r.items||[];})).size;if(tdn>0){tmd.textContent=tdn+'개 완료';tmd.dataset.tone='good';_tit('med','good');}else{tmd.textContent='투약 전';tmd.dataset.tone='muted';_tit('med','muted');}}
     var tbr=document.getElementById('tileBreathStatus');
-    if(tbr){var trrA=tRec.rr||[],tlr=trrA.length?trrA[trrA.length-1]:null;if(tlr){tbr.textContent=tlr.rr+' 회/분';tbr.dataset.tone=tlr.rr>=40?'alert':tlr.rr>=30?'warn':'good';}else{tbr.textContent='측정 전';tbr.dataset.tone='muted';}}
+    if(tbr){var trrA=tRec.rr||[],tlr=trrA.length?trrA[trrA.length-1]:null;if(tlr){var _tbrT=tlr.rr>=40?'alert':tlr.rr>=30?'warn':'good';tbr.textContent=tlr.rr+' 회/분';tbr.dataset.tone=_tbrT;_tit('breath',_tbrT);}else{tbr.textContent='측정 전';tbr.dataset.tone='muted';_tit('breath','muted');}}
     var twg=document.getElementById('tileWeightStatus');
-    if(twg){var tlwt=(tRec.weights||[]).slice(-1)[0];if(tlwt){twg.textContent=tlwt.weight+' kg';twg.dataset.tone='good';}else{twg.textContent='기록 전';twg.dataset.tone='muted';}}
+    if(twg){var tlwt=(tRec.weights||[]).slice(-1)[0];if(tlwt){twg.textContent=tlwt.weight+' kg';twg.dataset.tone='good';_tit('weight','good');}else{twg.textContent='기록 전';twg.dataset.tone='muted';_tit('weight','muted');}}
     var tml=document.getElementById('tileMealStatus');
-    if(tml){var tms=tRec.meals||[];if(tms.length){var ttkc=tms.reduce(function(a,b){return a+(b.kcal||0);},0);tml.textContent=tms.length+'회'+(ttkc?' · '+ttkc+'kcal':'');tml.dataset.tone='good';}else{tml.textContent='급여 전';tml.dataset.tone='muted';}}
+    if(tml){var tms=tRec.meals||[];if(tms.length){var ttkc=tms.reduce(function(a,b){return a+(b.kcal||0);},0);tml.textContent=tms.length+'회'+(ttkc?' · '+ttkc+'kcal':'');tml.dataset.tone='good';_tit('meal','good');}else{tml.textContent='급여 전';tml.dataset.tone='muted';_tit('meal','muted');}}
     var tgl=document.getElementById('tileGlucoseStatus');
-    if(tgl){var tlbg=(tRec.bg||[]).filter(function(x){return x.bg!=='';}).slice(-1)[0];if(tlbg){var tbgv=parseFloat(tlbg.bg);tgl.textContent=tbgv+' mg/dL';tgl.dataset.tone=tbgv<=80?'alert':tbgv>=300?'warn':'good';}else{tgl.textContent='기록 전';tgl.dataset.tone='muted';}}
+    if(tgl){var tlbg=(tRec.bg||[]).filter(function(x){return x.bg!=='';}).slice(-1)[0];if(tlbg){var tbgv=parseFloat(tlbg.bg);var _tglT=tbgv<=80?'alert':tbgv>=300?'warn':'good';tgl.textContent=tbgv+' mg/dL';tgl.dataset.tone=_tglT;_tit('glucose',_tglT);}else{tgl.textContent='기록 전';tgl.dataset.tone='muted';_tit('glucose','muted');}}
     var tins2=document.getElementById('tileInsulinStatus');
-    if(tins2){var tlins=(tRec.ins||[]).slice(-1)[0];if(tlins){tins2.textContent=tlins.dose+'U · '+(tlins.type||'').substring(0,4);tins2.dataset.tone='good';}else{tins2.textContent='투여 전';tins2.dataset.tone='muted';}}
+    if(tins2){var tlins=(tRec.ins||[]).slice(-1)[0];if(tlins){tins2.textContent=tlins.dose+'U · '+(tlins.type||'').substring(0,4);tins2.dataset.tone='good';_tit('insulin','good');}else{tins2.textContent='투여 전';tins2.dataset.tone='muted';_tit('insulin','muted');}}
   } catch(e) { console.warn('tile status:', e); }
 }
 
@@ -8507,7 +8515,10 @@ function toggleTileEditMode() {
   var c = state.activeCat;
 
   if(_tileEditMode) {
-    btn.textContent = '완료';
+    btn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.8 12.4 9.6 17.2 19.4 6.6"/></svg> 완료';
+    btn.classList.add('cm-editbtn--done');
+    var _subEl = document.querySelector('#tab-daily .cm-sechead__s');
+    if(_subEl) _subEl.textContent = '항목을 끄거나 추가해 고양이에 맞게 구성하세요';
     var cfg = loadTileConfig(c);
     var hidden = cfg.hidden || [];
     // reorder all tiles for editing
@@ -8593,7 +8604,10 @@ function toggleTileEditMode() {
 
   } else {
     // exit edit mode — save config
-    btn.textContent = '편집';
+    btn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h9 M18 8h2 M4 16h4 M13 16h7"/></svg> 편집';
+    btn.classList.remove('cm-editbtn--done');
+    var _subEl2 = document.querySelector('#tab-daily .cm-sechead__s');
+    if(_subEl2) _subEl2.textContent = '탭하면 바로 입력해요';
     var newOrder = [], newHidden = [];
     grid.querySelectorAll('.tile[data-tile]').forEach(function(t) {
       var id = t.dataset.tile;
