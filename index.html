@@ -563,7 +563,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.71</span>
+      <span class="cm-beta">v0.5.72</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -4453,9 +4453,9 @@ function renderGraphs(){
     // 호흡수: 상태별 3개 데이터셋
     if(def.multiDataset && def.fnByState) {
       const rrStates = [
-        {st:'sleep', label:'😴 수면', color:'#235B43',           dash:[]},
-        {st:'rest',  label:'🐱 안정', color:'rgba(35,91,67,0.6)', dash:[4,3]},
-        {st:'active',label:'🏃 활동', color:'#BB5538',            dash:[2,3]},
+        {st:'sleep', label:'수면', color:'#235B43',           dash:[]},
+        {st:'rest',  label:'안정', color:'rgba(35,91,67,0.6)', dash:[4,3]},
+        {st:'active',label:'활동', color:'#BB5538',            dash:[2,3]},
       ];
       const hasAnyRR = days.some(d=>(getRec(state.activeCat,d).rr||[]).length>0);
       const card=document.createElement('div');card.className='cm-card cm-card--flat';
@@ -4465,7 +4465,7 @@ function renderGraphs(){
       }
       card.innerHTML='<div class="cm-sechead" style="margin-bottom:.5rem"><div class="cm-ic cm-ic--sm">'+_gcIcons.rr+'</div><div><div class="cm-sechead__t">호흡수 <span style="font-size:11px;font-weight:500;color:var(--cm-faint)">회/분</span></div></div><div class="cm-sechead__r" style="font-size:12px;color:var(--cm-faint)">'+periodLabel+'</div></div>'
         +'<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:.4rem;font-size:10px;color:var(--cm-faint)">'
-        +rrStates.map(s=>`<span><span style="display:inline-block;width:12px;height:3px;background:${s.color};border-radius:2px;vertical-align:middle;margin-right:3px"></span>${s.label}</span>`).join('')
+        +rrStates.map(s=>`<span style="color:${s.color};font-weight:600"><span style="display:inline-block;width:12px;height:3px;background:${s.color};border-radius:2px;vertical-align:middle;margin-right:3px"></span>${s.label}</span>`).join('')
         +'</div><div class="chart-wrap" style="height:170px"><canvas id="gc_'+def.k+'"></canvas></div>';
       wrap.appendChild(card);
 
