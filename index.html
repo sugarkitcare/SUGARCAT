@@ -534,7 +534,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.50</span>
+      <span class="cm-beta">v0.5.51</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">💬 피드백</button>
@@ -7287,19 +7287,30 @@ function renderBTResultTable(bt) {
   const nullCount = (bt.items||[]).filter(it=>it.value===null||it.value===undefined).length;
   // Filter bar
   const filterBar = document.createElement('div');
-  filterBar.style.cssText = 'display:flex;gap:6px;margin-bottom:12px';
+  filterBar.style.cssText = 'display:flex;gap:6px;margin-bottom:10px';
   filterBar.innerHTML =
     `<button class="bt-filter-btn" data-mode="all" onclick="applyBTResultFilter('all')" style="font-size:12px;font-weight:700;padding:5px 12px;border-radius:8px;cursor:pointer;font-family:inherit;border:1px solid var(--cm-green-700);background:var(--cm-green-700);color:#fff">전체</button>`
     + (nullCount > 0 ? `<button class="bt-filter-btn" data-mode="missing" onclick="applyBTResultFilter('missing')" style="font-size:12px;font-weight:700;padding:5px 12px;border-radius:8px;cursor:pointer;font-family:inherit;border:1px solid var(--cm-line);background:var(--cm-surface-2);color:var(--cm-faint)">미입력&nbsp;<span style="background:var(--cm-amber-tint);color:#7E5C16;border-radius:6px;padding:1px 6px;font-size:10.5px">${nullCount}</span></button>` : '');
   cardContainer.appendChild(filterBar);
   const orderedCats = [...catOrder.filter(c=>catMap[c]), ...Object.keys(catMap).filter(c=>!catOrder.includes(c))];
   orderedCats.forEach(cat => {
-    const catHead = document.createElement('div');
-    catHead.dataset.btHead = 'true';
-    catHead.style.cssText = 'font-size:11.5px;font-weight:700;color:var(--cm-faint);padding:10px 0 4px;border-bottom:1px solid var(--cm-line);margin-bottom:5px';
-    catHead.textContent = cat;
-    cardContainer.appendChild(catHead);
-    catMap[cat].forEach(({item, idx}) => {
+    const entries = catMap[cat];
+    const catHighCount = entries.filter(({item}) => { const v=item.value; return v!==null&&v!==undefined&&item.refHigh!==null&&v>item.refHigh; }).length;
+    const catLowCount  = entries.filter(({item}) => { const v=item.value; return v!==null&&v!==undefined&&item.refLow!==null&&v<item.refLow;  }).length;
+    const defaultOpen  = catHighCount + catLowCount > 0;
+    const issueHtml    = (catHighCount > 0 ? `<span style="font-size:10px;color:var(--cm-clay-ink);margin-left:6px">높음 ${catHighCount}</span>` : '')
+                       + (catLowCount  > 0 ? `<span style="font-size:10px;color:var(--cm-green-ink);margin-left:4px">낮음 ${catLowCount}</span>`  : '');
+    const catHeader = document.createElement('div');
+    catHeader.dataset.btHead = 'true';
+    catHeader.setAttribute('onclick', 'toggleBtCat(this)');
+    catHeader.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:8px 4px;cursor:pointer;border-bottom:1px solid var(--cm-line);margin-bottom:4px;margin-top:10px;user-select:none';
+    catHeader.innerHTML =
+      `<div style="display:flex;align-items:center"><span style="font-size:12px;font-weight:700;color:var(--cm-faint)">${cat}</span>${issueHtml}</div>`
+      + `<span style="font-size:12px;color:var(--cm-faint)">${defaultOpen ? '▼' : '›'}</span>`;
+    const catBody = document.createElement('div');
+    catBody.className = 'bt-cat-body';
+    catBody.style.display = defaultOpen ? '' : 'none';
+    entries.forEach(({item, idx}) => {
       const isNull = item.value === null || item.value === undefined;
       const s = isNull ? 'x' : (item.refLow!==null&&item.value<item.refLow?'l':item.refHigh!==null&&item.value>item.refHigh?'h':'n');
       const badgeStyle = {
@@ -7309,35 +7320,36 @@ function renderBTResultTable(bt) {
         n:'background:var(--cm-surface-2);color:var(--cm-faint);border:1px solid var(--cm-line)'
       }[s];
       const badgeText = {x:'미입력',h:'높음',l:'낮음',n:'정상'}[s];
-      const badgeHtml = `<span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px;flex-shrink:0;${badgeStyle}">${badgeText}</span>`;
+      const badgeHtml = `<span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:999px;flex-shrink:0;${badgeStyle}">${badgeText}</span>`;
       let changeHtml = '';
       if(prevRec && !isNull) {
         const prevItem = prevRec.items.find(i=>(i.abbr||i.name)===(item.abbr||item.name));
         if(prevItem && prevItem.value!==null) {
-          const diff = parseFloat((item.value-prevItem.value).toFixed(2));
+          const diff  = parseFloat((item.value-prevItem.value).toFixed(2));
           const arrow = diff>0?'▲':diff<0?'▼':'━';
-          const c = diff>0?'var(--cm-clay-ink)':diff<0?'var(--cm-green-700)':'var(--cm-faint)';
-          changeHtml = `<span style="font-size:11px;color:${c};font-weight:600;white-space:nowrap;flex-shrink:0">${arrow}${Math.abs(diff)}</span>`;
+          const c     = diff>0?'var(--cm-clay-ink)':diff<0?'var(--cm-green-700)':'var(--cm-faint)';
+          changeHtml  = `<span style="font-size:10px;color:${c};font-weight:600;white-space:nowrap;flex-shrink:0">${arrow}${Math.abs(diff)}</span>`;
         }
       }
       const row = document.createElement('div');
       row.dataset.btCard = 'true';
-      row.dataset.null = String(isNull);
-      row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:9px 12px;background:var(--cm-surface);border:1px solid var(--cm-line);border-radius:11px;margin-bottom:5px';
+      row.dataset.null   = String(isNull);
+      row.style.cssText  = 'display:flex;align-items:center;gap:6px;padding:7px 10px;background:var(--cm-surface);border:1px solid var(--cm-line);border-radius:10px;margin-bottom:4px;min-height:0';
       row.innerHTML =
-        '<div style="flex:1;min-width:0">'
-        + `<span style="font-size:13.5px;font-weight:700;color:var(--cm-ink)">${item.name}</span>`
-        + (item.abbr&&item.abbr!==item.name ? `<span style="font-size:11px;color:var(--cm-faint);margin-left:4px">${item.abbr}</span>` : '')
-        + '</div>'
+        `<span style="flex:1;font-size:13px;font-weight:700;color:var(--cm-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${item.name}`
+        + (item.abbr&&item.abbr!==item.name ? `<small style="font-weight:500;color:var(--cm-faint);font-size:11px;margin-left:3px">${item.abbr}</small>` : '')
+        + '</span>'
         + badgeHtml
-        + `<div id="btv_${idx}" style="display:flex;align-items:center;gap:5px;flex-shrink:0">`
-        + `<span style="font-size:14px;font-weight:800;color:var(--cm-ink)">${isNull?'–':item.value}</span>`
-        + (item.unit&&!isNull ? `<span style="font-size:11px;color:var(--cm-faint)">${item.unit}</span>` : '')
-        + `<button onclick="editBTItem(${idx})" style="font-size:11px;font-weight:700;color:var(--cm-green-700);background:var(--cm-green-tint);border:1px solid var(--cm-green-edge);border-radius:7px;padding:4px 8px;cursor:pointer;font-family:inherit;white-space:nowrap">수정</button>`
+        + `<div id="btv_${idx}" style="display:flex;align-items:center;gap:4px;flex-shrink:0">`
+        + `<span style="font-size:13px;font-weight:800;color:var(--cm-ink)">${isNull?'–':item.value}</span>`
+        + (item.unit&&!isNull ? `<span style="font-size:10px;color:var(--cm-faint)">${item.unit}</span>` : '')
+        + `<button onclick="editBTItem(${idx})" style="font-size:10px;font-weight:700;color:var(--cm-green-700);background:var(--cm-green-tint);border:1px solid var(--cm-green-edge);border-radius:6px;padding:3px 7px;cursor:pointer;font-family:inherit;white-space:nowrap">수정</button>`
         + '</div>'
         + changeHtml;
-      cardContainer.appendChild(row);
+      catBody.appendChild(row);
     });
+    cardContainer.appendChild(catHeader);
+    cardContainer.appendChild(catBody);
   });
   applyBTResultFilter('all');
   document.getElementById('btResultLabel').textContent = `${bt.cat} · ${bt.date} (${(bt.items||[]).length}개 항목)`;
@@ -7349,26 +7361,29 @@ function applyBTResultFilter(mode) {
   if(!container) return;
   container.querySelectorAll('.bt-filter-btn').forEach(btn => {
     const active = btn.dataset.mode === mode;
-    btn.style.background = active ? 'var(--cm-green-700)' : 'var(--cm-surface-2)';
-    btn.style.color = active ? '#fff' : 'var(--cm-faint)';
+    btn.style.background  = active ? 'var(--cm-green-700)' : 'var(--cm-surface-2)';
+    btn.style.color       = active ? '#fff' : 'var(--cm-faint)';
     btn.style.borderColor = active ? 'var(--cm-green-700)' : 'var(--cm-line)';
   });
   container.querySelectorAll('[data-bt-card]').forEach(card => {
     const isNull = card.dataset.null === 'true';
     card.style.display = (mode === 'all' ? !isNull : isNull) ? '' : 'none';
   });
-  const children = Array.from(container.children);
-  for(let i = 0; i < children.length; i++) {
-    const el = children[i];
-    if(el.dataset.btHead) {
-      let hasVisible = false;
-      for(let j = i+1; j < children.length; j++) {
-        if(children[j].dataset.btHead) break;
-        if(children[j].dataset.btCard && children[j].style.display !== 'none') { hasVisible = true; break; }
-      }
-      el.style.display = hasVisible ? '' : 'none';
-    }
-  }
+  container.querySelectorAll('.bt-cat-body').forEach(body => {
+    const hasVisible = Array.from(body.querySelectorAll('[data-bt-card]')).some(c => c.style.display !== 'none');
+    body.style.display = hasVisible ? '' : 'none';
+    const header = body.previousElementSibling;
+    if(header && header.dataset.btHead) header.style.display = hasVisible ? '' : 'none';
+  });
+}
+
+function toggleBtCat(header) {
+  const body  = header.nextElementSibling;
+  if(!body) return;
+  const arrow  = header.lastElementChild;
+  const isOpen = body.style.display !== 'none';
+  body.style.display = isOpen ? 'none' : '';
+  if(arrow) arrow.textContent = isOpen ? '›' : '▼';
 }
 
 function editBTItem(idx) {
