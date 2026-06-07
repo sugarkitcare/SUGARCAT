@@ -563,7 +563,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.76</span>
+      <span class="cm-beta">v0.5.77</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -1456,6 +1456,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
     <!-- 결과 -->
     <div id="calcResult" class="cm-card cm-card--flat" style="display:none;margin-bottom:.75rem">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:.65rem">
+        <div class="cm-ic cm-ic--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 8h3v3H8zM8 13h3v3H8zM13 8h3v3h-3zM13 13h3v3h-3zM9 6v2M11 6v2"/></svg></div>
         <span style="font-size:12px;font-weight:600;color:var(--cm-faint)">하루 권장 칼로리</span>
         <span id="calcRerBadge" style="font-size:10px;color:var(--cm-green-700);background:var(--cm-green-tint);padding:2px 8px;border-radius:6px;margin-left:auto"></span>
       </div>
@@ -5023,7 +5024,7 @@ function updateCalcCondSummary(wt, age, neuter, activity, bcs) {
 }
 function setFdMode(mode) {
   fdMode = mode;
-  const modeColors = {dm:'var(--teal)', ckd:'var(--blue)', both:'var(--purple)', hcm:'var(--coral)', hcmckd:'#8B4513'};
+  const modeColors = {dm:'var(--cm-green-700)', ckd:'var(--cm-green-700)', both:'var(--cm-green-700)', hcm:'var(--cm-green-700)', hcmckd:'var(--cm-green-700)'};
   ['dm','ckd','both','hcm','hcmckd'].forEach(m => {
     const btn = document.getElementById('mode'+m.toUpperCase());
     if(!btn) return;
@@ -5559,6 +5560,8 @@ function calcFdPortion(kcalPer100){
   result.innerHTML='→ 하루 <b>'+totalG+'g</b> (1회 <b>'+perMeal+'g</b> × 2끼) / 포장 <b>'+packs+'개</b> 분량 <span style="font-size:10px;color:var(--text3)">(칼로리 계산기 기준 '+mer+'kcal/일)</span>';
 }
 
+const _starFilled='<svg viewBox="0 0 24 24" width="18" height="18" fill="var(--cm-amber)" stroke="var(--cm-amber)" stroke-width="1.5"><path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2Z"/></svg>';
+const _starEmpty='<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="var(--cm-faint)" stroke-width="1.5"><path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2Z"/></svg>';
 function renderFdHistory(){
   const hist=document.getElementById('fdHistory');const list=document.getElementById('fdHistList');
   if(!fdData.length){hist.style.display='none';return}
@@ -8239,8 +8242,6 @@ function saveCatProfile() {
 /* ── 11번: 사료 즐겨찾기 ── */
 const saveFavFoods=()=>{try{localStorage.setItem('favFoods_v1',JSON.stringify(favFoods));}catch(e){}};
 
-const _starFilled='<svg viewBox="0 0 24 24" width="18" height="18" fill="var(--cm-amber)" stroke="var(--cm-amber)" stroke-width="1.5"><path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2Z"/></svg>';
-const _starEmpty='<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="var(--cm-faint)" stroke-width="1.5"><path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2Z"/></svg>';
 function toggleFavFood(name, el) {
   const idx=favFoods.indexOf(name);
   if(idx>-1){favFoods.splice(idx,1);el.innerHTML=_starEmpty;}
