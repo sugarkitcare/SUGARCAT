@@ -477,6 +477,11 @@ input[type="date"]{ border-radius:13px !important; -webkit-border-radius:13px !i
 .cm-editbtn:active{ transform:scale(.95); }
 .cm-editbtn--done{ color:#fff; background:var(--cm-green-700); border-color:var(--cm-green-700); }
 
+/* BT 날짜/고양이 입력 박스 */
+.ig--bt{ gap:6px; }
+.ig--bt label{ font-size:12px; font-weight:700; color:var(--cm-faint); margin-bottom:0; }
+.ig--bt input{ border-radius:13px !important; background:var(--cm-surface) !important; border:1px solid var(--cm-line) !important; padding:12px 14px !important; font-size:14px !important; font-weight:600 !important; }
+
 /* tile grid */
 .tgrid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
 .tile{ position:relative; background:var(--cm-surface); border:1px solid var(--cm-line); border-radius:18px;

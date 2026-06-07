@@ -563,7 +563,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.56</span>
+      <span class="cm-beta">v0.5.57</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -1367,27 +1367,27 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <!-- AI 분석 결과 영역 -->
   <div class="cm-card" style="padding:16px 16px 14px">
     <img id="btPreview" class="img-prev" style="display:none">
-    <div class="row2" style="margin-bottom:.75rem">
-      <div class="ig"><label>검사 날짜</label><input type="date" id="btDate"></div>
-      <div class="ig"><label>고양이</label><input type="text" id="btCat" placeholder="케이"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:.75rem">
+      <div class="ig ig--bt"><label>검사 날짜</label><input type="date" id="btDate"></div>
+      <div class="ig ig--bt"><label>고양이</label><input type="text" id="btCat" placeholder="케이"></div>
     </div>
     <div id="btStatus" style="display:none"></div>
     <div id="btResult" style="display:none">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;flex-wrap:wrap;gap:8px">
         <span id="btResultLabel" style="font-size:13px;font-weight:700;color:var(--cm-ink)"></span>
         <div style="display:flex;gap:8px">
-          <button class="cm-btn cm-btn--sm" id="btSave" style="background:var(--cm-green-700);color:#fff;border:none">저장 및 그래프 추가</button>
-          <button class="cm-btn cm-btn--sm" id="btAiComment" style="background:var(--cm-green-tint);color:var(--cm-green-700);border:1px solid var(--cm-green-edge);box-shadow:none">AI 분석</button>
+          <button class="cm-btn" id="btSave">저장 및 그래프 추가</button>
+          <button class="cm-btn cm-btn--soft" id="btAiComment">AI 분석</button>
         </div>
       </div>
       <div style="overflow-x:auto"><table class="bt"><thead><tr><th>항목</th><th>수치</th><th>단위</th><th>정상범위</th><th>상태</th><th>변화</th></tr></thead><tbody id="btBody"></tbody></table></div>
     </div>
     <div id="btAiCommentArea" style="display:none;margin-top:.75rem">
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:.5rem">
-        <span style="font-size:12px;font-weight:700;color:var(--cm-green-700)">AI 혈액검사 분석</span>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:.65rem">
+        <span style="font-size:14px;font-weight:800;color:var(--cm-ink)">AI 혈액검사 분석</span>
         <span id="btAiSpinner" style="display:none" class="spin"></span>
       </div>
-      <div id="btAiCommentBody" style="font-size:13px;color:var(--cm-ink);line-height:1.85;background:var(--cm-bg);border:1px solid var(--cm-line);border-radius:10px;padding:.85rem 1rem;white-space:pre-wrap"></div>
+      <div id="btAiCommentBody" style="font-size:13.5px;color:var(--cm-ink-soft);line-height:1.7;background:var(--cm-surface);border-radius:14px;padding:16px"></div>
     </div>
   </div>
   <div id="btGraphSection" style="display:none" class="bt-graph-section">
@@ -4610,95 +4610,7 @@ setupDrop('btDrop','btFile',async file=>{
     if(oldCards) oldCards.innerHTML = '';
     const tableWrapOld = document.querySelector('#btResult div[style*="overflow"]');
     if(tableWrapOld) tableWrapOld.style.display = 'none';
-    const prevRec=btData.filter(d=>d.cat===btCatVal&&d.date<btDate).sort((a,b)=>b.date<a.date?-1:1)[0];
-    // 카테고리별 그룹핑
-    const catOrder = ['혈구','신장','간','전해질','혈당','췌장','갑상선','단백','지질','기타'];
-    const catEmoji = {'혈구':'🔴','신장':'🫘','간':'🟡','전해질':'⚡','혈당':'🩸','췌장':'💛','갑상선':'🦋','단백':'💪','지질':'💊','기타':'📋'};
-    const catMap = {};
-    (btEx.items||[]).forEach(item=>{
-      const cat = item.category||'기타';
-      if(!catMap[cat]) catMap[cat]=[];
-      catMap[cat].push(item);
-    });
-    // 카테고리별 이상 항목 수 계산
-    const getCatBadge = (items) => {
-      const high = items.filter(i=>i.refHigh!==null&&i.value>i.refHigh).length;
-      const low = items.filter(i=>i.refLow!==null&&i.value<i.refLow).length;
-      return {high, low, total:items.length};
-    };
-    // 결과 영역을 카드형으로 재구성
-    const tbody=document.getElementById('btBody');
-    tbody.innerHTML='';
-    // 테이블 숨기고 카드 영역 사용
-    const tableWrap = tbody.closest('div[style*="overflow"]');
-    if(tableWrap) tableWrap.style.display='none';
-    // 카드 컨테이너
-    let cardContainer = document.getElementById('btCatCards');
-    if(!cardContainer){
-      cardContainer = document.createElement('div');
-      cardContainer.id = 'btCatCards';
-      if(tableWrap) tableWrap.parentNode.insertBefore(cardContainer, tableWrap);
-    }
-    cardContainer.innerHTML = '';
-    const orderedCats = [...catOrder.filter(c=>catMap[c]), ...Object.keys(catMap).filter(c=>!catOrder.includes(c))];
-    orderedCats.forEach((cat, ci) => {
-      const items = catMap[cat];
-      const badge = getCatBadge(items);
-      const hasIssue = badge.high + badge.low > 0;
-      // 기본 펼침: 이상 있는 카테고리, 접힘: 정상
-      const defaultOpen = hasIssue;
-      const card = document.createElement('div');
-      card.className = 'card';
-      card.style.cssText = 'margin-bottom:.5rem;padding:.65rem .85rem';
-      // 헤더
-      const header = document.createElement('div');
-      header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none';
-      header.innerHTML =
-        '<div style="display:flex;align-items:center;gap:6px">'
-        + '<span style="font-size:15px">'+(catEmoji[cat]||'📋')+'</span>'
-        + '<span style="font-size:13px;font-weight:600;color:var(--text)">'+cat+'</span>'
-        + '<span style="font-size:10px;color:var(--text3)">'+badge.total+'개</span>'
-        + (badge.high?'<span style="font-size:10px;padding:1px 6px;border-radius:10px;background:rgba(216,90,48,0.12);color:var(--coral)">↑'+badge.high+'</span>':'')
-        + (badge.low?'<span style="font-size:10px;padding:1px 6px;border-radius:10px;background:rgba(24,95,165,0.12);color:var(--blue)">↓'+badge.low+'</span>':'')
-        + '</div>'
-        + '<span class="bt-toggle" style="font-size:11px;color:var(--teal)">'+(defaultOpen?'▲ 접기':'▼ 펼치기')+'</span>';
-      card.appendChild(header);
-      // 테이블
-      const tableDiv = document.createElement('div');
-      tableDiv.style.cssText = 'overflow-x:auto;margin-top:.5rem;display:'+(defaultOpen?'block':'none');
-      const tbl = document.createElement('table');
-      tbl.className = 'bt';
-      tbl.innerHTML = '<thead><tr><th>항목</th><th>수치</th><th>단위</th><th>정상범위</th><th>상태</th><th>변화</th></tr></thead><tbody></tbody>';
-      const tb = tbl.querySelector('tbody');
-      items.forEach(item=>{
-        const s=item.refLow!==null&&item.value<item.refLow?'l':item.refHigh!==null&&item.value>item.refHigh?'h':'n';
-        const badge2=s==='n'?'<span class="bn">정상</span>':s==='h'?'<span class="bh">높음</span>':'<span class="bl">낮음</span>';
-        const ref=item.refLow!==null||item.refHigh!==null?(item.refLow??'')+'~'+(item.refHigh??''):'–';
-        let changeTd='<td style="color:var(--text3);font-size:11px">–</td>';
-        if(prevRec){
-          const prevItem=prevRec.items.find(i=>(i.abbr||i.name)===(item.abbr||item.name));
-          if(prevItem&&prevItem.value!==null){
-            const diff=parseFloat((item.value-prevItem.value).toFixed(2));
-            const arrow=diff>0?'▲':diff<0?'▼':'━';
-            const color=diff>0?'var(--coral)':diff<0?'var(--blue)':'var(--text3)';
-            changeTd='<td style="font-size:11px;color:'+color+';white-space:nowrap">'+arrow+Math.abs(diff)+'</td>';
-          }
-        }
-        const nameCell = item.name+(item.abbr&&item.abbr!==item.name?' <span style="color:var(--text3);font-size:10px">('+item.abbr+')</span>':'');
-        tb.innerHTML += '<tr><td>'+nameCell+'</td><td style="font-weight:500">'+item.value+'</td><td style="color:var(--text2)">'+( item.unit||'–')+'</td><td style="color:var(--text2)">'+ref+'</td><td>'+badge2+'</td>'+changeTd+'</tr>';
-      });
-      tableDiv.appendChild(tbl);
-      card.appendChild(tableDiv);
-      // 클릭 이벤트
-      header.addEventListener('click', ()=>{
-        const isOpen = tableDiv.style.display !== 'none';
-        tableDiv.style.display = isOpen ? 'none' : 'block';
-        header.querySelector('.bt-toggle').textContent = isOpen ? '▼ 펼치기' : '▲ 접기';
-      });
-      cardContainer.appendChild(card);
-    });
-  document.getElementById('btResultLabel').textContent=`${btEx.cat} · ${btEx.date} (${(btEx.items||[]).length}개 항목)`;
-  document.getElementById('btResult').style.display='block';
+    renderBTResultTable(btEx);
   }catch(e){
     console.error('BT error:',e);
     const errMsg = e.message&&e.message.toLowerCase().includes('overload')
@@ -6267,16 +6179,16 @@ document.getElementById('btAiComment').addEventListener('click', async () => {
 
 【출력 형식 — 반드시 이 구조로】
 
-🔴 주의가 필요한 수치
+**주의가 필요한 수치**
 이상 수치마다 1~2줄: "○○(항목명)이 높아요/낮아요. → 이게 뭘 의미하는지 쉽게 설명. 어떻게 해야 하는지."
 
-🟢 정상 수치
+**정상 수치**
 정상인 주요 항목들 한 줄로 간략히
 
-📋 전체 요약
+**전체 요약**
 2~3줄: 지금 고양이 상태를 전체적으로 쉽게 설명. 보호자가 지금 당장 해야 할 행동 포함.
 
-⚠️ 주의사항
+**주의사항**
 "이 내용은 참고용이며, 정확한 진단과 치료는 반드시 담당 수의사와 상담하세요."
 
 【설명 가이드】
@@ -6312,7 +6224,9 @@ ${itemSummary}
     const data = await resp.json();
     spinner.style.display = 'none';
     if(data.content && data.content[0]){
-      body.textContent = data.content[0].text;
+      var _txt = data.content[0].text;
+      _txt = _txt.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+      body.innerHTML = _txt.replace(/\n/g, '<br>');
     } else if(data.error){
       body.textContent = '오류: ' + (data.error.message || '알 수 없는 오류');
     }
@@ -7357,13 +7271,13 @@ function renderBTResultTable(bt) {
     const catHeader = document.createElement('div');
     catHeader.dataset.btHead = 'true';
     catHeader.setAttribute('onclick', 'toggleBtCat(this)');
-    catHeader.style.cssText = 'display:flex;align-items:center;gap:8px;padding:9px 4px;cursor:pointer;border-bottom:1px solid var(--cm-line);margin-bottom:6px;margin-top:12px;user-select:none';
+    catHeader.style.cssText = 'display:flex;align-items:center;gap:8px;padding:10px 14px;cursor:pointer;background:var(--cm-surface);border:1px solid var(--cm-line);border-radius:12px;margin-bottom:6px;user-select:none';
     catHeader.innerHTML =
-      `<span class="bt-cat-arrow" style="width:18px;height:18px;border-radius:5px;background:var(--cm-surface-2);border:1px solid var(--cm-line);display:inline-flex;align-items:center;justify-content:center;font-size:10px;color:var(--cm-faint);flex-shrink:0">${defaultOpen?'▼':'›'}</span>`
-      + `<span style="font-size:12px;font-weight:700;color:var(--cm-ink-soft)">${cat}</span>`
-      + (catHighCount > 0 ? `<span style="font-size:10px;font-weight:700;color:var(--cm-clay-ink);background:var(--cm-clay-tint);border:1px solid var(--cm-clay-edge);border-radius:999px;padding:1px 6px">높음 ${catHighCount}</span>` : '')
-      + (catLowCount  > 0 ? `<span style="font-size:10px;font-weight:700;color:var(--cm-green-ink);background:var(--cm-green-tint);border:1px solid var(--cm-green-edge);border-radius:999px;padding:1px 6px">낮음 ${catLowCount}</span>`  : '')
-      + `<span style="font-size:11px;color:var(--cm-faint);margin-left:auto">${entries.length}개</span>`;
+      `<span style="font-size:14px;font-weight:800;color:var(--cm-ink)">${cat}</span>`
+      + `<span style="font-size:12px;color:var(--cm-faint)">${entries.length}개</span>`
+      + (catHighCount > 0 ? `<span style="color:var(--cm-clay);font-size:11px;font-weight:700">↑${catHighCount}</span>` : '')
+      + (catLowCount  > 0 ? `<span style="font-size:11px;font-weight:700;color:#3A66A6">↓${catLowCount}</span>` : '')
+      + `<svg class="bt-cat-arrow" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--cm-faint);transition:transform .2s;margin-left:auto;flex-shrink:0${defaultOpen?';transform:rotate(180deg)':''}"><path d="M6 9l6 6 6-6"/></svg>`;
     const catBody = document.createElement('div');
     catBody.className = 'bt-cat-body';
     catBody.style.display = defaultOpen ? 'grid' : 'none';
@@ -7435,7 +7349,7 @@ function toggleBtCat(header) {
   const arrow  = header.querySelector('.bt-cat-arrow');
   const isOpen = body.style.display !== 'none';
   body.style.display = isOpen ? 'none' : 'grid';
-  if(arrow) arrow.textContent = isOpen ? '›' : '▼';
+  if(arrow) arrow.style.transform = isOpen ? '' : 'rotate(180deg)';
 }
 
 function editBTItem(idx) {
