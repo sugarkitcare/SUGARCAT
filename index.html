@@ -8592,18 +8592,18 @@ window.closeDailySheet = function() {
 <div id="catProfilePage" style="display:none;width:100%;min-height:100vh;background:var(--cm-bg);padding:0;box-sizing:border-box">
   <!-- 상단 고정 헤더 + 세그먼트 탭 -->
   <div style="position:sticky;top:0;z-index:100;background:var(--cm-bg);border-bottom:1px solid var(--cm-line);padding:12px 16px 0">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:nowrap;margin-bottom:8px">
       <button onclick="closeModal('catProfilePage')" type="button"
-        style="background:var(--cm-green-700);border:none;font-size:14px;font-weight:600;cursor:pointer;color:#fff;padding:8px 16px;line-height:1;border-radius:10px;font-family:inherit">← 뒤로</button>
-      <div>
-        <div id="catProfileTitle" style="font-size:17px;font-weight:700;color:var(--cm-ink);line-height:1.2"></div>
-        <div id="catProfileSubtitle" style="font-size:12px;color:var(--cm-faint);margin-top:2px"></div>
+        style="flex:0 0 auto;white-space:nowrap;background:var(--cm-green-700);border:none;font-size:14px;font-weight:600;cursor:pointer;color:#fff;padding:8px 14px;line-height:1;border-radius:999px;font-family:inherit">← 뒤로</button>
+      <div style="flex:1 1 auto;min-width:0">
+        <div id="catProfileTitle" style="font-size:17px;font-weight:800;color:var(--cm-ink);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+        <div id="catProfileSubtitle" style="font-size:12px;color:var(--cm-faint);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
       </div>
-      <div style="display:flex;gap:6px;margin-left:auto">
+      <div style="flex:0 0 auto;display:flex;gap:6px">
         <button type="button" onclick="openAdminPage()" id="adminBtnProfile"
-          style="display:none;padding:5px 10px;border:1px solid var(--cm-line);border-radius:8px;background:transparent;color:var(--cm-faint);font-size:11px;cursor:pointer;font-family:inherit">관리자</button>
+          style="display:none;padding:6px 10px;border:1px solid var(--cm-line);border-radius:8px;background:transparent;color:var(--cm-faint);font-size:12px;cursor:pointer;font-family:inherit;white-space:nowrap">관리자</button>
         <button type="button" onclick="handleLogout()"
-          style="padding:5px 10px;border:1px solid var(--cm-line);border-radius:8px;background:transparent;color:var(--cm-ink-soft);font-size:11px;cursor:pointer;font-family:inherit">로그아웃</button>
+          style="padding:6px 10px;border:1px solid var(--cm-line);border-radius:8px;background:transparent;color:var(--cm-ink-soft);font-size:12px;cursor:pointer;font-family:inherit;white-space:nowrap">로그아웃</button>
       </div>
     </div>
     <div class="cm-tabs" style="margin:0">
