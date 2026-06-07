@@ -534,7 +534,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.40</span>
+      <span class="cm-beta">v0.5.41</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">💬 피드백</button>
@@ -743,14 +743,14 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
       <div class="ig"><label>식전/식후</label><select id="bgType"><option>식전</option><option>식후2h</option><option>식후4h</option><option>기타</option></select></div>
       <div class="ig full"><label>메모</label><input type="text" id="bgNote" placeholder="식욕, 활동량, 특이사항"></div>
     </div>
-    <button class="btn btn-teal" id="saveBg">혈당·케톤 저장</button>
+    <button class="cm-btn cm-btn--block" id="saveBg">혈당·케톤 저장</button>
     </div>
   </div>
 
   <!-- 호흡수 측정 카드 -->
   <div class="cm-card cm-card--flat" id="daily-card-rr">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;cursor:pointer" onclick="toggleCard('rrCard',this)">
-      <span style="font-size:14px;font-weight:700;color:var(--cm-ink)">🫁 호흡수 측정</span>
+      <span style="font-size:14px;font-weight:700;color:var(--cm-ink)">호흡수 측정</span>
       <span style="font-size:12px;font-weight:700;color:var(--cm-green-700)">펼치기</span>
     </div>
     <div id="rrCard" style="display:none">
@@ -765,16 +765,16 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
         <div style="font-size:11px;font-weight:500;color:var(--text2);margin-bottom:.4rem">호흡 상태</div>
         <div style="display:flex;gap:6px">
           <button type="button" class="rr-state-btn active" data-state="sleep" onclick="rrSelectState(this)"
-            style="flex:1;padding:7px 4px;border-radius:9px;border:1.5px solid var(--teal);background:var(--teal-l);color:var(--teal-d);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit">
-            😴 수면
+            style="flex:1;padding:7px 4px;border-radius:9px;border:1px solid var(--cm-green-700);background:var(--cm-green-tint);color:var(--cm-green-ink);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">
+            수면
           </button>
           <button type="button" class="rr-state-btn" data-state="rest" onclick="rrSelectState(this)"
-            style="flex:1;padding:7px 4px;border-radius:9px;border:1.5px solid var(--bd);background:var(--bg2);color:var(--text2);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit">
-            🐱 안정
+            style="flex:1;padding:7px 4px;border-radius:9px;border:1px solid var(--cm-line);background:var(--cm-surface-2);color:var(--cm-ink-soft);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit">
+            안정
           </button>
           <button type="button" class="rr-state-btn" data-state="active" onclick="rrSelectState(this)"
-            style="flex:1;padding:7px 4px;border-radius:9px;border:1.5px solid var(--bd);background:var(--bg2);color:var(--text2);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit">
-            🏃 활동
+            style="flex:1;padding:7px 4px;border-radius:9px;border:1px solid var(--cm-line);background:var(--cm-surface-2);color:var(--cm-ink-soft);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit">
+            활동
           </button>
         </div>
         <div style="font-size:10px;color:var(--text3);margin-top:.35rem">* 수면 중 호흡수가 HCM 모니터링 기준이에요</div>
@@ -790,7 +790,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
           style="width:100%;min-height:140px;border-radius:18px;border:3px solid var(--teal);background:var(--bg);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:inherit;transition:transform .08s,background .1s;touch-action:manipulation;-webkit-user-select:none;user-select:none;padding:20px 0;box-sizing:border-box;active:background:var(--teal-l)">
           <div id="rrCount" style="font-size:52px;font-weight:700;color:var(--teal);line-height:1">0</div>
           <div style="font-size:12px;color:var(--text3);margin-top:6px">탭하여 시작</div>
-          <div style="font-size:10px;color:var(--teal);opacity:.6;margin-top:3px">🫁 호흡할 때마다 탭</div>
+          <div style="font-size:10px;color:var(--teal);opacity:.6;margin-top:3px">호흡할 때마다 탭</div>
         </button>
         <div id="rrResult" style="display:none;margin-top:.75rem;padding:.6rem 1rem;border-radius:10px;font-size:14px;font-weight:600"></div>
       </div>
@@ -801,12 +801,12 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
       </div>
       <!-- 피드백 설정 토글 -->
       <div style="margin-top:.75rem;padding:.6rem .75rem;background:var(--bg2);border-radius:10px">
-        <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:.5rem">🔔 탭 피드백 설정</div>
+        <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:.5rem">탭 피드백 설정</div>
         <div style="display:flex;flex-direction:column;gap:.4rem">
           <!-- 소리 피드백 -->
           <div style="display:flex;align-items:center;justify-content:space-between">
             <div>
-              <div style="font-size:12px;color:var(--text)">🔊 소리 피드백</div>
+              <div style="font-size:12px;color:var(--text)">소리 피드백</div>
               <div style="font-size:10px;color:var(--text3)">소리 모드일 때 켜세요 · iOS·안드로이드 모두 지원</div>
             </div>
             <button type="button" id="rrSoundToggle" onclick="toggleRRFeedback('sound')"
@@ -817,7 +817,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
           <!-- 진동 피드백 -->
           <div style="display:flex;align-items:center;justify-content:space-between">
             <div>
-              <div style="font-size:12px;color:var(--text)">📳 진동 피드백</div>
+              <div style="font-size:12px;color:var(--text)">진동 피드백</div>
               <div style="font-size:10px;color:var(--text3)">무음·진동 모드일 때 켜세요 · 안드로이드만 지원</div>
             </div>
             <button type="button" id="rrVibToggle" onclick="toggleRRFeedback('vibrate')"
@@ -843,7 +843,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
       <div class="ig full"><label>메모</label><input type="text" id="wtNote" placeholder="식전 측정 등"></div>
     </div>
     <div id="wtDiff" style="font-size:12px;color:var(--text2);margin-bottom:8px;min-height:16px"></div>
-    <button class="btn btn-purple" id="saveWt">체중 저장</button>
+    <button class="cm-btn cm-btn--block" id="saveWt">체중 저장</button>
     </div>
   </div>
   <div class="cm-card cm-card--flat" id="daily-card-ins">
@@ -877,7 +877,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
       <div class="ig"><label>투여 시각</label><input type="time" id="insTime"></div>
       <div class="ig"><label>투여 전 혈당</label><input type="number" id="insPreBg" placeholder="mg/dL"></div>
     </div>
-    <button class="btn btn-amber" id="saveIns">인슐린 저장</button>
+    <button class="cm-btn cm-btn--block" id="saveIns">인슐린 저장</button>
     </div>
   </div>
   <div class="cm-card cm-card--flat" id="daily-card-meal">
@@ -903,7 +903,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
       <div class="ig"><label>날짜</label><input type="date" id="foodDate"></div>
       <div class="ig"><label>급여 시각</label><input type="time" id="foodTime"></div>
     </div>
-    <button class="btn btn-blue" id="saveMeal">식사 저장</button>
+    <button class="cm-btn cm-btn--block" id="saveMeal">식사 저장</button>
     </div>
   </div>
   <!-- 💧 수분 밸런스 카드 -->
@@ -1020,7 +1020,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-card cm-card--flat" id="daily-card-routine">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;cursor:pointer" onclick="toggleCard('routineBody',this)">
     <div>
-      <div style="font-size:14px;font-weight:700;color:var(--cm-ink)">💊 투약·보조제·루틴</div>
+      <div style="font-size:14px;font-weight:700;color:var(--cm-ink)">투약·보조제·루틴</div>
       <div style="font-size:10px;color:var(--text3);margin-top:1px">탭해서 오늘 투약 체크</div>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
@@ -1042,11 +1042,11 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
       onchange="renderRoutineChecklist()">
     <input type="text" id="routineCustom" placeholder="추가 기록 (예: 코발라민 0.5ml)"
       style="flex:1;min-width:120px;padding:6px 10px;border:0.5px solid var(--bd);border-radius:8px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit">
-    <button class="btn" id="saveRoutine" style="background:var(--purple);color:#fff;padding:6px 14px;font-size:12px">추가 메모 저장</button>
+    <button class="cm-btn cm-btn--block" id="saveRoutine">추가 메모 저장</button>
   </div>
   <!-- 체크 즉시 저장 안내 -->
   <div style="font-size:11px;color:var(--teal);margin-top:.5rem;padding:.5rem .75rem;background:var(--teal-l);border-radius:8px">
-    ✅ 항목을 탭하면 즉시 저장돼요 · 아래는 추가 메모용이에요
+    항목을 탭하면 즉시 저장돼요 · 아래는 추가 메모용이에요
   </div>
   <input type="hidden" id="routineTime">
   <input type="hidden" id="routineMemo">
@@ -1883,13 +1883,15 @@ const rrStateLabel = {sleep:'수면', rest:'안정', active:'활동'};
 
 function rrSelectState(btn) {
   document.querySelectorAll('.rr-state-btn').forEach(b => {
-    b.style.border = '1.5px solid var(--bd)';
-    b.style.background = 'var(--bg2)';
-    b.style.color = 'var(--text2)';
+    b.style.border = '1px solid var(--cm-line)';
+    b.style.background = 'var(--cm-surface-2)';
+    b.style.color = 'var(--cm-ink-soft)';
+    b.style.fontWeight = '500';
   });
-  btn.style.border = '1.5px solid var(--teal)';
-  btn.style.background = 'var(--teal-l)';
-  btn.style.color = 'var(--teal-d)';
+  btn.style.border = '1px solid var(--cm-green-700)';
+  btn.style.background = 'var(--cm-green-tint)';
+  btn.style.color = 'var(--cm-green-ink)';
+  btn.style.fontWeight = '600';
   rrState = btn.dataset.state;
 }
 
@@ -1966,8 +1968,7 @@ function rrFinish() {
   resultEl.style.color = color;
   const bgMap = {'var(--coral)':'rgba(216,90,48,0.1)','var(--amber)':'rgba(186,117,23,0.1)','var(--teal)':'rgba(29,158,117,0.1)'};
   resultEl.style.background = bgMap[color]||'var(--bg2)';
-  const stateEmoji2 = rrState==='sleep'?'😴':rrState==='rest'?'🐱':'🏃';
-  resultEl.textContent = stateEmoji2 + ' ' + (rrStateLabel[rrState]||'') + ' ' + rr + '회/분  ' + msg;
+  resultEl.textContent = (rrStateLabel[rrState]||'') + ' ' + rr + '회/분  ' + msg;
 
   // 자동 저장
   const rrDate = document.getElementById('rrDate').value || today();
@@ -1976,8 +1977,7 @@ function rrFinish() {
   if(!rec.rr) rec.rr = [];
   rec.rr.push({rr: rr, state: rrState, stateLabel: rrStateLabel[rrState]||rrState, time: nowTime(), ts: Date.now()});
   saveS(rrDate);
-  const stateEmoji = rrState==='sleep'?'😴':rrState==='rest'?'🐱':'🏃';
-  toast(`${stateEmoji} ${rrStateLabel[rrState]} 호흡수 ${rr}회/분 저장 완료!`, rr>=40?'#D85A30':rr>=30?'#BA7517':'#1D9E75');
+  toast(`${rrStateLabel[rrState]} 호흡수 ${rr}회/분 저장 완료!`, rr>=40?'#D85A30':rr>=30?'#BA7517':'#1D9E75');
   // 측정 완료 피드백 (설정에 따라)
   const _fb2 = getRRFeedback();
   if(_fb2.vibrate) {
@@ -2027,8 +2027,8 @@ function toggleRRFeedback(key) {
   saveRRFeedback(fb);
   applyRRFeedbackUI();
   toast(key === 'sound'
-    ? (fb.sound ? '🔊 소리 피드백 켜졌어요' : '🔇 소리 피드백 꺼졌어요')
-    : (fb.vibrate ? '📳 진동 피드백 켜졌어요' : '📴 진동 피드백 꺼졌어요'), '#1D9E75');
+    ? (fb.sound ? '소리 피드백 켜졌어요' : '소리 피드백 꺼졌어요')
+    : (fb.vibrate ? '진동 피드백 켜졌어요' : '진동 피드백 꺼졌어요'), '#1D9E75');
 }
 
 function rrReset() {

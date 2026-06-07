@@ -605,3 +605,20 @@
 #daily-card-routine{ display:none !important; }
 #dailySheetBack{ position:fixed !important; }
 #dailySheet{ position:fixed !important; }
+
+/* ---------- sheet & card 저장 버튼 통일 ---------- */
+#dailySheet button[onclick*="save"],
+#dailySheet button[onclick*="Save"],
+#dailySheet .cm-btn,
+#dailySheetFoot button,
+.sheet__foot button {
+  background: var(--cm-green-700) !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 13px !important;
+  width: 100% !important;
+  padding: 15px !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  box-shadow: 0 6px 14px rgba(35,91,67,.24) !important;
+}
