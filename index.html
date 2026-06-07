@@ -563,7 +563,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.80</span>
+      <span class="cm-beta">v0.5.81</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -2647,7 +2647,7 @@ window.switchCat = function(c) {
       });
       renderGraphs();try{renderBTTrend();}catch(e){};}
     else if(at==='bloodtest'){try{renderBTGraphs();renderBTHistoryList();}catch(e){};}
-    else if(at==='food'){try{renderFdHistory();autoSetFdMode(c);initCalcResult();}catch(e){};}
+    else if(at==='food'){try{renderFdHistory();autoSetFdMode(c);const _wtEl=document.getElementById('calcWt');if(_wtEl)_wtEl.value='';initCalcResult();}catch(e){};}
   }catch(e){}
 };
 
