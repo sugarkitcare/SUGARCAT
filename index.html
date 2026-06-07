@@ -7276,7 +7276,7 @@ function renderBTResultTable(bt) {
     catHeader.innerHTML =
       `<span style="font-size:13px;font-weight:700;color:var(--cm-faint)">${cat}</span>`
       + (_issueTotal > 0 ? `<span style="color:var(--cm-clay);font-size:11px;font-weight:700;margin-left:6px">↑${catHighCount} ↓${catLowCount}</span>` : '')
-      + `<span class="bt-cat-arrow" style="font-size:11px;color:var(--cm-faint);margin-left:auto">${defaultOpen ? '접기' : '펼치기'}</span>`;
+      + `<span class="bt-cat-arrow" style="color:var(--cm-faint);margin-left:auto;display:flex;align-items:center">${defaultOpen ? '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M5.5 8.5L12 15l6.5-6.5"/></svg>' : '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5l7 7-7 7"/></svg>'}</span>`;
     const catBody = document.createElement('div');
     catBody.className = 'bt-cat-body';
     catBody.style.display = defaultOpen ? 'grid' : 'none';
@@ -7286,9 +7286,9 @@ function renderBTResultTable(bt) {
       const isNull = item.value === null || item.value === undefined;
       const s = isNull ? 'x' : (item.refLow!==null&&item.value<item.refLow?'l':item.refHigh!==null&&item.value>item.refHigh?'h':'n');
       const badgeMap = {
-        x:`<span style="font-size:10px;font-weight:700;padding:1px 5px;border-radius:999px;flex-shrink:0;background:var(--cm-amber-tint);color:#7E5C16;border:1px solid var(--cm-amber-edge)">미입력</span>`,
-        h:`<span style="font-size:10px;font-weight:700;padding:1px 5px;border-radius:999px;flex-shrink:0;background:var(--cm-clay-tint);color:var(--cm-clay-ink);border:1px solid var(--cm-clay-edge)">높음</span>`,
-        l:`<span style="font-size:10px;font-weight:700;padding:1px 5px;border-radius:999px;flex-shrink:0;background:var(--cm-green-tint);color:var(--cm-green-ink);border:1px solid var(--cm-green-edge)">낮음</span>`,
+        x:'',
+        h:`<span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px;flex-shrink:0;background:var(--cm-clay-tint);color:var(--cm-clay);border:1px solid var(--cm-clay-edge)">↑</span>`,
+        l:`<span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px;flex-shrink:0;background:var(--cm-green-tint);color:var(--cm-green-700);border:1px solid var(--cm-green-edge)">↓</span>`,
         n:''
       };
       const label = (item.abbr && item.abbr !== item.name) ? item.abbr : item.name;
@@ -7348,7 +7348,7 @@ function toggleBtCat(header) {
   const arrow  = header.querySelector('.bt-cat-arrow');
   const isOpen = body.style.display !== 'none';
   body.style.display = isOpen ? 'none' : 'grid';
-  if(arrow) arrow.textContent = isOpen ? '펼치기' : '접기';
+  if(arrow) arrow.innerHTML = isOpen ? '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5l7 7-7 7"/></svg>' : '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M5.5 8.5L12 15l6.5-6.5"/></svg>';
 }
 
 function editBTItem(idx) {
