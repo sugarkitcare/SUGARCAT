@@ -103,12 +103,12 @@
 
 /* ---------- app bar ---------- */
 /* 다크모드 body 색 상속 방지: 항상 라이트 크림 배경 고정 */
-.cm-appbar{ padding:6px 20px 14px; background:var(--cm-bg-soft); color:var(--cm-ink); }
+.cm-appbar{ padding:10px 0 14px; background:var(--cm-bg-soft); color:var(--cm-ink); }
 .cm-appbar__top{ display:flex; align-items:center; gap:8px; flex-wrap:nowrap; }
 /* flex-shrink:0 — 브랜드명이 눌려 잘리지 않도록 */
 .cm-brand{ display:flex; align-items:center; gap:7px; flex-shrink:0; }
 .cm-brand__mark{ width:26px; height:26px; flex:0 0 auto; color:var(--cm-green-700); }
-.cm-brand__name{ font-size:16px; font-weight:800; color:var(--cm-green-800); letter-spacing:-0.02em;
+.cm-brand__name{ font-size:26px; font-weight:800; color:var(--cm-green-800); letter-spacing:-0.02em;
   white-space:nowrap; }
 .cm-beta{ font-size:10px; font-weight:700; color:var(--cm-green-700); background:var(--cm-green-tint);
   border:1px solid var(--cm-green-edge); padding:2px 7px; border-radius:999px; letter-spacing:0;
@@ -123,7 +123,7 @@
 
 /* ---------- cat pills ---------- */
 /* 다크모드 body 색 상속 방지 + 가로 스크롤 지원 */
-.cm-pets{ display:flex; gap:9px; padding:2px 20px 14px; align-items:center;
+.cm-pets{ display:flex; gap:9px; padding:2px 0 14px; align-items:center;
   background:var(--cm-bg-soft); overflow-x:auto; -webkit-overflow-scrolling:touch;
   scrollbar-width:none; }
 .cm-pets::-webkit-scrollbar{ display:none; }
@@ -147,7 +147,7 @@
 
 /* ---------- tab bar ---------- */
 /* 균등폭 세그먼트 한 줄 — overflow 스크롤 없음 */
-.cm-tabs{ display:flex; gap:2px; margin:0 12px 1rem; padding:4px; background:var(--bg2);
+.cm-tabs{ display:flex; gap:2px; margin:0 0 1rem; padding:4px; background:var(--bg2);
   border:1px solid var(--bd); border-radius:14px; }
 .cm-tab{ flex:1; font-size:11.5px; font-weight:600; color:var(--text3);
   padding:9px 4px; border-radius:10px; white-space:nowrap; background:transparent;
