@@ -534,7 +534,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.44</span>
+      <span class="cm-beta">v0.5.45</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">💬 피드백</button>
@@ -5637,23 +5637,26 @@ function renderRoutineEditList(){
   const list=document.getElementById('routineItemList');
   if(!list)return;
   const catOrder=['med','food','other'];
-  const catLabel2={med:'💊 약·보조제',food:'🍖 간식·음수',other:'📋 기타루틴'};
+  const catLabel2={med:'약·보조제',food:'간식·음수',other:'기타루틴'};
   let html='';
   catOrder.forEach(cat=>{
     const items=routineItems.filter((item,i)=>item.cat===cat);
     if(!items.length)return;
-    html+=`<div style="font-size:11px;font-weight:500;color:var(--text2);margin:8px 0 4px">${catLabel2[cat]}</div>`;
+    html+=`<div style="font-size:12px;font-weight:700;color:var(--cm-faint);margin:14px 0 8px">${catLabel2[cat]}</div>`;
     items.forEach(item=>{
       const i=routineItems.indexOf(item);
-      html+=`<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg2);border-radius:9px;margin-bottom:5px">
-        <span style="flex:1;font-size:13px;color:var(--text)">${item.name}</span>
+      html+=`<div style="background:var(--cm-surface);border:1px solid var(--cm-line);border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:14px;color:var(--cm-ink)">${item.name}</span>
         <button type="button" onclick="deleteRoutineItem(${i})"
-          style="padding:3px 10px;border:0.5px solid var(--coral);border-radius:7px;background:transparent;color:var(--coral);font-size:11px;cursor:pointer;font-family:inherit">삭제</button>
+          style="background:none;border:none;cursor:pointer;padding:4px;color:var(--cm-faint);display:flex;align-items:center">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4.5 6.5h15M9 6.5V4.5h6v2M6.5 6.5 7.5 20h9l1-13.5"/></svg>
+        </button>
       </div>`;
     });
   });
-  if(!html) html='<div style="text-align:center;padding:1rem;color:var(--text3);font-size:12px">등록된 항목이 없어요</div>';
+  if(!html) html='<div style="text-align:center;padding:1rem;color:var(--cm-faint);font-size:12px">등록된 항목이 없어요</div>';
   list.innerHTML=html;
+  updateCatMedBadge();
 }
 
 
@@ -7444,13 +7447,33 @@ function exportCSV() {
 
 /* ── 6번: 고양이 기본정보 ── */
 let currentProfileCat='';
+function catSegment(tab, btn) {
+  document.querySelectorAll('.cat-seg').forEach(el => el.style.display = 'none');
+  document.getElementById('catSeg-' + tab).style.display = 'block';
+  document.querySelectorAll('#catProfilePage .cm-tab').forEach(t => t.classList.remove('cm-tab--on'));
+  btn.classList.add('cm-tab--on');
+}
+function updateCatMedBadge(){
+  const badge=document.getElementById('catMedBadge');
+  if(!badge)return;
+  const cnt=(routineItems||[]).length;
+  badge.textContent=cnt;
+  badge.style.display=cnt?'inline':'none';
+}
+
 function openCatProfile(cat) {
   currentProfileCat=cat;
   if(!state.catProfiles)state.catProfiles={};
   const profile=state.catProfiles[cat]||{};
   const page=document.getElementById('catProfilePage');
   if(!page){alert('오류');return;}
-  document.getElementById('catProfileTitle').textContent=cat+' 기본 정보';
+  document.getElementById('catProfileTitle').textContent=cat;
+  const _parts=[];
+  if(profile.diseases&&profile.diseases.length)_parts.push(profile.diseases.join('·'));
+  if(profile.breed)_parts.push(profile.breed);
+  if(profile.birth){const _ageY=Math.floor((Date.now()-new Date(profile.birth).getTime())/(1000*60*60*24*365.25));if(_ageY>0)_parts.push(_ageY+'세');}
+  const _subEl=document.getElementById('catProfileSubtitle');
+  if(_subEl)_subEl.textContent=_parts.join(' · ');
   document.getElementById('cpCatName').value=currentProfileCat||'';
   // 품종 셀렉박스 설정
   const breedVal = profile.breed||'';
@@ -7497,6 +7520,9 @@ function openCatProfile(cat) {
   // 해당 고양이 루틴 불러오기
   try{ loadRoutineForCat(cat); }catch(e){}
   try{ renderCardOrderUI(cat); }catch(e){}
+  const _firstCatTab=document.querySelector('#catProfilePage .cm-tab');
+  if(_firstCatTab)catSegment('info',_firstCatTab);
+  updateCatMedBadge();
 }
 
 // 품종 직접입력 처리
@@ -8563,19 +8589,30 @@ window.closeDailySheet = function() {
 </div>
 
 <!-- 고양이 기본정보 페이지 (PWA 호환) -->
-<div id="catProfilePage" style="display:none;width:100%;min-height:100vh;background:var(--bg);padding:0 0 40px;box-sizing:border-box">
-  <!-- 상단 고정 헤더 -->
-  <div style="position:sticky;top:0;z-index:100;background:var(--bg);border-bottom:0.5px solid var(--bd);padding:12px 16px;display:flex;align-items:center;gap:10px;margin-bottom:1.25rem">
-    <button onclick="closeModal('catProfilePage')" type="button"
-      style="background:var(--teal);border:none;font-size:14px;font-weight:600;cursor:pointer;color:#fff;padding:8px 16px;line-height:1;border-radius:10px;font-family:inherit">← 뒤로</button>
-    <div id="catProfileTitle" style="font-size:16px;font-weight:600;color:var(--text)">고양이 기본 정보</div>
-    <div style="display:flex;gap:6px;margin-left:auto">
-      <button type="button" onclick="openAdminPage()" id="adminBtnProfile"
-        style="display:none;padding:5px 10px;border:0.5px solid var(--bd);border-radius:8px;background:transparent;color:var(--text3);font-size:11px;cursor:pointer;font-family:inherit">관리자</button>
-      <button type="button" onclick="handleLogout()"
-        style="padding:5px 10px;border:0.5px solid var(--bd);border-radius:8px;background:transparent;color:var(--text2);font-size:11px;cursor:pointer;font-family:inherit">로그아웃</button>
+<div id="catProfilePage" style="display:none;width:100%;min-height:100vh;background:var(--cm-bg);padding:0;box-sizing:border-box">
+  <!-- 상단 고정 헤더 + 세그먼트 탭 -->
+  <div style="position:sticky;top:0;z-index:100;background:var(--cm-bg);border-bottom:1px solid var(--cm-line);padding:12px 16px 0">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+      <button onclick="closeModal('catProfilePage')" type="button"
+        style="background:var(--cm-green-700);border:none;font-size:14px;font-weight:600;cursor:pointer;color:#fff;padding:8px 16px;line-height:1;border-radius:10px;font-family:inherit">← 뒤로</button>
+      <div>
+        <div id="catProfileTitle" style="font-size:17px;font-weight:700;color:var(--cm-ink);line-height:1.2"></div>
+        <div id="catProfileSubtitle" style="font-size:12px;color:var(--cm-faint);margin-top:2px"></div>
+      </div>
+      <div style="display:flex;gap:6px;margin-left:auto">
+        <button type="button" onclick="openAdminPage()" id="adminBtnProfile"
+          style="display:none;padding:5px 10px;border:1px solid var(--cm-line);border-radius:8px;background:transparent;color:var(--cm-faint);font-size:11px;cursor:pointer;font-family:inherit">관리자</button>
+        <button type="button" onclick="handleLogout()"
+          style="padding:5px 10px;border:1px solid var(--cm-line);border-radius:8px;background:transparent;color:var(--cm-ink-soft);font-size:11px;cursor:pointer;font-family:inherit">로그아웃</button>
+      </div>
+    </div>
+    <div class="cm-tabs" style="margin:0">
+      <button class="cm-tab cm-tab--on" onclick="catSegment('info',this)">정보</button>
+      <button class="cm-tab" onclick="catSegment('med',this)">투약·루틴 <span id="catMedBadge" style="background:var(--cm-green-700);color:#fff;border-radius:999px;font-size:10px;font-weight:700;padding:1px 6px;margin-left:4px;display:none"></span></button>
+      <button class="cm-tab" onclick="catSegment('data',this)">데이터</button>
     </div>
   </div>
+<div id="catSeg-info" class="cat-seg" style="padding:16px 16px 0">
   <div class="ig" style="margin-bottom:10px"><label>이름 수정</label><input type="text" id="cpCatName" placeholder="예: 케이"
       style="padding:10px 12px;border:0.5px solid var(--bd);border-radius:9px;font-size:14px;background:var(--bg);color:var(--text);font-family:inherit;width:100%;box-sizing:border-box">
   </div>
@@ -8673,59 +8710,51 @@ window.closeDailySheet = function() {
     <div class="routine-tag" data-val="방광염">방광염</div>
   </div>
   <div class="ig" style="margin-bottom:1rem"><label>메모</label><input type="text" id="cpMemo" placeholder="특이사항, 알레르기 등"></div>
-  <button onclick="saveCatProfile()" class="btn btn-teal" style="width:100%;padding:14px">저장</button>
-
-  <!-- 카드 순서/표시 설정 — 타일 편집 모드로 대체됨 -->
-  <div style="display:none;margin-top:1.5rem;padding-top:1rem;border-top:0.5px solid var(--bd)">
-    <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:.25rem">📋 오늘기록 카드 설정</div>
-    <div style="font-size:11px;color:var(--text3);margin-bottom:.75rem">토글로 카드 표시 여부를 설정하고 ↑↓로 순서를 바꿀 수 있어요</div>
-    <div id="cardOrderUI"></div>
-    <button type="button" onclick="resetCardOrder(currentProfileCat)"
-      style="padding:6px 14px;border:0.5px solid var(--bd);border-radius:8px;background:transparent;color:var(--text3);font-size:11px;cursor:pointer;font-family:inherit;margin-top:6px">
-      🔄 자동 정렬로 초기화
-    </button>
+  <div class="cm-card cm-card--flat" style="padding:13px 15px;margin-top:4px;margin-bottom:16px">
+    <div style="font-size:13px;font-weight:700;color:var(--cm-ink)">오늘기록 카드 구성</div>
+    <div style="font-size:12px;color:var(--cm-faint);margin-top:3px">표시·순서는 오늘 탭의 '편집'에서 바꿔요</div>
   </div>
-
-  <!-- 루틴 항목 설정 -->
-  <div style="margin-top:1.5rem;padding-top:1rem;border-top:0.5px solid var(--bd)">
-    <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:.25rem">💊 투약·루틴 항목 설정</div>
-    <div style="font-size:11px;color:var(--text3);margin-bottom:.75rem">오늘기록 탭 체크리스트에 표시할 항목을 관리해요</div>
-    <div style="margin-bottom:.5rem">
-      <input type="text" id="newRoutineName" placeholder="항목명 (예: 오메가3)"
-        style="width:100%;box-sizing:border-box;padding:10px 12px;border:0.5px solid var(--bd);border-radius:9px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit;margin-bottom:6px">
-      <div style="display:flex;gap:6px">
-        <select id="newRoutineCat" style="flex:1;padding:9px 8px;border:0.5px solid var(--bd);border-radius:9px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit">
-          <option value="med">💊 약·보조제</option>
-          <option value="food">🍖 간식·음수</option>
-          <option value="other">📋 기타루틴</option>
-        </select>
-        <button onclick="addRoutineItem()" style="padding:9px 20px;background:var(--teal);color:#fff;border:none;border-radius:9px;font-size:13px;cursor:pointer;font-family:inherit;font-weight:500;white-space:nowrap">+ 추가</button>
-      </div>
-    </div>
-    <div id="routineItemList" style="max-height:300px;overflow-y:auto"></div>
+  <div id="cardOrderUI" style="display:none"></div>
+  <div style="position:sticky;bottom:0;padding:12px 0 20px;background:var(--cm-bg-soft);border-top:1px solid var(--cm-line);margin-top:8px">
+    <button onclick="saveCatProfile()" class="cm-btn cm-btn--block">저장</button>
   </div>
+</div>
 
-  <!-- 데이터 관리 -->
-  <div style="margin-top:1.5rem;padding-top:1rem;border-top:0.5px solid var(--bd)">
-    <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:.75rem">⚙️ 데이터 관리</div>
-    <div style="display:flex;flex-direction:column;gap:8px">
-      <button type="button" onclick="syncFromDB()"
-        style="padding:10px;border:0.5px solid var(--teal);border-radius:9px;background:transparent;color:var(--teal);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit">
-        ☁️ 서버에서 데이터 다시 불러오기
-      </button>
-      <button type="button" onclick="migrateLocalToDB()"
-        style="padding:10px;border:0.5px solid var(--blue);border-radius:9px;background:transparent;color:var(--blue);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit">
-        📤 로컬 데이터 서버에 업로드
-      </button>
-      <button type="button" onclick="exportCSV()"
-        style="padding:10px;border:0.5px solid var(--bd);border-radius:9px;background:transparent;color:var(--text2);font-size:12px;cursor:pointer;font-family:inherit">
-        📊 CSV로 내보내기
-      </button>
-    </div>
-    <div style="font-size:10px;color:var(--text3);margin-top:.5rem;line-height:1.6">
-      기기를 바꾸거나 데이터가 안 보일 때 "다시 불러오기"를 눌러주세요.
+<div id="catSeg-med" class="cat-seg" style="display:none;padding:16px 16px 40px">
+  <div class="cm-card" style="margin-bottom:16px;padding:14px 15px">
+    <div style="font-size:13px;font-weight:700;color:var(--cm-ink);margin-bottom:10px">항목 추가</div>
+    <input type="text" id="newRoutineName" placeholder="항목명 (예: 오메가3)"
+      style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--cm-line);border-radius:9px;font-size:13px;background:var(--cm-bg);color:var(--cm-ink);font-family:inherit;margin-bottom:8px">
+    <div style="display:flex;gap:6px">
+      <select id="newRoutineCat" style="flex:1;padding:9px 8px;border:1px solid var(--cm-line);border-radius:9px;font-size:12px;background:var(--cm-bg);color:var(--cm-ink);font-family:inherit">
+        <option value="med">약·보조제</option>
+        <option value="food">간식·음수</option>
+        <option value="other">기타루틴</option>
+      </select>
+      <button onclick="addRoutineItem()" class="cm-btn" style="padding:9px 20px;white-space:nowrap;border-radius:9px">+ 추가</button>
     </div>
   </div>
+  <div id="routineItemList"></div>
+</div>
+
+<div id="catSeg-data" class="cat-seg" style="display:none;padding:16px 16px 40px">
+  <div style="font-size:11px;color:var(--cm-faint);margin-bottom:16px;line-height:1.6">기기를 바꾸거나 데이터가 안 보일 때 "다시 불러오기"를 눌러주세요.</div>
+  <button type="button" onclick="syncFromDB()" style="background:var(--cm-surface);border:1px solid var(--cm-line);border-radius:14px;padding:15px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;width:100%;cursor:pointer;font-family:inherit;text-align:left;box-sizing:border-box">
+    <span class="cm-ic cm-ic--sm cm-ic--ghost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></span>
+    <span style="font-size:15px;font-weight:700;color:var(--cm-ink)">서버에서 데이터 불러오기</span>
+    <svg style="margin-left:auto;color:var(--cm-faint)" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+  </button>
+  <button type="button" onclick="migrateLocalToDB()" style="background:var(--cm-surface);border:1px solid var(--cm-line);border-radius:14px;padding:15px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;width:100%;cursor:pointer;font-family:inherit;text-align:left;box-sizing:border-box">
+    <span class="cm-ic cm-ic--sm cm-ic--ghost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg></span>
+    <span style="font-size:15px;font-weight:700;color:var(--cm-ink)">로컬 데이터 서버에 업로드</span>
+    <svg style="margin-left:auto;color:var(--cm-faint)" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+  </button>
+  <button type="button" onclick="exportCSV()" style="background:var(--cm-surface);border:1px solid var(--cm-line);border-radius:14px;padding:15px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;width:100%;cursor:pointer;font-family:inherit;text-align:left;box-sizing:border-box">
+    <span class="cm-ic cm-ic--sm cm-ic--ghost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span>
+    <span style="font-size:15px;font-weight:700;color:var(--cm-ink)">CSV로 내보내기</span>
+    <svg style="margin-left:auto;color:var(--cm-faint)" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+  </button>
+</div>
 </div>
 
 <!-- 면책고지 -->
