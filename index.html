@@ -7276,7 +7276,8 @@ function renderBTResultTable(bt) {
     const _chvSvg = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 8.5L12 15l6.5-6.5"/></svg>';
     catHeader.innerHTML =
       `<span class="yr__y" style="font-size:13px">${cat}</span>`
-      + (_issueTotal > 0 ? `<span class="yr__n" style="color:var(--cm-clay);font-weight:700">↑${catHighCount} ↓${catLowCount}</span>` : '')
+      + (catHighCount > 0 ? `<span class="yr__n" style="color:var(--cm-clay);font-weight:700">↑${catHighCount}</span>` : '')
+      + (catLowCount > 0 ? `<span class="yr__n" style="color:#3A66A6;font-weight:700">↓${catLowCount}</span>` : '')
       + `<span class="yr__line"></span>`
       + `<span class="yr__chev" data-open="${defaultOpen ? '1' : '0'}">${_chvSvg}</span>`;
     const catBody = document.createElement('div');
