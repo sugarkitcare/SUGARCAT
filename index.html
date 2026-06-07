@@ -563,7 +563,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.72</span>
+      <span class="cm-beta">v0.5.73</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -1318,10 +1318,11 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   </div>
 
   <!-- 루틴 스케줄표 -->
-  <div class="card" style="margin-bottom:.75rem">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
-      <div class="card-title" style="margin:0">📋 루틴 스케줄</div>
-      <div style="font-size:11px;color:var(--text3)" id="routineScheduleDate"></div>
+  <div class="cm-card cm-card--flat" style="margin-bottom:.75rem">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:.75rem">
+      <div class="cm-ic cm-ic--sm"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 4.5 19.5 13.5a4.243 4.243 0 0 1-6 6L4.5 10.5a4.243 4.243 0 0 1 6-6Z"/><line x1="9" y1="15" x2="15" y2="9"/></svg></div>
+      <span style="font-size:14px;font-weight:700;color:var(--cm-ink)">루틴 스케줄</span>
+      <span style="font-size:11px;color:var(--cm-faint);margin-left:auto" id="routineScheduleDate"></span>
     </div>
     <div id="routineScheduleList"></div>
   </div>
@@ -4084,6 +4085,13 @@ function histNavDate(delta){
 
 
 /* ── 루틴 스케줄표 ── */
+let routineSchedFilter = 'remaining';
+
+function setRoutineFilter(f) {
+  routineSchedFilter = f;
+  renderRoutineSchedule();
+}
+
 function renderRoutineSchedule(date) {
   const schedDate = date || document.getElementById('histDatePicker')?.value || today();
   const el = document.getElementById('routineScheduleList');
@@ -4094,66 +4102,122 @@ function renderRoutineSchedule(date) {
   const rec = getRec(state.activeCat, schedDate);
   const doneItems = new Set((rec.routines||[]).flatMap(r=>r.items||[]));
 
-  const catLabel2 = {med:'💊 약·보조제', food:'🍖 간식·음수', other:'📋 기타루틴'};
-  const catOrder = ['med','food','other'];
+  const _pill = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 4.5 19.5 13.5a4.243 4.243 0 0 1-6 6L4.5 10.5a4.243 4.243 0 0 1 6-6Z"/><line x1="9" y1="15" x2="15" y2="9"/></svg>';
+  const _bowl = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.6 11.5h18.8a9.4 9.4 0 0 1-18.8 0Z"/><path d="M12 4.2c0 1.4-1.4 1.4-1.4 2.8M15.2 5.2c0 1.1-1.1 1.1-1.1 2.2"/></svg>';
+  const _doc  = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3.5h7l4 4V20.5H7Z"/><path d="M14 3.5V8h4"/><path d="M9.5 12.5h5M9.5 15.5h5"/></svg>';
+  const _chk  = '<svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>';
 
-  let html = '';
+  const catDef = [
+    {key:'med',   label:'약·보조제', icon:_pill},
+    {key:'food',  label:'간식·음수', icon:_bowl},
+    {key:'other', label:'기타루틴',  icon:_doc},
+  ];
+
   let totalDone = 0, totalAll = 0;
-
-  catOrder.forEach(cat => {
-    const items = routineItems.filter(i=>i.cat===cat);
-    if(!items.length) return;
+  catDef.forEach(c => {
+    const items = routineItems.filter(i=>i.cat===c.key);
     totalAll += items.length;
-    const doneCount = items.filter(i=>doneItems.has(i.name)).length;
-    totalDone += doneCount;
+    totalDone += items.filter(i=>doneItems.has(i.name)).length;
+  });
+  const remainCount = totalAll - totalDone;
 
-    html += '<div style="margin-bottom:.75rem">';
-    html += '<div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:.4rem;display:flex;justify-content:space-between">';
-    html += '<span>'+catLabel2[cat]+'</span>';
-    html += '<span style="color:'+(doneCount===items.length?'var(--teal)':'var(--text3)')+'">'+doneCount+'/'+items.length+'</span>';
-    html += '</div>';
-    html += '<div style="display:flex;flex-direction:column;gap:5px">';
+  if(!totalAll) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--cm-faint);text-align:center;padding:.75rem">'
+      + '오늘 탭 → 투약·루틴 섹션에서 항목을 추가하세요</div>';
+    return;
+  }
 
-    items.forEach(item => {
+  const pct = Math.round(totalDone / totalAll * 100);
+
+  // 진행률 바
+  let html = '<div style="margin-bottom:.85rem">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--cm-faint);margin-bottom:.4rem">'
+    + '<span style="font-weight:700;color:var(--cm-ink)">' + totalDone + ' / ' + totalAll + '</span>'
+    + '<span style="font-weight:600;color:' + (pct===100?'var(--cm-green-700)':'var(--cm-faint)') + '">' + pct + '%</span>'
+    + '</div>'
+    + '<div style="height:6px;background:var(--cm-surface-2);border-radius:3px;overflow:hidden">'
+    + '<div style="height:100%;width:'+pct+'%;background:var(--cm-green-700);border-radius:3px;transition:width .4s ease"></div>'
+    + '</div></div>';
+
+  // 필터 세그먼트
+  const filters = [
+    {key:'remaining', label:'남은', count:remainCount},
+    {key:'done',      label:'완료', count:totalDone},
+    {key:'all',       label:'전체', count:totalAll},
+  ];
+  html += '<div style="display:flex;gap:2px;background:var(--cm-surface-2);border-radius:18px;padding:3px;margin-bottom:.85rem">';
+  filters.forEach(f => {
+    const active = routineSchedFilter === f.key;
+    html += '<button type="button" onclick="setRoutineFilter(\''+f.key+'\')"'
+      + ' style="flex:1;padding:5px 4px;border:none;border-radius:14px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;'
+      + (active ? 'background:var(--cm-green-700);color:#fff' : 'background:none;color:var(--cm-ink-soft)') + '">'
+      + f.label + ' <span style="font-size:10px;' + (active?'opacity:.75':'opacity:.6') + '">' + f.count + '</span>'
+      + '</button>';
+  });
+  html += '</div>';
+
+  // 완료 빈상태 (남은 필터에서 모두 완료)
+  if(routineSchedFilter === 'remaining' && remainCount === 0) {
+    html += '<div style="text-align:center;padding:1.75rem .5rem;color:var(--cm-green-700)">'
+      + '<div style="font-size:15px;font-weight:700;margin-bottom:.3rem">오늘 루틴을 모두 완료했어요</div>'
+      + '<div style="font-size:12px;opacity:.7">수고했어요!</div>'
+      + '</div>';
+    el.innerHTML = html;
+    return;
+  }
+
+  // 카테고리 그룹
+  catDef.forEach(c => {
+    const allItems = routineItems.filter(i=>i.cat===c.key);
+    if(!allItems.length) return;
+
+    const filtered = routineSchedFilter === 'remaining' ? allItems.filter(i=>!doneItems.has(i.name))
+                   : routineSchedFilter === 'done'      ? allItems.filter(i=>doneItems.has(i.name))
+                   : allItems;
+    if(!filtered.length) return;
+
+    const catDone = allItems.filter(i=>doneItems.has(i.name)).length;
+    const catAll  = allItems.length;
+    const allCatDone = catDone === catAll;
+
+    html += '<div style="margin-bottom:1rem">';
+    html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:.5rem">'
+      + '<span style="color:var(--cm-green-700);display:flex">' + c.icon + '</span>'
+      + '<span style="font-size:12px;font-weight:700;color:var(--cm-ink);flex:1">' + c.label + '</span>'
+      + '<span style="font-size:11px;font-weight:600;color:' + (allCatDone?'var(--cm-green-700)':'var(--cm-faint)') + '">' + catDone + '/' + catAll + '</span>'
+      + '</div>';
+
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">';
+    filtered.forEach(item => {
       const done = doneItems.has(item.name);
+      const doneRec = done ? (rec.routines||[]).find(r=>r.items?.includes(item.name)) : null;
       html += '<div onclick="toggleScheduleCheck(this)" data-item="'+item.name+'" data-date="'+schedDate+'"'
-        + ' style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;cursor:pointer;'
-        + 'background:'+(done?'rgba(29,158,117,0.1)':'var(--bg2)')+';'
-        + 'border:1.5px solid '+(done?'var(--teal)':'transparent')+'">';
-      // 체크 원형
-      html += '<div style="width:22px;height:22px;border-radius:50%;flex-shrink:0;'
-        + 'background:'+(done?'var(--teal)':'transparent')+';'
-        + 'border:2px solid '+(done?'var(--teal)':'var(--bd)')+';'
-        + 'display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff">'
-        + (done?'✓':'')+'</div>';
-      // 항목명
-      html += '<span style="flex:1;font-size:13px;font-weight:'+(done?'600':'400')+';color:'+(done?'var(--teal)':'var(--text)')+'">'
-        + item.name+'</span>';
-      // 완료 시각
-      if(done) {
-        const doneRec = (rec.routines||[]).find(r=>r.items?.includes(item.name));
-        if(doneRec?.time) html += '<span style="font-size:11px;color:var(--text3)">'+doneRec.time+'</span>';
+        + ' style="display:flex;flex-direction:column;gap:6px;padding:10px 10px 8px;border-radius:12px;cursor:pointer;'
+        + 'background:' + (done?'var(--cm-green-700)':'var(--cm-surface)') + ';'
+        + 'border:1px solid ' + (done?'var(--cm-green-700)':'var(--cm-line)') + '">';
+
+      html += '<div style="display:flex;align-items:flex-start;gap:7px">'
+        + '<div style="width:18px;height:18px;border-radius:50%;flex-shrink:0;margin-top:1px;'
+        + 'background:' + (done?'rgba(255,255,255,.25)':'transparent') + ';'
+        + 'border:1.5px solid ' + (done?'rgba(255,255,255,.7)':'var(--cm-line-2)') + ';'
+        + 'display:flex;align-items:center;justify-content:center">'
+        + (done?_chk:'') + '</div>'
+        + '<span style="font-size:13px;font-weight:' + (done?'700':'500') + ';'
+        + 'color:' + (done?'#fff':'var(--cm-ink)') + ';'
+        + 'line-height:1.3;word-break:keep-all;overflow-wrap:break-word;'
+        + 'display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">'
+        + item.name + '</span>'
+        + '</div>';
+
+      if(done && doneRec?.time) {
+        html += '<div style="font-size:10px;color:rgba(255,255,255,.65);text-align:right;padding-right:2px">' + doneRec.time + '</div>';
       }
       html += '</div>';
     });
     html += '</div></div>';
   });
 
-  // 진행률 바
-  const pct = totalAll ? Math.round(totalDone/totalAll*100) : 0;
-  const progressBar = '<div style="margin-bottom:.75rem">'
-    + '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:.3rem">'
-    + '<span>오늘 완료율</span><span style="font-weight:600;color:'+(pct===100?'var(--teal)':'var(--text)')+'">'+pct+'% ('+totalDone+'/'+totalAll+')</span></div>'
-    + '<div style="height:6px;background:var(--bg2);border-radius:3px;overflow:hidden">'
-    + '<div style="height:100%;width:'+pct+'%;background:var(--teal);border-radius:3px;transition:width .3s"></div>'
-    + '</div></div>';
-
-  if(!totalAll) {
-    el.innerHTML = '<div style="font-size:12px;color:var(--text3);text-align:center;padding:.75rem">'
-      + '오늘기록 탭 → 투약·루틴 섹션에서 항목을 추가하세요</div>';
-  } else {
-    el.innerHTML = progressBar + html;
-  }
+  el.innerHTML = html;
 }
 
 function toggleScheduleCheck(el) {
