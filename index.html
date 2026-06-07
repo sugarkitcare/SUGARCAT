@@ -534,7 +534,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.52</span>
+      <span class="cm-beta">v0.5.53</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">💬 피드백</button>
@@ -1301,21 +1301,27 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
 <!-- ══ 혈액검사 ══ -->
 <div class="sec" id="tab-bloodtest" style="display:none">
   <div class="cm-card" style="padding:16px 16px 14px">
-    <div style="font-size:15px;font-weight:800;color:var(--cm-ink);margin-bottom:10px">혈액검사 기록</div>
-    <div style="background:var(--cm-green-tint);border-radius:10px;padding:.65rem .9rem;margin-bottom:.75rem;font-size:12px;color:var(--cm-green-ink);line-height:1.7">
-      💡 <b>검사지가 여러 장이어도 괜찮아요</b><br>
-      한 장씩 업로드해서 저장하면 날짜별·항목별로 자동 누적돼요.<br>
-      <span style="font-size:11px;opacity:.75">예) 3월 검사지 저장 → 6월 검사지 저장 → 그래프에서 추이 자동 표시</span>
-    </div>
-    <div class="drop-zone" id="btDrop" style="border:1.5px dashed var(--cm-green-edge);border-radius:14px;padding:18px 16px;text-align:center;background:var(--cm-surface);margin-bottom:0">
-      <div style="font-size:13px;font-weight:700;color:var(--cm-green-700);margin-bottom:4px">혈액검사지 업로드</div>
-      <div style="font-size:11.5px;color:var(--cm-faint);margin-bottom:12px">이미지(JPG·PNG) 또는 PDF</div>
-      <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
-        <label for="btFile" class="cm-btn cm-btn--sm" style="cursor:pointer;background:var(--cm-green-700);color:#fff;border:none">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          파일 선택
-        </label>
-        <button type="button" onclick="showBTManualEntry()" class="cm-btn cm-btn--sm" style="cursor:pointer;background:var(--cm-surface);color:var(--cm-green-700);border:1.5px solid var(--cm-green-edge);box-shadow:none">✏️ 직접 입력</button>
+    <div style="font-size:16px;font-weight:800;color:var(--cm-ink);margin-bottom:12px">혈액검사 기록</div>
+    <div id="btDrop">
+      <div onclick="document.getElementById('btFile').click()" style="display:flex;align-items:center;gap:12px;background:var(--cm-surface);border:1px solid var(--cm-line);border-radius:14px;padding:14px 16px;margin-bottom:8px;cursor:pointer">
+        <div class="cm-ic cm-ic--sm cm-ic--ghost">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        </div>
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:700;color:var(--cm-ink)">새 검사지 추가</div>
+          <div style="font-size:12px;color:var(--cm-faint);margin-top:2px">사진·PDF 업로드 시 AI가 항목을 자동 추출해요</div>
+        </div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--cm-faint);flex-shrink:0"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+      <div onclick="showBTManualEntry()" style="display:flex;align-items:center;gap:12px;background:var(--cm-surface);border:1px solid var(--cm-line);border-radius:14px;padding:14px 16px;cursor:pointer">
+        <div class="cm-ic cm-ic--sm cm-ic--ghost">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </div>
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:700;color:var(--cm-ink)">직접 입력으로 추가</div>
+          <div style="font-size:12px;color:var(--cm-faint);margin-top:2px">항목명·수치를 직접 입력해요</div>
+        </div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--cm-faint);flex-shrink:0"><polyline points="9 18 15 12 9 6"/></svg>
       </div>
       <input type="file" id="btFile" accept="image/*,application/pdf" style="display:none">
     </div>
@@ -1367,7 +1373,10 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   </div>
   <div class="cm-card" style="margin-top:.5rem;padding:14px 16px" id="btHistoryCard">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-      <div style="font-size:15px;font-weight:800;color:var(--cm-ink)">저장된 검사 이력</div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="font-size:16px;font-weight:800;color:var(--cm-ink)">저장된 검사 이력</div>
+        <span id="btHistoryCount" style="font-size:11px;font-weight:700;color:var(--cm-faint);background:var(--cm-surface-2);border:1px solid var(--cm-line);border-radius:999px;padding:2px 9px;display:none"></span>
+      </div>
       <button type="button" onclick="if(confirm('전체 혈액검사 이력을 삭제할까요?')){btData=[];saveBT();
       if(sbClient&&currentUser){
         sbClient.from('blood_tests').delete().eq('user_id',currentUser.id)
@@ -1376,7 +1385,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
       const cc2=document.getElementById('btCatCards');if(cc2)cc2.innerHTML='';
       const br2=document.getElementById('btResult');if(br2)br2.style.display='none';
       renderBTHistoryList();renderBTGraphs();renderBTTrend();toast('전체 삭제됐어요');}"
-        class="cm-btn cm-btn--sm" style="background:none;border:1px solid var(--cm-line);color:var(--cm-faint);box-shadow:none;font-weight:500">전체 삭제</button>
+        style="background:none;border:none;padding:0;font-size:12.5px;font-weight:700;color:var(--cm-clay);cursor:pointer;font-family:inherit">전체 삭제</button>
     </div>
     <div id="btHistoryList"><div class="empty">저장된 혈액검사 이력이 없어요</div></div>
   </div>
@@ -7178,6 +7187,8 @@ function renderBTHistoryList() {
   if(!list) return;
   if(!btData.length) {
     list.innerHTML = '<div class="empty">저장된 혈액검사 이력이 없어요</div>';
+    const cntEl = document.getElementById('btHistoryCount');
+    if(cntEl) cntEl.style.display = 'none';
     return;
   }
   list.innerHTML = '';
@@ -7188,38 +7199,41 @@ function renderBTHistoryList() {
     if(!yearMap[yr]) yearMap[yr] = [];
     yearMap[yr].push(bt);
   });
+  const cntEl = document.getElementById('btHistoryCount');
+  if(cntEl) { cntEl.textContent = btData.length+'건'; cntEl.style.display = ''; }
   const years = Object.keys(yearMap).sort((a,b)=>b-a);
   years.forEach((year, yi) => {
     const isOpen = yi === 0;
-    const chevron = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s;flex-shrink:0"><polyline points="6 9 12 15 18 9"/></svg>';
     const yHeader = document.createElement('div');
-    yHeader.style.cssText = 'font-size:13px;font-weight:700;color:var(--cm-faint);padding:10px 4px 6px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none';
-    yHeader.innerHTML = '<span>' + year + '년</span>' + chevron;
-    const svg = yHeader.querySelector('svg');
-    if(svg) svg.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(-90deg)';
+    yHeader.style.cssText = 'display:flex;align-items:center;padding:10px 2px 8px;cursor:pointer;border-bottom:1px solid var(--cm-line);margin-bottom:8px;user-select:none';
+    yHeader.innerHTML = '<span style="font-size:14px;font-weight:800;color:var(--cm-ink)">' + year + '년</span>'
+      + '<span style="font-size:12px;color:var(--cm-faint);margin-left:6px">' + yearMap[year].length + '건</span>'
+      + '<span style="margin-left:auto;color:var(--cm-faint);font-size:16px;line-height:1">' + (isOpen?'∨':'›') + '</span>';
     const yItems = document.createElement('div');
     yItems.style.display = isOpen ? 'block' : 'none';
     yHeader.addEventListener('click', () => {
       const open = yItems.style.display !== 'none';
       yItems.style.display = open ? 'none' : 'block';
-      if(svg) svg.style.transform = open ? 'rotate(-90deg)' : 'rotate(0deg)';
+      const chevEl = yHeader.lastElementChild;
+      if(chevEl) chevEl.textContent = open ? '›' : '∨';
     });
     list.appendChild(yHeader);
     list.appendChild(yItems);
     yearMap[year].forEach(bt => {
       const highCount = (bt.items||[]).filter(it=>it.refHigh!==null&&it.value>it.refHigh).length;
       const lowCount = (bt.items||[]).filter(it=>it.refLow!==null&&it.value<it.refLow).length;
-      const statusColor = highCount+lowCount===0?'var(--cm-green-700)':highCount+lowCount<=2?'var(--cm-amber)':'var(--cm-clay)';
+      const barColor = highCount+lowCount===0 ? 'var(--cm-green-500)' : 'var(--cm-clay)';
       const item = document.createElement('div');
-      item.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--cm-surface);border:1px solid var(--cm-line);border-radius:12px;margin-bottom:8px';
-      item.innerHTML = '<div style="width:3px;height:34px;border-radius:2px;background:'+statusColor+';flex-shrink:0"></div>'
+      item.style.cssText = 'display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--cm-surface);border:1px solid var(--cm-line);border-radius:12px;margin-bottom:6px';
+      item.innerHTML = '<div style="width:3px;height:32px;border-radius:2px;background:'+barColor+';flex-shrink:0"></div>'
         +'<div style="flex:1;min-width:0;cursor:pointer">'
-        +'<div style="font-size:13.5px;font-weight:700;color:var(--cm-ink);margin-bottom:2px">'+bt.cat+' · '+bt.date+'</div>'
-        +'<div style="font-size:11.5px;color:var(--cm-faint)">'+(bt.items||[]).length+'개 항목'
-        +(highCount?' &nbsp;<span style="background:var(--cm-clay-tint);color:var(--cm-clay-ink);padding:1px 7px;border-radius:6px;font-size:10px;font-weight:600">↑높음 '+highCount+'</span>':'')
-        +(lowCount?' &nbsp;<span style="background:#E8F0FE;color:#1967D2;padding:1px 7px;border-radius:6px;font-size:10px;font-weight:600">↓낮음 '+lowCount+'</span>':'')
-        +'</div></div>'
-        +'<button type="button" style="background:none;border:none;font-size:14px;cursor:pointer;padding:4px 8px;opacity:0.4;flex-shrink:0">🗑️</button>';
+        +'<div style="font-size:15px;font-weight:800;color:var(--cm-ink)">'+bt.date+'</div>'
+        +'<div style="font-size:12px;color:var(--cm-faint);margin-top:2px">'+bt.cat+'&nbsp;&nbsp;'+(bt.items||[]).length+'개 항목</div>'
+        +'</div>'
+        +(highCount?'<span style="background:var(--cm-clay-tint);color:var(--cm-clay-ink);padding:2px 8px;border-radius:999px;font-size:10px;font-weight:700;flex-shrink:0">↑높음 '+highCount+'</span>':'')
+        +(lowCount?'<span style="background:#E8F0FE;color:#1967D2;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:700;flex-shrink:0">↓낮음 '+lowCount+'</span>':'')
+        +'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--cm-faint);flex-shrink:0"><polyline points="9 18 15 12 9 6"/></svg>'
+        +'<button type="button" style="background:none;border:none;font-size:14px;cursor:pointer;padding:4px 6px;opacity:0.4;flex-shrink:0">🗑️</button>';
       item.querySelector('div[style*="flex:1"]').addEventListener('click', ()=>{
         btEx = bt;
         renderBTResultTable(bt);
