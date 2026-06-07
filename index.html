@@ -563,7 +563,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.77</span>
+      <span class="cm-beta">v0.5.78</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -2639,7 +2639,7 @@ window.switchCat = function(c) {
       });
       renderGraphs();try{renderBTTrend();}catch(e){};}
     else if(at==='bloodtest'){try{renderBTGraphs();renderBTHistoryList();}catch(e){};}
-    else if(at==='food'){try{renderFdHistory();autoSetFdMode(c);}catch(e){};}
+    else if(at==='food'){try{renderFdHistory();autoSetFdMode(c);initCalcResult();}catch(e){};}
   }catch(e){}
 };
 
@@ -4108,7 +4108,7 @@ window.showTab = function showTab(tab, btn) {
     if(tab==='graph') try{loadGraphHiddenFromDB().then(()=>{applyGraphCards();});renderGraphs();renderBTTrend();const tlDate=document.getElementById('timelineDatePicker');if(tlDate&&!tlDate.value)tlDate.value=today();try{renderTimelineChart(document.getElementById('timelineDatePicker')?.value||today());}catch(e2){console.warn(e2);}}catch(e){console.warn(e);}
     if(tab==='history') try{renderHistory();renderRoutineSchedule();}catch(e){console.warn(e);}
     if(tab==='bloodtest') try{renderBTGraphs();renderBTHistoryList();}catch(e){console.warn(e);}
-    if(tab==='food') try{renderFdHistory();autoSetFdMode(state.activeCat);}catch(e){console.warn(e);}
+    if(tab==='food') try{renderFdHistory();autoSetFdMode(state.activeCat);initCalcResult();}catch(e){console.warn(e);}
     if(tab==='daily') try{window.heroSelectedDate=kstNow();updateHeroDateLabel();updateMetrics();renderRoutineChecklist();renderDailySummary();applyCardOrder(state.activeCat);renderTileGrid(state.activeCat);}catch(e){console.warn(e);}
   } catch(e) { console.error('showTab 오류:', tab, e); }
 }
@@ -6200,9 +6200,30 @@ function toggleCalcDisease(el){
   calcCalorie();
 }
 
+function initCalcResult(){
+  const wtEl=document.getElementById('calcWt');
+  if(wtEl&&(isNaN(parseFloat(wtEl.value))||parseFloat(wtEl.value)<=0)){
+    wtEl.value='3.5';
+  }
+  try{calcCalorie();}catch(e){}
+}
+
 function calcCalorie(){
   const wt=parseFloat(document.getElementById('calcWt').value);
-  if(isNaN(wt)||wt<=0){document.getElementById('calcResult').style.display='none';return}
+  if(isNaN(wt)||wt<=0){
+    const _res=document.getElementById('calcResult');
+    if(_res){
+      _res.style.display='block';
+      const _kEl=document.getElementById('calcKcal');if(_kEl)_kEl.textContent='--';
+      const _bEl=document.getElementById('calcRerBadge');if(_bEl)_bEl.textContent='';
+      const _rEl=document.getElementById('calcStatRer');if(_rEl)_rEl.textContent='--';
+      const _gEl=document.getElementById('calcStatGrams');if(_gEl)_gEl.textContent='--';
+      const _fEl=document.getElementById('calcFormula');if(_fEl)_fEl.textContent='';
+      const _rgEl=document.getElementById('calcRange');if(_rgEl)_rgEl.textContent='';
+      const _nEl=document.getElementById('calcNote');if(_nEl)_nEl.innerHTML='<span style="font-size:12px;color:var(--cm-faint)">계산 조건을 입력하면 권장 칼로리가 나와요.</span>';
+    }
+    return;
+  }
 
   const targetWt=parseFloat(document.getElementById('calcTargetWt').value);
   const age=document.getElementById('calcAge').value;
