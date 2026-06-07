@@ -563,7 +563,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.64</span>
+      <span class="cm-beta">v0.5.65</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -2784,7 +2784,7 @@ function renderGraphCardToggles() {
   const _editIconPaths = {
     activity: 'M3 12h3.2l2.4-7 4 14 2.6-7H21',
     flask:    'M8.5 3h7 M10 3v5l-4.2 9A2.4 2.4 0 0 0 8 20.5h8a2.4 2.4 0 0 0 2.2-3.5L14 8V3',
-    scale:    'M8.3 12.2a3.7 3.7 0 0 1 7.4 0 M12 12.2l2.2-1.7',
+    scale:    'M4 5.5h16a1.5 1.5 0 0 1 1.5 1.5v11a1.5 1.5 0 0 1-1.5 1.5H4A1.5 1.5 0 0 1 2.5 18.5v-11A1.5 1.5 0 0 1 4 5.5Z M8.3 12.2a3.7 3.7 0 0 1 7.4 0 M12 12.2l2.2-1.7',
     lungs:    'M12 4v7 M9 8.5c0 0-3 .8-3.7 4.3C4.8 15.6 5 19 7.4 19c1.7 0 1.9-1.5 2-3 .1-1.6 0-5.2-.4-7.5 M15 8.5c0 0 3 .8 3.7 4.3C19.2 15.6 19 19 16.6 19c-1.7 0-1.9-1.5-2-3-.1-1.6 0-5.2.4-7.5',
     droplet:  'M12 3.6c2.8 3.4 6 7 6 10.1a6 6 0 0 1-12 0C6 10.6 9.2 7 12 3.6Z',
     drops2:   'M12 3.5c2.4 3 5 6 5 8.6a5 5 0 0 1-10 0c0-2.6 2.6-5.6 5-8.6Z M9.5 12.5a2.5 2.5 0 0 0 2.5 2.5',
@@ -4407,7 +4407,7 @@ function renderGraphs(){
   const days=getDateRange();
   const periodLabel=gPeriod===0?'전체':gPeriod+'일';
 
-  const _gcIcons={ket:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 3h7 M10 3v5l-4.2 9A2.4 2.4 0 0 0 8 20.5h8a2.4 2.4 0 0 0 2.2-3.5L14 8V3"/></svg>',wt:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8.3 12.2a3.7 3.7 0 0 1 7.4 0 M12 12.2l2.2-1.7"/></svg>',rr:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v7 M9 8.5c0 0-3 .8-3.7 4.3C4.8 15.6 5 19 7.4 19c1.7 0 1.9-1.5 2-3 .1-1.6 0-5.2-.4-7.5 M15 8.5c0 0 3 .8 3.7 4.3C19.2 15.6 19 19 16.6 19c-1.7 0-1.9-1.5-2-3-.1-1.6 0-5.2.4-7.5"/></svg>',water:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6c2.8 3.4 6 7 6 10.1a6 6 0 0 1-12 0C6 10.6 9.2 7 12 3.6Z"/></svg>'};
+  const _gcIcons={ket:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 3h7 M10 3v5l-4.2 9A2.4 2.4 0 0 0 8 20.5h8a2.4 2.4 0 0 0 2.2-3.5L14 8V3"/></svg>',wt:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5h16a1.5 1.5 0 0 1 1.5 1.5v11a1.5 1.5 0 0 1-1.5 1.5H4A1.5 1.5 0 0 1 2.5 18.5v-11A1.5 1.5 0 0 1 4 5.5Z M8.3 12.2a3.7 3.7 0 0 1 7.4 0 M12 12.2l2.2-1.7"/></svg>',rr:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v7 M9 8.5c0 0-3 .8-3.7 4.3C4.8 15.6 5 19 7.4 19c1.7 0 1.9-1.5 2-3 .1-1.6 0-5.2-.4-7.5 M15 8.5c0 0 3 .8 3.7 4.3C19.2 15.6 19 19 16.6 19c-1.7 0-1.9-1.5-2-3-.1-1.6 0-5.2.4-7.5"/></svg>',water:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6c2.8 3.4 6 7 6 10.1a6 6 0 0 1-12 0C6 10.6 9.2 7 12 3.6Z"/></svg>'};
   const _gcMeta={ket:{name:'케톤',unit:'mmol/L'},wt:{name:'체중',unit:'kg'},rr:{name:'호흡수',unit:'회/분'},water:{name:'음수량',unit:'ml'}};
 
   const defs=[
@@ -6907,6 +6907,7 @@ function renderBTTrend(){
     const ch=document.createElement('button');
     ch.className='cm-chip';ch.type='button';
     ch.dataset.on=btTrendAC.has(cat)?'1':'0';
+    ch.style.cssText='white-space:nowrap;min-width:fit-content;font-size:12px';
     ch.textContent=cat;
     ch.onclick=()=>{
       if(btTrendAC.has(cat)){if(btTrendAC.size>1)btTrendAC.delete(cat);else return;}
@@ -6939,7 +6940,7 @@ function renderBTTrend(){
   const priorityOrder = [...new Set(catPriority)];
 
   // 카테고리별로 묶어서 렌더링
-  const catEmoji2 = {'혈구':'🔴','신장':'🫘','간':'🟡','전해질':'⚡','혈당':'🩸','췌장':'💛','갑상선':'🦋','단백':'💪','지질':'💊','기타':'📋'};
+  const btTrendIcon = cat => (BT_CAT_ICONS[cat]||BT_CAT_ICONS['기타']).replace(/width="\d+"/, 'width="16"').replace(/height="\d+"/, 'height="16"');
   const itemsByCat = {};
   Object.values(map).filter(item=>btTrendAC.has(item.category)).forEach(item=>{
     const cat = item.category||'기타';
@@ -6959,11 +6960,11 @@ function renderBTTrend(){
     const catCard = document.createElement('div');
     catCard.style.cssText='background:var(--bg2);border-radius:10px;padding:.6rem .85rem;margin-bottom:.4rem;cursor:pointer;display:flex;justify-content:space-between;align-items:center';
     catCard.innerHTML = '<div style="display:flex;align-items:center;gap:6px">'
-      +'<span style="font-size:15px">'+(catEmoji2[cat]||'📋')+'</span>'
-      +'<span style="font-size:13px;font-weight:600;color:var(--text)">'+cat+'</span>'
-      +'<span style="font-size:11px;color:var(--text3)">'+catItems.length+'개 항목</span>'
+      +'<span style="color:var(--cm-green-700);display:flex;align-items:center">'+btTrendIcon(cat)+'</span>'
+      +'<span style="font-size:13px;font-weight:600;color:var(--cm-ink)">'+cat+'</span>'
+      +'<span style="font-size:11px;color:var(--cm-faint)">'+catItems.length+'개 항목</span>'
       +'</div>'
-      +'<span style="font-size:11px;color:var(--teal)" id="bt_cat_toggle_'+cat+'">'+(isFirstCat?'▲ 접기':'▼ 펼치기')+'</span>';
+      +'<span style="font-size:11px;color:var(--cm-green-700)" id="bt_cat_toggle_'+cat+'">'+(isFirstCat?'▲ 접기':'▼ 펼치기')+'</span>';
 
     const catContent = document.createElement('div');
     catContent.id = 'bt_cat_content_'+cat;
