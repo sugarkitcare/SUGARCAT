@@ -124,7 +124,7 @@
 /* ---------- cat pills ---------- */
 /* 다크모드 body 색 상속 방지 + 가로 스크롤 지원 */
 .cm-pets{ display:flex; gap:9px; padding:2px 0 14px; align-items:center;
-  background:var(--cm-bg-soft); overflow-x:auto; -webkit-overflow-scrolling:touch;
+  background:var(--cm-bg); overflow-x:auto; -webkit-overflow-scrolling:touch;
   scrollbar-width:none; }
 .cm-pets::-webkit-scrollbar{ display:none; }
 .cm-pet{ display:flex; align-items:center; gap:5px; padding:5px 9px; border-radius:999px;
@@ -604,7 +604,7 @@ input[type="date"]{ border-radius:13px !important; -webkit-border-radius:13px !i
 }
 .cm-pets .cm-pet.active button{ color:#fff; }
 #dailyFeedbackList{ display:none !important; }
-.cm-appbar, .app > .cm-appbar, header{ background:var(--cm-bg) !important; }
+.cm-appbar, .app > .cm-appbar, header, .cm-pets{ background:var(--cm-bg) !important; }
 .cm-card.cm-card--flat{ margin-bottom:.75rem !important; }
 #daily-card-bg,#daily-card-rr,#daily-card-wt,
 #daily-card-ins,#daily-card-meal,#daily-card-water,
