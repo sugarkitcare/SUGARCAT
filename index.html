@@ -563,7 +563,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.67</span>
+      <span class="cm-beta">v0.5.68</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -1274,20 +1274,8 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
 
   <!-- 혈액검사 추이 카드 -->
   <div class="cm-card cm-card--flat" id="btTrendCard2" data-graph-card="bloodtest">
-    <div class="cm-sechead" style="cursor:pointer;margin-bottom:.65rem" onclick="toggleCard('btTrendCard',this)">
-      <div class="cm-ic cm-ic--sm">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6c2.8 3.4 6 7 6 10.1a6 6 0 0 1-12 0C6 10.6 9.2 7 12 3.6Z"/></svg>
-      </div>
-      <div>
-        <div class="cm-sechead__t">혈액검사 항목별 추이</div>
-      </div>
-      <div class="cm-sechead__r">
-        <span style="font-size:11px;color:var(--cm-green-700)">▲ 접기</span>
-      </div>
-    </div>
     <div id="btTrendCard">
-      <div style="font-size:11px;color:var(--cm-faint);margin-bottom:.5rem">혈액검사 탭에서 저장한 결과의 날짜별 변화를 볼 수 있어요</div>
-      <div style="font-size:11px;color:var(--cm-amber);margin-bottom:.5rem">⚠️ 병원마다 정상범위 기준이 다를 수 있어요</div>
+      <div style="font-size:11px;color:var(--cm-amber);margin-bottom:.65rem">⚠️ 병원마다 정상범위 기준이 다를 수 있어요</div>
       <!-- 차트 영역 -->
       <div id="btTrendWrap"></div>
       <div id="btTrendEmpty" style="text-align:center;padding:1.5rem;color:var(--cm-faint);font-size:12px;display:none">
@@ -6951,10 +6939,7 @@ function renderBTTrend(){
       +`<span style="color:var(--cm-green-700);display:flex">${iconSvg}</span>`
       +`<span style="color:var(--cm-faint);display:flex">${chevSvg}</span>`
       +`</div>`
-      +`<div>`
       +`<div style="font-size:13px;font-weight:700;color:var(--cm-ink)">${cat}</div>`
-      +`<div style="font-size:11px;color:var(--cm-faint);margin-top:1px">${catItems.length}개 항목</div>`
-      +`</div>`
       +anomalyHtml;
 
     btn.onclick=()=>openBTTrendCatSheet(cat,catItems);
