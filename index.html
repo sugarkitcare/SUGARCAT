@@ -21,23 +21,33 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --teal:#1D9E75;--teal-l:#E1F5EE;--teal-d:#085041;
-  --amber:#BA7517;--amber-l:#FAEEDA;--amber-d:#633806;
-  --coral:#D85A30;--coral-l:#FAECE7;--coral-d:#712B13;
+  /* ── cm.css 디자인 시스템 매핑 ── */
+  --bg:      var(--cm-bg);
+  --bg2:     var(--cm-bg-soft);
+  --bg3:     var(--cm-surface-2);
+  --surface: var(--cm-surface);
+  --bd:      var(--cm-line);
+  --text:    var(--cm-ink);
+  --text1:   var(--cm-ink);
+  --text2:   var(--cm-ink-soft);
+  --text3:   var(--cm-faint);
+  --teal:    var(--cm-green-700);
+  --teal-l:  var(--cm-green-tint);
+  --teal-d:  var(--cm-green-ink);
+  --teal-bg: var(--cm-green-tint);
+  --teal-bd: var(--cm-green-edge);
+  --coral:   var(--cm-clay);
+  --coral-l: var(--cm-clay-tint);
+  --coral-d: var(--cm-clay-ink);
+  --amber:   var(--cm-amber);
+  --amber-l: var(--cm-amber-tint);
+  --amber-d: #633806;
+  /* cm.css 미포함 색상 */
   --blue:#185FA5;--blue-l:#E6F1FB;
   --purple:#534AB7;--purple-l:#EEEDFE;--purple-d:#3C3489;
   --green:#3B6D11;--green-l:#EAF3DE;
-  --bg:#fff;--bg2:#F1EFE8;--bg3:#F8F7F4;
-  --text:#2C2C2A;--text2:#888780;--text3:#B4B2A9;
-  --bd:rgba(0,0,0,0.1);
 }
-@media(prefers-color-scheme:dark){:root{
-  --bg:#1e1e1c;--bg2:#2C2C2A;--bg3:#232321;
-  --text:#F1EFE8;--text2:#B4B2A9;--text3:#888780;
-  --bd:rgba(255,255,255,0.1);
-  --teal-l:#04342C;--amber-l:#412402;--coral-l:#4A1B0C;--blue-l:#042C53;--purple-l:#26215C;--green-l:#173404;
-}}
-html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(--text);min-height:100vh}
+html,body{font-family:'Noto Sans KR',sans-serif;background:var(--cm-bg);color:var(--text);min-height:100vh}
 .app{max-width:680px;margin:0 auto;padding:0 16px 4rem}
 
 /* 헤더 */
@@ -273,6 +283,17 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
 .danger-banner{background:var(--coral-l);border:1px solid var(--coral);border-radius:10px;padding:.75rem 1rem;margin-bottom:.75rem;font-size:13px;color:var(--coral-d);font-weight:500}
 .warn-banner{background:var(--amber-l);border:1px solid var(--amber);border-radius:10px;padding:.75rem 1rem;margin-bottom:.75rem;font-size:13px;color:var(--amber-d)}
 .ok-banner{background:var(--teal-l);border:1px solid var(--teal);border-radius:10px;padding:.75rem 1rem;margin-bottom:.75rem;font-size:13px;color:var(--teal-d)}
+
+/* ── 배경 통일 ── */
+html,body{background:var(--cm-bg) !important;min-height:100vh}
+#app,.app{background:var(--cm-bg) !important}
+/* ── 시트 배경 ── */
+.sheet,#dailySheet{background:var(--cm-bg-soft) !important}
+.sheet__body{background:var(--cm-bg-soft) !important}
+/* ── 저장 버튼 통일 (파란색 제거) ── */
+.btn-blue{background:var(--cm-green-700) !important;color:#fff !important;border-radius:13px !important;border:none !important}
+/* ── 즐겨찾기 버튼 ── */
+.fav-btn{background:var(--cm-green-tint) !important;color:var(--cm-green-700) !important;border:1px solid var(--cm-green-edge) !important}
 </style>
 </head>
 <body>
@@ -513,7 +534,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.39</span>
+      <span class="cm-beta">v0.5.40</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">💬 피드백</button>
@@ -867,9 +888,9 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
     <div id="mealCard" style="display:none">
     <div style="margin-bottom:.5rem">
       <button type="button" onclick="openFavFoodPickerDaily()"
-        style="padding:6px 14px;border:0.5px solid var(--amber);border-radius:8px;background:var(--amber-l);color:var(--amber-d);font-size:12px;cursor:pointer;font-family:inherit;font-weight:500">⭐ 즐겨찾기에서 선택</button>
+        style="padding:6px 14px;border:1px solid var(--cm-green-edge);border-radius:8px;background:var(--cm-green-tint);color:var(--cm-green-700);font-size:12px;cursor:pointer;font-family:inherit;font-weight:500">즐겨찾기에서 선택</button>
       <div id="favFoodPickerDaily" style="display:none;background:var(--bg2);border-radius:10px;padding:.75rem;margin-top:.5rem">
-        <div style="font-size:11px;font-weight:500;color:var(--text2);margin-bottom:.5rem">⭐ 즐겨찾기 사료 선택</div>
+        <div style="font-size:11px;font-weight:500;color:var(--text2);margin-bottom:.5rem">즐겨찾기 사료 선택</div>
         <div id="favFoodPickerDailyList"></div>
         <button onclick="document.getElementById('favFoodPickerDaily').style.display='none'"
           style="margin-top:.5rem;font-size:11px;color:var(--text3);background:none;border:none;cursor:pointer;font-family:inherit">닫기</button>
@@ -1446,11 +1467,11 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--bg3);color:var(
       <div id="calcManualList"></div>
       <div style="display:flex;gap:6px;align-items:center;margin-top:.4rem;flex-wrap:wrap">
         <button onclick="addManualFood()" style="padding:5px 12px;border:0.5px dashed var(--teal);border-radius:8px;background:transparent;color:var(--teal);font-size:12px;cursor:pointer;font-family:inherit">+ 직접 입력</button>
-        <button onclick="openFavFoodPicker()" style="padding:5px 12px;border:0.5px solid var(--amber);border-radius:8px;background:transparent;color:var(--amber-d);font-size:12px;cursor:pointer;font-family:inherit">⭐ 즐겨찾기에서 선택</button>
+        <button onclick="openFavFoodPicker()" style="padding:5px 12px;border:1px solid var(--cm-green-edge);border-radius:8px;background:var(--cm-green-tint);color:var(--cm-green-700);font-size:12px;cursor:pointer;font-family:inherit;font-weight:500">즐겨찾기에서 선택</button>
       </div>
       <!-- 즐겨찾기 선택 패널 -->
       <div id="favFoodPicker" style="display:none;background:var(--bg2);border-radius:10px;padding:.75rem;margin-top:.5rem">
-        <div style="font-size:11px;font-weight:500;color:var(--text2);margin-bottom:.5rem">⭐ 즐겨찾기 사료 선택</div>
+        <div style="font-size:11px;font-weight:500;color:var(--text2);margin-bottom:.5rem">즐겨찾기 사료 선택</div>
         <div id="favFoodPickerList"></div>
         <button onclick="document.getElementById('favFoodPicker').style.display='none'"
           style="padding:4px 10px;border:0.5px solid var(--bd);border-radius:7px;background:transparent;color:var(--text3);font-size:11px;cursor:pointer;font-family:inherit;margin-top:.5rem">닫기</button>
@@ -5515,11 +5536,11 @@ function renderRoutineChecklist(){
     html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:.25rem">';
     items.forEach(item=>{
       const done = doneItems.has(item.name);
-      const bg = done ? 'rgba(29,158,117,0.12)' : 'var(--bg2)';
-      const border = done ? '1.5px solid var(--teal)' : '1.5px solid transparent';
-      const circBg = done ? 'var(--teal)' : 'transparent';
-      const circBorder = done ? 'var(--teal)' : 'var(--bd)';
-      const txtColor = done ? 'var(--teal)' : 'var(--text)';
+      const bg = done ? 'var(--cm-green-tint)' : 'var(--bg2)';
+      const border = done ? '1.5px solid var(--cm-green-700)' : '1.5px solid transparent';
+      const circBg = done ? 'var(--cm-green-700)' : 'transparent';
+      const circBorder = done ? 'var(--cm-green-700)' : 'var(--cm-line-2)';
+      const txtColor = done ? 'var(--cm-green-700)' : 'var(--text)';
       const txtWeight = done ? '600' : '400';
       html += '<div onclick="toggleRoutineCheck(\'' + item.name + '\')" style="display:flex;align-items:center;gap:7px;padding:8px 10px;border-radius:10px;cursor:pointer;background:'+bg+';border:'+border+'">';
       html += '<div style="width:18px;height:18px;border-radius:50%;flex-shrink:0;background:'+circBg+';border:2px solid '+circBorder+';display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff">'+(done?'✓':'')+'</div>';
