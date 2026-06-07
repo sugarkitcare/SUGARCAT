@@ -563,7 +563,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.58</span>
+      <span class="cm-beta">v0.5.59</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -1205,55 +1205,63 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
 
 <!-- ══ 그래프 ══ -->
 <div class="sec" id="tab-graph" style="display:none">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem">
-    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-      <div style="font-size:11px;color:var(--text2);align-self:center">기간:</div>
-    <div class="g-chip" id="gp7" onclick="setGPeriod(7,this)">7일</div>
-    <div class="g-chip" id="gp30" onclick="setGPeriod(30,this)">30일</div>
-    <div class="g-chip" id="gp90" onclick="setGPeriod(90,this)">90일</div>
-    <div class="g-chip active" id="gpAll" onclick="setGPeriod(0,this)">전체</div>
+  <!-- 기간 필터 -->
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:.75rem">
+    <div class="f-seg" style="flex:1">
+      <button id="gp7" type="button" data-on="0" onclick="setGPeriod(7,this)">7일</button>
+      <button id="gp30" type="button" data-on="0" onclick="setGPeriod(30,this)">30일</button>
+      <button id="gp90" type="button" data-on="0" onclick="setGPeriod(90,this)">90일</button>
+      <button id="gpAll" type="button" data-on="1" onclick="setGPeriod(0,this)">전체</button>
     </div>
     <button type="button" onclick="toggleGraphEdit()"
-      style="padding:5px 10px;border:0.5px solid var(--bd);border-radius:8px;background:transparent;color:var(--text2);font-size:11px;cursor:pointer;font-family:inherit;white-space:nowrap">
-      ⚙️ 카드 편집
+      style="padding:5px 10px;border:1px solid var(--cm-line);border-radius:10px;background:var(--cm-surface-2);color:var(--cm-ink-soft);font-size:11px;cursor:pointer;font-family:inherit;white-space:nowrap;font-weight:600">
+      카드 편집
     </button>
   </div>
   <!-- 카드 편집 패널 -->
-  <div id="graphEditPanel" style="display:none;background:var(--bg2);border-radius:10px;padding:.75rem;margin-bottom:.6rem">
+  <div id="graphEditPanel" style="display:none;background:var(--cm-surface);border:1px solid var(--cm-line);border-radius:14px;padding:.75rem;margin-bottom:.75rem">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
-      <div style="font-size:13px;font-weight:600;color:var(--text)" id="graphEditTitle">그래프 카드 표시 설정</div>
+      <div style="font-size:13px;font-weight:600;color:var(--cm-ink)" id="graphEditTitle">그래프 카드 표시 설정</div>
       <button type="button" id="graphSaveBtn" onclick="saveGraphEdit()"
-        style="padding:5px 14px;background:var(--teal);color:#fff;border:none;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">저장</button>
+        style="padding:5px 14px;background:var(--cm-green-700);color:#fff;border:none;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">저장</button>
     </div>
     <div id="graphCardToggles"></div>
   </div>
-  <div class="g-filter">
-    <div class="g-chip active" data-g="ket">케톤</div>
-    <div class="g-chip active" data-g="wt">체중</div>
-    <div class="g-chip active" data-g="rr">호흡수</div>
-    <div class="g-chip active" data-g="water">음수량</div>
+  <!-- 그래프 타입 칩 -->
+  <div class="cm-chips" id="gTypeChips" style="margin-bottom:.75rem">
+    <button class="cm-chip" type="button" data-g="ket" data-on="1">케톤</button>
+    <button class="cm-chip" type="button" data-g="wt" data-on="1">체중</button>
+    <button class="cm-chip" type="button" data-g="rr" data-on="1">호흡수</button>
+    <button class="cm-chip" type="button" data-g="water" data-on="1">음수량</button>
   </div>
-  <!-- 당뇨 타임라인 차트 (날짜 선택 가능) -->
-  <div class="card" id="timelineCard" data-graph-card="timeline" style="margin-bottom:.75rem">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem;cursor:pointer" onclick="toggleCard('timelineBody',this)">
-      <div style="font-size:13px;font-weight:500;color:var(--text)">💉 당뇨 타임라인</div>
-      <span style="font-size:11px;color:var(--teal)">▲ 접기</span>
+  <!-- 당뇨 타임라인 차트 -->
+  <div class="cm-card cm-card--flat" id="timelineCard" data-graph-card="timeline">
+    <div class="cm-sechead" style="cursor:pointer;margin-bottom:.65rem" onclick="toggleCard('timelineBody',this)">
+      <div class="cm-ic cm-ic--sm">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8l-5-5H9z"/><path d="M9 3v5h5M12 12v6m-3-3h6"/></svg>
+      </div>
+      <div>
+        <div class="cm-sechead__t">당뇨 타임라인</div>
+      </div>
+      <div class="cm-sechead__r">
+        <span style="font-size:11px;color:var(--cm-green-700)">▲ 접기</span>
+      </div>
     </div>
     <div id="timelineBody">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:.6rem">
-        <span style="font-size:11px;color:var(--text2)">날짜:</span>
+        <span style="font-size:11px;color:var(--cm-faint)">날짜:</span>
         <input type="date" id="timelineDatePicker"
-          style="border:0.5px solid var(--bd);border-radius:8px;padding:4px 10px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit;cursor:pointer"
+          style="border:1px solid var(--cm-line);border-radius:8px;padding:4px 10px;font-size:12px;background:var(--cm-surface);color:var(--cm-ink);font-family:inherit;cursor:pointer"
           onchange="try{renderTimelineChart(this.value);}catch(e){}">
         <button type="button" onclick="document.getElementById('timelineDatePicker').value=today();try{renderTimelineChart(today());}catch(e){}"
-          style="padding:4px 10px;border:0.5px solid var(--bd);border-radius:7px;background:transparent;color:var(--teal);font-size:11px;cursor:pointer;font-family:inherit">오늘</button>
+          style="padding:4px 10px;border:1px solid var(--cm-line);border-radius:7px;background:transparent;color:var(--cm-green-700);font-size:11px;cursor:pointer;font-family:inherit;font-weight:600">오늘</button>
       </div>
-      <div style="font-size:11px;color:var(--text3);margin-bottom:.5rem">혈당·인슐린·식사를 시간대별로 확인해요 (당뇨묘 전용)</div>
+      <div style="font-size:11px;color:var(--cm-faint);margin-bottom:.5rem">혈당·인슐린·식사를 시간대별로 확인해요 (당뇨묘 전용)</div>
       <div class="chart-wrap" style="height:200px"><canvas id="timelineChart"></canvas></div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:.4rem;font-size:10px;color:var(--text2)">
-        <span>🟢 혈당 (mg/dL)</span><span>🔶 인슐린 (마커)</span><span>🔷 식사 (마커)</span>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:.4rem;font-size:10px;color:var(--cm-faint)">
+        <span>● 혈당 (mg/dL)</span><span>◆ 인슐린 (마커)</span><span>◆ 식사 (마커)</span>
       </div>
-      <div id="timelineEmpty" style="display:none;text-align:center;padding:1rem;color:var(--text3);font-size:12px">이 날의 기록이 없어요</div>
+      <div id="timelineEmpty" style="display:none;text-align:center;padding:1rem;color:var(--cm-faint);font-size:12px">이 날의 기록이 없어요</div>
     </div>
   </div>
 
@@ -1263,19 +1271,26 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div id="gWaterCard" data-graph-card="water" style="display:none"><div id="waterChartWrap"></div></div>
 
   <!-- 혈액검사 추이 카드 -->
-  <div class="card" id="btTrendCard2" data-graph-card="bloodtest" style="margin-top:.5rem">
-    <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="toggleCard('btTrendCard',this)">
-      <div style="font-size:13px;font-weight:500;color:var(--text)">🩸 혈액검사 항목별 추이</div>
-      <span style="font-size:11px;color:var(--teal)">▲ 접기</span>
+  <div class="cm-card cm-card--flat" id="btTrendCard2" data-graph-card="bloodtest">
+    <div class="cm-sechead" style="cursor:pointer;margin-bottom:.65rem" onclick="toggleCard('btTrendCard',this)">
+      <div class="cm-ic cm-ic--sm">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6c2.8 3.4 6 7 6 10.1a6 6 0 0 1-12 0C6 10.6 9.2 7 12 3.6Z"/></svg>
+      </div>
+      <div>
+        <div class="cm-sechead__t">혈액검사 항목별 추이</div>
+      </div>
+      <div class="cm-sechead__r">
+        <span style="font-size:11px;color:var(--cm-green-700)">▲ 접기</span>
+      </div>
     </div>
     <div id="btTrendCard">
-      <div style="font-size:11px;color:var(--text3);margin:.5rem 0">혈액검사 탭에서 저장한 결과의 날짜별 변화를 볼 수 있어요</div>
-      <div style="font-size:11px;color:var(--amber-d);margin-bottom:.5rem">⚠️ 병원마다 정상범위 기준이 다를 수 있어요</div>
+      <div style="font-size:11px;color:var(--cm-faint);margin-bottom:.5rem">혈액검사 탭에서 저장한 결과의 날짜별 변화를 볼 수 있어요</div>
+      <div style="font-size:11px;color:var(--cm-amber);margin-bottom:.5rem">⚠️ 병원마다 정상범위 기준이 다를 수 있어요</div>
       <!-- 카테고리 필터 -->
-      <div id="btTrendFilter" class="g-filter" style="display:none;margin-bottom:.75rem"></div>
+      <div id="btTrendFilter" class="cm-chips cm-chips--scroll" style="display:none;margin-bottom:.75rem"></div>
       <!-- 차트 영역 -->
       <div id="btTrendWrap"></div>
-      <div id="btTrendEmpty" style="text-align:center;padding:1.5rem;color:var(--text3);font-size:12px;display:none">
+      <div id="btTrendEmpty" style="text-align:center;padding:1.5rem;color:var(--cm-faint);font-size:12px;display:none">
         아직 혈액검사 기록이 없어요<br>
         <span style="font-size:11px">혈액검사 탭에서 검사지를 업로드하고 저장해보세요</span>
       </div>
@@ -2730,20 +2745,20 @@ function applyGraphCards() {
     if(!el) return;
     el.style.display = hidden.includes(card.id) ? 'none' : '';
   });
-  // g-chip 필터도 카드 숨김에 맞게 연동
-  const ketChip = document.querySelector('.g-chip[data-g="ket"]');
-  const wtChip  = document.querySelector('.g-chip[data-g="wt"]');
-  const rrChip  = document.querySelector('.g-chip[data-g="rr"]');
+  // 타입 칩 필터도 카드 숨김에 맞게 연동
+  const ketChip = document.querySelector('.cm-chip[data-g="ket"]');
+  const wtChip  = document.querySelector('.cm-chip[data-g="wt"]');
+  const rrChip  = document.querySelector('.cm-chip[data-g="rr"]');
   if(ketChip)   ketChip.style.display   = hidden.includes('gKetCard')   ? 'none' : '';
   if(wtChip)    wtChip.style.display    = hidden.includes('gWtCard')    ? 'none' : '';
   if(rrChip)    rrChip.style.display    = hidden.includes('gRrCard')    ? 'none' : '';
-  const waterChip = document.querySelector('.g-chip[data-g="water"]');
+  const waterChip = document.querySelector('.cm-chip[data-g="water"]');
   if(waterChip) waterChip.style.display = hidden.includes('gWaterCard') ? 'none' : '';
-  // g-filter 전체가 비면 숨김
-  const gFilter = document.querySelector('.g-filter');
-  if(gFilter) {
-    const anyVisible = [ketChip,wtChip,rrChip].some(c=>c&&c.style.display!=='none');
-    gFilter.style.display = anyVisible ? '' : 'none';
+  // gTypeChips 전체가 비면 숨김
+  const gTypeChips = document.getElementById('gTypeChips');
+  if(gTypeChips) {
+    const anyVisible = [ketChip,wtChip,rrChip,waterChip].some(c=>c&&c.style.display!=='none');
+    gTypeChips.style.display = anyVisible ? '' : 'none';
   }
 }
 
@@ -4323,16 +4338,16 @@ const gActive=new Set(['ket','wt','rr','water']);
 
 function setGPeriod(n,el){
   gPeriod=n;
-  document.querySelectorAll('#gp7,#gp30,#gp90,#gpAll').forEach(x=>x.classList.remove('active'));
-  el.classList.add('active');
+  document.querySelectorAll('#gp7,#gp30,#gp90,#gpAll').forEach(x=>x.dataset.on='0');
+  el.dataset.on='1';
   renderGraphs();
 }
 
-document.querySelectorAll('.g-filter .g-chip').forEach(c=>{
+document.querySelectorAll('#gTypeChips .cm-chip').forEach(c=>{
   c.onclick=()=>{const k=c.dataset.g;
     if(!k)return;
     if(gActive.has(k)){if(gActive.size>1)gActive.delete(k);else return}else gActive.add(k);
-    c.classList.toggle('active',gActive.has(k));renderGraphs();
+    c.dataset.on=gActive.has(k)?'1':'0';renderGraphs();
   };
 });
 
@@ -4367,25 +4382,28 @@ function renderGraphs(){
   const rrWrap=document.getElementById('rrChartWrap');if(rrWrap)rrWrap.innerHTML='';
   const waterWrap=document.getElementById('waterChartWrap');if(waterWrap)waterWrap.innerHTML='';
   const isDark=matchMedia('(prefers-color-scheme:dark)').matches;
-  const gc=isDark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.05)';
+  const gc=isDark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.06)';
   const tc=isDark?'#B4B2A9':'#888780';
   const days=getDateRange();
   const periodLabel=gPeriod===0?'전체':gPeriod+'일';
 
+  const _gcIcons={ket:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 3h7 M10 3v5l-4.2 9A2.4 2.4 0 0 0 8 20.5h8a2.4 2.4 0 0 0 2.2-3.5L14 8V3"/></svg>',wt:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8.3 12.2a3.7 3.7 0 0 1 7.4 0 M12 12.2l2.2-1.7"/></svg>',rr:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v7 M9 8.5c0 0-3 .8-3.7 4.3C4.8 15.6 5 19 7.4 19c1.7 0 1.9-1.5 2-3 .1-1.6 0-5.2-.4-7.5 M15 8.5c0 0 3 .8 3.7 4.3C19.2 15.6 19 19 16.6 19c-1.7 0-1.9-1.5-2-3-.1-1.6 0-5.2.4-7.5"/></svg>',water:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6c2.8 3.4 6 7 6 10.1a6 6 0 0 1-12 0C6 10.6 9.2 7 12 3.6Z"/></svg>'};
+  const _gcMeta={ket:{name:'케톤',unit:'mmol/L'},wt:{name:'체중',unit:'kg'},rr:{name:'호흡수',unit:'회/분'},water:{name:'음수량',unit:'ml'}};
+
   const defs=[
-    {k:'ket',label:`케톤 (mmol/L) — ${periodLabel}`,color:'#BA7517',type:'line',
+    {k:'ket',label:`케톤 (mmol/L) — ${periodLabel}`,color:'#235B43',type:'line',
      yMin:0,yMax:6,
-     annotations:[{value:2.4,color:'rgba(216,90,48,0.5)',label:'2.4 위험'},{value:0.5,color:'rgba(186,117,23,0.3)',label:'0.5 주의'}],
+     annotations:[{value:2.4,color:'#BB5538',label:'2.4 위험'},{value:0.5,color:'rgba(35,91,67,0.45)',label:'0.5 주의'}],
      fn:d=>{const r=getRec(state.activeCat,d);const arr=r.bg.filter(x=>x.ketone!=='').map(x=>parseFloat(x.ketone));return arr.length?parseFloat((arr.reduce((a,b)=>a+b)/arr.length).toFixed(2)):null}},
-    {k:'wt',label:`체중 (kg) — ${periodLabel}`,color:'#534AB7',type:'line',
+    {k:'wt',label:`체중 (kg) — ${periodLabel}`,color:'#235B43',type:'line',
      fn:d=>{const r=getRec(state.activeCat,d);const ws=r.weights||[];return ws.length?ws[ws.length-1].weight:null}},
-    {k:'rr',label:`호흡수 (회/분) — ${periodLabel}`,color:'#1D7FBF',type:'line',
+    {k:'rr',label:`호흡수 (회/분) — ${periodLabel}`,color:'#235B43',type:'line',
      yMin:0,yMax:60,
      multiDataset: true,
-     annotations:[{value:40,color:'rgba(216,90,48,0.5)',label:'40 위험'},{value:30,color:'rgba(186,117,23,0.35)',label:'30 주의'}],
+     annotations:[{value:40,color:'#BB5538',label:'40 위험'},{value:30,color:'rgba(35,91,67,0.45)',label:'30 주의'}],
      fn:d=>{const r=getRec(state.activeCat,d);const arr=(r.rr||[]).map(x=>x.rr).filter(x=>x>0);return arr.length?Math.min(...arr):null}, // ACVIM 수면중 최솟값
      fnByState:(d,st)=>{const r=getRec(state.activeCat,d);const arr=(r.rr||[]).filter(x=>x.state===st).map(x=>x.rr).filter(x=>x>0);return arr.length?Math.min(...arr):null}},
-    {k:'water',label:`음수량 (ml) — ${periodLabel}`,color:'#185FA5',type:'bar',
+    {k:'water',label:`음수량 (ml) — ${periodLabel}`,color:'#235B43',type:'bar',
      fn:d=>{const r=getRec(state.activeCat,d);const arr=r.water||[];return arr.length?arr.reduce((a,b)=>a+b.ml,0):null}},
   ];
 
@@ -4403,20 +4421,20 @@ function renderGraphs(){
     // 호흡수: 상태별 3개 데이터셋
     if(def.multiDataset && def.fnByState) {
       const rrStates = [
-        {st:'sleep', label:'😴 수면', color:'#1D7FBF', dash:[]},
-        {st:'rest',  label:'🐱 안정', color:'#1D9E75', dash:[4,3]},
-        {st:'active',label:'🏃 활동', color:'#BA7517', dash:[2,3]},
+        {st:'sleep', label:'😴 수면', color:'#235B43',           dash:[]},
+        {st:'rest',  label:'🐱 안정', color:'rgba(35,91,67,0.6)', dash:[4,3]},
+        {st:'active',label:'🏃 활동', color:'#BB5538',            dash:[2,3]},
       ];
       const hasAnyRR = days.some(d=>(getRec(state.activeCat,d).rr||[]).length>0);
-      const card=document.createElement('div');card.className='card';
+      const card=document.createElement('div');card.className='cm-card cm-card--flat';
       if(!hasAnyRR){
-        card.innerHTML=`<div class="card-title">${def.label}</div><div style="text-align:center;padding:1.5rem;color:var(--text3);font-size:12px">아직 기록이 없어요<br><span style="font-size:11px">오늘 기록 탭에서 입력하면 그래프가 그려져요 📊</span></div>`;
+        card.innerHTML='<div class="cm-sechead" style="margin-bottom:.5rem"><div class="cm-ic cm-ic--sm">'+_gcIcons.rr+'</div><div><div class="cm-sechead__t">호흡수 <span style="font-size:11px;font-weight:500;color:var(--cm-faint)">회/분</span></div></div><div class="cm-sechead__r" style="font-size:12px;color:var(--cm-faint)">'+periodLabel+'</div></div><div style="text-align:center;padding:1.5rem;color:var(--cm-faint);font-size:12px">아직 기록이 없어요<br><span style="font-size:11px">오늘 기록 탭에서 입력하면 그래프가 그려져요</span></div>';
         wrap.appendChild(card);return;
       }
-      card.innerHTML=`<div class="card-title">${def.label}</div>`
-        +`<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:.4rem;padding:0 .25rem;font-size:10px;color:var(--text2)">`
+      card.innerHTML='<div class="cm-sechead" style="margin-bottom:.5rem"><div class="cm-ic cm-ic--sm">'+_gcIcons.rr+'</div><div><div class="cm-sechead__t">호흡수 <span style="font-size:11px;font-weight:500;color:var(--cm-faint)">회/분</span></div></div><div class="cm-sechead__r" style="font-size:12px;color:var(--cm-faint)">'+periodLabel+'</div></div>'
+        +'<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:.4rem;font-size:10px;color:var(--cm-faint)">'
         +rrStates.map(s=>`<span><span style="display:inline-block;width:12px;height:3px;background:${s.color};border-radius:2px;vertical-align:middle;margin-right:3px"></span>${s.label}</span>`).join('')
-        +`</div><div class="chart-wrap" style="height:170px"><canvas id="gc_${def.k}"></canvas></div>`;
+        +'</div><div class="chart-wrap" style="height:170px"><canvas id="gc_'+def.k+'"></canvas></div>';
       wrap.appendChild(card);
 
       const yOpts={grid:{color:gc},ticks:{color:tc,font:{size:10}},min:def.yMin||0,max:def.yMax||60};
@@ -4459,12 +4477,14 @@ function renderGraphs(){
     const data=def.days?def.days.map(def.fn):days.map(def.fn);
     const hasData=data.some(v=>v!==null);
     const hasAnyData=days.some(d=>def.fn(d)!==null);
-    const card=document.createElement('div');card.className='card';
+    const _m=_gcMeta[def.k]||{name:def.k,unit:''};const _ico=_gcIcons[def.k]||'';
+    const _hd='<div class="cm-sechead" style="margin-bottom:.5rem"><div class="cm-ic cm-ic--sm">'+_ico+'</div><div><div class="cm-sechead__t">'+_m.name+' <span style="font-size:11px;font-weight:500;color:var(--cm-faint)">'+_m.unit+'</span></div></div><div class="cm-sechead__r" style="font-size:12px;color:var(--cm-faint)">'+periodLabel+'</div></div>';
+    const card=document.createElement('div');card.className='cm-card cm-card--flat';
     if(!hasAnyData){
-      card.innerHTML=`<div class="card-title">${def.label}</div><div style="text-align:center;padding:1.5rem;color:var(--text3);font-size:12px">아직 기록이 없어요<br><span style="font-size:11px">오늘 기록 탭에서 입력하면 그래프가 그려져요 📊</span></div>`;
+      card.innerHTML=_hd+'<div style="text-align:center;padding:1.5rem;color:var(--cm-faint);font-size:12px">아직 기록이 없어요<br><span style="font-size:11px">오늘 기록 탭에서 입력하면 그래프가 그려져요</span></div>';
       wrap.appendChild(card);return;
     }
-    card.innerHTML=`<div class="card-title">${def.label}</div><div class="chart-wrap" style="height:160px"><canvas id="gc_${def.k}"></canvas></div>`;
+    card.innerHTML=_hd+'<div class="chart-wrap" style="height:160px"><canvas id="gc_'+def.k+'"></canvas></div>';
     wrap.appendChild(card);
 
     const yOpts={grid:{color:gc},ticks:{color:tc,font:{size:10}}};
@@ -4472,9 +4492,10 @@ function renderGraphs(){
     if(def.yMax!==undefined)yOpts.max=def.yMax;
     if(!hasData){yOpts.min=0;}
 
-    const datasets=[{data,borderColor:def.color,backgroundColor:def.color+'33',
+    const datasets=[{data,borderColor:'#235B43',backgroundColor:def.type==='bar'?'rgba(35,91,67,0.7)':'rgba(35,91,67,0.12)',
       tension:.35,fill:def.type==='line',pointRadius:days.length>60?2:4,
-      pointBackgroundColor:def.color,spanGaps:true,borderRadius:def.type==='bar'?4:0,borderWidth:2}];
+      pointBackgroundColor:'#235B43',pointBorderColor:'#fff',pointBorderWidth:2,
+      spanGaps:true,borderRadius:def.type==='bar'?4:0,borderWidth:2}];
 
     if(def.annotations){
       def.annotations.forEach(ann=>{
@@ -6863,13 +6884,14 @@ function renderBTTrend(){
 
   filter.innerHTML='';
   cats.forEach(cat=>{
-    const ch=document.createElement('div');
-    ch.className='g-chip'+(btTrendAC.has(cat)?' active':'');
+    const ch=document.createElement('button');
+    ch.className='cm-chip';ch.type='button';
+    ch.dataset.on=btTrendAC.has(cat)?'1':'0';
     ch.textContent=cat;
     ch.onclick=()=>{
       if(btTrendAC.has(cat)){if(btTrendAC.size>1)btTrendAC.delete(cat);else return;}
       else btTrendAC.add(cat);
-      ch.classList.toggle('active',btTrendAC.has(cat));
+      ch.dataset.on=btTrendAC.has(cat)?'1':'0';
       renderBTTrend();
     };
     filter.appendChild(ch);

@@ -195,6 +195,8 @@
 
 /* ---------- chips (입력 상태) ---------- */
 .cm-chips{ display:flex; flex-wrap:wrap; gap:8px; }
+.cm-chips--scroll{ flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; -ms-overflow-style:none; padding-bottom:4px; }
+.cm-chips--scroll::-webkit-scrollbar{ display:none; }
 .cm-chip{ font-size:14px; font-weight:700; padding:10px 14px; border-radius:12px;
   background:var(--cm-tan-bg); color:#6B5E40; border:1px solid var(--cm-tan-edge);
   display:inline-flex; align-items:center; gap:7px; transition:transform .08s, box-shadow .12s; }
