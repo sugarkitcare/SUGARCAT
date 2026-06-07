@@ -534,7 +534,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.49</span>
+      <span class="cm-beta">v0.5.50</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">💬 피드백</button>
@@ -7296,7 +7296,7 @@ function renderBTResultTable(bt) {
   orderedCats.forEach(cat => {
     const catHead = document.createElement('div');
     catHead.dataset.btHead = 'true';
-    catHead.style.cssText = 'font-size:12.5px;font-weight:700;color:var(--cm-faint);padding:8px 0 5px;border-bottom:1px solid var(--cm-line);margin-bottom:8px';
+    catHead.style.cssText = 'font-size:11.5px;font-weight:700;color:var(--cm-faint);padding:10px 0 4px;border-bottom:1px solid var(--cm-line);margin-bottom:5px';
     catHead.textContent = cat;
     cardContainer.appendChild(catHead);
     catMap[cat].forEach(({item, idx}) => {
@@ -7309,8 +7309,7 @@ function renderBTResultTable(bt) {
         n:'background:var(--cm-surface-2);color:var(--cm-faint);border:1px solid var(--cm-line)'
       }[s];
       const badgeText = {x:'미입력',h:'높음',l:'낮음',n:'정상'}[s];
-      const badgeHtml = `<span style="display:inline-block;padding:2px 8px;border-radius:8px;font-size:10.5px;font-weight:600;${badgeStyle}">${badgeText}</span>`;
-      const ref = item.refLow!==null||item.refHigh!==null ? `${item.refLow??''}~${item.refHigh??''}` : '';
+      const badgeHtml = `<span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px;flex-shrink:0;${badgeStyle}">${badgeText}</span>`;
       let changeHtml = '';
       if(prevRec && !isNull) {
         const prevItem = prevRec.items.find(i=>(i.abbr||i.name)===(item.abbr||item.name));
@@ -7318,29 +7317,26 @@ function renderBTResultTable(bt) {
           const diff = parseFloat((item.value-prevItem.value).toFixed(2));
           const arrow = diff>0?'▲':diff<0?'▼':'━';
           const c = diff>0?'var(--cm-clay-ink)':diff<0?'var(--cm-green-700)':'var(--cm-faint)';
-          changeHtml = `<div style="font-size:11px;color:${c};font-weight:600;white-space:nowrap">${arrow}${Math.abs(diff)}</div>`;
+          changeHtml = `<span style="font-size:11px;color:${c};font-weight:600;white-space:nowrap;flex-shrink:0">${arrow}${Math.abs(diff)}</span>`;
         }
       }
-      const card = document.createElement('div');
-      card.dataset.btCard = 'true';
-      card.dataset.null = String(isNull);
-      card.style.cssText = 'background:var(--cm-surface);border:1px solid var(--cm-line);border-radius:14px;padding:10px 13px;margin-bottom:6px;display:flex;align-items:center;gap:12px';
-      card.innerHTML =
+      const row = document.createElement('div');
+      row.dataset.btCard = 'true';
+      row.dataset.null = String(isNull);
+      row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:9px 12px;background:var(--cm-surface);border:1px solid var(--cm-line);border-radius:11px;margin-bottom:5px';
+      row.innerHTML =
         '<div style="flex:1;min-width:0">'
-        + `<div style="font-size:13.5px;font-weight:800;color:var(--cm-ink)">${item.name}</div>`
-        + (item.abbr&&item.abbr!==item.name ? `<div style="font-size:11px;color:var(--cm-faint)">${item.abbr}</div>` : '')
-        + (ref ? `<div style="font-size:11px;color:var(--cm-faint)">정상 ${ref}${item.unit?' '+item.unit:''}</div>` : '')
+        + `<span style="font-size:13.5px;font-weight:700;color:var(--cm-ink)">${item.name}</span>`
+        + (item.abbr&&item.abbr!==item.name ? `<span style="font-size:11px;color:var(--cm-faint);margin-left:4px">${item.abbr}</span>` : '')
         + '</div>'
-        + '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0">'
         + badgeHtml
-        + `<div id="btv_${idx}" style="display:flex;align-items:center;gap:5px">`
-        + `<span style="font-size:15px;font-weight:800;color:var(--cm-ink)">${isNull?'–':item.value}</span>`
+        + `<div id="btv_${idx}" style="display:flex;align-items:center;gap:5px;flex-shrink:0">`
+        + `<span style="font-size:14px;font-weight:800;color:var(--cm-ink)">${isNull?'–':item.value}</span>`
         + (item.unit&&!isNull ? `<span style="font-size:11px;color:var(--cm-faint)">${item.unit}</span>` : '')
-        + `<button onclick="editBTItem(${idx})" style="background:var(--cm-surface-2);border:1px solid var(--cm-line);border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;color:var(--cm-green-700);cursor:pointer;font-family:inherit;white-space:nowrap">수정</button>`
+        + `<button onclick="editBTItem(${idx})" style="font-size:11px;font-weight:700;color:var(--cm-green-700);background:var(--cm-green-tint);border:1px solid var(--cm-green-edge);border-radius:7px;padding:4px 8px;cursor:pointer;font-family:inherit;white-space:nowrap">수정</button>`
         + '</div>'
-        + changeHtml
-        + '</div>';
-      cardContainer.appendChild(card);
+        + changeHtml;
+      cardContainer.appendChild(row);
     });
   });
   applyBTResultFilter('all');
