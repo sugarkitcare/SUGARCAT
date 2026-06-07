@@ -563,7 +563,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.60</span>
+      <span class="cm-beta">v0.5.61</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -1691,6 +1691,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
 const SK='dangmyo_v2',SK_BT='bt_v2',SK_FD='fd_v2',SK_CONFIG='cm_sb_cfg';
 let state={cats:[],activeCat:'',records:{},catProfiles:{}};
 let btData=[],fdData=[];
+let btEditMode=false,btEditOriginals={};
 let favFoods=[];
 try{const _ffd=localStorage.getItem('favFoods_v1');if(_ffd)favFoods=JSON.parse(_ffd);}catch(e){}
 try{const d=localStorage.getItem(SK);if(d)state=JSON.parse(d)}catch(e){}
@@ -4007,6 +4008,18 @@ document.getElementById('saveMeal').onclick=()=>{
 
 /* 탭 전환 */
 window.showTab = function showTab(tab, btn) {
+  if(btEditMode && tab !== 'bloodtest') {
+    const hasChanges = Array.from(document.querySelectorAll('#btCatCards input[id^="btvIn_"]')).some(inp => {
+      const idx = parseInt(inp.id.replace('btvIn_',''));
+      const raw = inp.value.trim();
+      const nv = raw===''?null:parseFloat(raw);
+      const ov = btEditOriginals[idx];
+      const oi = ov===null||ov===undefined, ni = nv===null||nv===undefined;
+      return oi!==ni||(!oi&&!ni&&nv!==ov);
+    });
+    if(hasChanges && !confirm('저장하지 않은 변경사항이 있어요. 나가시겠어요?')) return;
+    cancelBTEditMode();
+  }
   try {
     // #app이 혹시 숨겨져 있으면 강제로 표시
     var appEl = document.getElementById('app');
@@ -7396,11 +7409,14 @@ function renderBTResultTable(bt) {
   });
   const nullCount = (bt.items||[]).filter(it=>it.value===null||it.value===undefined).length;
   // Filter bar
+  btEditMode=false; btEditOriginals={};
   const filterBar = document.createElement('div');
-  filterBar.style.cssText = 'display:flex;gap:6px;margin-bottom:10px';
+  filterBar.style.cssText = 'display:flex;align-items:center;gap:6px;margin-bottom:10px';
   filterBar.innerHTML =
     `<button class="bt-filter-btn" data-mode="all" onclick="applyBTResultFilter('all')" style="font-size:12px;font-weight:700;padding:5px 12px;border-radius:8px;cursor:pointer;font-family:inherit;border:1px solid var(--cm-green-700);background:var(--cm-green-700);color:#fff">전체</button>`
-    + (nullCount > 0 ? `<button class="bt-filter-btn" data-mode="missing" onclick="applyBTResultFilter('missing')" style="font-size:12px;font-weight:700;padding:5px 12px;border-radius:8px;cursor:pointer;font-family:inherit;border:1px solid var(--cm-line);background:var(--cm-surface-2);color:var(--cm-faint)">미입력&nbsp;<span style="background:var(--cm-amber-tint);color:#7E5C16;border-radius:6px;padding:1px 6px;font-size:10.5px">${nullCount}</span></button>` : '');
+    + (nullCount > 0 ? `<button class="bt-filter-btn" data-mode="missing" onclick="applyBTResultFilter('missing')" style="font-size:12px;font-weight:700;padding:5px 12px;border-radius:8px;cursor:pointer;font-family:inherit;border:1px solid var(--cm-line);background:var(--cm-surface-2);color:var(--cm-faint)">미입력&nbsp;<span style="background:var(--cm-amber-tint);color:#7E5C16;border-radius:6px;padding:1px 6px;font-size:10.5px">${nullCount}</span></button>` : '')
+    + `<div style="flex:1"></div>`
+    + `<button id="btEditModeBtn" type="button" onclick="toggleBTEditMode()" style="font-size:12px;font-weight:700;padding:5px 11px;border-radius:8px;cursor:pointer;font-family:inherit;border:1px solid var(--cm-line);background:var(--cm-surface-2);color:var(--cm-ink-soft)">✏️ 수정</button>`;
   cardContainer.appendChild(filterBar);
   const orderedCats = [...catOrder.filter(c=>catMap[c]), ...Object.keys(catMap).filter(c=>!catOrder.includes(c))];
   orderedCats.forEach(cat => {
@@ -7438,13 +7454,13 @@ function renderBTResultTable(bt) {
       const row = document.createElement('div');
       row.dataset.btCard = 'true';
       row.dataset.null   = String(isNull);
+      row.dataset.btIdx  = String(idx);
       row.style.cssText  = 'display:flex;align-items:center;gap:5px;padding:7px 9px;background:var(--cm-surface);border:1px solid var(--cm-line);border-radius:10px;min-height:0';
       row.innerHTML =
         `<span style="font-size:12px;font-weight:700;color:var(--cm-ink);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${item.name}">${label}</span>`
         + badgeMap[s]
-        + `<div id="btv_${idx}" style="display:flex;align-items:center;gap:3px;flex-shrink:0">`
+        + `<div id="btv_${idx}" style="display:flex;align-items:center;flex-shrink:0">`
         + `<span style="font-size:13px;font-weight:800;color:var(--cm-ink)">${isNull?'–':item.value}</span>`
-        + `<button onclick="editBTItem(${idx})" style="font-size:10px;font-weight:700;color:var(--cm-green-700);background:var(--cm-green-tint);border:1px solid var(--cm-green-edge);border-radius:6px;padding:2px 6px;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0">수정</button>`
         + '</div>';
       catBody.appendChild(row);
     });
@@ -7539,6 +7555,95 @@ function saveBTItem(idx) {
 
 function cancelBTItem() {
   if(btEx) renderBTResultTable(btEx);
+}
+
+/* ── 전체 수정 모드 ── */
+function toggleBTEditMode() {
+  const btn = document.getElementById('btEditModeBtn');
+  if(!btEditMode) {
+    // 수정 모드 진입
+    btEditMode = true;
+    btEditOriginals = {};
+    if(btn) {
+      btn.textContent = '✓ 저장';
+      btn.style.background = 'var(--cm-green-700)';
+      btn.style.color = '#fff';
+      btn.style.borderColor = 'var(--cm-green-700)';
+    }
+    // 모든 항목 카드를 input으로 전환
+    document.querySelectorAll('#btCatCards [data-bt-card]').forEach(card => {
+      const idx = parseInt(card.dataset.btIdx);
+      if(isNaN(idx) || !btEx?.items?.[idx]) return;
+      const item = btEx.items[idx];
+      btEditOriginals[idx] = (item.value===null||item.value===undefined) ? null : item.value;
+      const vd = document.getElementById('btv_' + idx);
+      if(!vd) return;
+      const isNull = item.value===null||item.value===undefined;
+      vd.innerHTML = `<input id="btvIn_${idx}" type="number" step="any"
+        value="${isNull?'':item.value}"
+        placeholder="${isNull?'값 입력':''}"
+        style="width:60px;padding:3px 5px;border:1px solid var(--cm-green-edge);border-radius:7px;font-size:12px;font-weight:700;background:var(--cm-surface);color:var(--cm-ink);font-family:inherit;box-sizing:border-box;text-align:right;-webkit-appearance:none;appearance:none"
+        oninput="btEditInput(${idx},this)"
+        onfocus="setTimeout(()=>this.scrollIntoView({behavior:'smooth',block:'nearest'}),80)">`;
+    });
+  } else {
+    saveBTEditMode();
+  }
+}
+
+async function saveBTEditMode() {
+  if(!btEx) { btEditMode=false; return; }
+  const btn = document.getElementById('btEditModeBtn');
+  if(btn) { btn.textContent='저장 중...'; btn.disabled=true; }
+
+  let changed = false;
+  document.querySelectorAll('#btCatCards input[id^="btvIn_"]').forEach(inp => {
+    const idx = parseInt(inp.id.replace('btvIn_',''));
+    if(isNaN(idx)||!btEx.items?.[idx]) return;
+    const raw = inp.value.trim();
+    const newVal = raw===''?null:parseFloat(raw);
+    const origVal = btEditOriginals[idx];
+    const oi = origVal===null||origVal===undefined;
+    const ni = newVal===null||newVal===undefined;
+    if(oi!==ni||(!oi&&!ni&&newVal!==origVal)) {
+      if(ni||!isNaN(newVal)) { btEx.items[idx].value=newVal; changed=true; }
+    }
+  });
+
+  btEditMode=false; btEditOriginals={};
+
+  if(changed) {
+    const ei = btData.findIndex(d=>d.cat===btEx.cat&&d.date===btEx.date);
+    if(ei>-1) btData[ei]=btEx;
+    saveBT();
+    try { if(sbClient&&currentUser) await saveBloodTestToDB(btEx); } catch(e) {}
+    try { renderBTTrend(); } catch(e) {}
+    renderBTHistoryList();
+    toast('수치가 수정됐어요 ✅');
+  }
+  renderBTResultTable(btEx);
+}
+
+function cancelBTEditMode() {
+  btEditMode=false; btEditOriginals={};
+}
+
+function btEditInput(idx, inp) {
+  const row = inp.closest('[data-bt-card]');
+  if(!row) return;
+  const wasNull = row.dataset.null === 'true';
+  const nowEmpty = inp.value.trim() === '';
+  if(wasNull === nowEmpty) return; // 변화 없음
+  row.dataset.null = nowEmpty ? 'true' : 'false';
+  // 미입력 카운트 뱃지 업데이트
+  const missingBtn = document.querySelector('.bt-filter-btn[data-mode="missing"]');
+  if(missingBtn) {
+    const nullCount = document.querySelectorAll('#btCatCards [data-bt-card][data-null="true"]').length;
+    const badge = missingBtn.querySelector('span');
+    if(badge) badge.textContent = String(nullCount);
+    if(nullCount === 0) missingBtn.style.display = 'none';
+    else missingBtn.style.display = '';
+  }
 }
 
 /* ── 5번: 카드 접기/펼치기 ── */
