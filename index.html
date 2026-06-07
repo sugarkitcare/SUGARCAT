@@ -563,7 +563,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.57</span>
+      <span class="cm-beta">v0.5.58</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -1712,12 +1712,20 @@ function showBTManualEntry() {
     catSel.innerHTML = (state.cats||[]).filter(Boolean).map(c=>`<option value="${c}">${c}</option>`).join('');
     if(state.activeCat) catSel.value = state.activeCat;
   }
+  // 기존 저장 항목 불러오기
   const rowsEl = document.getElementById('btManualRows');
-  if(rowsEl && rowsEl.children.length === 0) {
+  if(!rowsEl) return;
+  rowsEl.innerHTML = '';
+  const date = document.getElementById('btManualDate')?.value;
+  const cat = catSel?.value || state.activeCat;
+  const existing = btData.find(r => r.cat === cat && r.date === date);
+  if(existing && existing.items && existing.items.length > 0) {
+    existing.items.forEach(item => addBTManualRow(item.abbr || item.name, item.value, item.unit));
+  } else {
     addBTManualRow(); addBTManualRow(); addBTManualRow();
   }
 }
-function addBTManualRow() {
+function addBTManualRow(prefillName, prefillVal, prefillUnit) {
   const el = document.getElementById('btManualRows');
   if(!el) return;
   const id = _btManualRowId++;
@@ -1733,6 +1741,9 @@ function addBTManualRow() {
     + `<span onclick="document.getElementById('btMR_${id}').remove()"
       style="color:var(--text3);cursor:pointer;font-size:18px;text-align:center;line-height:1">×</span>`;
   el.appendChild(div);
+  if(prefillName != null) { const i=document.getElementById('btMN'+id); if(i) i.value=prefillName; }
+  if(prefillVal != null)  { const i=document.getElementById('btMV'+id); if(i) i.value=prefillVal; }
+  if(prefillUnit != null) { const i=document.getElementById('btMU'+id); if(i) i.value=prefillUnit; }
 }
 function saveBTManual() {
   const date = document.getElementById('btManualDate')?.value;
@@ -2966,7 +2977,13 @@ function normalizeBTItem(item) {
 
 // items 배열 전체 정규화
 function normalizeBTItems(items) {
-  return (items||[]).map(normalizeBTItem);
+  const normalized = (items||[]).map(normalizeBTItem);
+  // 같은 abbr/name 중복 제거 — 나중 항목으로 덮어쓰기
+  const seen = new Map();
+  for(const item of normalized) {
+    seen.set(item.abbr || item.name, item);
+  }
+  return Array.from(seen.values());
 }
 
 
