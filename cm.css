@@ -135,7 +135,7 @@
 /* 내부 버튼 min-height 제압해서 칩 세로 팽창 방지 */
 .cm-pet button{ min-height:0 !important; min-width:0 !important; }
 .cm-pet small{ font-size:10px; font-weight:600; color:var(--cm-faint); }
-.cm-pet__gear{ width:14px; height:14px; opacity:.45; }
+.cm-pet__gear{ width:14px; height:14px; opacity:.45; display:block; }
 /* JS가 display:block으로 오버라이드하는 것 차단 — cmb-alert 배너와 중복 */
 #waterGoalBar{ display:none !important; }
 .cm-pet--on{ background:var(--cm-green-700); color:#fff; border-color:var(--cm-green-700);
