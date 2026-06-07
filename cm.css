@@ -492,7 +492,8 @@ input[type="date"]{ border-radius:13px !important; -webkit-border-radius:13px !i
 .tile__status{ display:none !important; }
 .tile:active{ transform:scale(.975); }
 .tile__top{ display:flex; align-items:center; justify-content:space-between; }
-.tile__chev{ color:var(--cm-faint); }
+.tile__label{ display:flex; align-items:center; gap:6px; min-width:0; }
+.tile__chev{ color:var(--cm-faint); flex:0 0 auto; }
 .tile__title{ font-size:14px; font-weight:700; color:var(--cm-ink); }
 .tile__status{ font-size:12px; font-weight:700; margin-top:auto; line-height:1.35; word-break:keep-all; }
 .tile__status[data-tone="muted"]{ color:var(--cm-faint); }
