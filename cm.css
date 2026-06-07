@@ -488,7 +488,7 @@ input[type="date"]{ border-radius:13px !important; -webkit-border-radius:13px !i
 .tgrid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
 .tile{ position:relative; background:var(--cm-surface); border:1px solid var(--cm-line); border-radius:18px;
   box-shadow:var(--cm-shadow-sm); padding:10px 12px; text-align:left; width:100%;
-  display:flex; flex-direction:column; gap:6px; min-height:60px; transition:transform .08s, box-shadow .12s; }
+  display:flex; flex-direction:column; justify-content:center; gap:6px; min-height:60px; transition:transform .08s, box-shadow .12s; }
 .tile__status{ display:none !important; }
 .tile:active{ transform:scale(.975); }
 .tile__top{ display:flex; align-items:center; justify-content:space-between; }
