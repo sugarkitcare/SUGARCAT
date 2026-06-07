@@ -563,7 +563,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.79</span>
+      <span class="cm-beta">v0.5.80</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -1746,7 +1746,13 @@ try{const d=localStorage.getItem(SK_BT);if(d){const raw=JSON.parse(d);btData=raw
 try{const d=localStorage.getItem(SK_FD);if(d)fdData=JSON.parse(d)}catch(e){}
 const saveS=(date)=>{try{localStorage.setItem(SK,JSON.stringify(state))}catch(e){}; if(typeof saveToDB==='function'){saveToDB(date);}};
 const saveBT=()=>{try{localStorage.setItem(SK_BT,JSON.stringify(btData))}catch(e){};if(document.getElementById('tab-graph')?.classList.contains('active'))renderBTTrend();renderBTHistoryList();};
-const saveFD=()=>{try{localStorage.setItem('fd_v2_'+(state.activeCat||'_global'),JSON.stringify(fdData))}catch(e){}};
+const saveFD=()=>{
+  const _cat=state.activeCat||'_global';
+  try{localStorage.setItem('fd_v2_'+_cat,JSON.stringify(fdData))}catch(e){}
+  if(sbClient&&currentUser&&state.activeCat){
+    sbClient.from('user_settings').upsert({user_id:currentUser.id,key:'fd_v2_'+_cat,value:fdData,updated_at:new Date().toISOString()},{onConflict:'user_id,key'}).then(({error})=>{if(error)console.warn('fdData DB 저장 오류:',error);});
+  }
+};
 
 let _btManualRowId = 0;
 
@@ -2614,6 +2620,7 @@ function addFavFoodToCalc(name, kcal, per) {
 window.switchCat = function(c) {
   state.activeCat=c;
   try{loadFoodDataForCat(c);}catch(e){}
+  if(sbClient&&currentUser){try{syncFoodDataFromDB(c).then(()=>{try{renderFdHistory();renderManualFoodList();}catch(e){}});}catch(e){}}
   renderCatBar();updateMetrics();updateWtDiff();updateInsulinNext();saveS();
   const prof=(state.catProfiles||{})[c];
   if(prof&&prof.insulin){const el=document.getElementById('insType');if(el)el.value=prof.insulin;}
@@ -6329,7 +6336,13 @@ function calcCalorie(){
 /* 수동 사료 입력 관리 */
 let manualFoods=[];
 try{const d=localStorage.getItem('manualFoods_v1');if(d)manualFoods=JSON.parse(d);}catch(e){}
-const saveManualFoods=()=>{try{localStorage.setItem('manualFoods_v1_'+(state.activeCat||'_global'),JSON.stringify(manualFoods));}catch(e){}};
+const saveManualFoods=()=>{
+  const _cat=state.activeCat||'_global';
+  try{localStorage.setItem('manualFoods_v1_'+_cat,JSON.stringify(manualFoods));}catch(e){}
+  if(sbClient&&currentUser&&state.activeCat){
+    sbClient.from('user_settings').upsert({user_id:currentUser.id,key:'manualFoods_v1_'+_cat,value:manualFoods,updated_at:new Date().toISOString()},{onConflict:'user_id,key'}).then(({error})=>{if(error)console.warn('manualFoods DB 저장 오류:',error);});
+  }
+};
 
 function renderManualFoodList(){
   const list=document.getElementById('calcManualList');
@@ -8263,7 +8276,13 @@ function saveCatProfile() {
 }
 
 /* ── 11번: 사료 즐겨찾기 ── */
-const saveFavFoods=()=>{try{localStorage.setItem('favFoods_v1_'+(state.activeCat||'_global'),JSON.stringify(favFoods));}catch(e){}};
+const saveFavFoods=()=>{
+  const _cat=state.activeCat||'_global';
+  try{localStorage.setItem('favFoods_v1_'+_cat,JSON.stringify(favFoods));}catch(e){}
+  if(sbClient&&currentUser&&state.activeCat){
+    sbClient.from('user_settings').upsert({user_id:currentUser.id,key:'favFoods_v1_'+_cat,value:favFoods,updated_at:new Date().toISOString()},{onConflict:'user_id,key'}).then(({error})=>{if(error)console.warn('favFoods DB 저장 오류:',error);});
+  }
+};
 
 function toggleFavFood(name, el) {
   const idx=favFoods.indexOf(name);
@@ -8728,6 +8747,10 @@ async function syncFromDB() {
       setTimeout(async ()=>{
         await migrateLocalToDB();
         await migrateBloodTestsToDB();
+        // 사료 데이터 1회 마이그레이션 (localStorage → DB, DB에 없는 경우만)
+        for(const _cat of state.cats){
+          try{await uploadFoodDataToDB(_cat);}catch(e){}
+        }
       }, 2000);
     }
 
@@ -8735,6 +8758,8 @@ async function syncFromDB() {
     try { await loadRoutineForCat(state.activeCat); } catch(e) { console.warn('루틴 로드 오류:', e); }
     try { await loadCGMForCat(state.activeCat); } catch(e) { console.warn('CGM 로드 오류:', e); }
     try { await loadCardSettingsForCat(state.activeCat); } catch(e) { console.warn('카드설정 로드 오류:', e); }
+    // 사료 데이터 DB → localStorage + 메모리 로드
+    try { await syncFoodDataFromDB(state.activeCat); } catch(e) { console.warn('사료 DB 로드 오류:', e); }
 
     toast('☁️ 동기화 완료' + (state.cats.length > 0 ? '! 고양이 '+state.cats.length+'마리' : ''));
     // 동기화 후 daily 탭 데이터만 갱신 (탭 전환 없이)
@@ -9282,6 +9307,48 @@ function migrateFoodDataToCat() {
   migrate('manualFoods_v1','manualFoods_v1_'+firstCat,'manualFoods_v1_backup');
   migrate('fd_v2','fd_v2_'+firstCat,'fd_v2_backup');
   localStorage.setItem('migrated_food_v1','1');
+}
+
+/* DB → localStorage + 메모리 동기화 (한 고양이) */
+async function syncFoodDataFromDB(cat) {
+  if(!sbClient||!currentUser||!cat) return;
+  try{
+    const keys=['favFoods_v1_'+cat,'manualFoods_v1_'+cat,'fd_v2_'+cat];
+    const {data}=await sbClient.from('user_settings')
+      .select('key,value').eq('user_id',currentUser.id).in('key',keys);
+    if(!data||!data.length) return;
+    let updated=false;
+    data.forEach(row=>{
+      const val=Array.isArray(row.value)?row.value:(typeof row.value==='string'?JSON.parse(row.value):[]);
+      try{localStorage.setItem(row.key,JSON.stringify(val));}catch(e){}
+      if(row.key==='favFoods_v1_'+cat&&cat===state.activeCat){favFoods=val;updated=true;}
+      if(row.key==='manualFoods_v1_'+cat&&cat===state.activeCat){manualFoods=val;updated=true;}
+      if(row.key==='fd_v2_'+cat&&cat===state.activeCat){fdData=val;updated=true;}
+    });
+    if(updated) try{renderFdHistory();}catch(e){}
+  }catch(e){console.warn('사료 DB 로드 오류:',e);}
+}
+
+/* localStorage → DB 1회 마이그레이션 (DB에 없는 key만 INSERT) */
+async function uploadFoodDataToDB(cat) {
+  if(!sbClient||!currentUser||!cat) return;
+  try{
+    const keys=['favFoods_v1_'+cat,'manualFoods_v1_'+cat,'fd_v2_'+cat];
+    const {data:existing}=await sbClient.from('user_settings')
+      .select('key').eq('user_id',currentUser.id).in('key',keys);
+    const existingSet=new Set((existing||[]).map(r=>r.key));
+    const toInsert=[];
+    keys.forEach(k=>{
+      if(existingSet.has(k)) return; // DB에 이미 있으면 스킵
+      const raw=localStorage.getItem(k);
+      if(!raw||raw==='[]') return;
+      try{toInsert.push({user_id:currentUser.id,key:k,value:JSON.parse(raw),updated_at:new Date().toISOString()});}catch(e){}
+    });
+    if(toInsert.length){
+      const {error}=await sbClient.from('user_settings').insert(toInsert);
+      if(error) console.warn('사료 DB 마이그레이션 오류:',error);
+    }
+  }catch(e){console.warn('uploadFoodDataToDB 오류:',e);}
 }
 
 /* 앱 시작 시 1회 마이그레이션 + per-cat 데이터 로드 */
