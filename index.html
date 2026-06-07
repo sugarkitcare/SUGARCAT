@@ -563,7 +563,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.68</span>
+      <span class="cm-beta">v0.5.69</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -6935,11 +6935,13 @@ function renderBTTrend(){
     btn.type='button';
     btn.style.cssText='text-align:left;cursor:pointer;width:100%;border:none;padding:13px 12px;display:flex;flex-direction:column;gap:7px;background:var(--cm-surface);border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,0.06)';
     btn.innerHTML=
-      `<div style="display:flex;align-items:center;justify-content:space-between">`
-      +`<span style="color:var(--cm-green-700);display:flex">${iconSvg}</span>`
-      +`<span style="color:var(--cm-faint);display:flex">${chevSvg}</span>`
+      `<div style="display:flex;align-items:center;justify-content:space-between;gap:4px">`
+      +`<span style="display:flex;align-items:center;gap:6px;min-width:0">`
+      +`<span style="color:var(--cm-green-700);display:flex;flex:0 0 auto">${iconSvg}</span>`
+      +`<span style="font-size:13px;font-weight:700;color:var(--cm-ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${cat}</span>`
+      +`</span>`
+      +`<span style="color:var(--cm-faint);display:flex;flex:0 0 auto">${chevSvg}</span>`
       +`</div>`
-      +`<div style="font-size:13px;font-weight:700;color:var(--cm-ink)">${cat}</div>`
       +anomalyHtml;
 
     btn.onclick=()=>openBTTrendCatSheet(cat,catItems);
