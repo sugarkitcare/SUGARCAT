@@ -534,7 +534,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.51</span>
+      <span class="cm-beta">v0.5.52</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">💬 피드백</button>
@@ -7283,7 +7283,6 @@ function renderBTResultTable(bt) {
     if(!catMap[cat]) catMap[cat] = [];
     catMap[cat].push({item, idx});
   });
-  const prevRec = btData.filter(d=>d.cat===bt.cat&&d.date<bt.date).sort((a,b)=>b.date<a.date?-1:1)[0];
   const nullCount = (bt.items||[]).filter(it=>it.value===null||it.value===undefined).length;
   // Filter bar
   const filterBar = document.createElement('div');
@@ -7298,54 +7297,42 @@ function renderBTResultTable(bt) {
     const catHighCount = entries.filter(({item}) => { const v=item.value; return v!==null&&v!==undefined&&item.refHigh!==null&&v>item.refHigh; }).length;
     const catLowCount  = entries.filter(({item}) => { const v=item.value; return v!==null&&v!==undefined&&item.refLow!==null&&v<item.refLow;  }).length;
     const defaultOpen  = catHighCount + catLowCount > 0;
-    const issueHtml    = (catHighCount > 0 ? `<span style="font-size:10px;color:var(--cm-clay-ink);margin-left:6px">높음 ${catHighCount}</span>` : '')
-                       + (catLowCount  > 0 ? `<span style="font-size:10px;color:var(--cm-green-ink);margin-left:4px">낮음 ${catLowCount}</span>`  : '');
     const catHeader = document.createElement('div');
     catHeader.dataset.btHead = 'true';
     catHeader.setAttribute('onclick', 'toggleBtCat(this)');
-    catHeader.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:8px 4px;cursor:pointer;border-bottom:1px solid var(--cm-line);margin-bottom:4px;margin-top:10px;user-select:none';
+    catHeader.style.cssText = 'display:flex;align-items:center;gap:8px;padding:9px 4px;cursor:pointer;border-bottom:1px solid var(--cm-line);margin-bottom:6px;margin-top:12px;user-select:none';
     catHeader.innerHTML =
-      `<div style="display:flex;align-items:center"><span style="font-size:12px;font-weight:700;color:var(--cm-faint)">${cat}</span>${issueHtml}</div>`
-      + `<span style="font-size:12px;color:var(--cm-faint)">${defaultOpen ? '▼' : '›'}</span>`;
+      `<span class="bt-cat-arrow" style="width:18px;height:18px;border-radius:5px;background:var(--cm-surface-2);border:1px solid var(--cm-line);display:inline-flex;align-items:center;justify-content:center;font-size:10px;color:var(--cm-faint);flex-shrink:0">${defaultOpen?'▼':'›'}</span>`
+      + `<span style="font-size:12px;font-weight:700;color:var(--cm-ink-soft)">${cat}</span>`
+      + (catHighCount > 0 ? `<span style="font-size:10px;font-weight:700;color:var(--cm-clay-ink);background:var(--cm-clay-tint);border:1px solid var(--cm-clay-edge);border-radius:999px;padding:1px 6px">높음 ${catHighCount}</span>` : '')
+      + (catLowCount  > 0 ? `<span style="font-size:10px;font-weight:700;color:var(--cm-green-ink);background:var(--cm-green-tint);border:1px solid var(--cm-green-edge);border-radius:999px;padding:1px 6px">낮음 ${catLowCount}</span>`  : '')
+      + `<span style="font-size:11px;color:var(--cm-faint);margin-left:auto">${entries.length}개</span>`;
     const catBody = document.createElement('div');
     catBody.className = 'bt-cat-body';
-    catBody.style.display = defaultOpen ? '' : 'none';
+    catBody.style.display = defaultOpen ? 'grid' : 'none';
+    catBody.style.gridTemplateColumns = '1fr 1fr';
+    catBody.style.gap = '5px';
     entries.forEach(({item, idx}) => {
       const isNull = item.value === null || item.value === undefined;
       const s = isNull ? 'x' : (item.refLow!==null&&item.value<item.refLow?'l':item.refHigh!==null&&item.value>item.refHigh?'h':'n');
-      const badgeStyle = {
-        x:'background:var(--cm-amber-tint);color:#7E5C16;border:1px solid var(--cm-amber-edge)',
-        h:'background:var(--cm-clay-tint);color:var(--cm-clay-ink);border:1px solid var(--cm-clay-edge)',
-        l:'background:var(--cm-green-tint);color:var(--cm-green-ink);border:1px solid var(--cm-green-edge)',
-        n:'background:var(--cm-surface-2);color:var(--cm-faint);border:1px solid var(--cm-line)'
-      }[s];
-      const badgeText = {x:'미입력',h:'높음',l:'낮음',n:'정상'}[s];
-      const badgeHtml = `<span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:999px;flex-shrink:0;${badgeStyle}">${badgeText}</span>`;
-      let changeHtml = '';
-      if(prevRec && !isNull) {
-        const prevItem = prevRec.items.find(i=>(i.abbr||i.name)===(item.abbr||item.name));
-        if(prevItem && prevItem.value!==null) {
-          const diff  = parseFloat((item.value-prevItem.value).toFixed(2));
-          const arrow = diff>0?'▲':diff<0?'▼':'━';
-          const c     = diff>0?'var(--cm-clay-ink)':diff<0?'var(--cm-green-700)':'var(--cm-faint)';
-          changeHtml  = `<span style="font-size:10px;color:${c};font-weight:600;white-space:nowrap;flex-shrink:0">${arrow}${Math.abs(diff)}</span>`;
-        }
-      }
+      const badgeMap = {
+        x:`<span style="font-size:10px;font-weight:700;padding:1px 5px;border-radius:999px;flex-shrink:0;background:var(--cm-amber-tint);color:#7E5C16;border:1px solid var(--cm-amber-edge)">미입력</span>`,
+        h:`<span style="font-size:10px;font-weight:700;padding:1px 5px;border-radius:999px;flex-shrink:0;background:var(--cm-clay-tint);color:var(--cm-clay-ink);border:1px solid var(--cm-clay-edge)">높음</span>`,
+        l:`<span style="font-size:10px;font-weight:700;padding:1px 5px;border-radius:999px;flex-shrink:0;background:var(--cm-green-tint);color:var(--cm-green-ink);border:1px solid var(--cm-green-edge)">낮음</span>`,
+        n:''
+      };
+      const label = (item.abbr && item.abbr !== item.name) ? item.abbr : item.name;
       const row = document.createElement('div');
       row.dataset.btCard = 'true';
       row.dataset.null   = String(isNull);
-      row.style.cssText  = 'display:flex;align-items:center;gap:6px;padding:7px 10px;background:var(--cm-surface);border:1px solid var(--cm-line);border-radius:10px;margin-bottom:4px;min-height:0';
+      row.style.cssText  = 'display:flex;align-items:center;gap:5px;padding:7px 9px;background:var(--cm-surface);border:1px solid var(--cm-line);border-radius:10px;min-height:0';
       row.innerHTML =
-        `<span style="flex:1;font-size:13px;font-weight:700;color:var(--cm-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${item.name}`
-        + (item.abbr&&item.abbr!==item.name ? `<small style="font-weight:500;color:var(--cm-faint);font-size:11px;margin-left:3px">${item.abbr}</small>` : '')
-        + '</span>'
-        + badgeHtml
-        + `<div id="btv_${idx}" style="display:flex;align-items:center;gap:4px;flex-shrink:0">`
+        `<span style="font-size:12px;font-weight:700;color:var(--cm-ink);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${item.name}">${label}</span>`
+        + badgeMap[s]
+        + `<div id="btv_${idx}" style="display:flex;align-items:center;gap:3px;flex-shrink:0">`
         + `<span style="font-size:13px;font-weight:800;color:var(--cm-ink)">${isNull?'–':item.value}</span>`
-        + (item.unit&&!isNull ? `<span style="font-size:10px;color:var(--cm-faint)">${item.unit}</span>` : '')
-        + `<button onclick="editBTItem(${idx})" style="font-size:10px;font-weight:700;color:var(--cm-green-700);background:var(--cm-green-tint);border:1px solid var(--cm-green-edge);border-radius:6px;padding:3px 7px;cursor:pointer;font-family:inherit;white-space:nowrap">수정</button>`
-        + '</div>'
-        + changeHtml;
+        + `<button onclick="editBTItem(${idx})" style="font-size:10px;font-weight:700;color:var(--cm-green-700);background:var(--cm-green-tint);border:1px solid var(--cm-green-edge);border-radius:6px;padding:2px 6px;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0">수정</button>`
+        + '</div>';
       catBody.appendChild(row);
     });
     cardContainer.appendChild(catHeader);
@@ -7371,7 +7358,7 @@ function applyBTResultFilter(mode) {
   });
   container.querySelectorAll('.bt-cat-body').forEach(body => {
     const hasVisible = Array.from(body.querySelectorAll('[data-bt-card]')).some(c => c.style.display !== 'none');
-    body.style.display = hasVisible ? '' : 'none';
+    body.style.display = hasVisible ? 'grid' : 'none';
     const header = body.previousElementSibling;
     if(header && header.dataset.btHead) header.style.display = hasVisible ? '' : 'none';
   });
@@ -7380,9 +7367,9 @@ function applyBTResultFilter(mode) {
 function toggleBtCat(header) {
   const body  = header.nextElementSibling;
   if(!body) return;
-  const arrow  = header.lastElementChild;
+  const arrow  = header.querySelector('.bt-cat-arrow');
   const isOpen = body.style.display !== 'none';
-  body.style.display = isOpen ? 'none' : '';
+  body.style.display = isOpen ? 'none' : 'grid';
   if(arrow) arrow.textContent = isOpen ? '›' : '▼';
 }
 
