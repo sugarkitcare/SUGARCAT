@@ -7354,13 +7354,21 @@ function applyBTResultFilter(mode) {
   });
   container.querySelectorAll('[data-bt-card]').forEach(card => {
     const isNull = card.dataset.null === 'true';
-    card.style.display = (mode === 'all' ? !isNull : isNull) ? '' : 'none';
+    card.style.display = (mode === 'all' ? !isNull : isNull) ? 'flex' : 'none';
   });
   container.querySelectorAll('.bt-cat-body').forEach(body => {
-    const hasVisible = Array.from(body.querySelectorAll('[data-bt-card]')).some(c => c.style.display !== 'none');
-    body.style.display = hasVisible ? 'grid' : 'none';
+    const anyMatch = Array.from(body.querySelectorAll('[data-bt-card]')).some(c => {
+      const isNull = c.dataset.null === 'true';
+      return mode === 'all' ? !isNull : isNull;
+    });
     const header = body.previousElementSibling;
-    if(header && header.dataset.btHead) header.style.display = hasVisible ? '' : 'none';
+    if(header && header.dataset.btHead) header.style.display = anyMatch ? '' : 'none';
+    if(!anyMatch) {
+      body.style.display = 'none';
+    } else if(mode === 'missing') {
+      body.style.display = 'grid';
+    }
+    // mode === 'all': preserve existing open/close state — do NOT override
   });
 }
 
