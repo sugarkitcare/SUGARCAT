@@ -534,7 +534,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.53</span>
+      <span class="cm-beta">v0.5.54</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">💬 피드백</button>
@@ -1301,7 +1301,6 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
 <!-- ══ 혈액검사 ══ -->
 <div class="sec" id="tab-bloodtest" style="display:none">
   <div class="cm-card" style="padding:16px 16px 14px">
-    <div style="font-size:16px;font-weight:800;color:var(--cm-ink);margin-bottom:12px">혈액검사 기록</div>
     <div id="btDrop">
       <div onclick="document.getElementById('btFile').click()" style="display:flex;align-items:center;gap:12px;background:var(--cm-surface);border:1px solid var(--cm-line);border-radius:14px;padding:14px 16px;margin-bottom:8px;cursor:pointer">
         <div class="cm-ic cm-ic--sm cm-ic--ghost">
@@ -1374,7 +1373,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-card" style="margin-top:.5rem;padding:14px 16px" id="btHistoryCard">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
       <div style="display:flex;align-items:center;gap:8px">
-        <div style="font-size:16px;font-weight:800;color:var(--cm-ink)">저장된 검사 이력</div>
+        <div style="font-size:16px;font-weight:800;color:var(--cm-ink)">검사 이력</div>
         <span id="btHistoryCount" style="font-size:11px;font-weight:700;color:var(--cm-faint);background:var(--cm-surface-2);border:1px solid var(--cm-line);border-radius:999px;padding:2px 9px;display:none"></span>
       </div>
       <button type="button" onclick="if(confirm('전체 혈액검사 이력을 삭제할까요?')){btData=[];saveBT();
@@ -7201,37 +7200,41 @@ function renderBTHistoryList() {
   });
   const cntEl = document.getElementById('btHistoryCount');
   if(cntEl) { cntEl.textContent = btData.length+'건'; cntEl.style.display = ''; }
+  const svgOpen = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--cm-faint);flex-shrink:0"><path d="M5.5 8.5L12 15l6.5-6.5"/></svg>';
+  const svgClosed = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--cm-faint);flex-shrink:0"><path d="M9 5l7 7-7 7"/></svg>';
   const years = Object.keys(yearMap).sort((a,b)=>b-a);
   years.forEach((year, yi) => {
     const isOpen = yi === 0;
     const yHeader = document.createElement('div');
     yHeader.style.cssText = 'display:flex;align-items:center;padding:10px 2px 8px;cursor:pointer;border-bottom:1px solid var(--cm-line);margin-bottom:8px;user-select:none';
-    yHeader.innerHTML = '<span style="font-size:14px;font-weight:800;color:var(--cm-ink)">' + year + '년</span>'
+    yHeader.innerHTML = '<span style="font-size:14px;font-weight:700;color:var(--cm-ink)">' + year + '년</span>'
       + '<span style="font-size:12px;color:var(--cm-faint);margin-left:6px">' + yearMap[year].length + '건</span>'
-      + '<span style="margin-left:auto;color:var(--cm-faint);font-size:16px;line-height:1">' + (isOpen?'∨':'›') + '</span>';
+      + '<span style="margin-left:auto;display:flex;align-items:center">' + (isOpen?svgOpen:svgClosed) + '</span>';
     const yItems = document.createElement('div');
     yItems.style.display = isOpen ? 'block' : 'none';
     yHeader.addEventListener('click', () => {
       const open = yItems.style.display !== 'none';
       yItems.style.display = open ? 'none' : 'block';
-      const chevEl = yHeader.lastElementChild;
-      if(chevEl) chevEl.textContent = open ? '›' : '∨';
+      const chevSpan = yHeader.lastElementChild;
+      if(chevSpan) chevSpan.innerHTML = open ? svgClosed : svgOpen;
     });
     list.appendChild(yHeader);
     list.appendChild(yItems);
-    yearMap[year].forEach(bt => {
+    yearMap[year].forEach((bt, btIdx) => {
+      const isLast = btIdx === yearMap[year].length - 1;
       const highCount = (bt.items||[]).filter(it=>it.refHigh!==null&&it.value>it.refHigh).length;
       const lowCount = (bt.items||[]).filter(it=>it.refLow!==null&&it.value<it.refLow).length;
-      const barColor = highCount+lowCount===0 ? 'var(--cm-green-500)' : 'var(--cm-clay)';
+      const dotColor = highCount+lowCount===0 ? 'var(--cm-green-500)' : 'var(--cm-clay)';
       const item = document.createElement('div');
-      item.style.cssText = 'display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--cm-surface);border:1px solid var(--cm-line);border-radius:12px;margin-bottom:6px';
-      item.innerHTML = '<div style="width:3px;height:32px;border-radius:2px;background:'+barColor+';flex-shrink:0"></div>'
+      item.style.cssText = 'display:flex;align-items:center;gap:10px;padding:12px 4px'
+        + (isLast ? '' : ';border-bottom:1px solid var(--cm-line)');
+      item.innerHTML = '<div style="width:8px;height:8px;border-radius:999px;background:'+dotColor+';flex-shrink:0"></div>'
         +'<div style="flex:1;min-width:0;cursor:pointer">'
         +'<div style="font-size:15px;font-weight:800;color:var(--cm-ink)">'+bt.date+'</div>'
         +'<div style="font-size:12px;color:var(--cm-faint);margin-top:2px">'+bt.cat+'&nbsp;&nbsp;'+(bt.items||[]).length+'개 항목</div>'
         +'</div>'
-        +(highCount?'<span style="background:var(--cm-clay-tint);color:var(--cm-clay-ink);padding:2px 8px;border-radius:999px;font-size:10px;font-weight:700;flex-shrink:0">↑높음 '+highCount+'</span>':'')
-        +(lowCount?'<span style="background:#E8F0FE;color:#1967D2;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:700;flex-shrink:0">↓낮음 '+lowCount+'</span>':'')
+        +(highCount?'<span style="font-size:12px;font-weight:700;color:var(--cm-clay);flex-shrink:0">↑'+highCount+'</span>':'')
+        +(lowCount?'<span style="font-size:12px;font-weight:700;color:var(--cm-green-700);flex-shrink:0">↓'+lowCount+'</span>':'')
         +'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--cm-faint);flex-shrink:0"><polyline points="9 18 15 12 9 6"/></svg>'
         +'<button type="button" style="background:none;border:none;font-size:14px;cursor:pointer;padding:4px 6px;opacity:0.4;flex-shrink:0">🗑️</button>';
       item.querySelector('div[style*="flex:1"]').addEventListener('click', ()=>{
