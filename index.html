@@ -3812,12 +3812,9 @@ function renderDailySummary() {
     const waterTarget = latestWtHero ? Math.round(latestWtHero * 40) : 0;
     const heroPct = waterTarget > 0 ? Math.min(100, Math.round(todayWaterTotal / waterTarget * 100)) : 0;
 
-    // 부제목: 날짜 + 체중 + 질환
-    var _dp = d.split('-');
-    var _dl = parseInt(_dp[1]) + '월 ' + parseInt(_dp[2]) + '일';
-    var _wl = latestWtHero ? latestWtHero + 'kg' : '';
+    // 부제목: 날짜 + 질환
     var _dzl = diseases.length > 0 ? diseases[0] : '';
-    if(dateEl) dateEl.textContent = [_dl, _wl, _dzl].filter(Boolean).join(' · ');
+    if(dateEl) dateEl.textContent = _dzl ? d + ' · ' + _dzl : d;
 
     // 원형 게이지
     const arc = document.getElementById('heroGaugeArc');
