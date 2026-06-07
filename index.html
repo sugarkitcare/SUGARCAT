@@ -563,7 +563,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.65</span>
+      <span class="cm-beta">v0.5.66</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -1207,16 +1207,20 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
 <div class="sec" id="tab-graph" style="display:none">
   <!-- 세그먼트: 생체지표 / 혈액검사 -->
   <div class="f-seg" style="margin-bottom:.6rem">
-    <button id="gSegBio" type="button" data-on="1" onclick="setGSeg('bio')">생체 지표</button>
-    <button id="gSegBT"  type="button" data-on="0" onclick="setGSeg('bt')">혈액검사</button>
+    <button id="gSegBio" type="button" data-on="1" onclick="setGSeg('bio')" style="padding:7px 0;font-size:13px">생체 지표</button>
+    <button id="gSegBT"  type="button" data-on="0" onclick="setGSeg('bt')" style="padding:7px 0;font-size:13px">혈액검사</button>
   </div>
-  <!-- 기간 필터 -->
-  <div style="display:flex;align-items:center;gap:10px;margin-bottom:.75rem" id="gPeriodBar">
-    <div class="f-seg" style="flex:1">
-      <button id="gp7" type="button" data-on="0" onclick="setGPeriod(7,this)">7일</button>
-      <button id="gp30" type="button" data-on="0" onclick="setGPeriod(30,this)">30일</button>
-      <button id="gp90" type="button" data-on="0" onclick="setGPeriod(90,this)">90일</button>
-      <button id="gpAll" type="button" data-on="1" onclick="setGPeriod(0,this)">전체</button>
+  <!-- 기간 필터 (pill 스타일) -->
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:.75rem" id="gPeriodBar">
+    <div style="display:flex;flex:1;gap:2px;background:var(--cm-surface-2);border-radius:18px;padding:3px">
+      <button id="gp7"   type="button" data-on="0" onclick="setGPeriod(7,this)"
+        style="flex:1;padding:5px 4px;border:none;border-radius:14px;background:none;font-size:13px;font-weight:600;color:var(--cm-ink-soft);cursor:pointer;font-family:inherit">7일</button>
+      <button id="gp30"  type="button" data-on="0" onclick="setGPeriod(30,this)"
+        style="flex:1;padding:5px 4px;border:none;border-radius:14px;background:none;font-size:13px;font-weight:600;color:var(--cm-ink-soft);cursor:pointer;font-family:inherit">30일</button>
+      <button id="gp90"  type="button" data-on="0" onclick="setGPeriod(90,this)"
+        style="flex:1;padding:5px 4px;border:none;border-radius:14px;background:none;font-size:13px;font-weight:600;color:var(--cm-ink-soft);cursor:pointer;font-family:inherit">90일</button>
+      <button id="gpAll" type="button" data-on="1" onclick="setGPeriod(0,this)"
+        style="flex:1;padding:5px 4px;border:none;border-radius:14px;background:var(--cm-green-700);font-size:13px;font-weight:600;color:#fff;cursor:pointer;font-family:inherit">전체</button>
     </div>
     <button type="button" onclick="toggleGraphEdit()"
       style="padding:5px 10px;border:1px solid var(--cm-line);border-radius:10px;background:var(--cm-surface-2);color:var(--cm-ink-soft);font-size:11px;cursor:pointer;font-family:inherit;white-space:nowrap;font-weight:600">
@@ -1284,8 +1288,6 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
     <div id="btTrendCard">
       <div style="font-size:11px;color:var(--cm-faint);margin-bottom:.5rem">혈액검사 탭에서 저장한 결과의 날짜별 변화를 볼 수 있어요</div>
       <div style="font-size:11px;color:var(--cm-amber);margin-bottom:.5rem">⚠️ 병원마다 정상범위 기준이 다를 수 있어요</div>
-      <!-- 카테고리 필터 -->
-      <div id="btTrendFilter" class="cm-chips cm-chips--scroll" style="display:none;margin-bottom:.75rem"></div>
       <!-- 차트 영역 -->
       <div id="btTrendWrap"></div>
       <div id="btTrendEmpty" style="text-align:center;padding:1.5rem;color:var(--cm-faint);font-size:12px;display:none">
@@ -4365,8 +4367,14 @@ const gActive=new Set(['ket','wt','rr','water']);
 
 function setGPeriod(n,el){
   gPeriod=n;
-  document.querySelectorAll('#gp7,#gp30,#gp90,#gpAll').forEach(x=>x.dataset.on='0');
+  document.querySelectorAll('#gp7,#gp30,#gp90,#gpAll').forEach(x=>{
+    x.dataset.on='0';
+    x.style.background='none';
+    x.style.color='var(--cm-ink-soft)';
+  });
   el.dataset.on='1';
+  el.style.background='var(--cm-green-700)';
+  el.style.color='#fff';
   renderGraphs();
 }
 
@@ -6865,203 +6873,95 @@ function renderBTTrend(){
   try { btTrendInst.forEach(c=>c.destroy()); } catch(e) {}
   btTrendInst=[];
   const wrap=document.getElementById('btTrendWrap');
-  const filter=document.getElementById('btTrendFilter');
   const empty=document.getElementById('btTrendEmpty');
-  if(!wrap||!filter)return;
+  if(!wrap)return;
 
-  // 현재 고양이 기준 데이터만 (cat 없는 데이터는 제외)
   const myData=btData.filter(d=>d.cat===state.activeCat);
   if(!myData.length){
-    wrap.innerHTML='';filter.innerHTML='';
-    filter.style.display='none';
+    wrap.innerHTML='';
     if(empty)empty.style.display='block';
     return;
   }
   if(empty)empty.style.display='none';
-  filter.style.display='';
 
-  // 항목별 날짜 데이터 집계 — 키를 정규화된 abbr 기준으로 통일
+  // 항목별 날짜 데이터 집계
   const map={};
   myData.forEach(rec=>(rec.items||[]).forEach(item=>{
-    // 정규화: BT_NORM_REVERSE로 표준 abbr 확보
-    const stdAbbr = BT_NORM_REVERSE[item.abbr] || BT_NORM_REVERSE[item.name] || item.abbr || item.name;
-    const k = stdAbbr;
+    const stdAbbr=BT_NORM_REVERSE[item.abbr]||BT_NORM_REVERSE[item.name]||item.abbr||item.name;
+    const k=stdAbbr;
     if(!map[k])map[k]={name:BT_ABBR_NAME[stdAbbr]||item.name,abbr:k,unit:item.unit,
       category:BT_ABBR_CAT[stdAbbr]||item.category,refLow:item.refLow,refHigh:item.refHigh,points:[]};
-    const existPt = map[k].points.find(p=>p.date===rec.date);
-    if(!existPt){
+    if(!map[k].points.find(p=>p.date===rec.date))
       map[k].points.push({date:rec.date,value:item.value});
-    }
-    // refLow/refHigh가 없으면 새 데이터로 보완
-    if(item.refLow!==null&&map[k].refLow===null) map[k].refLow=item.refLow;
-    if(item.refHigh!==null&&map[k].refHigh===null) map[k].refHigh=item.refHigh;
+    if(item.refLow!==null&&map[k].refLow===null)map[k].refLow=item.refLow;
+    if(item.refHigh!==null&&map[k].refHigh===null)map[k].refHigh=item.refHigh;
   }));
 
-  // 카테고리 필터 — 항상 현재 데이터 기준으로 갱신
-  const cats=[...new Set(Object.values(map).map(v=>v.category).filter(Boolean))];
-  btTrendAC.clear();
-  cats.forEach(c=>btTrendAC.add(c));
-
-  filter.innerHTML='';
-  cats.forEach(cat=>{
-    const ch=document.createElement('button');
-    ch.className='cm-chip';ch.type='button';
-    ch.dataset.on=btTrendAC.has(cat)?'1':'0';
-    ch.style.cssText='white-space:nowrap;min-width:fit-content;font-size:12px';
-    ch.textContent=cat;
-    ch.onclick=()=>{
-      if(btTrendAC.has(cat)){if(btTrendAC.size>1)btTrendAC.delete(cat);else return;}
-      else btTrendAC.add(cat);
-      ch.dataset.on=btTrendAC.has(cat)?'1':'0';
-      renderBTTrend();
-    };
-    filter.appendChild(ch);
-  });
-
-  wrap.innerHTML='';
-  const isDark=matchMedia('(prefers-color-scheme:dark)').matches;
-  const gc=isDark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.05)';
-  const tc=isDark?'#B4B2A9':'#888780';
-
-  // 질환별 우선 카테고리 설정
-  const profile = (state.catProfiles||{})[state.activeCat]||{};
-  const diseases = profile.diseases||[];
-  const hasDM = diseases.includes('DM');
-  const hasCKD = diseases.includes('CKD')||diseases.includes('PKD');
-  const hasHCM = diseases.includes('HCM');
-
-  // 카테고리 우선순위: 질환에 따라 자동 설정
-  const catPriority = ['신장','혈당','전해질','혈구','간','단백','췌장','심장','갑상선','뇨검','혈가스','지질','기타'];
-  if(hasCKD || hasHCM) {
-    // 신부전·HCM: 신장을 혈당 앞으로
-    const idx = catPriority.indexOf('신장');
+  // 카테고리 우선순위
+  const profile=(state.catProfiles||{})[state.activeCat]||{};
+  const diseases=profile.diseases||[];
+  const catPriority=['신장','혈당','전해질','혈구','간','단백','췌장','심장','갑상선','뇨검','혈가스','지질','기타'];
+  if(diseases.includes('CKD')||diseases.includes('PKD')||diseases.includes('HCM')){
+    const idx=catPriority.indexOf('신장');
     if(idx>0){catPriority.splice(idx,1);catPriority.unshift('신장');}
   }
-  const priorityOrder = [...new Set(catPriority)];
 
-  // 카테고리별로 묶어서 렌더링
-  const btTrendIcon = cat => (BT_CAT_ICONS[cat]||BT_CAT_ICONS['기타']).replace(/width="\d+"/, 'width="16"').replace(/height="\d+"/, 'height="16"');
-  const itemsByCat = {};
-  Object.values(map).filter(item=>btTrendAC.has(item.category)).forEach(item=>{
-    const cat = item.category||'기타';
-    if(!itemsByCat[cat]) itemsByCat[cat]=[];
+  // 카테고리별 묶기
+  const itemsByCat={};
+  Object.values(map).forEach(item=>{
+    const cat=item.category||'기타';
+    if(!itemsByCat[cat])itemsByCat[cat]=[];
     itemsByCat[cat].push(item);
   });
 
-  const orderedCatKeys = [...priorityOrder.filter(c=>itemsByCat[c]), ...Object.keys(itemsByCat).filter(c=>!priorityOrder.includes(c))];
-  let globalIdx = 0;
+  const orderedCats=[...catPriority.filter(c=>itemsByCat[c]),...Object.keys(itemsByCat).filter(c=>!catPriority.includes(c))];
 
-  orderedCatKeys.forEach(cat => {
-    const catItems = itemsByCat[cat];
-    if(!catItems||!catItems.length) return;
+  wrap.innerHTML='';
+  const grid=document.createElement('div');
+  grid.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:.25rem';
 
-    // 카테고리 헤더 카드 (접기/펼치기)
-    const isFirstCat = false; // 기본 모두 접힘
-    const catCard = document.createElement('div');
-    catCard.style.cssText='background:var(--bg2);border-radius:10px;padding:.6rem .85rem;margin-bottom:.4rem;cursor:pointer;display:flex;justify-content:space-between;align-items:center';
-    catCard.innerHTML = '<div style="display:flex;align-items:center;gap:6px">'
-      +'<span style="color:var(--cm-green-700);display:flex;align-items:center">'+btTrendIcon(cat)+'</span>'
-      +'<span style="font-size:13px;font-weight:600;color:var(--cm-ink)">'+cat+'</span>'
-      +'<span style="font-size:11px;color:var(--cm-faint)">'+catItems.length+'개 항목</span>'
-      +'</div>'
-      +'<span style="font-size:11px;color:var(--cm-green-700)" id="bt_cat_toggle_'+cat+'">'+(isFirstCat?'▲ 접기':'▼ 펼치기')+'</span>';
+  const chevSvg='<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>';
 
-    const catContent = document.createElement('div');
-    catContent.id = 'bt_cat_content_'+cat;
-    catContent.style.display = isFirstCat ? 'block' : 'none';
+  orderedCats.forEach(cat=>{
+    const catItems=itemsByCat[cat];
+    if(!catItems||!catItems.length)return;
 
-    catCard.onclick = () => {
-      const isOpen = catContent.style.display !== 'none';
-      catContent.style.display = isOpen ? 'none' : 'block';
-      document.getElementById('bt_cat_toggle_'+cat).textContent = isOpen ? '▼ 펼치기' : '▲ 접기';
-    };
+    // 최신값 기준 이상치 카운트
+    let highCnt=0,lowCnt=0;
+    catItems.forEach(item=>{
+      const sorted=item.points.slice().sort((a,b)=>a.date.localeCompare(b.date));
+      const lv=sorted[sorted.length-1]?.value;
+      if(lv==null)return;
+      if(item.refHigh!==null&&lv>item.refHigh)highCnt++;
+      else if(item.refLow!==null&&lv<item.refLow)lowCnt++;
+    });
 
-    wrap.appendChild(catCard);
-    wrap.appendChild(catContent);
+    const iconSvg=(BT_CAT_ICONS[cat]||BT_CAT_ICONS['기타']).replace(/width="\d+"/,'width="18"').replace(/height="\d+"/,'height="18"');
+    const anomalyHtml=highCnt>0
+      ?`<span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:6px;background:rgba(187,85,56,.13);color:#BB5538">↑${highCnt}</span>`
+      :lowCnt>0
+      ?`<span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:6px;background:var(--cm-green-tint);color:var(--cm-green-700)">↓${lowCnt}</span>`
+      :`<span style="font-size:11px;font-weight:600;padding:2px 7px;border-radius:6px;background:var(--cm-surface-2);color:var(--cm-faint)">정상</span>`;
 
-    catItems.forEach((item,i)=>{
-      const idx = globalIdx++;
-      const pts=item.points.sort((a,b)=>a.date>b.date?1:-1);
-      if(!pts.length)return;
+    const btn=document.createElement('button');
+    btn.type='button';
+    btn.style.cssText='text-align:left;cursor:pointer;width:100%;border:none;padding:13px 12px;display:flex;flex-direction:column;gap:7px;background:var(--cm-surface);border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,0.06)';
+    btn.innerHTML=
+      `<div style="display:flex;align-items:center;justify-content:space-between">`
+      +`<span style="color:var(--cm-green-700);display:flex">${iconSvg}</span>`
+      +`<span style="color:var(--cm-faint);display:flex">${chevSvg}</span>`
+      +`</div>`
+      +`<div>`
+      +`<div style="font-size:13px;font-weight:700;color:var(--cm-ink)">${cat}</div>`
+      +`<div style="font-size:11px;color:var(--cm-faint);margin-top:1px">${catItems.length}개 항목</div>`
+      +`</div>`
+      +anomalyHtml;
 
-      const dates=pts.map(p=>p.date);
-      const vals=pts.map(p=>p.value);
-      const lastVal=vals[vals.length-1];
-      const st=item.refLow!==null&&lastVal<item.refLow?'l':
-        item.refHigh!==null&&lastVal>item.refHigh?'h':'n';
-      const badge=st==='n'?'<span class="bn">정상</span>':
-        st==='h'?'<span class="bh">높음</span>':'<span class="bl">낮음</span>';
+    btn.onclick=()=>openBTTrendCatSheet(cat,catItems);
+    grid.appendChild(btn);
+  });
 
-      // Y축 범위
-      const allV=[...vals,item.refLow,item.refHigh].filter(v=>v!==null);
-      const minV=Math.min(...allV);
-      const maxV=Math.max(...allV);
-      const pad=(maxV-minV)*0.3||1;
-
-      const card=document.createElement('div');
-      card.className='card';
-      card.style.marginBottom='.6rem';
-      card.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">'
-        +'<span style="font-size:12px;font-weight:500;color:var(--text)">'+item.name
-        +(item.abbr&&item.abbr!==item.name?' ('+item.abbr+')':'')
-        +' <span style="color:var(--text3);font-size:10px">'+( item.unit||'')+'</span></span>'
-        +badge+'</div>'
-        +'<div class="chart-wrap" style="height:130px"><canvas id="btt_'+idx+'"></canvas></div>';
-      catContent.appendChild(card);
-
-      const datasets=[{
-        data:vals,
-        borderColor:'#1D9E75',
-        backgroundColor:'rgba(29,158,117,0.1)',
-        tension:.35,fill:true,
-        pointRadius:dates.length===1?6:4,
-        pointBackgroundColor:vals.map(v=>
-          item.refHigh!==null&&v>item.refHigh?'#D85A30':
-          item.refLow!==null&&v<item.refLow?'#185FA5':'#1D9E75'
-        ),
-        borderWidth:2,spanGaps:true
-      }];
-
-      // 정상범위 참조선
-      if(item.refHigh!==null)datasets.push({
-        data:dates.map(()=>item.refHigh),
-        borderColor:'rgba(216,90,48,0.4)',borderWidth:1.5,
-        borderDash:[5,4],pointRadius:0,fill:false,tension:0
-      });
-      if(item.refLow!==null)datasets.push({
-        data:dates.map(()=>item.refLow),
-        borderColor:'rgba(24,95,165,0.4)',borderWidth:1.5,
-        borderDash:[5,4],pointRadius:0,fill:false,tension:0
-      });
-
-      const inst=new Chart(document.getElementById('btt_'+idx),{
-        type:'line',
-        data:{labels:dates.map(d=>d.slice(5)),datasets},
-        options:{
-          responsive:true,maintainAspectRatio:false,
-          interaction:{mode:'nearest',axis:'x',intersect:false},
-          plugins:{legend:{display:false},
-            tooltip:{callbacks:{
-              label:ctx=>{
-                if(ctx.datasetIndex>0)return null;
-                const v=ctx.parsed.y;
-                const flag=item.refHigh!==null&&v>item.refHigh?' ↑':
-                  item.refLow!==null&&v<item.refLow?' ↓':'';
-                return v+' '+(item.unit||'')+flag;
-              }
-            }}
-          },
-          scales:{
-            x:{grid:{color:gc},ticks:{color:tc,font:{size:10}}},
-            y:{grid:{color:gc},ticks:{color:tc,font:{size:10}},
-              min:parseFloat((minV-pad).toFixed(1)),
-              max:parseFloat((maxV+pad).toFixed(1))}
-          }
-        }
-      });
-      btTrendInst.push(inst);
-    }); // catItems.forEach
-  }); // orderedCatKeys.forEach
+  wrap.appendChild(grid);
 }
 
 
@@ -7651,6 +7551,117 @@ function openBTCatSheet(cat) {
 
   back.dataset.open  = '1';
   sheet.dataset.open = '1';
+}
+
+function openBTTrendCatSheet(cat, catItems) {
+  const back  = document.getElementById('btCatSheetBack');
+  const sheet = document.getElementById('btCatSheet');
+  const head  = document.getElementById('btCatSheetHead');
+  const body  = document.getElementById('btCatSheetBody');
+  if(!back||!sheet||!head||!body) return;
+
+  btCatSheetInst.forEach(c=>{try{c.destroy();}catch(e){}});
+  btCatSheetInst=[];
+  body.innerHTML='';
+
+  // 이상치 카운트 (최신값 기준)
+  let highCnt=0,lowCnt=0;
+  catItems.forEach(item=>{
+    const sorted=item.points.slice().sort((a,b)=>a.date.localeCompare(b.date));
+    const lv=sorted[sorted.length-1]?.value;
+    if(lv==null)return;
+    if(item.refHigh!==null&&lv>item.refHigh)highCnt++;
+    else if(item.refLow!==null&&lv<item.refLow)lowCnt++;
+  });
+
+  const iconSvg=BT_CAT_ICONS[cat]||BT_CAT_ICONS['기타'];
+  const xSvg='<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+  const badgesHtml=
+    (highCnt>0?`<span style="font-size:11px;font-weight:700;padding:1px 6px;border-radius:6px;background:rgba(187,85,56,.13);color:#BB5538">↑${highCnt}</span>`:'')
+    +(lowCnt>0?`<span style="font-size:11px;font-weight:700;padding:1px 6px;border-radius:6px;background:var(--cm-green-tint);color:var(--cm-green-700)">↓${lowCnt}</span>`:'');
+
+  head.innerHTML=
+    `<div class="cm-ic" style="flex:0 0 auto;color:var(--cm-green-700)">${iconSvg}</div>`
+    +`<div class="tx" style="flex:1;min-width:0">`
+    +`<b style="display:flex;align-items:center;gap:5px;font-size:14px;font-weight:700">${cat}${badgesHtml}</b>`
+    +`<span style="font-size:11px;color:var(--cm-faint)">${catItems.length}개 항목</span></div>`
+    +`<button class="sheet__close" onclick="closeBTCatSheet()" type="button" aria-label="닫기" style="padding:4px;background:none;border:none;cursor:pointer;color:var(--cm-faint)">${xSvg}</button>`;
+
+  const isDark=matchMedia('(prefers-color-scheme:dark)').matches;
+  const gc=isDark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.06)';
+  const tc=isDark?'#B4B2A9':'#888780';
+
+  catItems.forEach((item,i)=>{
+    const pts=(item.points||[]).filter(p=>p.value!=null).slice().sort((a,b)=>a.date.localeCompare(b.date));
+    const dates=[...new Set(pts.map(p=>p.date))];
+    const values=dates.map(d=>pts.find(p=>p.date===d)?.value??null);
+    const lv=pts[pts.length-1]?.value;
+    const s=lv==null?'x':item.refLow!==null&&lv<item.refLow?'l':item.refHigh!==null&&lv>item.refHigh?'h':'n';
+    const badgeHtml=
+      s==='h'?`<span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px;background:rgba(187,85,56,.13);color:#BB5538;border:1px solid rgba(187,85,56,.25)">높음</span>`
+      :s==='l'?`<span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px;background:var(--cm-green-tint);color:var(--cm-green-700);border:1px solid var(--cm-green-edge)">낮음</span>`
+      :s==='n'?`<span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px;background:var(--cm-surface-2);color:var(--cm-faint)">정상</span>`:'';
+
+    const label=item.abbr||item.name;
+    const sublabel=item.abbr&&item.abbr!==item.name?`<span style="font-size:11px;color:var(--cm-faint);font-weight:400;margin-left:3px">${item.name}</span>`:'';
+
+    const card=document.createElement('div');
+    card.className='cm-card cm-card--flat';
+    card.style.marginBottom='0';
+    card.innerHTML=
+      `<div style="display:flex;align-items:center;gap:6px;margin-bottom:.55rem">`
+      +`<span style="font-size:13px;font-weight:700;color:var(--cm-ink);flex:1;min-width:0">${label}${sublabel}</span>`
+      +`<span style="font-size:11px;color:var(--cm-faint)">${item.unit||''}</span>`
+      +badgeHtml+`</div>`
+      +(dates.length>0
+        ?`<div style="height:140px"><canvas id="btcTr_${i}"></canvas></div>`
+        :`<div style="text-align:center;padding:1.5rem 0;color:var(--cm-faint);font-size:12.5px">이력 데이터 없음</div>`);
+    body.appendChild(card);
+
+    if(dates.length>0){
+      const allVals=values.filter(v=>v!=null);
+      const refNums=[item.refLow,item.refHigh].filter(v=>v!=null);
+      const allNums=[...allVals,...refNums];
+      if(!allNums.length)return;
+      const minV=Math.min(...allNums),maxV=Math.max(...allNums);
+      const pad=(maxV-minV)*0.3||1;
+      const yMin=Math.max(0,parseFloat((minV-pad).toFixed(1)));
+      const yMax=parseFloat((maxV+pad).toFixed(1));
+      const refDs=[];
+      if(item.refHigh!=null)refDs.push({data:dates.map(()=>item.refHigh),borderColor:'rgba(187,85,56,0.5)',borderWidth:1.5,borderDash:[5,4],pointRadius:0,fill:false,tension:0});
+      if(item.refLow!=null) refDs.push({data:dates.map(()=>item.refLow),borderColor:'rgba(35,91,67,0.45)',borderWidth:1.5,borderDash:[5,4],pointRadius:0,fill:false,tension:0});
+      setTimeout(()=>{
+        const canvas=document.getElementById(`btcTr_${i}`);
+        if(!canvas)return;
+        try{
+          btCatSheetInst.push(new Chart(canvas,{
+            type:'line',
+            data:{labels:dates.map(d=>d.slice(5)),datasets:[{
+              data:values,borderColor:'#235B43',backgroundColor:'rgba(35,91,67,0.10)',
+              pointBackgroundColor:'#235B43',pointBorderColor:'#fff',pointBorderWidth:2,
+              pointRadius:4,tension:0.4,fill:dates.length>1,spanGaps:true
+            },...refDs]},
+            options:{responsive:true,maintainAspectRatio:false,
+              plugins:{legend:{display:false},
+                tooltip:{callbacks:{label:ctx=>{
+                  if(ctx.datasetIndex>0)return null;
+                  const v=ctx.parsed.y;
+                  const flag=item.refHigh!=null&&v>item.refHigh?' ↑':item.refLow!=null&&v<item.refLow?' ↓':'';
+                  return v+' '+(item.unit||'')+flag;
+                }}}},
+              scales:{
+                x:{grid:{color:gc},ticks:{color:tc,font:{size:10}}},
+                y:{grid:{color:gc},ticks:{color:tc,font:{size:10}},min:yMin,max:yMax}
+              }
+            }
+          }));
+        }catch(e){console.warn('btcTr chart err',e);}
+      },50);
+    }
+  });
+
+  back.dataset.open='1';
+  sheet.dataset.open='1';
 }
 
 function closeBTCatSheet() {
