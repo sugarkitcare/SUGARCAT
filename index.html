@@ -563,7 +563,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.78</span>
+      <span class="cm-beta">v0.5.79</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -1746,7 +1746,7 @@ try{const d=localStorage.getItem(SK_BT);if(d){const raw=JSON.parse(d);btData=raw
 try{const d=localStorage.getItem(SK_FD);if(d)fdData=JSON.parse(d)}catch(e){}
 const saveS=(date)=>{try{localStorage.setItem(SK,JSON.stringify(state))}catch(e){}; if(typeof saveToDB==='function'){saveToDB(date);}};
 const saveBT=()=>{try{localStorage.setItem(SK_BT,JSON.stringify(btData))}catch(e){};if(document.getElementById('tab-graph')?.classList.contains('active'))renderBTTrend();renderBTHistoryList();};
-const saveFD=()=>{try{localStorage.setItem(SK_FD,JSON.stringify(fdData))}catch(e){}};
+const saveFD=()=>{try{localStorage.setItem('fd_v2_'+(state.activeCat||'_global'),JSON.stringify(fdData))}catch(e){}};
 
 let _btManualRowId = 0;
 
@@ -2613,6 +2613,7 @@ function addFavFoodToCalc(name, kcal, per) {
 /* ── 고양이 전환 전역 함수 (iOS 호환) ── */
 window.switchCat = function(c) {
   state.activeCat=c;
+  try{loadFoodDataForCat(c);}catch(e){}
   renderCatBar();updateMetrics();updateWtDiff();updateInsulinNext();saveS();
   const prof=(state.catProfiles||{})[c];
   if(prof&&prof.insulin){const el=document.getElementById('insType');if(el)el.value=prof.insulin;}
@@ -6203,7 +6204,8 @@ function toggleCalcDisease(el){
 function initCalcResult(){
   const wtEl=document.getElementById('calcWt');
   if(wtEl&&(isNaN(parseFloat(wtEl.value))||parseFloat(wtEl.value)<=0)){
-    wtEl.value='3.5';
+    const latestWt=getLatestWeight();
+    wtEl.value=latestWt!=null?latestWt:'3.5';
   }
   try{calcCalorie();}catch(e){}
 }
@@ -6327,7 +6329,7 @@ function calcCalorie(){
 /* 수동 사료 입력 관리 */
 let manualFoods=[];
 try{const d=localStorage.getItem('manualFoods_v1');if(d)manualFoods=JSON.parse(d);}catch(e){}
-const saveManualFoods=()=>{try{localStorage.setItem('manualFoods_v1',JSON.stringify(manualFoods));}catch(e){}};
+const saveManualFoods=()=>{try{localStorage.setItem('manualFoods_v1_'+(state.activeCat||'_global'),JSON.stringify(manualFoods));}catch(e){}};
 
 function renderManualFoodList(){
   const list=document.getElementById('calcManualList');
@@ -8261,7 +8263,7 @@ function saveCatProfile() {
 }
 
 /* ── 11번: 사료 즐겨찾기 ── */
-const saveFavFoods=()=>{try{localStorage.setItem('favFoods_v1',JSON.stringify(favFoods));}catch(e){}};
+const saveFavFoods=()=>{try{localStorage.setItem('favFoods_v1_'+(state.activeCat||'_global'),JSON.stringify(favFoods));}catch(e){}};
 
 function toggleFavFood(name, el) {
   const idx=favFoods.indexOf(name);
@@ -9255,6 +9257,40 @@ window.closeDailySheet = function() {
     _dsOrigin = null;
   }
 };
+
+/* ── 사료 데이터 고양이별 분리 ── */
+function loadFoodDataForCat(cat) {
+  if(!cat) return;
+  try{const d=localStorage.getItem('favFoods_v1_'+cat);favFoods=d?JSON.parse(d):[];}catch(e){favFoods=[];}
+  try{const d=localStorage.getItem('manualFoods_v1_'+cat);manualFoods=d?JSON.parse(d):[];}catch(e){manualFoods=[];}
+  try{const d=localStorage.getItem('fd_v2_'+cat);fdData=d?JSON.parse(d):[];}catch(e){fdData=[];}
+}
+
+function migrateFoodDataToCat() {
+  if(localStorage.getItem('migrated_food_v1')) return;
+  const firstCat=state.cats[0]||state.activeCat;
+  if(!firstCat) return;
+  const migrate=(oldKey, newKey, backupKey)=>{
+    const old=localStorage.getItem(oldKey);
+    if(!old||old==='[]') return;
+    try{localStorage.setItem(backupKey, old);}catch(e){}
+    if(!localStorage.getItem(newKey)) {
+      try{localStorage.setItem(newKey, old);}catch(e){}
+    }
+  };
+  migrate('favFoods_v1','favFoods_v1_'+firstCat,'favFoods_v1_backup');
+  migrate('manualFoods_v1','manualFoods_v1_'+firstCat,'manualFoods_v1_backup');
+  migrate('fd_v2','fd_v2_'+firstCat,'fd_v2_backup');
+  localStorage.setItem('migrated_food_v1','1');
+}
+
+/* 앱 시작 시 1회 마이그레이션 + per-cat 데이터 로드 */
+(function(){
+  try{
+    migrateFoodDataToCat();
+    if(state.activeCat) loadFoodDataForCat(state.activeCat);
+  }catch(e){}
+})();
 </script>
 
 
