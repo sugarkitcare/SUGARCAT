@@ -563,7 +563,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.62</span>
+      <span class="cm-beta">v0.5.63</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -7426,19 +7426,19 @@ function renderBTResultTable(bt) {
     const defaultOpen  = catHighCount + catLowCount > 0;
     const catHeader = document.createElement('div');
     catHeader.dataset.btHead = 'true';
-    catHeader.setAttribute('onclick', 'toggleBtCat(this)');
+    catHeader.onclick = () => openBTCatSheet(cat);
     catHeader.className = 'yr-btn';
     const _issueTotal = catHighCount + catLowCount;
-    const _chvSvg = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 8.5L12 15l6.5-6.5"/></svg>';
+    const _barSvg = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19V11 M12 19V5 M19 19V14"/></svg>';
     catHeader.innerHTML =
       `<span class="yr__y" style="font-size:13px">${cat}</span>`
       + (catHighCount > 0 ? `<span class="yr__n" style="color:var(--cm-clay);font-weight:700">↑${catHighCount}</span>` : '')
       + (catLowCount > 0 ? `<span class="yr__n" style="color:#3A66A6;font-weight:700">↓${catLowCount}</span>` : '')
       + `<span class="yr__line"></span>`
-      + `<span class="yr__chev" data-open="${defaultOpen ? '1' : '0'}">${_chvSvg}</span>`;
+      + `<span style="flex:0 0 auto;color:var(--cm-faint);display:flex;align-items:center">${_barSvg}</span>`;
     const catBody = document.createElement('div');
     catBody.className = 'bt-cat-body';
-    catBody.style.display = defaultOpen ? 'grid' : 'none';
+    catBody.style.display = 'grid';
     catBody.style.gridTemplateColumns = '1fr 1fr';
     catBody.style.gap = '5px';
     entries.forEach(({item, idx}) => {
@@ -7508,6 +7508,154 @@ function toggleBtCat(header) {
   const isOpen = body.style.display !== 'none';
   body.style.display = isOpen ? 'none' : 'grid';
   if(chev) chev.dataset.open = isOpen ? '0' : '1';
+}
+
+/* ── BT 카테고리 차트 바텀시트 ── */
+const BT_CAT_ICONS = {
+  '신장':   '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5c2.4 3 5 6 5 8.6a5 5 0 0 1-10 0c0-2.6 2.6-5.6 5-8.6Z M9.5 12.5a2.5 2.5 0 0 0 2.5 2.5"/></svg>',
+  '혈구':   '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h3.2l2.4-7 4 14 2.6-7H21"/></svg>',
+  '전해질': '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2l1.9 5.6L19.5 10l-5.6 1.8L12 17.5l-1.9-5.7L4.5 10l5.6-1.2Z"/></svg>',
+  '간':     '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 3h7 M10 3v5l-4.2 9A2.4 2.4 0 0 0 8 20.5h8a2.4 2.4 0 0 0 2.2-3.5L14 8V3"/></svg>',
+  '단백':   '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 20 7.5v9L12 20.5 4 16.5v-9Z M4 7.5 12 11.5 20 7.5 M12 11.5V20.5"/></svg>',
+  '췌장':   '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 3.5h11v17h-11Z M9 7h6 M9 11h.01 M12 11h.01 M15 11h.01 M9 14h.01 M12 14h.01 M15 14h.01 M9 17h3"/></svg>',
+  '심장':   '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h3.2l2.4-7 4 14 2.6-7H21"/></svg>',
+  '갑상선': '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.4 21.5 19.2H2.5L12 3.4Z M12 10v4 M12 16.6h.01"/></svg>',
+  '뇨검':   '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6c2.8 3.4 6 7 6 10.1a6 6 0 0 1-12 0C6 10.6 9.2 7 12 3.6Z"/></svg>',
+  '혈가스': '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v7 M9 8.5c0 0-3 .8-3.7 4.3C4.8 15.6 5 19 7.4 19c1.7 0 1.9-1.5 2-3 .1-1.6 0-5.2-.4-7.5 M15 8.5c0 0 3 .8 3.7 4.3C19.2 15.6 19 19 16.6 19c-1.7 0-1.9-1.5-2-3-.1-1.6 0-5.2.4-7.5"/></svg>',
+  '지질':   '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19V11 M12 19V5 M19 19V14"/></svg>',
+  '혈당':   '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5h16a1.5 1.5 0 0 1 1.5 1.5v11a1.5 1.5 0 0 1-1.5 1.5H4A1.5 1.5 0 0 1 2.5 18.5v-11A1.5 1.5 0 0 1 4 5.5Z M8.3 12.2a3.7 3.7 0 0 1 7.4 0 M12 12.2l2.2-1.7"/></svg>',
+  '기타':   '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3.5h7l4 4V20.5H7Z M14 3.5V8h4 M9.5 12.5h5 M9.5 15.5h5"/></svg>',
+};
+let btCatSheetInst = [];
+
+function openBTCatSheet(cat) {
+  if(!btEx || !btEx.items) return;
+  const back  = document.getElementById('btCatSheetBack');
+  const sheet = document.getElementById('btCatSheet');
+  const head  = document.getElementById('btCatSheetHead');
+  const body  = document.getElementById('btCatSheetBody');
+  if(!back || !sheet || !head || !body) return;
+
+  btCatSheetInst.forEach(c => { try{c.destroy();}catch(e){} });
+  btCatSheetInst = [];
+  body.innerHTML = '';
+
+  const catItems = (btEx.items || []).map((item, idx) => ({item, idx}))
+    .filter(({item}) => (item.category || '기타') === cat);
+  const highCount = catItems.filter(({item}) => item.value!==null&&item.value!==undefined&&item.refHigh!==null&&item.value>item.refHigh).length;
+  const lowCount  = catItems.filter(({item}) => item.value!==null&&item.value!==undefined&&item.refLow!==null&&item.value<item.refLow).length;
+
+  const iconSvg = BT_CAT_ICONS[cat] || BT_CAT_ICONS['기타'];
+  const _xSvg = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+  const badgesHtml =
+    (highCount > 0 ? `<span style="font-size:11px;font-weight:700;padding:1px 6px;border-radius:6px;background:var(--cm-clay-tint);color:var(--cm-clay)">↑${highCount}</span>` : '')
+    + (lowCount  > 0 ? `<span style="font-size:11px;font-weight:700;padding:1px 6px;border-radius:6px;background:var(--cm-green-tint);color:var(--cm-green-700)">↓${lowCount}</span>`  : '');
+
+  head.innerHTML =
+    `<div class="cm-ic" style="flex:0 0 auto">${iconSvg}</div>`
+    + `<div class="tx"><b style="display:flex;align-items:center;gap:5px">${cat}${badgesHtml}</b><span>${catItems.length}개 항목</span></div>`
+    + `<button class="sheet__close" onclick="closeBTCatSheet()" type="button" aria-label="닫기">${_xSvg}</button>`;
+
+  const isDark = matchMedia('(prefers-color-scheme:dark)').matches;
+  const gc = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)';
+  const tc = isDark ? '#B4B2A9' : '#888780';
+
+  catItems.forEach(({item}, i) => {
+    const abbr = item.abbr || item.name;
+    const isNull = item.value === null || item.value === undefined;
+    const s = isNull ? 'x' : (item.refLow!==null&&item.value<item.refLow ? 'l' : item.refHigh!==null&&item.value>item.refHigh ? 'h' : 'n');
+    const badgeHtml =
+      s==='h' ? `<span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px;background:var(--cm-clay-tint);color:var(--cm-clay);border:1px solid var(--cm-clay-edge)">높음</span>`
+      : s==='l' ? `<span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px;background:var(--cm-green-tint);color:var(--cm-green-700);border:1px solid var(--cm-green-edge)">낮음</span>`
+      : s==='n' ? `<span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px;background:var(--cm-surface-2);color:var(--cm-faint)">정상</span>`
+      : '';
+
+    const pts = [];
+    btData.forEach(rec => {
+      if(rec.cat !== btEx.cat) return;
+      (rec.items || []).forEach(it => {
+        if((it.abbr||it.name)===abbr && it.value!==null && it.value!==undefined)
+          pts.push({date:rec.date, value:it.value});
+      });
+    });
+    pts.sort((a,b) => a.date.localeCompare(b.date));
+    const dates = [...new Set(pts.map(p=>p.date))];
+    const values = dates.map(d => pts.find(p=>p.date===d)?.value ?? null);
+
+    const label = (item.abbr && item.abbr !== item.name) ? item.abbr : item.name;
+    const sublabel = (item.abbr && item.abbr !== item.name)
+      ? `<span style="font-size:11px;color:var(--cm-faint);font-weight:500;margin-left:3px">${item.name}</span>` : '';
+
+    const card = document.createElement('div');
+    card.className = 'cm-card cm-card--flat';
+    card.style.marginBottom = '0';
+    card.innerHTML =
+      `<div style="display:flex;align-items:center;gap:6px;margin-bottom:.55rem">`
+      + `<span style="font-size:13px;font-weight:700;color:var(--cm-ink);flex:1;min-width:0">${label}${sublabel}</span>`
+      + `<span style="font-size:11px;color:var(--cm-faint)">${item.unit||''}</span>`
+      + badgeHtml + `</div>`
+      + (dates.length > 0
+        ? `<div style="height:140px"><canvas id="btcSh_${i}"></canvas></div>`
+        : `<div style="text-align:center;padding:1.5rem 0;color:var(--cm-faint);font-size:12.5px">이력 데이터 없음</div>`);
+    body.appendChild(card);
+
+    if(dates.length > 0) {
+      const allVals = values.filter(v=>v!==null);
+      const refNums = [item.refLow, item.refHigh].filter(v=>v!==null);
+      const allNums = [...allVals, ...refNums];
+      if(!allNums.length) return;
+      const minV = Math.min(...allNums);
+      const maxV = Math.max(...allNums);
+      const pad = (maxV - minV) * 0.3 || 1;
+      const yMin = Math.max(0, parseFloat((minV - pad).toFixed(1)));
+      const yMax = parseFloat((maxV + pad).toFixed(1));
+      const refDs = [];
+      if(item.refHigh!==null) refDs.push({label:'상한',data:dates.map(()=>item.refHigh),borderColor:'rgba(187,85,56,0.5)',borderWidth:1.5,borderDash:[5,4],pointRadius:0,fill:false,tension:0});
+      if(item.refLow!==null)  refDs.push({label:'하한',data:dates.map(()=>item.refLow),borderColor:'rgba(35,91,67,0.45)',borderWidth:1.5,borderDash:[5,4],pointRadius:0,fill:false,tension:0});
+      setTimeout(() => {
+        const canvas = document.getElementById(`btcSh_${i}`);
+        if(!canvas) return;
+        try {
+          btCatSheetInst.push(new Chart(canvas, {
+            type: 'line',
+            data: {
+              labels: dates.map(d=>d.slice(5)),
+              datasets: [{
+                label: abbr, data: values,
+                borderColor: '#235B43', backgroundColor: 'rgba(35,91,67,0.12)',
+                pointBackgroundColor: '#235B43', pointBorderColor: '#fff', pointBorderWidth: 2,
+                pointRadius: 4, tension: 0.4, fill: dates.length > 1, spanGaps: true,
+              }, ...refDs]
+            },
+            options: {
+              responsive: true, maintainAspectRatio: false,
+              plugins: { legend: { display: refDs.length > 0, labels: {font:{size:10},color:tc,boxWidth:8,boxHeight:8} } },
+              scales: {
+                x: { grid:{color:gc}, ticks:{color:tc,font:{size:10}} },
+                y: { grid:{color:gc}, ticks:{color:tc,font:{size:10}}, min:yMin, max:yMax }
+              }
+            }
+          }));
+        } catch(e) { console.warn('btcSh chart err', e); }
+      }, 50);
+    }
+  });
+
+  back.dataset.open  = '1';
+  sheet.dataset.open = '1';
+}
+
+function closeBTCatSheet() {
+  const back  = document.getElementById('btCatSheetBack');
+  const sheet = document.getElementById('btCatSheet');
+  if(back)  back.dataset.open  = '0';
+  if(sheet) sheet.dataset.open = '0';
+  setTimeout(() => {
+    btCatSheetInst.forEach(c => { try{c.destroy();}catch(e){} });
+    btCatSheetInst = [];
+    const body = document.getElementById('btCatSheetBody');
+    if(body) body.innerHTML = '';
+  }, 320);
 }
 
 function editBTItem(idx) {
@@ -9131,6 +9279,14 @@ window.closeDailySheet = function() {
   <div class="sheet__head" id="dailySheetHead"></div>
   <div class="sheet__body" id="dailySheetBody"></div>
   <div class="sheet__foot" id="dailySheetFoot"></div>
+</div>
+
+<!-- ══ 혈액검사 카테고리 차트 바텀시트 ══ -->
+<div class="sheet-back" id="btCatSheetBack" data-open="0" onclick="closeBTCatSheet()"></div>
+<div class="sheet" id="btCatSheet" data-open="0">
+  <div class="sheet__handle"></div>
+  <div class="sheet__head" id="btCatSheetHead"></div>
+  <div class="sheet__body" id="btCatSheetBody"></div>
 </div>
 
 </body>
