@@ -563,7 +563,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.73</span>
+      <span class="cm-beta">v0.5.74</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -4187,12 +4187,13 @@ function renderRoutineSchedule(date) {
       + '<span style="font-size:11px;font-weight:600;color:' + (allCatDone?'var(--cm-green-700)':'var(--cm-faint)') + '">' + catDone + '/' + catAll + '</span>'
       + '</div>';
 
-    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">';
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;overflow:hidden">';
     filtered.forEach(item => {
       const done = doneItems.has(item.name);
       const doneRec = done ? (rec.routines||[]).find(r=>r.items?.includes(item.name)) : null;
       html += '<div onclick="toggleScheduleCheck(this)" data-item="'+item.name+'" data-date="'+schedDate+'"'
         + ' style="display:flex;flex-direction:column;gap:6px;padding:10px 10px 8px;border-radius:12px;cursor:pointer;'
+        + 'min-width:0;box-sizing:border-box;'
         + 'background:' + (done?'var(--cm-green-700)':'var(--cm-surface)') + ';'
         + 'border:1px solid ' + (done?'var(--cm-green-700)':'var(--cm-line)') + '">';
 
@@ -6986,7 +6987,7 @@ function renderBTTrend(){
 
   wrap.innerHTML='';
   const grid=document.createElement('div');
-  grid.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:.25rem';
+  grid.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:.25rem;overflow:hidden';
 
   const chevSvg='<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>';
 
@@ -7013,7 +7014,7 @@ function renderBTTrend(){
 
     const btn=document.createElement('button');
     btn.type='button';
-    btn.style.cssText='text-align:left;cursor:pointer;width:100%;border:none;padding:13px 12px;display:flex;flex-direction:column;gap:7px;background:var(--cm-surface);border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,0.06)';
+    btn.style.cssText='text-align:left;cursor:pointer;width:100%;border:none;padding:13px 12px;display:flex;flex-direction:column;gap:7px;background:var(--cm-surface);border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,0.06);min-width:0;box-sizing:border-box';
     btn.innerHTML=
       `<div style="display:flex;align-items:center;justify-content:space-between;gap:4px">`
       +`<span style="display:flex;align-items:center;gap:6px;min-width:0">`
