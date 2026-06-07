@@ -563,7 +563,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.59</span>
+      <span class="cm-beta">v0.5.60</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -4648,7 +4648,7 @@ setupDrop('btDrop','btFile',async file=>{
     if(oldCards) oldCards.innerHTML = '';
     const tableWrapOld = document.querySelector('#btResult div[style*="overflow"]');
     if(tableWrapOld) tableWrapOld.style.display = 'none';
-    renderBTResultTable(btEx);
+    checkBTDuplicatesAndRender(btEx);
   }catch(e){
     console.error('BT error:',e);
     const errMsg = e.message&&e.message.toLowerCase().includes('overload')
@@ -7271,6 +7271,107 @@ function renderBTHistoryList() {
 }
 
 // 혈액검사 결과 카드 렌더링 (이력 클릭 시 + 수치 수정 후 재렌더링)
+// 정규화 기준으로 중복 항목 그룹 감지
+function findBTDuplicates(items) {
+  const groups = {};
+  (items||[]).forEach((item, idx) => {
+    const norm = normalizeBTItem(item);
+    const key = norm.abbr || norm.name;
+    if(!groups[key]) groups[key] = [];
+    groups[key].push({item, idx});
+  });
+  return Object.values(groups).filter(arr => arr.length > 1);
+}
+
+// 중복 감지 → UI 표시 or 바로 렌더링
+function checkBTDuplicatesAndRender(bt) {
+  const dupes = findBTDuplicates(bt.items || []);
+  if(!dupes.length) { renderBTResultTable(bt); return; }
+
+  const btResult = document.getElementById('btResult');
+  if(!btResult) return;
+  let cardContainer = document.getElementById('btCatCards');
+  if(!cardContainer) {
+    cardContainer = document.createElement('div');
+    cardContainer.id = 'btCatCards';
+    const tw = document.querySelector('#btResult div[style*="overflow"]');
+    if(tw) { tw.style.display='none'; tw.parentNode.insertBefore(cardContainer, tw); }
+    else btResult.appendChild(cardContainer);
+  }
+  cardContainer.innerHTML = '';
+  btResult.style.display = 'block';
+  const labelEl = document.getElementById('btResultLabel');
+  if(labelEl) labelEl.textContent = `${bt.cat} · ${bt.date} — 중복 항목 확인 필요`;
+
+  const resolved = [...(bt.items||[])];
+  let pending = dupes.length;
+
+  const resolverEl = document.createElement('div');
+  resolverEl.style.cssText = 'margin-bottom:.75rem';
+
+  const hd = document.createElement('div');
+  hd.style.cssText = 'font-size:12px;font-weight:700;color:var(--cm-clay);margin-bottom:.6rem';
+  hd.textContent = `⚠️ 중복 항목 ${dupes.length}개가 감지됐어요. 유지할 항목을 선택해주세요.`;
+  resolverEl.appendChild(hd);
+
+  const finish = () => {
+    const cleaned = resolved.filter(i => i !== null);
+    resolverEl.remove();
+    btEx = {...bt, items: cleaned};
+    renderBTResultTable(btEx);
+  };
+
+  dupes.forEach(group => {
+    const normKey = normalizeBTItem(group[0].item).abbr || normalizeBTItem(group[0].item).name;
+    const card = document.createElement('div');
+    card.style.cssText = 'background:var(--cm-surface);border:1px solid var(--cm-clay-edge);border-radius:12px;padding:10px 12px;margin-bottom:8px';
+
+    const t = document.createElement('div');
+    t.style.cssText = 'font-size:12px;font-weight:700;color:var(--cm-clay);margin-bottom:8px';
+    t.textContent = `"${normKey}" 항목이 ${group.length}개 감지됐어요`;
+    card.appendChild(t);
+
+    const br = document.createElement('div');
+    br.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap';
+
+    const pick = (choice) => {
+      if(choice === 'both') {
+        // 두 번째 항목은 원본명 그대로 (abbr을 name으로 교체해 정규화 방지)
+        group.slice(1).forEach(({idx}) => {
+          if(resolved[idx]) resolved[idx] = {...resolved[idx], abbr: resolved[idx].name || resolved[idx].abbr};
+        });
+      } else {
+        group.forEach(({idx}, i) => { if(i !== choice) resolved[idx] = null; });
+      }
+      card.style.opacity = '0.5'; card.style.pointerEvents = 'none';
+      if(--pending === 0) finish();
+    };
+
+    group.forEach(({item}, i) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.style.cssText = 'padding:5px 10px;border:1px solid var(--cm-line);border-radius:8px;background:var(--cm-surface-2);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;color:var(--cm-ink-soft)';
+      const nm = item.name || item.abbr || '항목'+(i+1);
+      const vl = (item.value!==null&&item.value!==undefined) ? item.value : '–';
+      b.textContent = (i===0?'첫 번째':'두 번째')+': '+nm+' → '+vl;
+      b.onclick = () => pick(i);
+      br.appendChild(b);
+    });
+
+    const bb = document.createElement('button');
+    bb.type = 'button';
+    bb.style.cssText = 'padding:5px 10px;border:1px solid var(--cm-line);border-radius:8px;background:var(--cm-surface-2);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;color:var(--cm-faint)';
+    bb.textContent = '둘 다 유지';
+    bb.onclick = () => pick('both');
+    br.appendChild(bb);
+
+    card.appendChild(br);
+    resolverEl.appendChild(card);
+  });
+
+  cardContainer.appendChild(resolverEl);
+}
+
 function renderBTResultTable(bt) {
   const btResult = document.getElementById('btResult');
   const tbody = document.getElementById('btBody');
@@ -7398,13 +7499,26 @@ function editBTItem(idx) {
   if(!td || td.querySelector('input')) return;
   const item = btEx?.items?.[idx];
   if(!item) return;
+  // 카드를 2열 span으로 확장
+  const row = td.closest('[data-bt-card]');
+  if(row) {
+    row.style.gridColumn = 'span 2';
+    row.style.flexWrap = 'wrap';
+    row.style.alignItems = 'flex-start';
+  }
+  td.style.cssText = 'display:flex;flex:1;min-width:0;flex-direction:column;gap:5px;align-items:stretch';
   td.innerHTML = `<input id="btvIn_${idx}" type="number" value="${item.value??''}" step="any"
-    style="width:70px;padding:4px 7px;border:1px solid var(--cm-green-edge);border-radius:8px;font-size:13px;background:var(--cm-surface);color:var(--cm-ink);font-family:inherit"
+    style="width:100%;padding:6px 10px;border:1px solid var(--cm-green-edge);border-radius:8px;font-size:13px;background:var(--cm-surface);color:var(--cm-ink);font-family:inherit;box-sizing:border-box"
     onkeydown="if(event.key==='Enter')saveBTItem(${idx});if(event.key==='Escape')cancelBTItem()">
-    <button onclick="saveBTItem(${idx})" style="padding:4px 9px;background:var(--cm-green-700);color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">저장</button>
-    <button onclick="cancelBTItem()" style="padding:4px 9px;background:none;border:1px solid var(--cm-line);border-radius:7px;font-size:12px;color:var(--cm-faint);cursor:pointer;font-family:inherit">취소</button>`;
+    <div style="display:flex;gap:5px">
+      <button onclick="saveBTItem(${idx})" style="flex:1;padding:5px 0;background:var(--cm-green-700);color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">저장</button>
+      <button onclick="cancelBTItem()" style="padding:5px 10px;background:none;border:1px solid var(--cm-line);border-radius:7px;font-size:12px;color:var(--cm-faint);cursor:pointer;font-family:inherit">취소</button>
+    </div>`;
   const inp = document.getElementById('btvIn_' + idx);
-  if(inp) { inp.focus(); inp.select(); }
+  if(inp) {
+    inp.focus(); inp.select();
+    setTimeout(() => inp.scrollIntoView({behavior:'smooth', block:'nearest'}), 50);
+  }
 }
 
 function saveBTItem(idx) {
