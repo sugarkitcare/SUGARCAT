@@ -534,7 +534,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.42</span>
+      <span class="cm-beta">v0.5.43</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">💬 피드백</button>
@@ -584,11 +584,6 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <!-- 🐾 오늘 상태 피드백 카드 -->
   <!-- ══ 히어로 요약 카드 ══ -->
   <div class="cmb-hero" id="dailySummaryCard" style="margin-bottom:.75rem">
-    <div id="heroDateNav" style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:12px">
-      <button id="heroDatePrev" type="button" onclick="heroNavDate(-1)" style="width:32px;height:32px;border-radius:999px;background:var(--cm-surface-2);border:1px solid var(--cm-line);color:var(--cm-ink-soft);font-size:16px;display:flex;align-items:center;justify-content:center;cursor:pointer">‹</button>
-      <span id="heroDateLabel" style="font-size:14px;font-weight:700;color:var(--cm-ink);min-width:120px;text-align:center"></span>
-      <button id="heroDateNext" type="button" onclick="heroNavDate(1)" style="width:32px;height:32px;border-radius:999px;background:var(--cm-surface-2);border:1px solid var(--cm-line);color:var(--cm-ink-soft);font-size:16px;display:flex;align-items:center;justify-content:center;cursor:pointer">›</button>
-    </div>
     <!-- 상단 -->
     <div class="cmb-hero__top">
       <div class="cm-ic cm-ic--ghost cm-ic--sm">
@@ -619,7 +614,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
       </div>
       <div class="cmb-side">
         <div class="cmb-poo">
-          <div class="cmb-poo__l">소변 상태<button type="button" onclick="quickUrineAdd()" style="margin-left:auto;width:28px;height:28px;border-radius:999px;background:var(--cm-green-700);color:#fff;font-size:18px;font-weight:700;display:flex;align-items:center;justify-content:center;border:none;flex-shrink:0;cursor:pointer">+</button></div>
+          <div class="cmb-poo__l">소변 상태</div>
           <div class="cmb-poo__v" id="heroUrineVal"><span class="dot"></span>—</div>
         </div>
         <div class="cmb-mini">
@@ -640,6 +635,12 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
         <div id="heroFeedbackTitle" style="font-weight:800;font-size:13.5px;color:var(--cm-ink);transition:opacity .4s ease;opacity:1"></div>
         <div id="heroFeedbackDetail" style="font-size:12px;font-weight:500;margin-top:3px;color:var(--cm-ink-soft);transition:opacity .4s ease;opacity:1"></div>
       </div>
+    </div>
+    <!-- 날짜 네비게이터 -->
+    <div id="heroDateNav" style="display:flex;align-items:center;justify-content:center;gap:12px;border-top:1px solid var(--cm-line);padding-top:12px;margin-top:10px">
+      <button id="heroDatePrev" type="button" onclick="heroNavDate(-1)" style="width:28px;height:28px;border-radius:999px;background:var(--cm-surface-2);border:1px solid var(--cm-line);color:var(--cm-ink-soft);font-size:15px;display:flex;align-items:center;justify-content:center;cursor:pointer">‹</button>
+      <span id="heroDateLabel" style="font-size:13px;font-weight:600;color:var(--cm-faint);min-width:100px;text-align:center"></span>
+      <button id="heroDateNext" type="button" onclick="heroNavDate(1)" style="width:28px;height:28px;border-radius:999px;background:var(--cm-surface-2);border:1px solid var(--cm-line);color:var(--cm-ink-soft);font-size:15px;display:flex;align-items:center;justify-content:center;cursor:pointer">›</button>
     </div>
     <!-- JS 참조 ID 유지 (숨김) -->
     <div id="waterGoalBar" style="display:none"></div>
@@ -3167,21 +3168,14 @@ function updateHeroDateLabel() {
   var parts = heroStr.split('-');
   var label = isToday ? '오늘' : isYesterday ? '어제' : parseInt(parts[1])+'월 '+parseInt(parts[2])+'일';
   var el2 = document.getElementById('heroDateLabel');
-  if(el2) el2.textContent = label;
+  if(el2) {
+    el2.textContent = label;
+    el2.style.color = isToday ? 'var(--cm-green-700)' : 'var(--cm-faint)';
+  }
   var next = document.getElementById('heroDateNext');
   if(next) next.style.opacity = isToday ? '0.3' : '1';
 }
 
-function quickUrineAdd() {
-  var d = heroDateStr();
-  var rec = getRec(state.activeCat, d);
-  if(!rec.urine) rec.urine = [];
-  rec.urine.push({amount:'정상', time: nowTime(), ts: Date.now()});
-  saveS(d);
-  try { saveToDB(d); } catch(e) {}
-  toast('소변 1회 기록됨', '#1D9E75');
-  try { renderDailySummary(); } catch(e) {}
-}
 
 function renderDailySummary() {
   try{renderChallengeBar();}catch(e){}
