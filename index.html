@@ -7271,15 +7271,14 @@ function renderBTResultTable(bt) {
     const catHeader = document.createElement('div');
     catHeader.dataset.btHead = 'true';
     catHeader.setAttribute('onclick', 'toggleBtCat(this)');
-    catHeader.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 2px 6px;cursor:pointer;border-bottom:1px solid var(--cm-line);margin-bottom:6px;user-select:none';
+    catHeader.className = 'yr-btn';
     const _issueTotal = catHighCount + catLowCount;
-    const _chvOpen = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M5.5 8.5L12 15l6.5-6.5"/></svg>';
-    const _chvClose = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5l7 7-7 7"/></svg>';
+    const _chvSvg = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 8.5L12 15l6.5-6.5"/></svg>';
     catHeader.innerHTML =
-      `<span class="bt-cat-arrow" style="color:var(--cm-faint);flex-shrink:0;display:flex;align-items:center">${defaultOpen ? _chvOpen : _chvClose}</span>`
-      + `<span style="font-size:13px;font-weight:700;color:var(--cm-ink-soft)">${cat}</span>`
-      + (_issueTotal > 0 ? `<span style="font-size:11px;color:var(--cm-clay);font-weight:700">↑${catHighCount} ↓${catLowCount}</span>` : '')
-      + `<span style="flex:1;height:1px;background:var(--cm-line);margin-left:4px"></span>`;
+      `<span class="yr__y" style="font-size:13px">${cat}</span>`
+      + (_issueTotal > 0 ? `<span class="yr__n" style="color:var(--cm-clay);font-weight:700">↑${catHighCount} ↓${catLowCount}</span>` : '')
+      + `<span class="yr__line"></span>`
+      + `<span class="yr__chev" data-open="${defaultOpen ? '1' : '0'}">${_chvSvg}</span>`;
     const catBody = document.createElement('div');
     catBody.className = 'bt-cat-body';
     catBody.style.display = defaultOpen ? 'grid' : 'none';
@@ -7346,12 +7345,12 @@ function applyBTResultFilter(mode) {
 }
 
 function toggleBtCat(header) {
-  const body  = header.nextElementSibling;
+  const body = header.nextElementSibling;
   if(!body) return;
-  const arrow  = header.querySelector('.bt-cat-arrow');
+  const chev = header.querySelector('.yr__chev');
   const isOpen = body.style.display !== 'none';
   body.style.display = isOpen ? 'none' : 'grid';
-  if(arrow) arrow.innerHTML = isOpen ? '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5l7 7-7 7"/></svg>' : '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M5.5 8.5L12 15l6.5-6.5"/></svg>';
+  if(chev) chev.dataset.open = isOpen ? '0' : '1';
 }
 
 function editBTItem(idx) {
