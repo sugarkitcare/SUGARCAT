@@ -238,6 +238,9 @@
 /* ---------- stat number ---------- */
 .cm-num{ font-variant-numeric:tabular-nums; }
 
+/* date input border-radius fix */
+input[type="date"]{ border-radius:13px !important; -webkit-border-radius:13px !important; }
+
 /* footer */
 .cm-foot{ padding:4px 16px 12px; text-align:center; font-size:11.5px; line-height:1.7; color:var(--cm-faint); }
 .cm-foot b{ color:var(--cm-ink-soft); }
