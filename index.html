@@ -534,7 +534,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.43</span>
+      <span class="cm-beta">v0.5.44</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">💬 피드백</button>
@@ -546,22 +546,22 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
 <div class="cm-pets" id="catBar">
   <div id="catSlot0" style="display:none;align-items:center;gap:4px" class="cm-pet">
     <button type="button" id="catName0" onclick="switchCat(this.dataset.cat)" data-cat="" style="cursor:pointer;background:none;border:none;font-family:inherit;font-size:inherit;color:inherit;padding:0;font-weight:inherit"></button>
-    <button type="button" id="catSettings0" onclick="openCatProfile(document.getElementById('catName0').dataset.cat)" style="font-size:14px;background:none;border:none;cursor:pointer;padding:2px 5px;min-width:26px;min-height:26px;color:inherit;opacity:0.7">⚙</button>
+    <button type="button" id="catSettings0" onclick="openCatProfile(document.getElementById('catName0').dataset.cat)" style="background:none;border:none;cursor:pointer;padding:2px 5px;min-width:26px;min-height:26px;color:inherit;display:inline-flex;align-items:center;justify-content:center"><svg class="cm-pet__gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="9" cy="6" r="2" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="2" fill="currentColor" stroke="none"/><circle cx="9" cy="18" r="2" fill="currentColor" stroke="none"/></svg></button>
     <button type="button" id="catDel0" onclick="deleteCat(document.getElementById('catName0').dataset.cat)" style="font-size:15px;background:none;border:none;cursor:pointer;padding:2px 5px;min-width:26px;min-height:26px;color:inherit;opacity:0.6">×</button>
   </div>
   <div id="catSlot1" style="display:none;align-items:center;gap:4px" class="cm-pet">
     <button type="button" id="catName1" onclick="switchCat(this.dataset.cat)" data-cat="" style="cursor:pointer;background:none;border:none;font-family:inherit;font-size:inherit;color:inherit;padding:0;font-weight:inherit"></button>
-    <button type="button" id="catSettings1" onclick="openCatProfile(document.getElementById('catName1').dataset.cat)" style="font-size:14px;background:none;border:none;cursor:pointer;padding:2px 5px;min-width:26px;min-height:26px;color:inherit;opacity:0.7">⚙</button>
+    <button type="button" id="catSettings1" onclick="openCatProfile(document.getElementById('catName1').dataset.cat)" style="background:none;border:none;cursor:pointer;padding:2px 5px;min-width:26px;min-height:26px;color:inherit;display:inline-flex;align-items:center;justify-content:center"><svg class="cm-pet__gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="9" cy="6" r="2" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="2" fill="currentColor" stroke="none"/><circle cx="9" cy="18" r="2" fill="currentColor" stroke="none"/></svg></button>
     <button type="button" id="catDel1" onclick="deleteCat(document.getElementById('catName1').dataset.cat)" style="font-size:15px;background:none;border:none;cursor:pointer;padding:2px 5px;min-width:26px;min-height:26px;color:inherit;opacity:0.6">×</button>
   </div>
   <div id="catSlot2" style="display:none;align-items:center;gap:4px" class="cm-pet">
     <button type="button" id="catName2" onclick="switchCat(this.dataset.cat)" data-cat="" style="cursor:pointer;background:none;border:none;font-family:inherit;font-size:inherit;color:inherit;padding:0;font-weight:inherit"></button>
-    <button type="button" id="catSettings2" onclick="openCatProfile(document.getElementById('catName2').dataset.cat)" style="font-size:14px;background:none;border:none;cursor:pointer;padding:2px 5px;min-width:26px;min-height:26px;color:inherit;opacity:0.7">⚙</button>
+    <button type="button" id="catSettings2" onclick="openCatProfile(document.getElementById('catName2').dataset.cat)" style="background:none;border:none;cursor:pointer;padding:2px 5px;min-width:26px;min-height:26px;color:inherit;display:inline-flex;align-items:center;justify-content:center"><svg class="cm-pet__gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="9" cy="6" r="2" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="2" fill="currentColor" stroke="none"/><circle cx="9" cy="18" r="2" fill="currentColor" stroke="none"/></svg></button>
     <button type="button" id="catDel2" onclick="deleteCat(document.getElementById('catName2').dataset.cat)" style="font-size:15px;background:none;border:none;cursor:pointer;padding:2px 5px;min-width:26px;min-height:26px;color:inherit;opacity:0.6">×</button>
   </div>
   <div id="catSlot3" style="display:none;align-items:center;gap:4px" class="cm-pet">
     <button type="button" id="catName3" onclick="switchCat(this.dataset.cat)" data-cat="" style="cursor:pointer;background:none;border:none;font-family:inherit;font-size:inherit;color:inherit;padding:0;font-weight:inherit"></button>
-    <button type="button" id="catSettings3" onclick="openCatProfile(document.getElementById('catName3').dataset.cat)" style="font-size:14px;background:none;border:none;cursor:pointer;padding:2px 5px;min-width:26px;min-height:26px;color:inherit;opacity:0.7">⚙</button>
+    <button type="button" id="catSettings3" onclick="openCatProfile(document.getElementById('catName3').dataset.cat)" style="background:none;border:none;cursor:pointer;padding:2px 5px;min-width:26px;min-height:26px;color:inherit;display:inline-flex;align-items:center;justify-content:center"><svg class="cm-pet__gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="9" cy="6" r="2" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="2" fill="currentColor" stroke="none"/><circle cx="9" cy="18" r="2" fill="currentColor" stroke="none"/></svg></button>
     <button type="button" id="catDel3" onclick="deleteCat(document.getElementById('catName3').dataset.cat)" style="font-size:15px;background:none;border:none;cursor:pointer;padding:2px 5px;min-width:26px;min-height:26px;color:inherit;opacity:0.6">×</button>
   </div>
   <div id="catAddSlot"></div>
@@ -659,7 +659,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
     </div>
     <button class="cm-editbtn" id="tileEditBtn" type="button" onclick="toggleTileEditMode()">편집</button>
   </div>
-  <div class="tgrid" id="dailyTileGrid" style="margin-bottom:1rem">
+  <div class="tgrid" id="dailyTileGrid" style="margin-bottom:.4rem">
     <button class="tile" data-tile="water" onclick="openDailySheet('water')">
       <div class="tile__top">
         <div class="cm-ic cm-ic--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6c2.8 3.4 6 7 6 10.1a6 6 0 0 1-12 0C6 10.6 9.2 7 12 3.6Z"/></svg></div>
@@ -8729,7 +8729,7 @@ window.closeDailySheet = function() {
 </div>
 
 <!-- 면책고지 -->
-<div style="text-align:center;padding:1.5rem 1rem;font-size:10px;color:var(--text3);line-height:1.8;max-width:420px;margin:0 auto">
+<div style="text-align:center;padding:.75rem 1rem;font-size:10px;color:var(--text3);line-height:1.8;max-width:420px;margin:0 auto">
   케어마스터즈의 모든 분석 결과는 <b>참고용</b>이며 수의학적 진단&middot;처방을 대체하지 않아요.<br>
   치료 결정은 반드시 담당 수의사와 상담하세요.<br>
   © 2025 케어마스터즈 BETA &middot; <a href="https://open.kakao.com/o/sjseVrVe" target="_blank" style="color:var(--teal);text-decoration:none">💬 카카오 채널</a> &middot; <button type="button" 

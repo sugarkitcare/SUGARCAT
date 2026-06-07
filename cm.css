@@ -135,13 +135,13 @@
 /* 내부 버튼 min-height 제압해서 칩 세로 팽창 방지 */
 .cm-pet button{ min-height:0 !important; min-width:0 !important; }
 .cm-pet small{ font-size:10px; font-weight:600; color:var(--cm-faint); }
-.cm-pet__gear{ width:12px; height:12px; opacity:.5; }
+.cm-pet__gear{ width:14px; height:14px; opacity:.45; }
 /* JS가 display:block으로 오버라이드하는 것 차단 — cmb-alert 배너와 중복 */
 #waterGoalBar{ display:none !important; }
 .cm-pet--on{ background:var(--cm-green-700); color:#fff; border-color:var(--cm-green-700);
   box-shadow:0 6px 14px rgba(35,91,67,.28); }
 .cm-pet--on small{ color:rgba(255,255,255,.72); }
-.cm-pet--on .cm-pet__gear{ opacity:.8; }
+.cm-pet--on .cm-pet__gear{ opacity:.9; }
 .cm-pet__x{ width:16px; height:16px; opacity:.45; }
 .cm-pet--add{ border-style:dashed; color:var(--cm-green-700); font-weight:600; background:transparent; }
 
@@ -239,7 +239,7 @@
 .cm-num{ font-variant-numeric:tabular-nums; }
 
 /* footer */
-.cm-foot{ padding:8px 20px 22px; text-align:center; font-size:11.5px; line-height:1.7; color:var(--cm-faint); }
+.cm-foot{ padding:4px 16px 12px; text-align:center; font-size:11.5px; line-height:1.7; color:var(--cm-faint); }
 .cm-foot b{ color:var(--cm-ink-soft); }
 
 /* ===========================================================
