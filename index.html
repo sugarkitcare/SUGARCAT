@@ -563,7 +563,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.74</span>
+      <span class="cm-beta">v0.5.75</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -1443,236 +1443,262 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
 
 <!-- ══ 사료분석 ══ -->
 <div class="sec" id="tab-food" style="display:none">
-  <div class="card">
-    <div class="card-title">🔢 고양이 일일 칼로리 계산기</div>
-    <div style="font-size:11px;color:var(--text2);margin-bottom:.75rem;line-height:1.6">
-      체중·나이·상태를 입력하면 WSAVA 기준 RER 기반으로 하루 필요 칼로리를 계산해줘요.
-    </div>
 
-    <div class="row2" style="margin-bottom:8px">
-      <div class="ig"><label>현재 체중 (kg)</label><input type="number" id="calcWt" placeholder="예: 3.5" step="0.1" oninput="calcCalorie()"></div>
-      <div class="ig"><label>목표 체중 (kg)</label><input type="number" id="calcTargetWt" placeholder="없으면 비워두세요" step="0.1" oninput="calcCalorie()"></div>
-    </div>
-    <div class="row2" style="margin-bottom:8px">
-      <div class="ig"><label>나이</label>
-        <select id="calcAge" onchange="calcCalorie()">
-          <option value="kitten">1세 미만 (키튼)</option>
-          <option value="young">1~6세 (성묘)</option>
-          <option value="senior" selected>7~10세 (시니어)</option>
-          <option value="geriatric">11세 이상 (노령)</option>
-        </select>
-      </div>
-      <div class="ig"><label>중성화</label>
-        <select id="calcNeuter" onchange="calcCalorie()">
-          <option value="yes" selected>중성화 O</option>
-          <option value="no">중성화 X</option>
-        </select>
-      </div>
-    </div>
-    <div class="row2" style="margin-bottom:8px">
-      <div class="ig"><label>활동량</label>
-        <select id="calcActivity" onchange="calcCalorie()">
-          <option value="low">낮음 (실내, 잘 안 움직임)</option>
-          <option value="normal" selected>보통</option>
-          <option value="high">높음 (활발)</option>
-        </select>
-      </div>
-      <div class="ig"><label>체형</label>
-        <select id="calcBCS" onchange="calcCalorie()">
-          <option value="thin">저체중 (BCS 1~3)</option>
-          <option value="ideal" selected>정상 (BCS 4~5)</option>
-          <option value="overweight">과체중 (BCS 6~7)</option>
-          <option value="obese">비만 (BCS 8~9)</option>
-        </select>
-      </div>
-    </div>
-    <div style="font-size:11px;color:var(--text2);margin-bottom:.4rem;font-weight:500">동반 질환</div>
-    <div class="routine-tags" id="calcDiseaseTags" style="margin-bottom:.75rem">
-      <div class="routine-tag" data-val="dm" onclick="toggleCalcDisease(this)">당뇨(DM)</div>
-      <div class="routine-tag" data-val="ckd" onclick="toggleCalcDisease(this)">신부전(CKD·PKD)</div>
-      <div class="routine-tag" data-val="panc" onclick="toggleCalcDisease(this)">췌장염</div>
-      <div class="routine-tag" data-val="hcm" onclick="toggleCalcDisease(this)">심비대증(HCM)</div>
-      <div class="routine-tag" data-val="ibd" onclick="toggleCalcDisease(this)">IBD</div>
-      <div class="routine-tag" data-val="obese_tx" onclick="toggleCalcDisease(this)">비만 치료 중</div>
-      <div class="routine-tag" data-val="recovery" onclick="toggleCalcDisease(this)">회복기/저체중</div>
-    </div>
-
-    <!-- 결과 -->
-    <div id="calcResult" style="display:none;background:var(--teal-l);border-radius:10px;padding:.85rem 1rem;margin-bottom:.75rem">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
-        <span style="font-size:12px;font-weight:500;color:var(--teal-d)">하루 필요 칼로리</span>
-        <span id="calcRerBadge" style="font-size:10px;color:var(--teal);background:rgba(29,158,117,0.15);padding:2px 8px;border-radius:6px"></span>
-      </div>
-      <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:.4rem">
-        <span id="calcKcal" style="font-size:28px;font-weight:700;color:var(--teal-d)">--</span>
-        <span style="font-size:14px;color:var(--teal)">kcal/일</span>
-      </div>
-      <div id="calcRange" style="font-size:11px;color:var(--teal);margin-bottom:.5rem"></div>
-      <div id="calcNote" style="font-size:11px;color:var(--teal-d);line-height:1.6;padding-top:.4rem;border-top:0.5px solid rgba(29,158,117,0.2)"></div>
-    </div>
-
-    <!-- 사료 직접 입력 -->
-    <div id="calcManualFood" style="margin-top:.75rem">
-      <div style="font-size:11px;font-weight:500;color:var(--text2);margin-bottom:.5rem">📦 사료별 하루 급여량 계산</div>
-      <div style="font-size:11px;color:var(--text3);margin-bottom:.5rem">사료 포장의 실제 칼로리 정보를 입력하세요</div>
-      <div id="calcManualList"></div>
-      <div style="display:flex;gap:6px;align-items:center;margin-top:.4rem;flex-wrap:wrap">
-        <button onclick="addManualFood()" style="padding:5px 12px;border:0.5px dashed var(--teal);border-radius:8px;background:transparent;color:var(--teal);font-size:12px;cursor:pointer;font-family:inherit">+ 직접 입력</button>
-        <button onclick="openFavFoodPicker()" style="padding:5px 12px;border:1px solid var(--cm-green-edge);border-radius:8px;background:var(--cm-green-tint);color:var(--cm-green-700);font-size:12px;cursor:pointer;font-family:inherit;font-weight:500">즐겨찾기에서 선택</button>
-      </div>
-      <!-- 즐겨찾기 선택 패널 -->
-      <div id="favFoodPicker" style="display:none;background:var(--bg2);border-radius:10px;padding:.75rem;margin-top:.5rem">
-        <div style="font-size:11px;font-weight:500;color:var(--text2);margin-bottom:.5rem">즐겨찾기 사료 선택</div>
-        <div id="favFoodPickerList"></div>
-        <button onclick="document.getElementById('favFoodPicker').style.display='none'"
-          style="padding:4px 10px;border:0.5px solid var(--bd);border-radius:7px;background:transparent;color:var(--text3);font-size:11px;cursor:pointer;font-family:inherit;margin-top:.5rem">닫기</button>
-      </div>
-    </div>
-
-    <!-- 분석된 사료 연동 -->
-    <div id="calcFoodSection" style="display:none;margin-top:.5rem">
-      <div style="font-size:11px;color:var(--text3);margin-bottom:.3rem">▼ 분석된 사료 (사료분석 탭 기준)</div>
-      <div id="calcFoodList"></div>
-    </div>
+  <!-- 세그먼트 -->
+  <div class="f-seg" style="margin-bottom:.75rem">
+    <button id="fSegCalc" data-on="1" onclick="setFoodSeg('calc')" style="padding:7px 0;font-size:13px">급여량 계산</button>
+    <button id="fSegAnalysis" data-on="0" onclick="setFoodSeg('analysis')" style="padding:7px 0;font-size:13px">성분 분석</button>
   </div>
 
-  <div class="card">
-    <div class="card-title">성분표 사진 → AI 분석 → 적합성 판정</div>
-    <div style="background:rgba(29,158,117,0.08);border-radius:8px;padding:.5rem .75rem;margin-bottom:.75rem;font-size:11px;color:var(--text2);line-height:1.6">
-      💡 먼저 아래에서 <b>고양이 질환 유형</b>을 선택하세요. 질환에 맞는 기준으로 분석해드려요.
+  <!-- ── 급여량 계산 ── -->
+  <div id="foodSegCalc">
+
+    <!-- 결과 -->
+    <div id="calcResult" class="cm-card cm-card--flat" style="display:none;margin-bottom:.75rem">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:.65rem">
+        <span style="font-size:12px;font-weight:600;color:var(--cm-faint)">하루 필요 칼로리</span>
+        <span id="calcRerBadge" style="font-size:10px;color:var(--cm-green-700);background:var(--cm-green-tint);padding:2px 8px;border-radius:6px;margin-left:auto"></span>
+      </div>
+      <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:.35rem">
+        <span id="calcKcal" style="font-size:32px;font-weight:700;color:var(--cm-green-700)">--</span>
+        <span style="font-size:14px;color:var(--cm-faint)">kcal / 일</span>
+      </div>
+      <div id="calcRange" style="font-size:11px;color:var(--cm-faint);margin-bottom:.5rem"></div>
+      <div id="calcNote" style="font-size:11px;color:var(--cm-ink-soft);line-height:1.6;padding-top:.5rem;border-top:0.5px solid var(--cm-line)"></div>
     </div>
 
-    <!-- 분석 모드 선택 -->
-    <div style="margin-bottom:.75rem">
-      <div style="font-size:11px;font-weight:500;color:var(--text2);margin-bottom:.4rem">분석 모드 <span style="font-weight:400;color:var(--text3)">· 고양이 질환 설정 시 자동 선택돼요</span></div>
+    <!-- 조건 입력 -->
+    <div class="cm-card cm-card--flat" style="margin-bottom:.75rem">
+      <button onclick="toggleCalcCond()" style="display:flex;align-items:center;gap:8px;width:100%;background:none;border:none;padding:0;cursor:pointer;text-align:left">
+        <div class="cm-ic cm-ic--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="12" y2="18"/></svg></div>
+        <span style="font-size:14px;font-weight:700;color:var(--cm-ink)">조건 입력</span>
+        <svg id="calcCondChev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" style="margin-left:auto;color:var(--cm-faint);transition:transform .2s;transform:rotate(90deg)"><path d="M9 5l7 7-7 7"/></svg>
+      </button>
+      <div id="calcCondBody" style="margin-top:.75rem">
+        <div class="row2" style="margin-bottom:8px">
+          <div class="ig"><label>현재 체중 (kg)</label><input type="number" id="calcWt" placeholder="예: 3.5" step="0.1" oninput="calcCalorie()"></div>
+          <div class="ig"><label>목표 체중 (kg)</label><input type="number" id="calcTargetWt" placeholder="없으면 비워두세요" step="0.1" oninput="calcCalorie()"></div>
+        </div>
+        <div class="row2" style="margin-bottom:8px">
+          <div class="ig"><label>나이</label>
+            <select id="calcAge" onchange="calcCalorie()">
+              <option value="kitten">1세 미만 (키튼)</option>
+              <option value="young">1~6세 (성묘)</option>
+              <option value="senior" selected>7~10세 (시니어)</option>
+              <option value="geriatric">11세 이상 (노령)</option>
+            </select>
+          </div>
+          <div class="ig"><label>중성화</label>
+            <select id="calcNeuter" onchange="calcCalorie()">
+              <option value="yes" selected>중성화 O</option>
+              <option value="no">중성화 X</option>
+            </select>
+          </div>
+        </div>
+        <div class="row2" style="margin-bottom:8px">
+          <div class="ig"><label>활동량</label>
+            <select id="calcActivity" onchange="calcCalorie()">
+              <option value="low">낮음 (실내, 잘 안 움직임)</option>
+              <option value="normal" selected>보통</option>
+              <option value="high">높음 (활발)</option>
+            </select>
+          </div>
+          <div class="ig"><label>체형</label>
+            <select id="calcBCS" onchange="calcCalorie()">
+              <option value="thin">저체중 (BCS 1~3)</option>
+              <option value="ideal" selected>정상 (BCS 4~5)</option>
+              <option value="overweight">과체중 (BCS 6~7)</option>
+              <option value="obese">비만 (BCS 8~9)</option>
+            </select>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--cm-faint);margin-bottom:.4rem;font-weight:500">동반 질환</div>
+        <div class="routine-tags" id="calcDiseaseTags" style="margin-bottom:0">
+          <div class="routine-tag" data-val="dm" onclick="toggleCalcDisease(this)">당뇨(DM)</div>
+          <div class="routine-tag" data-val="ckd" onclick="toggleCalcDisease(this)">신부전(CKD·PKD)</div>
+          <div class="routine-tag" data-val="panc" onclick="toggleCalcDisease(this)">췌장염</div>
+          <div class="routine-tag" data-val="hcm" onclick="toggleCalcDisease(this)">심비대증(HCM)</div>
+          <div class="routine-tag" data-val="ibd" onclick="toggleCalcDisease(this)">IBD</div>
+          <div class="routine-tag" data-val="obese_tx" onclick="toggleCalcDisease(this)">비만 치료 중</div>
+          <div class="routine-tag" data-val="recovery" onclick="toggleCalcDisease(this)">회복기/저체중</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 사료별 급여량 -->
+    <div class="cm-card cm-card--flat">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:.65rem">
+        <div class="cm-ic cm-ic--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div>
+        <span style="font-size:14px;font-weight:700;color:var(--cm-ink)">사료별 급여량</span>
+      </div>
+      <div style="font-size:11px;color:var(--cm-faint);margin-bottom:.5rem">사료 포장의 실제 칼로리 정보를 입력하세요</div>
+      <div id="calcManualList"></div>
+      <div style="display:flex;gap:6px;align-items:center;margin-top:.5rem;flex-wrap:wrap">
+        <button onclick="addManualFood()" style="padding:5px 12px;border:1px dashed var(--cm-green-edge);border-radius:8px;background:transparent;color:var(--cm-green-700);font-size:12px;cursor:pointer;font-family:inherit">+ 직접 입력</button>
+        <button onclick="openFavFoodPicker()" style="padding:5px 12px;border:1px solid var(--cm-green-edge);border-radius:8px;background:var(--cm-green-tint);color:var(--cm-green-700);font-size:12px;cursor:pointer;font-family:inherit;font-weight:500">즐겨찾기에서 선택</button>
+      </div>
+      <div id="favFoodPicker" style="display:none;background:var(--cm-surface-2);border-radius:10px;padding:.75rem;margin-top:.5rem">
+        <div style="font-size:11px;font-weight:500;color:var(--cm-faint);margin-bottom:.5rem">즐겨찾기 사료 선택</div>
+        <div id="favFoodPickerList"></div>
+        <button onclick="document.getElementById('favFoodPicker').style.display='none'"
+          style="padding:4px 10px;border:0.5px solid var(--cm-line);border-radius:7px;background:transparent;color:var(--cm-faint);font-size:11px;cursor:pointer;font-family:inherit;margin-top:.5rem">닫기</button>
+      </div>
+      <div id="calcFoodSection" style="display:none;margin-top:.5rem">
+        <div style="font-size:11px;color:var(--cm-faint);margin-bottom:.3rem">분석된 사료 (성분 분석 기준)</div>
+        <div id="calcFoodList"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── 성분 분석 ── -->
+  <div id="foodSegAnalysis" style="display:none">
+
+    <!-- 분석 모드 -->
+    <div class="cm-card cm-card--flat" style="margin-bottom:.75rem">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:.75rem">
+        <div class="cm-ic cm-ic--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 1.929 5.928H20l-4.929 3.437 1.929 5.929L12 15.056l-4.929 3.438 1.929-5.929L4 9.928h6.071L12 3Z"/></svg></div>
+        <span style="font-size:14px;font-weight:700;color:var(--cm-ink)">분석 모드</span>
+        <span style="font-size:11px;color:var(--cm-faint);font-weight:400">질환 설정 시 자동 선택</span>
+      </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
         <button type="button" id="modeDM" onclick="setFdMode('dm')"
-          style="padding:6px 14px;border-radius:20px;border:1.5px solid var(--teal);background:var(--teal);color:#fff;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit">
+          style="padding:5px 12px;border-radius:16px;border:1.5px solid var(--teal);background:var(--teal);color:#fff;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit">
           당뇨(DM)
         </button>
         <button type="button" id="modeCKD" onclick="setFdMode('ckd')"
-          style="padding:6px 14px;border-radius:20px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit">
+          style="padding:5px 12px;border-radius:16px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit">
           신부전(CKD·PKD)
         </button>
         <button type="button" id="modeBOTH" onclick="setFdMode('both')"
-          style="padding:6px 14px;border-radius:20px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit">
-          당뇨(DM)+신부전(CKD·PKD)
+          style="padding:5px 12px;border-radius:16px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit">
+          당뇨+신부전
         </button>
         <button type="button" id="modeHCM" onclick="setFdMode('hcm')"
-          style="padding:6px 14px;border-radius:20px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit">
+          style="padding:5px 12px;border-radius:16px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit">
           심비대증(HCM)
         </button>
         <button type="button" id="modeHCMCKD" onclick="setFdMode('hcmckd')"
-          style="padding:6px 14px;border-radius:20px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit">
-          심비대증(HCM)+신부전(CKD·PKD)
+          style="padding:5px 12px;border-radius:16px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit">
+          HCM+신부전
         </button>
       </div>
     </div>
+
+    <!-- CKD 스테이지 선택 -->
+    <div id="ckdStageWrap" style="display:none;margin-bottom:.75rem">
+      <div class="cm-card cm-card--flat">
+        <div style="font-size:11px;font-weight:600;color:var(--cm-faint);margin-bottom:.5rem">IRIS CKD 스테이지</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button type="button" class="ckd-stage-btn active" data-stage="1" onclick="setCkdStage(1,this)"
+            style="padding:5px 12px;border-radius:8px;border:1.5px solid var(--blue);background:var(--blue);color:#fff;font-size:12px;cursor:pointer;font-family:inherit">Stage 1</button>
+          <button type="button" class="ckd-stage-btn" data-stage="2" onclick="setCkdStage(2,this)"
+            style="padding:5px 12px;border-radius:8px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:12px;cursor:pointer;font-family:inherit">Stage 2</button>
+          <button type="button" class="ckd-stage-btn" data-stage="3" onclick="setCkdStage(3,this)"
+            style="padding:5px 12px;border-radius:8px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:12px;cursor:pointer;font-family:inherit">Stage 3</button>
+          <button type="button" class="ckd-stage-btn" data-stage="4" onclick="setCkdStage(4,this)"
+            style="padding:5px 12px;border-radius:8px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:12px;cursor:pointer;font-family:inherit">Stage 4</button>
+        </div>
+        <div id="ckdStageDesc" style="font-size:11px;color:var(--blue);margin-top:.4rem;line-height:1.6"></div>
+      </div>
+    </div>
+
     <!-- HCM+CKD 복합 스테이지 선택 -->
     <div id="hcmCkdWrap" style="display:none;margin-bottom:.75rem">
-      <div style="background:rgba(216,90,48,0.08);border:1px solid rgba(216,90,48,0.3);border-radius:8px;padding:.6rem .8rem;margin-bottom:.75rem">
-        <div style="font-size:12px;font-weight:600;color:#D85A30;margin-bottom:.3rem">⚠️ 복합 질환 — 식이 충돌 주의</div>
-        <div style="font-size:11px;color:var(--text2);line-height:1.6">단백질 항목에서 CKD(제한)와 HCM(유지)이 충돌해요. 혈액검사 수치(BUN·알부민·근육 상태)를 기반으로 <b>수의사와 상의 후</b> 결정하세요.</div>
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <div style="flex:1;min-width:120px">
-          <div style="font-size:11px;font-weight:500;color:var(--text2);margin-bottom:.4rem">🫘 CKD 스테이지</div>
-          <div style="display:flex;gap:4px;flex-wrap:wrap">
-            <button type="button" class="hcmckd-ckd-btn active" data-val="1" onclick="setHcmCkdStage('ckd',1,this)"
-              style="padding:4px 10px;border-radius:7px;border:1.5px solid var(--blue);background:var(--blue);color:#fff;font-size:11px;cursor:pointer;font-family:inherit">1</button>
-            <button type="button" class="hcmckd-ckd-btn" data-val="2" onclick="setHcmCkdStage('ckd',2,this)"
-              style="padding:4px 10px;border-radius:7px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:11px;cursor:pointer;font-family:inherit">2</button>
-            <button type="button" class="hcmckd-ckd-btn" data-val="3" onclick="setHcmCkdStage('ckd',3,this)"
-              style="padding:4px 10px;border-radius:7px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:11px;cursor:pointer;font-family:inherit">3</button>
-            <button type="button" class="hcmckd-ckd-btn" data-val="4" onclick="setHcmCkdStage('ckd',4,this)"
-              style="padding:4px 10px;border-radius:7px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:11px;cursor:pointer;font-family:inherit">4</button>
+      <div class="cm-card cm-card--flat">
+        <div style="background:rgba(216,90,48,0.08);border:1px solid rgba(216,90,48,0.3);border-radius:8px;padding:.6rem .8rem;margin-bottom:.75rem">
+          <div style="font-size:12px;font-weight:600;color:#D85A30;margin-bottom:.3rem">복합 질환 — 식이 충돌 주의</div>
+          <div style="font-size:11px;color:var(--cm-ink-soft);line-height:1.6">단백질 항목에서 CKD(제한)와 HCM(유지)이 충돌해요. 혈액검사 수치(BUN·알부민·근육 상태)를 기반으로 <b>수의사와 상의 후</b> 결정하세요.</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <div style="flex:1;min-width:120px">
+            <div style="font-size:11px;font-weight:500;color:var(--cm-faint);margin-bottom:.4rem">CKD 스테이지</div>
+            <div style="display:flex;gap:4px;flex-wrap:wrap">
+              <button type="button" class="hcmckd-ckd-btn active" data-val="1" onclick="setHcmCkdStage('ckd',1,this)"
+                style="padding:4px 10px;border-radius:7px;border:1.5px solid var(--blue);background:var(--blue);color:#fff;font-size:11px;cursor:pointer;font-family:inherit">1</button>
+              <button type="button" class="hcmckd-ckd-btn" data-val="2" onclick="setHcmCkdStage('ckd',2,this)"
+                style="padding:4px 10px;border-radius:7px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:11px;cursor:pointer;font-family:inherit">2</button>
+              <button type="button" class="hcmckd-ckd-btn" data-val="3" onclick="setHcmCkdStage('ckd',3,this)"
+                style="padding:4px 10px;border-radius:7px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:11px;cursor:pointer;font-family:inherit">3</button>
+              <button type="button" class="hcmckd-ckd-btn" data-val="4" onclick="setHcmCkdStage('ckd',4,this)"
+                style="padding:4px 10px;border-radius:7px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:11px;cursor:pointer;font-family:inherit">4</button>
+            </div>
+          </div>
+          <div style="flex:1;min-width:120px">
+            <div style="font-size:11px;font-weight:500;color:var(--cm-faint);margin-bottom:.4rem">HCM 스테이지</div>
+            <div style="display:flex;gap:4px;flex-wrap:wrap">
+              <button type="button" class="hcmckd-hcm-btn active" data-val="B1" onclick="setHcmCkdStage('hcm','B1',this)"
+                style="padding:4px 10px;border-radius:7px;border:1.5px solid var(--teal);background:var(--teal);color:#fff;font-size:11px;cursor:pointer;font-family:inherit">B1</button>
+              <button type="button" class="hcmckd-hcm-btn" data-val="B2" onclick="setHcmCkdStage('hcm','B2',this)"
+                style="padding:4px 10px;border-radius:7px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:11px;cursor:pointer;font-family:inherit">B2</button>
+              <button type="button" class="hcmckd-hcm-btn" data-val="C" onclick="setHcmCkdStage('hcm','C',this)"
+                style="padding:4px 10px;border-radius:7px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:11px;cursor:pointer;font-family:inherit">C</button>
+              <button type="button" class="hcmckd-hcm-btn" data-val="D" onclick="setHcmCkdStage('hcm','D',this)"
+                style="padding:4px 10px;border-radius:7px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:11px;cursor:pointer;font-family:inherit">D</button>
+            </div>
           </div>
         </div>
-        <div style="flex:1;min-width:120px">
-          <div style="font-size:11px;font-weight:500;color:var(--text2);margin-bottom:.4rem">🫀 HCM 스테이지</div>
-          <div style="display:flex;gap:4px;flex-wrap:wrap">
-            <button type="button" class="hcmckd-hcm-btn active" data-val="B1" onclick="setHcmCkdStage('hcm','B1',this)"
-              style="padding:4px 10px;border-radius:7px;border:1.5px solid var(--teal);background:var(--teal);color:#fff;font-size:11px;cursor:pointer;font-family:inherit">B1</button>
-            <button type="button" class="hcmckd-hcm-btn" data-val="B2" onclick="setHcmCkdStage('hcm','B2',this)"
-              style="padding:4px 10px;border-radius:7px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:11px;cursor:pointer;font-family:inherit">B2</button>
-            <button type="button" class="hcmckd-hcm-btn" data-val="C" onclick="setHcmCkdStage('hcm','C',this)"
-              style="padding:4px 10px;border-radius:7px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:11px;cursor:pointer;font-family:inherit">C</button>
-            <button type="button" class="hcmckd-hcm-btn" data-val="D" onclick="setHcmCkdStage('hcm','D',this)"
-              style="padding:4px 10px;border-radius:7px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:11px;cursor:pointer;font-family:inherit">D</button>
-          </div>
-        </div>
+        <div id="hcmCkdDesc" style="font-size:11px;color:var(--cm-ink-soft);margin-top:.5rem;line-height:1.6"></div>
       </div>
-      <div id="hcmCkdDesc" style="font-size:11px;color:var(--text2);margin-top:.5rem;line-height:1.6"></div>
     </div>
+
     <!-- HCM 스테이지 선택 -->
     <div id="hcmStageWrap" style="display:none;margin-bottom:.75rem">
-      <div style="font-size:11px;font-weight:500;color:var(--text2);margin-bottom:.4rem">ACVIM HCM 스테이지</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <button type="button" class="hcm-stage-btn active" data-stage="B1" onclick="setHcmStage('B1',this)"
-          style="padding:5px 12px;border-radius:8px;border:1.5px solid var(--teal);background:var(--teal);color:#fff;font-size:12px;cursor:pointer;font-family:inherit">Stage B1</button>
-        <button type="button" class="hcm-stage-btn" data-stage="B2" onclick="setHcmStage('B2',this)"
-          style="padding:5px 12px;border-radius:8px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:12px;cursor:pointer;font-family:inherit">Stage B2</button>
-        <button type="button" class="hcm-stage-btn" data-stage="C" onclick="setHcmStage('C',this)"
-          style="padding:5px 12px;border-radius:8px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:12px;cursor:pointer;font-family:inherit">Stage C</button>
-        <button type="button" class="hcm-stage-btn" data-stage="D" onclick="setHcmStage('D',this)"
-          style="padding:5px 12px;border-radius:8px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:12px;cursor:pointer;font-family:inherit">Stage D</button>
-      </div>
-      <div id="hcmStageDesc" style="font-size:11px;color:var(--text2);margin-top:.4rem;line-height:1.7"></div>
-    </div>
-
-    <!-- CKD 스테이지 선택 (CKD/복합 모드일 때만 표시) -->
-    <div id="ckdStageWrap" style="display:none;margin-bottom:.75rem">
-      <div style="font-size:11px;font-weight:500;color:var(--text2);margin-bottom:.4rem">IRIS CKD 스테이지</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <button type="button" class="ckd-stage-btn active" data-stage="1" onclick="setCkdStage(1,this)"
-          style="padding:5px 12px;border-radius:8px;border:1.5px solid var(--blue);background:var(--blue);color:#fff;font-size:12px;cursor:pointer;font-family:inherit">
-          Stage 1
-        </button>
-        <button type="button" class="ckd-stage-btn" data-stage="2" onclick="setCkdStage(2,this)"
-          style="padding:5px 12px;border-radius:8px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:12px;cursor:pointer;font-family:inherit">
-          Stage 2
-        </button>
-        <button type="button" class="ckd-stage-btn" data-stage="3" onclick="setCkdStage(3,this)"
-          style="padding:5px 12px;border-radius:8px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:12px;cursor:pointer;font-family:inherit">
-          Stage 3
-        </button>
-        <button type="button" class="ckd-stage-btn" data-stage="4" onclick="setCkdStage(4,this)"
-          style="padding:5px 12px;border-radius:8px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:12px;cursor:pointer;font-family:inherit">
-          Stage 4
-        </button>
-      </div>
-      <div id="ckdStageDesc" style="font-size:11px;color:var(--blue);margin-top:.4rem;line-height:1.6"></div>
-    </div>
-    <!-- 촬영 안내 -->
-    <div style="background:var(--blue-l);border-radius:10px;padding:.75rem 1rem;margin-bottom:.75rem;font-size:12px;color:var(--blue);line-height:1.7">
-      <div style="font-weight:500;margin-bottom:.3rem">· 정확한 분석을 위한 촬영 가이드</div>
-      <div style="display:flex;flex-direction:column;gap:3px">
-        <div>✅ <b>포장지 실물 촬영</b> — 뒷면 보증분석치 표 부분만 클로즈업 <span style="color:var(--teal);font-weight:500">(가장 정확)</span></div>
-        <div>✅ <b>성분표 부분만 크롭</b> — 상세페이지에서 영양성분 표만 잘라서 캡처</div>
-        <div>⚠️ <b>상세페이지 전체 캡처</b> — 마케팅 텍스트가 섞여 오류 가능</div>
-        <div>❌ <b>카카오톡 앱 화면 캡처</b> — 정확도 매우 낮음</div>
+      <div class="cm-card cm-card--flat">
+        <div style="font-size:11px;font-weight:600;color:var(--cm-faint);margin-bottom:.5rem">ACVIM HCM 스테이지</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button type="button" class="hcm-stage-btn active" data-stage="B1" onclick="setHcmStage('B1',this)"
+            style="padding:5px 12px;border-radius:8px;border:1.5px solid var(--teal);background:var(--teal);color:#fff;font-size:12px;cursor:pointer;font-family:inherit">Stage B1</button>
+          <button type="button" class="hcm-stage-btn" data-stage="B2" onclick="setHcmStage('B2',this)"
+            style="padding:5px 12px;border-radius:8px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:12px;cursor:pointer;font-family:inherit">Stage B2</button>
+          <button type="button" class="hcm-stage-btn" data-stage="C" onclick="setHcmStage('C',this)"
+            style="padding:5px 12px;border-radius:8px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:12px;cursor:pointer;font-family:inherit">Stage C</button>
+          <button type="button" class="hcm-stage-btn" data-stage="D" onclick="setHcmStage('D',this)"
+            style="padding:5px 12px;border-radius:8px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:12px;cursor:pointer;font-family:inherit">Stage D</button>
+        </div>
+        <div id="hcmStageDesc" style="font-size:11px;color:var(--cm-ink-soft);margin-top:.4rem;line-height:1.7"></div>
       </div>
     </div>
 
-    <div class="drop-zone" id="fdDrop">
-      <div class="drop-title">성분표 사진 업로드</div>
-      <div class="drop-sub">건식·습식 사료 성분표 이미지</div>
-      <label class="drop-lbl" for="fdFile">사진 선택</label>
-      <input type="file" id="fdFile" accept="image/*,application/pdf" style="display:none">
+    <!-- 사진 분석 -->
+    <div class="cm-card cm-card--flat" style="margin-bottom:.75rem">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:.75rem">
+        <div class="cm-ic cm-ic--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
+        <span style="font-size:14px;font-weight:700;color:var(--cm-ink)">성분표 사진 AI 분석</span>
+      </div>
+      <div style="background:var(--cm-surface-2);border-radius:10px;padding:.75rem 1rem;margin-bottom:.75rem;font-size:12px;color:var(--cm-ink-soft);line-height:1.7">
+        <div style="font-weight:600;color:var(--cm-ink);margin-bottom:.3rem">정확한 분석을 위한 촬영 가이드</div>
+        <div style="display:flex;flex-direction:column;gap:3px">
+          <div><b>포장지 실물 촬영</b> — 뒷면 보증분석치 표 부분만 클로즈업 <span style="color:var(--cm-green-700);font-weight:500">(가장 정확)</span></div>
+          <div><b>성분표 부분만 크롭</b> — 상세페이지에서 영양성분 표만 잘라서 캡처</div>
+          <div style="color:var(--cm-amber,#BA7517)">⚠️ 상세페이지 전체 캡처 — 마케팅 텍스트가 섞여 오류 가능</div>
+          <div style="color:#D85A30">✕ 카카오톡 앱 화면 캡처 — 정확도 매우 낮음</div>
+        </div>
+      </div>
+      <div class="drop-zone" id="fdDrop">
+        <div class="drop-title">성분표 사진 업로드</div>
+        <div class="drop-sub">건식·습식 사료 성분표 이미지</div>
+        <label class="drop-lbl" for="fdFile">사진 선택</label>
+        <input type="file" id="fdFile" accept="image/*,application/pdf" style="display:none">
+      </div>
+      <img id="fdPreview" class="img-prev" style="display:none">
+      <div class="row2" style="margin-bottom:.75rem">
+        <div class="ig"><label>사료 종류 <span style="color:#D85A30;font-size:10px">★ 필수</span></label><select id="fdType"><option value="wet">습식(캔/파우치)</option><option value="dry">건식</option></select><div style="font-size:10px;color:var(--cm-faint);margin-top:2px">수분 기본값에 영향해요 — 꼭 선택해 주세요</div></div>
+        <div class="ig"><label>사료명(선택)</label><input type="text" id="fdName" placeholder="예: 몬지 레날"></div>
+      </div>
+      <div id="fdStatus" style="display:none"></div>
+      <div id="fdResult"></div>
     </div>
-    <img id="fdPreview" class="img-prev" style="display:none">
-    <div class="row2" style="margin-bottom:.75rem">
-      <div class="ig"><label>사료 종류 <span style="color:#D85A30;font-size:10px">★ 필수</span></label><select id="fdType"><option value="wet">습식(캔/파우치)</option><option value="dry">건식</option></select><div style="font-size:10px;color:var(--text3);margin-top:2px">수분 기본값에 영향해요 — 꼭 선택해 주세요</div></div>
-      <div class="ig"><label>사료명(선택)</label><input type="text" id="fdName" placeholder="예: 몬지 레날"></div>
+
+    <!-- 분석 이력 -->
+    <div id="fdHistory" style="display:none">
+      <div class="sep"></div>
+      <div class="sec-lbl"><span>분석 이력</span><button class="clr-btn" id="fdClear">전체 삭제</button></div>
+      <div id="fdHistList"></div>
     </div>
-    <div id="fdStatus" style="display:none"></div>
-    <div id="fdResult"></div>
+
   </div>
-  <div id="fdHistory" style="display:none">
-    <div class="sep"></div>
-    <div class="sec-lbl"><span>분석 이력</span><button class="clr-btn" id="fdClear">전체 삭제</button></div>
-    <div id="fdHistList"></div>
-  </div>
+
 </div>
 
 <!-- ══ AI 해석 ══ -->
@@ -4954,6 +4980,20 @@ const CKD_CRITERIA = {
   }
 };
 
+function setFoodSeg(seg) {
+  const isCalc = seg === 'calc';
+  document.getElementById('foodSegCalc').style.display = isCalc ? 'block' : 'none';
+  document.getElementById('foodSegAnalysis').style.display = isCalc ? 'none' : 'block';
+  document.getElementById('fSegCalc').dataset.on = isCalc ? '1' : '0';
+  document.getElementById('fSegAnalysis').dataset.on = isCalc ? '0' : '1';
+}
+function toggleCalcCond() {
+  const body = document.getElementById('calcCondBody');
+  const chev = document.getElementById('calcCondChev');
+  const open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : 'block';
+  if (chev) chev.style.transform = open ? 'rotate(90deg)' : 'rotate(270deg)';
+}
 function setFdMode(mode) {
   fdMode = mode;
   const modeColors = {dm:'var(--teal)', ckd:'var(--blue)', both:'var(--purple)', hcm:'var(--coral)', hcmckd:'#8B4513'};
