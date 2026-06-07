@@ -534,7 +534,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.47</span>
+      <span class="cm-beta">v0.5.48</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">💬 피드백</button>
@@ -1346,14 +1346,14 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
         <span id="btResultLabel" style="font-size:13px;font-weight:700;color:var(--cm-ink)"></span>
         <div style="display:flex;gap:8px">
           <button class="cm-btn cm-btn--sm" id="btSave" style="background:var(--cm-green-700);color:#fff;border:none">저장 및 그래프 추가</button>
-          <button class="cm-btn cm-btn--sm" id="btAiComment" style="background:#7C5CBF;color:#fff;border:none">🤖 AI 분석</button>
+          <button class="cm-btn cm-btn--sm" id="btAiComment" style="background:var(--cm-green-tint);color:var(--cm-green-700);border:1px solid var(--cm-green-edge);box-shadow:none">AI 분석</button>
         </div>
       </div>
       <div style="overflow-x:auto"><table class="bt"><thead><tr><th>항목</th><th>수치</th><th>단위</th><th>정상범위</th><th>상태</th><th>변화</th></tr></thead><tbody id="btBody"></tbody></table></div>
     </div>
     <div id="btAiCommentArea" style="display:none;margin-top:.75rem">
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:.5rem">
-        <span style="font-size:12px;font-weight:500;color:#7C5CBF">🤖 AI 혈액검사 분석</span>
+        <span style="font-size:12px;font-weight:700;color:var(--cm-green-700)">AI 혈액검사 분석</span>
         <span id="btAiSpinner" style="display:none" class="spin"></span>
       </div>
       <div id="btAiCommentBody" style="font-size:13px;color:var(--cm-ink);line-height:1.85;background:var(--cm-bg);border:1px solid var(--cm-line);border-radius:10px;padding:.85rem 1rem;white-space:pre-wrap"></div>
@@ -7181,92 +7181,156 @@ function renderBTHistoryList() {
     return;
   }
   list.innerHTML = '';
-  [...btData].sort((a,b)=>b.date>a.date?1:-1).forEach((bt,i) => {
-    const highCount = (bt.items||[]).filter(it=>it.refHigh!==null&&it.value>it.refHigh).length;
-    const lowCount = (bt.items||[]).filter(it=>it.refLow!==null&&it.value<it.refLow).length;
-    const statusColor = highCount+lowCount===0?'var(--cm-green-700)':highCount+lowCount<=2?'var(--cm-amber)':'var(--cm-clay)';
-    const item = document.createElement('div');
-    item.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--cm-surface);border:1px solid var(--cm-line);border-radius:12px;margin-bottom:8px';
-    item.innerHTML = '<div style="width:3px;height:34px;border-radius:2px;background:'+statusColor+';flex-shrink:0"></div>'
-      +'<div style="flex:1;min-width:0;cursor:pointer">'
-      +'<div style="font-size:13.5px;font-weight:700;color:var(--cm-ink);margin-bottom:2px">'+bt.cat+' · '+bt.date+'</div>'
-      +'<div style="font-size:11.5px;color:var(--cm-faint)">'+(bt.items||[]).length+'개 항목'
-      +(highCount?' &nbsp;<span style="background:var(--cm-clay-tint);color:var(--cm-clay-ink);padding:1px 7px;border-radius:6px;font-size:10px;font-weight:600">↑높음 '+highCount+'</span>':'')
-      +(lowCount?' &nbsp;<span style="background:#E8F0FE;color:#1967D2;padding:1px 7px;border-radius:6px;font-size:10px;font-weight:600">↓낮음 '+lowCount+'</span>':'')
-      +'</div></div>'
-      +'<button type="button" style="background:none;border:none;font-size:14px;cursor:pointer;padding:4px 8px;opacity:0.4;flex-shrink:0">🗑️</button>';
-    // 클릭 - 결과 보기
-    item.querySelector('div[style*="flex:1"]').addEventListener('click', ()=>{
-      btEx = bt;
-      renderBTResultTable(bt);
-      window.scrollTo({top:0,behavior:'smooth'});
+  const sorted = [...btData].sort((a,b)=>b.date>a.date?1:-1);
+  const yearMap = {};
+  sorted.forEach(bt => {
+    const yr = (bt.date||'').slice(0,4)||'?';
+    if(!yearMap[yr]) yearMap[yr] = [];
+    yearMap[yr].push(bt);
+  });
+  const years = Object.keys(yearMap).sort((a,b)=>b-a);
+  years.forEach((year, yi) => {
+    const isOpen = yi === 0;
+    const chevron = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s;flex-shrink:0"><polyline points="6 9 12 15 18 9"/></svg>';
+    const yHeader = document.createElement('div');
+    yHeader.style.cssText = 'font-size:13px;font-weight:700;color:var(--cm-faint);padding:10px 4px 6px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none';
+    yHeader.innerHTML = '<span>' + year + '년</span>' + chevron;
+    const svg = yHeader.querySelector('svg');
+    if(svg) svg.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(-90deg)';
+    const yItems = document.createElement('div');
+    yItems.style.display = isOpen ? 'block' : 'none';
+    yHeader.addEventListener('click', () => {
+      const open = yItems.style.display !== 'none';
+      yItems.style.display = open ? 'none' : 'block';
+      if(svg) svg.style.transform = open ? 'rotate(-90deg)' : 'rotate(0deg)';
     });
-    // 삭제 버튼
-    item.querySelector('button').addEventListener('click', (e)=>{
-      e.stopPropagation();
-      if(!confirm(bt.date+' 혈액검사 기록을 삭제할까요?')) return;
-      const idx = btData.indexOf(bt);
-      if(idx > -1) {
-        const deletedItem = btData.splice(idx, 1)[0];
-        saveBT();
-        // DB에서도 삭제
-        if(sbClient && currentUser && deletedItem) {
-          const prof = (state.catProfiles||{})[deletedItem.cat];
-          if(prof?.dbId) {
-            sbClient.from('blood_tests')
-              .delete()
-              .eq('user_id', currentUser.id)
-              .eq('cat_id', prof.dbId)
-              .eq('test_date', deletedItem.date)
-              .then(({error}) => { if(error) console.error('혈액검사 DB 삭제 오류:', error); });
+    list.appendChild(yHeader);
+    list.appendChild(yItems);
+    yearMap[year].forEach(bt => {
+      const highCount = (bt.items||[]).filter(it=>it.refHigh!==null&&it.value>it.refHigh).length;
+      const lowCount = (bt.items||[]).filter(it=>it.refLow!==null&&it.value<it.refLow).length;
+      const statusColor = highCount+lowCount===0?'var(--cm-green-700)':highCount+lowCount<=2?'var(--cm-amber)':'var(--cm-clay)';
+      const item = document.createElement('div');
+      item.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--cm-surface);border:1px solid var(--cm-line);border-radius:12px;margin-bottom:8px';
+      item.innerHTML = '<div style="width:3px;height:34px;border-radius:2px;background:'+statusColor+';flex-shrink:0"></div>'
+        +'<div style="flex:1;min-width:0;cursor:pointer">'
+        +'<div style="font-size:13.5px;font-weight:700;color:var(--cm-ink);margin-bottom:2px">'+bt.cat+' · '+bt.date+'</div>'
+        +'<div style="font-size:11.5px;color:var(--cm-faint)">'+(bt.items||[]).length+'개 항목'
+        +(highCount?' &nbsp;<span style="background:var(--cm-clay-tint);color:var(--cm-clay-ink);padding:1px 7px;border-radius:6px;font-size:10px;font-weight:600">↑높음 '+highCount+'</span>':'')
+        +(lowCount?' &nbsp;<span style="background:#E8F0FE;color:#1967D2;padding:1px 7px;border-radius:6px;font-size:10px;font-weight:600">↓낮음 '+lowCount+'</span>':'')
+        +'</div></div>'
+        +'<button type="button" style="background:none;border:none;font-size:14px;cursor:pointer;padding:4px 8px;opacity:0.4;flex-shrink:0">🗑️</button>';
+      item.querySelector('div[style*="flex:1"]').addEventListener('click', ()=>{
+        btEx = bt;
+        renderBTResultTable(bt);
+        window.scrollTo({top:0,behavior:'smooth'});
+      });
+      item.querySelector('button').addEventListener('click', (e)=>{
+        e.stopPropagation();
+        if(!confirm(bt.date+' 혈액검사 기록을 삭제할까요?')) return;
+        const idx = btData.indexOf(bt);
+        if(idx > -1) {
+          const deletedItem = btData.splice(idx, 1)[0];
+          saveBT();
+          if(sbClient && currentUser && deletedItem) {
+            const prof = (state.catProfiles||{})[deletedItem.cat];
+            if(prof?.dbId) {
+              sbClient.from('blood_tests')
+                .delete()
+                .eq('user_id', currentUser.id)
+                .eq('cat_id', prof.dbId)
+                .eq('test_date', deletedItem.date)
+                .then(({error}) => { if(error) console.error('혈액검사 DB 삭제 오류:', error); });
+            }
           }
+          const cc = document.getElementById('btCatCards');
+          if(cc) cc.innerHTML = '';
+          const br = document.getElementById('btResult');
+          if(br) br.style.display = 'none';
+          const tw = document.querySelector('div[style*="overflow-x"]');
+          if(tw) tw.style.display = '';
+          renderBTHistoryList();
+          renderBTGraphs();
+          renderBTTrend();
+          toast('삭제됐어요');
         }
-        // UI 전체 초기화
-        const cc = document.getElementById('btCatCards');
-        if(cc) cc.innerHTML = '';
-        const br = document.getElementById('btResult');
-        if(br) br.style.display = 'none';
-        const tw = document.querySelector('div[style*="overflow-x"]');
-        if(tw) tw.style.display = '';
-        renderBTHistoryList();
-        renderBTGraphs();
-        renderBTTrend();
-        toast('삭제됐어요');
-      }
+      });
+      yItems.appendChild(item);
     });
-    list.appendChild(item);
   });
 }
 
-// 혈액검사 결과 테이블 렌더링 (이력 클릭 시 + 수치 수정 후 재렌더링)
+// 혈액검사 결과 카드 렌더링 (이력 클릭 시 + 수치 수정 후 재렌더링)
 function renderBTResultTable(bt) {
   const btResult = document.getElementById('btResult');
   const tbody = document.getElementById('btBody');
   if(!btResult || !tbody) return;
-  // 업로드 흐름에서 카드뷰가 표시 중이면 원래 테이블 뷰로 복원
-  const tableWrap = tbody.closest('div[style*="overflow"]');
-  if(tableWrap) tableWrap.style.display = '';
-  const cc = document.getElementById('btCatCards');
-  if(cc) cc.innerHTML = '';
-  const prevRec = btData.filter(d=>d.cat===bt.cat&&d.date<bt.date).sort((a,b)=>b.date<a.date?-1:1)[0];
   tbody.innerHTML = '';
+  const tableWrap = tbody.closest('div[style*="overflow"]');
+  if(tableWrap) tableWrap.style.display = 'none';
+  let cardContainer = document.getElementById('btCatCards');
+  if(!cardContainer) {
+    cardContainer = document.createElement('div');
+    cardContainer.id = 'btCatCards';
+    if(tableWrap) tableWrap.parentNode.insertBefore(cardContainer, tableWrap);
+    else btResult.appendChild(cardContainer);
+  }
+  cardContainer.innerHTML = '';
+  const catOrder = ['혈구','신장','간','전해질','혈당','췌장','갑상선','단백','지질','기타'];
+  const catMap = {};
   (bt.items||[]).forEach((item, idx) => {
-    const s = item.refLow!==null&&item.value<item.refLow?'l':item.refHigh!==null&&item.value>item.refHigh?'h':'n';
-    const badge = s==='n'?'<span class="bn">정상</span>':s==='h'?'<span class="bh">높음</span>':'<span class="bl">낮음</span>';
-    const ref = item.refLow!==null||item.refHigh!==null?`${item.refLow??''}~${item.refHigh??''}`:'–';
-    let changeTd = '<td style="color:var(--text3);font-size:11px">–</td>';
-    if(prevRec){
-      const prevItem = prevRec.items.find(i=>(i.abbr||i.name)===(item.abbr||item.name));
-      if(prevItem&&prevItem.value!==null){
-        const diff = parseFloat((item.value-prevItem.value).toFixed(2));
-        const arrow = diff>0?'▲':diff<0?'▼':'━';
-        const c = diff>0?'var(--cm-clay-ink)':diff<0?'var(--cm-green-700)':'var(--cm-faint)';
-        changeTd = `<td style="font-size:11px;color:${c};white-space:nowrap">${arrow}${Math.abs(diff)}</td>`;
+    const cat = item.category||'기타';
+    if(!catMap[cat]) catMap[cat] = [];
+    catMap[cat].push({item, idx});
+  });
+  const prevRec = btData.filter(d=>d.cat===bt.cat&&d.date<bt.date).sort((a,b)=>b.date<a.date?-1:1)[0];
+  const orderedCats = [...catOrder.filter(c=>catMap[c]), ...Object.keys(catMap).filter(c=>!catOrder.includes(c))];
+  orderedCats.forEach(cat => {
+    const catHead = document.createElement('div');
+    catHead.style.cssText = 'font-size:12.5px;font-weight:700;color:var(--cm-faint);padding:12px 0 6px;border-bottom:1px solid var(--cm-line);margin-bottom:8px';
+    catHead.textContent = cat;
+    cardContainer.appendChild(catHead);
+    catMap[cat].forEach(({item, idx}) => {
+      const isNull = item.value === null || item.value === undefined;
+      const s = isNull ? 'x' : (item.refLow!==null&&item.value<item.refLow?'l':item.refHigh!==null&&item.value>item.refHigh?'h':'n');
+      const badgeStyle = {
+        x:'background:var(--cm-amber-tint);color:#7E5C16;border:1px solid var(--cm-amber-edge)',
+        h:'background:var(--cm-clay-tint);color:var(--cm-clay-ink);border:1px solid var(--cm-clay-edge)',
+        l:'background:var(--cm-green-tint);color:var(--cm-green-ink);border:1px solid var(--cm-green-edge)',
+        n:'background:var(--cm-surface-2);color:var(--cm-faint);border:1px solid var(--cm-line)'
+      }[s];
+      const badgeText = {x:'미입력',h:'높음',l:'낮음',n:'정상'}[s];
+      const badgeHtml = `<span style="display:inline-block;padding:2px 8px;border-radius:8px;font-size:10.5px;font-weight:600;${badgeStyle}">${badgeText}</span>`;
+      const ref = item.refLow!==null||item.refHigh!==null ? `${item.refLow??''}~${item.refHigh??''}` : '';
+      let changeHtml = '';
+      if(prevRec && !isNull) {
+        const prevItem = prevRec.items.find(i=>(i.abbr||i.name)===(item.abbr||item.name));
+        if(prevItem && prevItem.value!==null) {
+          const diff = parseFloat((item.value-prevItem.value).toFixed(2));
+          const arrow = diff>0?'▲':diff<0?'▼':'━';
+          const c = diff>0?'var(--cm-clay-ink)':diff<0?'var(--cm-green-700)':'var(--cm-faint)';
+          changeHtml = `<div style="font-size:11px;color:${c};font-weight:600;white-space:nowrap">${arrow}${Math.abs(diff)}</div>`;
+        }
       }
-    }
-    const nameCell = `${item.name}${item.abbr&&item.abbr!==item.name?` <span style="color:var(--cm-faint);font-size:10px">(${item.abbr})</span>`:''}`;
-    const valueCell = `<td id="btv_${idx}" style="font-weight:500;white-space:nowrap">${item.value} <span onclick="editBTItem(${idx})" style="cursor:pointer;color:var(--cm-faint);font-size:11px;opacity:0.6" title="수치 수정">✎</span></td>`;
-    tbody.innerHTML += `<tr><td>${nameCell}</td>${valueCell}<td style="color:var(--text2)">${item.unit||'–'}</td><td style="color:var(--text2)">${ref}</td><td>${badge}</td>${changeTd}</tr>`;
+      const card = document.createElement('div');
+      card.style.cssText = 'background:var(--cm-surface);border:1px solid var(--cm-line);border-radius:14px;padding:13px 15px;margin-bottom:8px;display:flex;align-items:center;gap:12px';
+      card.innerHTML =
+        '<div style="flex:1;min-width:0">'
+        + `<div style="font-size:14px;font-weight:800;color:var(--cm-ink)">${item.name}</div>`
+        + (item.abbr&&item.abbr!==item.name ? `<div style="font-size:12px;color:var(--cm-faint)">${item.abbr}</div>` : '')
+        + (ref ? `<div style="font-size:11px;color:var(--cm-faint)">정상 ${ref}${item.unit?' '+item.unit:''}</div>` : '')
+        + '</div>'
+        + '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">'
+        + badgeHtml
+        + `<div id="btv_${idx}" style="display:flex;align-items:center;gap:4px">`
+        + `<span style="font-size:17px;font-weight:800;color:var(--cm-ink)">${isNull?'–':item.value}</span>`
+        + (item.unit&&!isNull ? `<span style="font-size:11px;color:var(--cm-faint)">${item.unit}</span>` : '')
+        + `<span onclick="editBTItem(${idx})" style="cursor:pointer;color:var(--cm-faint);font-size:11px;opacity:0.6;padding:2px 4px" title="수치 수정">✎</span>`
+        + '</div>'
+        + changeHtml
+        + '</div>';
+      cardContainer.appendChild(card);
+    });
   });
   document.getElementById('btResultLabel').textContent = `${bt.cat} · ${bt.date} (${(bt.items||[]).length}개 항목)`;
   btResult.style.display = 'block';
