@@ -563,7 +563,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.61</span>
+      <span class="cm-beta">v0.5.62</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -7416,7 +7416,7 @@ function renderBTResultTable(bt) {
     `<button class="bt-filter-btn" data-mode="all" onclick="applyBTResultFilter('all')" style="font-size:12px;font-weight:700;padding:5px 12px;border-radius:8px;cursor:pointer;font-family:inherit;border:1px solid var(--cm-green-700);background:var(--cm-green-700);color:#fff">전체</button>`
     + (nullCount > 0 ? `<button class="bt-filter-btn" data-mode="missing" onclick="applyBTResultFilter('missing')" style="font-size:12px;font-weight:700;padding:5px 12px;border-radius:8px;cursor:pointer;font-family:inherit;border:1px solid var(--cm-line);background:var(--cm-surface-2);color:var(--cm-faint)">미입력&nbsp;<span style="background:var(--cm-amber-tint);color:#7E5C16;border-radius:6px;padding:1px 6px;font-size:10.5px">${nullCount}</span></button>` : '')
     + `<div style="flex:1"></div>`
-    + `<button id="btEditModeBtn" type="button" onclick="toggleBTEditMode()" style="font-size:12px;font-weight:700;padding:5px 11px;border-radius:8px;cursor:pointer;font-family:inherit;border:1px solid var(--cm-line);background:var(--cm-surface-2);color:var(--cm-ink-soft)">✏️ 수정</button>`;
+    + `<button id="btEditModeBtn" type="button" onclick="toggleBTEditMode()" style="font-size:12px;font-weight:700;padding:5px 11px;border-radius:8px;cursor:pointer;font-family:inherit;border:1px solid var(--cm-line);background:var(--cm-surface-2);color:var(--cm-ink-soft)">수정</button>`;
   cardContainer.appendChild(filterBar);
   const orderedCats = [...catOrder.filter(c=>catMap[c]), ...Object.keys(catMap).filter(c=>!catOrder.includes(c))];
   orderedCats.forEach(cat => {
@@ -7565,7 +7565,7 @@ function toggleBTEditMode() {
     btEditMode = true;
     btEditOriginals = {};
     if(btn) {
-      btn.textContent = '✓ 저장';
+      btn.textContent = '저장';
       btn.style.background = 'var(--cm-green-700)';
       btn.style.color = '#fff';
       btn.style.borderColor = 'var(--cm-green-700)';
