@@ -478,9 +478,9 @@ input[type="date"]{ border-radius:13px !important; -webkit-border-radius:13px !i
 .cm-editbtn--done{ color:#fff; background:var(--cm-green-700); border-color:var(--cm-green-700); }
 
 /* BT 날짜/고양이 입력 박스 */
-.ig--bt{ gap:6px; }
+.ig--bt{ gap:6px; width:100%; min-width:0; box-sizing:border-box; overflow:hidden; }
 .ig--bt label{ font-size:12px; font-weight:700; color:var(--cm-faint); margin-bottom:0; }
-.ig--bt input{ border-radius:13px !important; background:var(--cm-surface) !important; border:1px solid var(--cm-line) !important; padding:12px 14px !important; font-size:14px !important; font-weight:600 !important; }
+.ig--bt input{ width:100% !important; min-width:0 !important; box-sizing:border-box !important; border-radius:13px !important; background:var(--cm-surface) !important; border:1px solid var(--cm-line) !important; padding:12px 14px !important; font-size:14px !important; font-weight:600 !important; -webkit-appearance:none; appearance:none; }
 
 /* tile grid */
 .tgrid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
