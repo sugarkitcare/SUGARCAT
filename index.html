@@ -563,7 +563,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.92</span>
+      <span class="cm-beta">v0.5.93</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -643,8 +643,8 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
       </div>
       <div class="cmb-side">
         <div class="cmb-poo">
-          <div class="cmb-poo__l"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4c1.8 2.2 3.5 4.5 3.5 6.3a3.5 3.5 0 0 1-7 0C4.5 8.5 6.2 6.2 8 4Z"/><path d="M16 8c1.4 1.7 2.5 3.4 2.5 4.7a2.5 2.5 0 0 1-5 0C13.5 11.4 14.6 9.7 16 8Z"/></svg>소변 상태</div>
-          <div class="cmb-poo__v" id="heroUrineVal"><span class="dot"></span>—</div>
+          <div class="cmb-poo__l">식사·칼로리</div>
+          <div class="cmb-poo__v" id="heroMealKcal" style="font-size:11px;line-height:1.4">—</div>
         </div>
         <div class="cmb-mini">
           <div>
@@ -652,8 +652,8 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
             <div class="v" id="heroStoolVal">—</div>
           </div>
           <div>
-            <div class="l">체중</div>
-            <div class="v" id="heroWeightVal">—</div>
+            <div class="l">소변</div>
+            <div class="v" id="heroUrineSmall">—</div>
           </div>
         </div>
       </div>
@@ -3952,17 +3952,20 @@ function renderDailySummary() {
     const tgtEl = document.getElementById('heroWaterTarget');
     if(tgtEl) tgtEl.textContent = waterTarget ? '목표 ' + waterTarget + 'ml' : '목표 —';
 
-    // 소변 상태
-    const urineArr = rec.urine || [];
-    const urineEl = document.getElementById('heroUrineVal');
-    if(urineEl) {
-      if(!urineArr.length) {
-        urineEl.innerHTML = '<span class="dot" style="background:var(--cm-line-2)"></span>기록 없음';
+    // 식사 칼로리
+    const mealsHero = rec.meals || [];
+    const mealKcalEl = document.getElementById('heroMealKcal');
+    if(mealKcalEl) {
+      const totalKcalHero = mealsHero.reduce((a,b) => a + (b.kcal||0), 0);
+      const recKcalHero = ((state.catProfiles||{})[cat]||{}).recommendedKcal || 0;
+      if(!mealsHero.length) {
+        mealKcalEl.innerHTML = '<span style="color:var(--cm-faint)">기록 없음</span>';
+      } else if(recKcalHero && totalKcalHero) {
+        const pctHero = Math.round(totalKcalHero / recKcalHero * 100);
+        const clrHero = pctHero >= 100 ? 'var(--cm-green-700)' : pctHero >= 80 ? 'var(--cm-clay)' : '#D85A30';
+        mealKcalEl.innerHTML = '<span style="color:'+clrHero+';font-weight:700">'+totalKcalHero+'</span> / 권장 '+recKcalHero+'kcal<br><span style="color:'+clrHero+';font-weight:600">('+pctHero+'%)</span>';
       } else {
-        const lastU = urineArr[urineArr.length-1];
-        const alertU = lastU.amount==='혈뇨'||lastU.amount==='핍뇨';
-        const dotClr = alertU ? 'var(--cm-clay)' : 'var(--cm-green-500)';
-        urineEl.innerHTML = '<span class="dot" style="background:'+dotClr+'"></span>'+urineArr.length+'회 · '+lastU.amount;
+        mealKcalEl.textContent = totalKcalHero ? totalKcalHero+'kcal' : mealsHero.length+'끼니';
       }
     }
 
@@ -3971,13 +3974,20 @@ function renderDailySummary() {
     const stoolEl = document.getElementById('heroStoolVal');
     if(stoolEl) stoolEl.textContent = poopArr.length ? poopArr.length+'회 · '+poopArr[poopArr.length-1].type : '—';
 
-    // 체중
-    const wtEl = document.getElementById('heroWeightVal');
-    if(wtEl) {
-      const lastWtRec = (rec.weights||[]).slice(-1)[0];
-      wtEl.textContent = lastWtRec ? lastWtRec.weight+'kg' : latestWtHero ? latestWtHero+'kg' : '—';
+    // 소변 (미니)
+    const urineSmEl = document.getElementById('heroUrineSmall');
+    if(urineSmEl) {
+      const urineArrHero = rec.urine || [];
+      if(!urineArrHero.length) {
+        urineSmEl.textContent = '—';
+        urineSmEl.style.color = '';
+      } else {
+        const lastUHero = urineArrHero[urineArrHero.length-1];
+        const alertUHero = lastUHero.amount==='혁롼'||lastUHero.amount==='핀롼';
+        urineSmEl.textContent = urineArrHero.length+'회'+(alertUHero?' · '+lastUHero.amount:'');
+        urineSmEl.style.color = alertUHero ? 'var(--cm-clay)' : '';
+      }
     }
-
     // 피드백 슬라이더
     var slideEl = document.getElementById('heroFeedbackSlide');
     var titleEl2 = document.getElementById('heroFeedbackTitle');
@@ -4040,7 +4050,7 @@ function renderDailySummary() {
     var twg=document.getElementById('tileWeightStatus');
     if(twg){var tlwt=(tRec.weights||[]).slice(-1)[0];if(tlwt){twg.textContent=tlwt.weight+' kg';twg.dataset.tone='good';_tit('weight','good');}else{twg.textContent='기록 전';twg.dataset.tone='muted';_tit('weight','muted');}}
     var tml=document.getElementById('tileMealStatus');
-    if(tml){var tms=tRec.meals||[];if(tms.length){var ttkc=tms.reduce(function(a,b){return a+(b.kcal||0);},0);var _recKcal=((state.catProfiles||{})[cat]||{}).recommendedKcal||0;var _kcalStr=ttkc?' · '+ttkc+'kcal':'';var _mTone='good';if(_recKcal&&ttkc){var _pct=Math.round(ttkc/_recKcal*100);_kcalStr=' · '+ttkc+'/권장'+_recKcal+'kcal ('+_pct+'%)';_mTone=_pct>=100?'good':_pct>=80?'warn':'alert';}tml.textContent=tms.length+'회'+_kcalStr;tml.dataset.tone=_mTone;_tit('meal',_mTone);}else{tml.textContent='급여 전';tml.dataset.tone='muted';_tit('meal','muted');}}
+    if(tml){var tms=tRec.meals||[];if(tms.length){var ttkc=tms.reduce(function(a,b){return a+(b.kcal||0);},0);tml.textContent=tms.length+'회'+(ttkc?' · '+ttkc+'kcal':'');tml.dataset.tone='good';_tit('meal','good');}else{tml.textContent='급여 전';tml.dataset.tone='muted';_tit('meal','muted');}}
     var tgl=document.getElementById('tileGlucoseStatus');
     if(tgl){var tlbg=(tRec.bg||[]).filter(function(x){return x.bg!=='';}).slice(-1)[0];if(tlbg){var tbgv=parseFloat(tlbg.bg);var _tglT=tbgv<=80?'alert':tbgv>=300?'warn':'good';tgl.textContent=tbgv+' mg/dL';tgl.dataset.tone=_tglT;_tit('glucose',_tglT);}else{tgl.textContent='기록 전';tgl.dataset.tone='muted';_tit('glucose','muted');}}
     var tins2=document.getElementById('tileInsulinStatus');
