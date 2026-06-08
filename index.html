@@ -563,7 +563,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.95</span>
+      <span class="cm-beta">v0.5.96</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -7416,6 +7416,14 @@ function deleteLogItem(type, ts) {
   if(idx > -1) {
     rec[key].splice(idx, 1);
     saveS(); updateMetrics(); renderHistory();
+    if(key==='weights'){
+      const _recs=state.records[state.activeCat]||{};
+      const _dates=Object.keys(_recs).sort().reverse();
+      let _lw=null;
+      for(const _d of _dates){const _ws=_recs[_d].weights||[];if(_ws.length){_lw=_ws[_ws.length-1].weight;break;}}
+      if(_lw)updateRecommendedKcal(state.activeCat,_lw);
+      renderDailySummary();
+    }
     toast('삭제됐어요');
   }
 }
