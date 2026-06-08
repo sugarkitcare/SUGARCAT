@@ -563,7 +563,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.89</span>
+      <span class="cm-beta">v0.5.90</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -1869,7 +1869,7 @@ function getRec(cat,date){
   if(!r.bg)r.bg=[];
   return r;
 }
-function toast(msg,c='#1D9E75'){
+function toast(msg,c='#235B43'){
   const t=document.createElement('div');t.className='toast-el';t.style.background=c;t.textContent=msg;
   document.body.appendChild(t);setTimeout(()=>t.remove(),2200);
 }
