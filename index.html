@@ -563,7 +563,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.96</span>
+      <span class="cm-beta">v0.5.97</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -5679,12 +5679,17 @@ function renderFdHistory(){
       +'<div class="h-meta">탄수 DM '+(cdm?.toFixed(1)||'?')+'%<br>'+(kcal!==null?kcal+'kcal':'칼로리 미입력')+' · '+dt+'</div>'
       +'<span onclick="event.stopPropagation();toggleFavFood(this.dataset.name,this,'+(kcal!==null?kcal:'null')+',\''+(d.type||'dry')+'\')" data-name="'+h.name.replace(/"/g,'&quot;')+'"'
       +' style="cursor:pointer;flex-shrink:0;display:flex;align-items:center">'+(isFav?_starFilled:_starEmpty)+'</span>'
+      +'<button type="button" onclick="event.stopPropagation();deleteFdItem('+h.ts+')"' +' style="background:none;border:none;color:var(--cm-faint);cursor:pointer;padding:2px 6px;font-size:15px;line-height:1;flex-shrink:0">×</button>'
       +'</div>';
     item.onclick=()=>{_fdViewData=h;renderFdResult(d);window.scrollTo({top:0,behavior:'smooth'})};
     list.appendChild(item);
   });
 }
 document.getElementById('fdClear').onclick=()=>{if(confirm('이력을 삭제할까요?')){fdData=[];saveFD();renderFdHistory()}};
+function deleteFdItem(ts){
+  fdData=fdData.filter(h=>h.ts!==ts);
+  saveFD();renderFdHistory();
+}
 renderFdHistory();
 
 /* AI */
