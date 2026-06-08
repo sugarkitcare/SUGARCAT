@@ -563,7 +563,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.93</span>
+      <span class="cm-beta">v0.5.94</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -4089,6 +4089,7 @@ document.getElementById('saveWt').onclick=()=>{
   const wtD=document.getElementById('wtDate').value||today();
   getRec(state.activeCat,wtD).weights.push({weight:w,time:document.getElementById('wtTime').value,note:document.getElementById('wtNote').value,ts:Date.now()});
   saveS(wtD);updateMetrics();updateWtDiff();['wtVal','wtNote'].forEach(id=>document.getElementById(id).value='');
+  const _cwEl=document.getElementById('calcWt');if(_cwEl){_cwEl.value=w;try{calcCalorie();}catch(e){}}
   toast(wtD!==today()?wtD+' 날짜로 저장됐어요':'체중 저장 완료!');renderDailySummary();
 };
 document.getElementById('saveIns').onclick=()=>{
