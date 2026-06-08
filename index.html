@@ -563,7 +563,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.82</span>
+      <span class="cm-beta">v0.5.83</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -1740,7 +1740,7 @@ let state={cats:[],activeCat:'',records:{},catProfiles:{}};
 let btData=[],fdData=[];
 let btEditMode=false,btEditOriginals={};
 let favFoods=[];
-try{const _ffd=localStorage.getItem('favFoods_v1');if(_ffd)favFoods=JSON.parse(_ffd);}catch(e){}
+try{const _ffd=localStorage.getItem('favFoods_v1');if(_ffd){const _r=JSON.parse(_ffd);favFoods=_r.map(x=>typeof x==='string'?{name:x,kcalPer100g:null,type:null}:x);}}catch(e){}
 try{const d=localStorage.getItem(SK);if(d)state=JSON.parse(d)}catch(e){}
 try{const d=localStorage.getItem(SK_BT);if(d){const raw=JSON.parse(d);btData=raw.map(r=>({...r,items:normalizeBTItems(r.items||[])}));}}catch(e){}
 try{const d=localStorage.getItem(SK_FD);if(d)fdData=JSON.parse(d)}catch(e){}
@@ -2538,9 +2538,9 @@ function openFavFoodPickerDaily() {
     list.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:.5rem">즐겨찾기된 사료가 없어요.<br>사료 분석 후 ⭐을 눌러 추가해주세요.</div>';
     return;
   }
-  list.innerHTML = favFoods.map((name, i) => {
-    const fd = fdData.find(f => (f.name||f.foodNameInput||'') === name);
-    const kcalPer100 = fd ? (fd.kcalPer100g || fd.kcal_per_100g || null) : null;
+  list.innerHTML = favFoods.map((f, i) => {
+    const name = typeof f === 'string' ? f : f.name;
+    const kcalPer100 = typeof f === 'string' ? null : f.kcalPer100g;
     return `<div style="display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:0.5px solid var(--bd)">
       <span style="flex:1;font-size:12px;color:var(--text)">${name}${kcalPer100?` <span style="color:var(--text3)">(${kcalPer100}kcal/100g)</span>`:''}</span>
       <button type="button" onclick="selectFavFoodDaily(${i})"
@@ -2549,11 +2549,12 @@ function openFavFoodPickerDaily() {
   }).join('');
 }
 function selectFavFoodDaily(idx) {
-  const name = favFoods[idx];
-  if(!name) return;
+  const fav = favFoods[idx];
+  if(!fav) return;
+  const name = typeof fav === 'string' ? fav : fav.name;
+  const kcalPer100 = typeof fav === 'string' ? null : fav.kcalPer100g;
   document.getElementById('foodName').value = name;
-  const fd = fdData.find(f => (f.name||f.foodNameInput||'') === name);
-  if(fd && (fd.kcalPer100g || fd.kcal_per_100g)) {
+  if(kcalPer100) {
     // 칼로리 자동 입력은 급여량 입력 후 계산되므로 힌트만
     toast('⭐ ' + name + ' 선택됐어요 · 급여량 입력 후 저장하세요', '#BA7517');
   } else {
@@ -2568,28 +2569,26 @@ function openFavFoodPicker() {
   const list = document.getElementById('favFoodPickerList');
   if(!picker || !list) return;
 
-  // 즐겨찾기된 사료 목록 + fdData에서 칼로리 매칭
-  const favList = favFoods.map(name => {
-    const match = fdData.find(d => d.name === name);
-    return { name, data: match || null };
-  });
+  // 즐겨찾기된 사료 목록 (객체 구조에서 직접 읽기)
+  const favList = favFoods.map(f => ({
+    name: typeof f === 'string' ? f : f.name,
+    kcalPer100g: typeof f === 'string' ? null : f.kcalPer100g,
+    type: typeof f === 'string' ? null : f.type
+  }));
 
   if(!favList.length) {
     list.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:.5rem">즐겨찾기된 사료가 없어요.<br>사료 분석 후 ⭐을 눌러 추가해주세요.</div>';
   } else {
     list.innerHTML = favList.map(f => {
-      const d = f.data?.data;
-      const m = d?.moisture ?? 75;
-      const kcal = d?.kcal_per_100g ?? null;
-      const per = d?.type === 'dry' ? 100 : 85;
-      const kcalEst = d ? Math.round((d.protein_af||0)*3.5+(d.fat_af||0)*8.5+((d.carb_af)||0)*3.5) : 0;
-      const kcalFinal = kcal || kcalEst || 0;
-      const kcalLabel = kcal ? `${kcal}kcal/100g` : kcalEst ? `${kcalEst}kcal/100g (추정)` : '칼로리 정보 없음';
+      const kcal = f.kcalPer100g;
+      const per = f.type === 'dry' ? 100 : 85;
+      const kcalLabel = kcal ? `${kcal}kcal/100g` : '칼로리 미입력 (사료 분석탭에서 입력)';
+      const kcalFinal = kcal || 0;
       const safeName = f.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
       return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--bg);border-radius:8px;margin-bottom:5px">
         <div>
           <div style="font-size:13px;color:var(--text)">${f.name}</div>
-          <div style="font-size:11px;color:var(--text3)">${kcalLabel}</div>
+          <div style="font-size:11px;color:${kcal?'var(--text3)':'var(--cm-amber)'}">${kcalLabel}</div>
         </div>
         <button type="button" onclick="addFavFoodToCalc('${safeName}',${kcalFinal},${per})"
           style="padding:4px 10px;border:0.5px solid var(--teal);border-radius:7px;background:var(--teal-l);color:var(--teal-d);font-size:11px;cursor:pointer;font-family:inherit">
@@ -5440,9 +5439,9 @@ function renderFdResult(d){
   const cdm=cDM(carb,m),pdm=cDM(p,m),fdm=cDM(f,m);
   // DM 100% 초과 = 수분값 오류 (건식인데 습식 기본값 적용된 경우 등)
   const dmError = (pdm !== null && pdm > 100) || (fdm !== null && fdm > 100);
-  const kcal=d.kcal_per_100g??Math.round(p*3.5+f*8.5+carb*3.5);
+  const kcal=d.kcal_per_100g??null;
   const lv=dmError?'caution':getLv(cdm??999);const lc=lvColor(lv);
-  const isEstC=!hasExplicitCarb,isEstK=d.kcal_per_100g===null;
+  const isEstC=!hasExplicitCarb,isEstK=kcal===null;
   const dmWarn=dmError?'<div style="background:#FAECE7;border:1px solid #D85A30;border-radius:8px;padding:.5rem .75rem;margin-bottom:.5rem;font-size:12px;color:#D85A30">⚠️ 단백질 또는 지방 DM이 100%를 초과해요. 수분 수치를 확인하거나 사진을 다시 업로드해 주세요.</div>':'';
   const name=d.name&&d.name!=='분석 사료'?d.name:d.foodNameInput||'분석 사료';
   const vi={best:{ic:'★',t:`${name} — 당뇨 최적`,s:`탄수화물 DM ${cdm?.toFixed(1)}% (≤5% 충족)`},good:{ic:'○',t:`${name} — 당뇨 적합`,s:`탄수화물 DM ${cdm?.toFixed(1)}% (≤10% 이내)`},caution:{ic:'△',t:`${name} — 주의`,s:`탄수화물 DM ${cdm?.toFixed(1)}% (기준치 초과)`},bad:{ic:'✕',t:`${name} — 부적합`,s:`탄수화물 DM ${cdm?.toFixed(1)}% (고탄수화물)`}}[lv];
@@ -5459,13 +5458,17 @@ function renderFdResult(d){
     // 포장 단위 계산기도 추가
     const calcDiv3 = document.createElement('div');
     calcDiv3.style.cssText='background:var(--bg2);border-radius:10px;padding:.75rem 1rem;margin-top:.5rem';
-    const k100b=kcal;
-    calcDiv3.innerHTML='<div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:.4rem">📦 포장 단위로 급여량 계산</div>'
-      +'<div style="font-size:11px;color:var(--text3);margin-bottom:.5rem">100g 기준 '+k100b+'kcal</div>'
+    calcDiv3.innerHTML='<div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:.3rem">📋 칼로리 입력 (kcal/100g)</div>'
+      +'<div style="font-size:11px;color:var(--text3);margin-bottom:.4rem">'+(kcal!==null?'AI가 포장에서 추출했어요. 다르면 수정하세요.':'포장지 표기 칼로리를 직접 입력하세요.')+'</div>'
+      +'<div style="display:flex;gap:6px;align-items:center;margin-bottom:.75rem">'
+      +'<input type="number" id="fdKcalInput" value="'+(kcal!==null?kcal:'')+'" placeholder="예: 350" style="width:90px;padding:6px 8px;border:0.5px solid var(--teal);border-radius:8px;font-size:13px;font-weight:600;background:var(--bg);color:var(--text);font-family:inherit" oninput="updateFdKcal(this.value)">'
+      +'<span style="font-size:12px;color:var(--text2)">kcal / 100g</span>'
+      +'</div>'
+      +'<div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:.4rem">📦 포장 단위로 급여량 계산</div>'
       +'<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:.5rem">'
-      +'<input type="number" id="fdPackSize" placeholder="포장 용량(g)" style="width:110px;padding:6px 8px;border:0.5px solid var(--bd);border-radius:8px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit" oninput="calcFdPortion('+k100b+')">'
+      +'<input type="number" id="fdPackSize" placeholder="포장 용량(g)" style="width:110px;padding:6px 8px;border:0.5px solid var(--bd);border-radius:8px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit" oninput="calcFdPortion()">'
       +'<span style="font-size:11px;color:var(--text2)">g /</span>'
-      +'<input type="number" id="fdPackKcal" placeholder="포장 칼로리(kcal)" style="width:130px;padding:6px 8px;border:0.5px solid var(--bd);border-radius:8px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit" oninput="calcFdPortion('+k100b+')">'
+      +'<input type="number" id="fdPackKcal" placeholder="포장 칼로리(kcal)" style="width:130px;padding:6px 8px;border:0.5px solid var(--bd);border-radius:8px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit" oninput="calcFdPortion()">'
       +'<span style="font-size:11px;color:var(--text2)">kcal</span>'
       +'</div>'
       +'<div id="fdPortionResult" style="font-size:12px;color:var(--teal);font-weight:500;line-height:1.6"></div>';
@@ -5499,13 +5502,17 @@ function renderFdResult(d){
     area.appendChild(ckdDiv);
     const calcDiv2 = document.createElement('div');
     calcDiv2.style.cssText='background:var(--bg2);border-radius:10px;padding:.75rem 1rem;margin-top:.5rem';
-    const k100=kcal;
-    calcDiv2.innerHTML='<div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:.4rem">📦 포장 단위로 급여량 계산</div>'
-      +'<div style="font-size:11px;color:var(--text3);margin-bottom:.5rem">100g 기준 '+k100+'kcal</div>'
+    calcDiv2.innerHTML='<div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:.3rem">📋 칼로리 입력 (kcal/100g)</div>'
+      +'<div style="font-size:11px;color:var(--text3);margin-bottom:.4rem">'+(kcal!==null?'AI가 포장에서 추출했어요. 다르면 수정하세요.':'포장지 표기 칼로리를 직접 입력하세요.')+'</div>'
+      +'<div style="display:flex;gap:6px;align-items:center;margin-bottom:.75rem">'
+      +'<input type="number" id="fdKcalInput" value="'+(kcal!==null?kcal:'')+'" placeholder="예: 350" style="width:90px;padding:6px 8px;border:0.5px solid var(--teal);border-radius:8px;font-size:13px;font-weight:600;background:var(--bg);color:var(--text);font-family:inherit" oninput="updateFdKcal(this.value)">'
+      +'<span style="font-size:12px;color:var(--text2)">kcal / 100g</span>'
+      +'</div>'
+      +'<div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:.4rem">📦 포장 단위로 급여량 계산</div>'
       +'<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:.5rem">'
-      +'<input type="number" id="fdPackSize" placeholder="포장 용량(g)" style="width:110px;padding:6px 8px;border:0.5px solid var(--bd);border-radius:8px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit" oninput="calcFdPortion('+k100+')">'
+      +'<input type="number" id="fdPackSize" placeholder="포장 용량(g)" style="width:110px;padding:6px 8px;border:0.5px solid var(--bd);border-radius:8px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit" oninput="calcFdPortion()">'
       +'<span style="font-size:11px;color:var(--text2)">g /</span>'
-      +'<input type="number" id="fdPackKcal" placeholder="포장 칼로리(kcal)" style="width:130px;padding:6px 8px;border:0.5px solid var(--bd);border-radius:8px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit" oninput="calcFdPortion('+k100+')">'
+      +'<input type="number" id="fdPackKcal" placeholder="포장 칼로리(kcal)" style="width:130px;padding:6px 8px;border:0.5px solid var(--bd);border-radius:8px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit" oninput="calcFdPortion()">'
       +'<span style="font-size:11px;color:var(--text2)">kcal</span>'
       +'</div>'
       +'<div id="fdPortionResult" style="font-size:12px;color:var(--teal);font-weight:500;line-height:1.6"></div>';
@@ -5523,12 +5530,12 @@ function renderFdResult(d){
   <div class="n-card"><div class="n-val">${f.toFixed(1)}%</div><div class="n-lbl">지방 as-fed</div><div class="n-dm">DM ${fdm?.toFixed(1)}%</div></div>
   <div class="n-card ${cdm<=5?'hl':cdm<=10?'':cdm<=15?'wn':'dg'}"><div class="n-val">${carb.toFixed(1)}%${isEstC?' *':''}</div><div class="n-lbl">탄수화물${isEstC?' (추정)':''}</div><div class="n-dm">DM ${cdm?.toFixed(1)}%</div></div>
   <div class="n-card"><div class="n-val">${m.toFixed(1)}%${d.moisture==null?' *':''}</div><div class="n-lbl">수분${d.moisture==null?' (기본값)':''}</div><div class="n-dm">${d.type==='wet'?'습식':'건식'}</div></div>
-  <div class="n-card hl"><div class="n-val">${kcal}${isEstK?' *':''}</div><div class="n-lbl">kcal/100g${isEstK?' (추정)':''}</div><div class="n-dm">칼로리</div></div>
+  <div class="n-card hl"><div class="n-val">${kcal??'-'}</div><div class="n-lbl">kcal/100g${isEstK?' (직접 입력)':''}</div><div class="n-dm">칼로리</div></div>
   ${d.phosphorus_af!==null&&d.phosphorus_af!==undefined?`<div class="n-card ${d.phosphorus_af>0.5?'wn':'hl'}"><div class="n-val">${d.phosphorus_af}%</div><div class="n-lbl">인 (P)</div><div class="n-dm">>0.5% 신장 주의</div></div>`:''}
 </div>
 ${tags?`<div class="tags">${tags}</div><div style="font-size:10px;color:var(--text3);margin-bottom:.5rem">초록: 단백질원 · 주황: 탄수화물원</div>`:''}
 ${d.special_notes?`<div style="font-size:12px;color:var(--text2);line-height:1.6">${d.special_notes}</div>`:''}
-${(isEstC||isEstK||d.moisture==null)?`
+${(isEstC||d.moisture==null)?`
 <div style="background:var(--bg2);border-radius:8px;padding:.5rem .75rem;margin-top:.5rem;font-size:11px;color:var(--text2);line-height:1.6">
   <span style="font-weight:600">⚠️ 추정값 안내</span><br>
   * 표시 항목은 성분표에 직접 표기되지 않아 추정한 값이에요.<br>
@@ -5540,13 +5547,17 @@ ${(isEstC||isEstK||d.moisture==null)?`
   // 포장 단위 계산기
   const calcDiv=document.createElement('div');
   calcDiv.style.cssText='background:var(--bg2);border-radius:10px;padding:.75rem 1rem;margin-top:.5rem';
-  const k100=kcal;
-  calcDiv.innerHTML='<div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:.4rem">📦 포장 단위로 급여량 계산</div>'
-    +'<div style="font-size:11px;color:var(--text3);margin-bottom:.5rem">AI가 추출한 칼로리는 <b>100g 기준 '+k100+'kcal</b>이에요. 실제 포장 용량을 입력하면 정확한 급여량을 계산해줘요.</div>'
+  calcDiv.innerHTML='<div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:.3rem">📋 칼로리 입력 (kcal/100g)</div>'
+    +'<div style="font-size:11px;color:var(--text3);margin-bottom:.4rem">'+(kcal!==null?'AI가 포장에서 추출했어요. 다르면 수정하세요.':'포장지 표기 칼로리를 직접 입력하세요.')+'</div>'
+    +'<div style="display:flex;gap:6px;align-items:center;margin-bottom:.75rem">'
+    +'<input type="number" id="fdKcalInput" value="'+(kcal!==null?kcal:'')+'" placeholder="예: 350" style="width:90px;padding:6px 8px;border:0.5px solid var(--teal);border-radius:8px;font-size:13px;font-weight:600;background:var(--bg);color:var(--text);font-family:inherit" oninput="updateFdKcal(this.value)">'
+    +'<span style="font-size:12px;color:var(--text2)">kcal / 100g</span>'
+    +'</div>'
+    +'<div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:.4rem">📦 포장 단위로 급여량 계산</div>'
     +'<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:.5rem">'
-    +'<input type="number" id="fdPackSize" placeholder="포장 용량(g)" style="width:110px;padding:6px 8px;border:0.5px solid var(--bd);border-radius:8px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit" oninput="calcFdPortion('+k100+')">'
+    +'<input type="number" id="fdPackSize" placeholder="포장 용량(g)" style="width:110px;padding:6px 8px;border:0.5px solid var(--bd);border-radius:8px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit" oninput="calcFdPortion()">'
     +'<span style="font-size:11px;color:var(--text2)">g /</span>'
-    +'<input type="number" id="fdPackKcal" placeholder="포장 칼로리(kcal)" style="width:130px;padding:6px 8px;border:0.5px solid var(--bd);border-radius:8px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit" oninput="calcFdPortion('+k100+')">'
+    +'<input type="number" id="fdPackKcal" placeholder="포장 칼로리(kcal)" style="width:130px;padding:6px 8px;border:0.5px solid var(--bd);border-radius:8px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit" oninput="calcFdPortion()">'
     +'<span style="font-size:11px;color:var(--text2)">kcal</span>'
     +'</div>'
     +'<div id="fdPortionResult" style="font-size:12px;color:var(--teal);font-weight:500;line-height:1.6"></div>';
@@ -5561,7 +5572,8 @@ ${(isEstC||isEstK||d.moisture==null)?`
   }
 }
 
-function calcFdPortion(kcalPer100){
+function calcFdPortion(){
+  const kcalPer100=parseFloat(document.getElementById('fdKcalInput')?.value)||0;
   const size=parseFloat(document.getElementById('fdPackSize')?.value);
   const packKcal=parseFloat(document.getElementById('fdPackKcal')?.value);
   const result=document.getElementById('fdPortionResult');
@@ -5569,14 +5581,16 @@ function calcFdPortion(kcalPer100){
   let actualKcalPer100=kcalPer100;
   if(!isNaN(size)&&!isNaN(packKcal)&&size>0){
     actualKcalPer100=packKcal/size*100;
-  }else if(!isNaN(size)&&size>0){
-    actualKcalPer100=kcalPer100;
-  }else{result.textContent='';return;}
+  }else if(!(kcalPer100>0)||!(size>0)){result.textContent='';return;}
   const mer=currentMer||200;
   const totalG=Math.round(mer/actualKcalPer100*100);
   const perMeal=Math.round(totalG/2);
   const packs=!isNaN(size)&&size>0?(totalG/size).toFixed(1):'?';
   result.innerHTML='→ 하루 <b>'+totalG+'g</b> (1회 <b>'+perMeal+'g</b> × 2끼) / 포장 <b>'+packs+'개</b> 분량 <span style="font-size:10px;color:var(--text3)">(칼로리 계산기 기준 '+mer+'kcal/일)</span>';
+}
+function updateFdKcal(val){
+  const v=parseFloat(val)||null;
+  if(fdData.length>0){fdData[0].data.kcal_per_100g=v;saveFD();try{renderFdHistory();}catch(e){}}
 }
 
 const _starFilled='<svg viewBox="0 0 24 24" width="18" height="18" fill="var(--cm-amber)" stroke="var(--cm-amber)" stroke-width="1.5"><path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2Z"/></svg>';
@@ -5588,16 +5602,16 @@ function renderFdHistory(){
   fdData.forEach(h=>{
     const d=h.data;const m=d.moisture??(d.type==='wet'?75:10);const p=d.protein_af??0,f=d.fat_af??0,fi=d.fiber_af??0,a=d.ash_af??(d.type==='wet'?2:7);
     const carb=(d.carb_af!=null&&d.carb_af>0)?d.carb_af:estCarb(d.protein_af??0,d.fat_af??0,d.fiber_af??0,d.ash_af??(d.type==='wet'?2:7),d.moisture??75);const cdm=cDM(carb,d.moisture??75);
-    const kcal=d.kcal_per_100g??Math.round(p*3.5+f*8.5+carb*3.5);
+    const kcal=d.kcal_per_100g??null;
     const lv=getLv(cdm??999);const lc=lvColor(lv);
     const dt=new Date(h.ts).toLocaleDateString('ko-KR',{month:'short',day:'numeric'});
     const item=document.createElement('div');item.className='h-item';
-    const isFav=favFoods.includes(h.name);
+    const isFav=favFoods.some(f=>(f.name||f)===h.name);
     item.innerHTML='<div class="h-dot" style="background:'+lc+'"></div>'
       +'<div class="h-name">'+h.name+' <span style="font-size:10px;color:var(--text3)">'+(d.type==='wet'?'습식':'건식')+'</span></div>'
       +'<div style="display:flex;align-items:center;gap:6px">'
-      +'<div class="h-meta">탄수 DM '+(cdm?.toFixed(1)||'?')+'%<br>'+kcal+'kcal · '+dt+'</div>'
-      +'<span onclick="event.stopPropagation();toggleFavFood(this.dataset.name,this)" data-name="'+h.name.replace(/"/g,'&quot;')+'"'
+      +'<div class="h-meta">탄수 DM '+(cdm?.toFixed(1)||'?')+'%<br>'+(kcal!==null?kcal+'kcal':'칼로리 미입력')+' · '+dt+'</div>'
+      +'<span onclick="event.stopPropagation();toggleFavFood(this.dataset.name,this,'+(kcal!==null?kcal:'null')+',\''+(d.type||'dry')+'\')" data-name="'+h.name.replace(/"/g,'&quot;')+'"'
       +' style="cursor:pointer;flex-shrink:0;display:flex;align-items:center">'+(isFav?_starFilled:_starEmpty)+'</span>'
       +'</div>';
     item.onclick=()=>{renderFdResult(d);window.scrollTo({top:0,behavior:'smooth'})};
@@ -6327,7 +6341,7 @@ function calcCalorie(){
     const list=document.getElementById('calcFoodList');list.innerHTML='';
     fdData.slice(0,5).forEach(h=>{
       const d=h.data;
-      const kcalPer100=d.kcal_per_100g||Math.round((d.protein_af||0)*3.5+(d.fat_af||0)*8.5+((d.carb_af)||0)*3.5);
+      const kcalPer100=d.kcal_per_100g||null;
       if(!kcalPer100)return;
       const grams=Math.round(mer/kcalPer100*100);
       const meals2=Math.round(grams/2);
@@ -8299,10 +8313,10 @@ const saveFavFoods=()=>{
   }
 };
 
-function toggleFavFood(name, el) {
-  const idx=favFoods.indexOf(name);
+function toggleFavFood(name, el, kcalPer100g, type) {
+  const idx=favFoods.findIndex(f=>(f.name||f)===name);
   if(idx>-1){favFoods.splice(idx,1);el.innerHTML=_starEmpty;}
-  else{favFoods.push(name);el.innerHTML=_starFilled;}
+  else{favFoods.push({name,kcalPer100g:kcalPer100g||null,type:type||null});el.innerHTML=_starFilled;}
   saveFavFoods();
   toast(idx>-1?`${name} 즐겨찾기 해제`:`${name} 즐겨찾기 추가!`);
 }
@@ -9301,7 +9315,7 @@ window.closeDailySheet = function() {
 /* ── 사료 데이터 고양이별 분리 ── */
 function loadFoodDataForCat(cat) {
   if(!cat) return;
-  try{const d=localStorage.getItem('favFoods_v1_'+cat);favFoods=d?JSON.parse(d):[];}catch(e){favFoods=[];}
+  try{const d=localStorage.getItem('favFoods_v1_'+cat);const _r=d?JSON.parse(d):[];favFoods=_r.map(x=>typeof x==='string'?{name:x,kcalPer100g:null,type:null}:x);}catch(e){favFoods=[];}
   try{const d=localStorage.getItem('manualFoods_v1_'+cat);manualFoods=d?JSON.parse(d):[];}catch(e){manualFoods=[];}
   try{const d=localStorage.getItem('fd_v2_'+cat);fdData=d?JSON.parse(d):[];}catch(e){fdData=[];}
 }
@@ -9336,7 +9350,7 @@ async function syncFoodDataFromDB(cat) {
     data.forEach(row=>{
       const val=Array.isArray(row.value)?row.value:(typeof row.value==='string'?JSON.parse(row.value):[]);
       try{localStorage.setItem(row.key,JSON.stringify(val));}catch(e){}
-      if(row.key==='favFoods_v1_'+cat&&cat===state.activeCat){favFoods=val;updated=true;}
+      if(row.key==='favFoods_v1_'+cat&&cat===state.activeCat){favFoods=(val||[]).map(x=>typeof x==='string'?{name:x,kcalPer100g:null,type:null}:x);updated=true;}
       if(row.key==='manualFoods_v1_'+cat&&cat===state.activeCat){manualFoods=val;updated=true;}
       if(row.key==='fd_v2_'+cat&&cat===state.activeCat){fdData=val;updated=true;}
     });
