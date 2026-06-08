@@ -563,7 +563,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.84</span>
+      <span class="cm-beta">v0.5.85</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -2602,13 +2602,15 @@ function openFavFoodPicker() {
   picker.style.display = picker.style.display === 'none' ? 'block' : 'none';
 }
 
-function addFavFoodToCalc(name, kcal, per) {
+function addFavFoodToCalc(name, kcalPer100, per) {
   // 이미 추가된 사료면 스킵
   if(manualFoods.find(f => f.name === name)) {
     toast(`${name}은 이미 추가돼 있어요`, '#BA7517');
     return;
   }
-  manualFoods.push({ name, kcal: kcal||60, per: per||85 });
+  // kcalPer100은 kcal/100g 기준; manualFoods는 "per g당 kcal" 구조이므로 변환
+  const kcalForPer = kcalPer100 ? Math.round(kcalPer100 / 100 * (per||85)) : 60;
+  manualFoods.push({ name, kcal: kcalForPer, per: per||85 });
   saveManualFoods();
   renderManualFoodList();
   document.getElementById('favFoodPicker').style.display = 'none';
@@ -5461,11 +5463,15 @@ function renderFdResult(d){
     // kcal 입력 행 (최상단)
     const kcalRowHcm = document.createElement('div');
     kcalRowHcm.style.cssText='background:var(--bg2);border-radius:9px;padding:.5rem .75rem;margin-bottom:.5rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap';
-    kcalRowHcm.innerHTML='<span style="font-size:12px;color:var(--text2);flex-shrink:0">📋 칼로리 (kcal/100g)</span>'
-      +'<input type="number" id="fdKcalInput" value="'+(kcal!==null?kcal:'')+'" placeholder="포장지에서 직접 입력"'
-      +' style="width:80px;padding:4px 8px;border:1.5px solid var(--teal);border-radius:7px;font-size:14px;font-weight:700;background:var(--bg);color:var(--text);font-family:inherit;text-align:center" oninput="updateFdKcal(this.value)">'
-      +'<span style="font-size:11px;color:var(--text3)">'+(kcal!==null?'AI 추출 · 다르면 수정하세요':'포장지 표기값을 입력하세요')+'</span>'
-      +'<span id="fdKcalFb" style="font-size:11px;margin-left:auto"></span>';
+    kcalRowHcm.innerHTML='<div style="font-size:11px;color:var(--text3);margin-bottom:.35rem">'+(kcal!==null?'AI가 포장에서 추출했어요. 다르면 수정 후 저장하세요.':'포장지에 표기된 칼로리를 입력하고 저장하세요.')+'</div>'
+      +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
+      +'<span style="font-size:12px;color:var(--text2);flex-shrink:0">📋 칼로리</span>'
+      +'<input type="number" id="fdKcalInput" value="'+(kcal!==null?kcal:'')+'" placeholder="예: 350"'
+      +' style="width:80px;padding:4px 8px;border:1.5px solid var(--teal);border-radius:7px;font-size:14px;font-weight:700;background:var(--bg);color:var(--text);font-family:inherit;text-align:center">'
+      +'<span style="font-size:12px;color:var(--text2)">kcal/100g</span>'
+      +'<button type="button" onclick="saveFdKcal()" style="padding:5px 14px;background:#1a6b43;color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0">저장</button>'
+      +'<span id="fdKcalFb" style="font-size:11px"></span>'
+      +'</div>';
     area.appendChild(kcalRowHcm);
     const calcDiv3 = document.createElement('div');
     calcDiv3.style.cssText='background:var(--bg2);border-radius:10px;padding:.75rem 1rem;margin-top:.5rem';
@@ -5495,11 +5501,15 @@ function renderFdResult(d){
     // kcal 입력 행 (최상단)
     const kcalRowCkd = document.createElement('div');
     kcalRowCkd.style.cssText='background:var(--bg2);border-radius:9px;padding:.5rem .75rem;margin-bottom:.5rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap';
-    kcalRowCkd.innerHTML='<span style="font-size:12px;color:var(--text2);flex-shrink:0">📋 칼로리 (kcal/100g)</span>'
-      +'<input type="number" id="fdKcalInput" value="'+(kcal!==null?kcal:'')+'" placeholder="포장지에서 직접 입력"'
-      +' style="width:80px;padding:4px 8px;border:1.5px solid var(--teal);border-radius:7px;font-size:14px;font-weight:700;background:var(--bg);color:var(--text);font-family:inherit;text-align:center" oninput="updateFdKcal(this.value)">'
-      +'<span style="font-size:11px;color:var(--text3)">'+(kcal!==null?'AI 추출 · 다르면 수정하세요':'포장지 표기값을 입력하세요')+'</span>'
-      +'<span id="fdKcalFb" style="font-size:11px;margin-left:auto"></span>';
+    kcalRowCkd.innerHTML='<div style="font-size:11px;color:var(--text3);margin-bottom:.35rem">'+(kcal!==null?'AI가 포장에서 추출했어요. 다르면 수정 후 저장하세요.':'포장지에 표기된 칼로리를 입력하고 저장하세요.')+'</div>'
+      +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
+      +'<span style="font-size:12px;color:var(--text2);flex-shrink:0">📋 칼로리</span>'
+      +'<input type="number" id="fdKcalInput" value="'+(kcal!==null?kcal:'')+'" placeholder="예: 350"'
+      +' style="width:80px;padding:4px 8px;border:1.5px solid var(--teal);border-radius:7px;font-size:14px;font-weight:700;background:var(--bg);color:var(--text);font-family:inherit;text-align:center">'
+      +'<span style="font-size:12px;color:var(--text2)">kcal/100g</span>'
+      +'<button type="button" onclick="saveFdKcal()" style="padding:5px 14px;background:#1a6b43;color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0">저장</button>'
+      +'<span id="fdKcalFb" style="font-size:11px"></span>'
+      +'</div>';
     area.appendChild(kcalRowCkd);
     // 기본 수치 카드
     const basicDiv = document.createElement('div');
@@ -5535,13 +5545,17 @@ function renderFdResult(d){
   <div class="sb-row"><span class="sb-lbl">단백질 점수</span><div class="sb-bg"><div class="sb-fill" style="width:${ps}%;background:#1D9E75"></div></div><span class="sb-val">${ps}점</span></div>
   <div class="sb-row"><span class="sb-lbl">저탄수 점수</span><div class="sb-bg"><div class="sb-fill" style="width:${cs}%;background:${cs>=70?'#1D9E75':cs>=40?'#BA7517':'#D85A30'}"></div></div><span class="sb-val">${cs}점</span></div>
 </div>
-<div style="background:var(--bg2);border-radius:9px;padding:.5rem .75rem;margin-bottom:.5rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-  <span style="font-size:12px;color:var(--text2);flex-shrink:0">📋 칼로리 (kcal/100g)</span>
-  <input type="number" id="fdKcalInput" value="${kcal!==null?kcal:''}" placeholder="${kcal===null?'포장지에서 직접 입력':''}}"
-    style="width:80px;padding:4px 8px;border:1.5px solid var(--teal);border-radius:7px;font-size:14px;font-weight:700;background:var(--bg);color:var(--text);font-family:inherit;text-align:center"
-    oninput="updateFdKcal(this.value)">
-  <span style="font-size:11px;color:var(--text3)">${kcal!==null?'AI 추출 · 다르면 수정하세요':'포장지 표기값을 입력하세요'}</span>
-  <span id="fdKcalFb" style="font-size:11px;margin-left:auto"></span>
+<div style="background:var(--bg2);border-radius:9px;padding:.5rem .75rem;margin-bottom:.5rem">
+  <div style="font-size:11px;color:var(--text3);margin-bottom:.35rem">${kcal!==null?'AI가 포장에서 추출했어요. 다르면 수정 후 저장하세요.':'포장지에 표기된 칼로리를 입력하고 저장하세요.'}</div>
+  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+    <span style="font-size:12px;color:var(--text2);flex-shrink:0">📋 칼로리</span>
+    <input type="number" id="fdKcalInput" value="${kcal!==null?kcal:''}" placeholder="예: 350"
+      style="width:80px;padding:4px 8px;border:1.5px solid var(--teal);border-radius:7px;font-size:14px;font-weight:700;background:var(--bg);color:var(--text);font-family:inherit;text-align:center">
+    <span style="font-size:12px;color:var(--text2)">kcal/100g</span>
+    <button type="button" onclick="saveFdKcal()"
+      style="padding:5px 14px;background:#1a6b43;color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0">저장</button>
+    <span id="fdKcalFb" style="font-size:11px"></span>
+  </div>
 </div>
 <div class="n-grid">
   <div class="n-card ${pdm>=35?'hl':''}"><div class="n-val">${p.toFixed(1)}%</div><div class="n-lbl">단백질 as-fed</div><div class="n-dm">DM ${pdm?.toFixed(1)}%</div></div>
@@ -5600,16 +5614,21 @@ function calcFdPortion(){
   const packs=!isNaN(size)&&size>0?(totalG/size).toFixed(1):'?';
   result.innerHTML='→ 하루 <b>'+totalG+'g</b> (1회 <b>'+perMeal+'g</b> × 2끼) / 포장 <b>'+packs+'개</b> 분량 <span style="font-size:10px;color:var(--text3)">(칼로리 계산기 기준 '+mer+'kcal/일)</span>';
 }
-let _fdKcalTimer=null;
-function updateFdKcal(val){
-  clearTimeout(_fdKcalTimer);
+function saveFdKcal(){
+  const inp=document.getElementById('fdKcalInput');
+  const v=parseFloat(inp?.value)||null;
   const fb=document.getElementById('fdKcalFb');
-  if(fb){fb.style.color='var(--text3)';fb.textContent='저장 중...';}
-  _fdKcalTimer=setTimeout(()=>{
-    const v=parseFloat(val)||null;
-    if(_fdViewData){_fdViewData.data.kcal_per_100g=v;saveFD();try{renderFdHistory();}catch(e){}}
-    if(fb){fb.style.color='var(--teal)';fb.textContent='✓ 저장됨';setTimeout(()=>{if(fb)fb.textContent='';},2500);}
-  },800);
+  if(!_fdViewData){if(fb){fb.style.color='#D85A30';fb.textContent='분석 후 입력하세요';}return;}
+  // 1. fdData 저장
+  _fdViewData.data.kcal_per_100g=v;saveFD();renderFdHistory();
+  // 2. 이미 즐겨찾기된 사료라면 favFoods도 동기화
+  const foodName=_fdViewData.name;
+  const favIdx=favFoods.findIndex(f=>(f.name||f)===foodName);
+  if(favIdx>-1){favFoods[favIdx].kcalPer100g=v;saveFavFoods();}
+  // 3. 급여량 계산기 연동 (calcFoodList 즉시 갱신)
+  try{calcCalorie();}catch(e){}
+  // 4. 피드백
+  if(fb){fb.style.color='var(--teal)';fb.textContent='✓ 저장됨';setTimeout(()=>{if(fb)fb.textContent='';},3000);}
 }
 
 const _starFilled='<svg viewBox="0 0 24 24" width="18" height="18" fill="var(--cm-amber)" stroke="var(--cm-amber)" stroke-width="1.5"><path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2Z"/></svg>';
