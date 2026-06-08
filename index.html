@@ -563,7 +563,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.88</span>
+      <span class="cm-beta">v0.5.89</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -1513,14 +1513,14 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
         </div>
         <div class="row2" style="margin-bottom:8px">
           <div class="ig"><label>활동량</label>
-            <select id="calcActivity" onchange="calcCalorie()">
+            <select id="calcActivity" onchange="calcCalorie();saveActivityBCSToProfile()">
               <option value="low">낮음 (실내, 잘 안 움직임)</option>
               <option value="normal" selected>보통</option>
               <option value="high">높음 (활발)</option>
             </select>
           </div>
           <div class="ig"><label>체형</label>
-            <select id="calcBCS" onchange="calcCalorie()">
+            <select id="calcBCS" onchange="calcCalorie();saveActivityBCSToProfile()">
               <option value="thin">저체중 (BCS 1~3)</option>
               <option value="ideal" selected>정상 (BCS 4~5)</option>
               <option value="overweight">과체중 (BCS 6~7)</option>
@@ -6280,6 +6280,17 @@ function toggleCalcDisease(el){
   if(calcDiseases.has(v)){calcDiseases.delete(v);el.classList.remove('selected')}
   else{calcDiseases.add(v);el.classList.add('selected')}
   calcCalorie();
+}
+
+function saveActivityBCSToProfile(){
+  const cat=state.activeCat;
+  if(!cat)return;
+  if(!state.catProfiles)state.catProfiles={};
+  if(!state.catProfiles[cat])state.catProfiles[cat]={};
+  state.catProfiles[cat].activity=document.getElementById('calcActivity').value;
+  state.catProfiles[cat].bcs=document.getElementById('calcBCS').value;
+  saveS();
+  if(sbClient&&currentUser)upsertCatToDB(cat).catch(e=>console.warn('activity/bcs sync:',e));
 }
 
 function initCalcResult(){
