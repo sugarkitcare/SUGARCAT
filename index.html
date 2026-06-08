@@ -563,7 +563,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.98</span>
+      <span class="cm-beta">v0.5.99</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -2536,19 +2536,7 @@ function openFavFoodPickerDaily() {
   if(!picker || !list) return;
   picker.style.display = picker.style.display === 'none' ? 'block' : 'none';
   if(picker.style.display === 'none') return;
-  if(!favFoods.length) {
-    list.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:.5rem">즐겨찾기된 사료가 없어요.<br>사료 분석 후 ⭐을 눌러 추가해주세요.</div>';
-    return;
-  }
-  list.innerHTML = favFoods.map((f, i) => {
-    const name = typeof f === 'string' ? f : f.name;
-    const kcalPer100 = typeof f === 'string' ? null : f.kcalPer100g;
-    return `<div style="display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:0.5px solid var(--bd)">
-      <span style="flex:1;font-size:12px;color:var(--text)">${name}${kcalPer100?` <span style="color:var(--text3)">(${kcalPer100}kcal/100g)</span>`:''}</span>
-      <button type="button" onclick="selectFavFoodDaily(${i})"
-        style="padding:4px 10px;background:var(--teal);color:#fff;border:none;border-radius:7px;font-size:11px;cursor:pointer;font-family:inherit">선택</button>
-    </div>`;
-  }).join('');
+  _renderFavFoodPickerList('favFoodPickerDailyList');
 }
 function selectFavFoodDaily(idx) {
   const fav = favFoods[idx];
@@ -2576,36 +2564,55 @@ function openFavFoodPicker() {
   const list = document.getElementById('favFoodPickerList');
   if(!picker || !list) return;
 
-  // 즐겨찾기된 사료 목록 (객체 구조에서 직접 읽기)
-  const favList = favFoods.map(f => ({
-    name: typeof f === 'string' ? f : f.name,
-    kcalPer100g: typeof f === 'string' ? null : f.kcalPer100g,
-    type: typeof f === 'string' ? null : f.type
-  }));
-
-  if(!favList.length) {
-    list.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:.5rem">즐겨찾기된 사료가 없어요.<br>사료 분석 후 ⭐을 눌러 추가해주세요.</div>';
-  } else {
-    list.innerHTML = favList.map(f => {
-      const kcal = f.kcalPer100g;
-      const per = f.type === 'dry' ? 100 : 85;
-      const kcalLabel = kcal ? `${kcal}kcal/100g` : '칼로리 미입력 (사료 분석탭에서 입력)';
-      const kcalFinal = kcal || 0;
-      const safeName = f.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-      return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--bg);border-radius:8px;margin-bottom:5px">
-        <div>
-          <div style="font-size:13px;color:var(--text)">${f.name}</div>
-          <div style="font-size:11px;color:${kcal?'var(--text3)':'var(--cm-amber)'}">${kcalLabel}</div>
-        </div>
-        <button type="button" onclick="addFavFoodToCalc('${safeName}',${kcalFinal},${per})"
-          style="padding:4px 10px;border:0.5px solid var(--teal);border-radius:7px;background:var(--teal-l);color:var(--teal-d);font-size:11px;cursor:pointer;font-family:inherit">
-          추가
-        </button>
-      </div>`;
-    }).join('');
-  }
+  _renderFavFoodPickerList('favFoodPickerList');
 
   picker.style.display = picker.style.display === 'none' ? 'block' : 'none';
+}
+
+function _renderFavFoodPickerList(listId) {
+  const _list = document.getElementById(listId);
+  if(!_list) return;
+  if(!favFoods.length) {
+    _list.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:.5rem">즐겨찾기된 사료가 없어요.<br>사료 분석 후 ⭐️을 눌러 추가해주세요.</div>';
+    return;
+  }
+  if(listId === 'favFoodPickerDailyList') {
+    _list.innerHTML = favFoods.map(function(f, i) {
+      var nm = typeof f === 'string' ? f : f.name;
+      var kp = typeof f === 'string' ? null : f.kcalPer100g;
+      var kpStr = kp ? ' <span style="color:var(--text3)">('+ kp +'kcal/100g)</span>' : '';
+      return '<div style="display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:0.5px solid var(--bd)">'
+        + '<span style="flex:1;font-size:12px;color:var(--text)">' + nm + kpStr + '</span>'
+        + '<button type="button" onclick="selectFavFoodDaily(' + i + ')" style="padding:4px 10px;background:var(--teal);color:#fff;border:none;border-radius:7px;font-size:11px;cursor:pointer;font-family:inherit">선택</button>'
+        + '<button type="button" onclick="deleteFavFood(' + i + ',\u0027favFoodPickerDailyList\u0027)" style="background:none;border:none;color:var(--cm-faint);cursor:pointer;padding:2px 6px;font-size:15px;line-height:1">×</button>'
+        + '</div>';
+    }).join('');
+  } else {
+    _list.innerHTML = favFoods.map(function(f, i) {
+      var nm = typeof f === 'string' ? f : f.name;
+      var kp = typeof f === 'string' ? null : f.kcalPer100g;
+      var tp = typeof f === 'string' ? null : f.type;
+      var per = tp === 'dry' ? 100 : 85;
+      var kLbl = kp ? kp + 'kcal/100g' : '칼로리 미입력 (사료 분석탭에서 입력)';
+      var safe = nm.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--bg);border-radius:8px;margin-bottom:5px">'
+        + '<div style="flex:1"><div style="font-size:13px;color:var(--text)">' + nm + '</div>'
+        + '<div style="font-size:11px;color:' + (kp ? 'var(--text3)' : 'var(--cm-amber)') + '">' + kLbl + '</div></div>'
+        + '<div style="display:flex;gap:6px;align-items:center">'
+        + '<button type="button" onclick="addFavFoodToCalc(\u0027' + safe + '\u0027,' + (kp||0) + ',' + per + ')" style="padding:4px 10px;border:0.5px solid var(--teal);border-radius:7px;background:var(--teal-l);color:var(--teal-d);font-size:11px;cursor:pointer;font-family:inherit">추가</button>'
+        + '<button type="button" onclick="deleteFavFood(' + i + ',\u0027favFoodPickerList\u0027)" style="background:none;border:none;color:var(--cm-faint);cursor:pointer;padding:2px 6px;font-size:15px;line-height:1">×</button>'
+        + '</div></div>';
+    }).join('');
+  }
+}
+
+function deleteFavFood(idx, listId) {
+  if(idx < 0 || idx >= favFoods.length) return;
+  var _nm = (typeof favFoods[idx] === 'string' ? favFoods[idx] : favFoods[idx].name) || '';
+  favFoods.splice(idx, 1);
+  saveFavFoods();
+  toast(_nm + ' 즐겨찾기에서 삭제됐어요');
+  _renderFavFoodPickerList(listId);
 }
 
 function addFavFoodToCalc(name, kcalPer100, per) {
@@ -4016,7 +4023,7 @@ function renderDailySummary() {
       } else if(recKcalHero && totalKcalHero) {
         const pctHero = Math.round(totalKcalHero / recKcalHero * 100);
         const clrHero = pctHero >= 100 ? 'var(--cm-green-700)' : pctHero >= 80 ? 'var(--cm-clay)' : '#D85A30';
-        mealKcalEl.innerHTML = '<span style="color:'+clrHero+';font-weight:700">'+totalKcalHero+'</span> / 권장 '+recKcalHero+'kcal<br><span style="color:'+clrHero+';font-weight:600">('+pctHero+'%)</span>';
+        mealKcalEl.innerHTML = '<span style="color:'+clrHero+';font-weight:700">'+totalKcalHero+'kcal</span> / 권장 '+recKcalHero+'kcal<br><span style="color:'+clrHero+';font-weight:600">('+pctHero+'%)</span>';
       } else {
         mealKcalEl.textContent = totalKcalHero ? totalKcalHero+'kcal' : mealsHero.length+'끼니';
       }
