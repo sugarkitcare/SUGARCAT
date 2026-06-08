@@ -563,7 +563,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.94</span>
+      <span class="cm-beta">v0.5.95</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -4089,7 +4089,7 @@ document.getElementById('saveWt').onclick=()=>{
   const wtD=document.getElementById('wtDate').value||today();
   getRec(state.activeCat,wtD).weights.push({weight:w,time:document.getElementById('wtTime').value,note:document.getElementById('wtNote').value,ts:Date.now()});
   saveS(wtD);updateMetrics();updateWtDiff();['wtVal','wtNote'].forEach(id=>document.getElementById(id).value='');
-  const _cwEl=document.getElementById('calcWt');if(_cwEl){_cwEl.value=w;try{calcCalorie();}catch(e){}}
+  updateRecommendedKcal(state.activeCat,w);
   toast(wtD!==today()?wtD+' 날짜로 저장됐어요':'체중 저장 완료!');renderDailySummary();
 };
 document.getElementById('saveIns').onclick=()=>{
@@ -6327,6 +6327,53 @@ function initCalcResult(){
   try{calcCalorie();}catch(e){}
 }
 
+function calcRecommendedKcal(wt,age,neuter,activity,bcs,diseases,targetWt){
+  if(!wt||isNaN(wt)||wt<=0)return null;
+  // diseases: Set<string>(dm,ckd,pkd,panc,...) 또는 프로필 질환명 배열
+  const dis=(diseases instanceof Set)?diseases:(()=>{
+    const s=new Set();
+    (diseases||[]).forEach(d=>{
+      if(d.includes('DM'))s.add('dm');
+      if(d.includes('CKD'))s.add('ckd');
+      if(d.includes('PKD')){s.add('ckd');s.add('pkd');}
+      if(d==='췌장염')s.add('panc');
+    });
+    return s;
+  })();
+  const calcWtBase=(bcs==='obese'||bcs==='overweight')&&!isNaN(targetWt)&&targetWt>0?targetWt:wt;
+  const rer=Math.round(70*Math.pow(calcWtBase,0.75));
+  let factor=1.2;
+  let factorDesc='';
+  const notes=[];
+  if(age==='kitten'){factor=2.5;factorDesc='키튼 성장기';}
+  else if(age==='young'&&neuter==='no'){factor=1.4;factorDesc='비중성화 성묘';}
+  else if(age==='young'&&neuter==='yes'){factor=1.2;factorDesc='중성화 성묘';}
+  else if(age==='senior'){factor=1.1;factorDesc='시니어';}
+  else if(age==='geriatric'){factor=0.9;factorDesc='노령';}
+  if(activity==='high')factor+=0.1;
+  else if(activity==='low')factor-=0.15;
+  if(bcs==='obese'){factor=Math.min(factor,0.9);notes.push('비만: 목표체중 기준으로 계산, 엄격한 칼로리 제한');}
+  else if(bcs==='overweight'){factor=Math.min(factor,1.0);notes.push('과체중: 감량 필요, 현재 체중 유지 이하로 급여');}
+  else if(bcs==='thin'){factor=Math.max(factor,1.4);notes.push('저체중: 증량 필요');}
+  if(dis.has('dm')){
+    if(bcs==='obese'||bcs==='overweight')factor=Math.min(factor,0.9);
+    else factor=Math.max(factor,1.0);
+    notes.push('당뇨: 규칙적 식사량 유지 중요, 갑작스런 증감 피하기');
+  }
+  if(dis.has('ckd')){
+    notes.push('CKD: 인 제한 사료 권장, 충분한 수분 섭취');
+    if(dis.has('pkd'))notes.push('PKD: CKD와 동일하게 인 제한 + 수분 섭취 중요. 신기능 보존이 핵심');
+  }
+  if(dis.has('panc')){factor=Math.min(factor,1.2);notes.push('췌장염: 저지방 식이 권장');}
+  if(dis.has('recovery')){factor=Math.max(factor,1.4);notes.push('회복기: 고칼로리 식이 필요');}
+  if(dis.has('obese_tx')){factor=Math.min(factor,1.0);notes.push('비만 치료: 엄격한 칼로리 제한');}
+  factor=Math.round(factor*100)/100;
+  const mer=Math.round(rer*factor);
+  const merMin=Math.round(rer*Math.max(factor-0.1,0.8));
+  const merMax=Math.round(rer*(factor+0.1));
+  return {mer,rer,factor,factorDesc,notes,merMin,merMax};
+}
+
 function calcCalorie(){
   const wt=parseFloat(document.getElementById('calcWt').value);
   if(isNaN(wt)||wt<=0){
@@ -6350,60 +6397,13 @@ function calcCalorie(){
   const activity=document.getElementById('calcActivity').value;
   const bcs=document.getElementById('calcBCS').value;
 
-  // RER 계산 (WSAVA 기준)
-  // 비만 시 목표체중 또는 현재체중^0.75 사용
-  const calcWtBase=(bcs==='obese'||bcs==='overweight')&&!isNaN(targetWt)&&targetWt>0?targetWt:wt;
-  const rer=Math.round(70*Math.pow(calcWtBase,0.75));
 
-  // MER 계수 결정
-  let factor=1.2; // 기본 중성화 성묘
-  let notes=[];
-  let factorDesc='';
-
-  // 나이 기본값
-  if(age==='kitten'){factor=2.5;factorDesc='키튼 성장기'}
-  else if(age==='young'&&neuter==='no'){factor=1.4;factorDesc='비중성화 성묘'}
-  else if(age==='young'&&neuter==='yes'){factor=1.2;factorDesc='중성화 성묘'}
-  else if(age==='senior'){factor=1.1;factorDesc='시니어'}
-  else if(age==='geriatric'){factor=0.9;factorDesc='노령'}
-
-  // 활동량 보정 (낮음은 더 보수적으로)
-  if(activity==='high')factor+=0.1;
-  else if(activity==='low')factor-=0.15;
-
-  // 체형 보정
-  if(bcs==='obese'){factor=Math.min(factor,0.9);notes.push('비만: 목표체중 기준으로 계산, 엄격한 칼로리 제한')}
-  else if(bcs==='overweight'){factor=Math.min(factor,1.0);notes.push('과체중: 감량 필요, 현재 체중 유지 이하로 급여')}
-  else if(bcs==='thin'){factor=Math.max(factor,1.4);notes.push('저체중: 증량 필요')}
-
-  // 질환 보정
-  if(calcDiseases.has('dm')){
-    if(bcs==='obese'||bcs==='overweight'){factor=Math.min(factor,0.9);}
-    else factor=Math.max(factor,1.0);
-    notes.push('당뇨: ·칙적 식사량 유지 중요, 갑작스런 증감 피하기');
-  }
-  if(calcDiseases.has('ckd')){
-    notes.push('CKD: 인 제한 사료 권장, 충분한 수분 섭취');
-  const diseases2 = (state.catProfiles?.[state.activeCat]?.diseases)||[];
-  if(diseases2.includes('PKD(다낭신)')) notes.push('PKD: CKD와 동일하게 인 제한 + 수분 섭취 중요. 신기능 보존이 핵심');
-  }
-  if(calcDiseases.has('panc')){
-    factor=Math.min(factor,1.2);
-    notes.push('췌장염: 저지방 식이 권장');
-  }
-  if(calcDiseases.has('recovery')){
-    factor=Math.max(factor,1.4);
-    notes.push('회복기: 고칼로리 식이 필요');
-  }
-  if(calcDiseases.has('obese_tx')){
-    factor=Math.min(factor,1.0);
-    notes.push('비만 치료: 엄격한 칼로리 제한');
-  }
-
-  factor=Math.round(factor*100)/100;
-  const mer=Math.round(rer*factor);
-  const merMin=Math.round(rer*Math.max(factor-0.1,0.8));
-  const merMax=Math.round(rer*(factor+0.1));
+  // 순수 함수 위임 (DOM 의존 제거)
+  const _enrichedDis=new Set(calcDiseases);
+  if(_enrichedDis.has('ckd')&&(state.catProfiles?.[state.activeCat]?.diseases||[]).includes('PKD(다낭신)'))_enrichedDis.add('pkd');
+  const _calc=calcRecommendedKcal(wt,age,neuter,activity,bcs,_enrichedDis,targetWt);
+  if(!_calc)return;
+  const {mer,rer,factor,factorDesc,notes,merMin,merMax}=_calc;
 
   document.getElementById('calcResult').style.display='block';
   document.getElementById('calcKcal').textContent=mer;
@@ -6449,6 +6449,26 @@ function calcCalorie(){
     saveS();
     if(sbClient&&currentUser)upsertCatToDB(state.activeCat).catch(e=>console.warn('recommendedKcal sync:',e));
   }
+}
+
+function updateRecommendedKcal(cat,wt){
+  if(!cat||!wt||isNaN(wt)||wt<=0)return;
+  const prof=(state.catProfiles||{})[cat]||{};
+  const age=getBirthAgeGroup(cat)||'young';
+  const dis=new Set();
+  (prof.diseases||[]).forEach(d=>{
+    if(d.includes('DM'))dis.add('dm');
+    if(d.includes('CKD'))dis.add('ckd');
+    if(d.includes('PKD')){dis.add('ckd');dis.add('pkd');}
+    if(d==='췌장염')dis.add('panc');
+  });
+  const _calc=calcRecommendedKcal(wt,age,prof.neuter||'yes',prof.activity||'normal',prof.bcs||'ideal',dis);
+  if(!_calc)return;
+  if(!state.catProfiles)state.catProfiles={};
+  if(!state.catProfiles[cat])state.catProfiles[cat]={};
+  state.catProfiles[cat].recommendedKcal=_calc.mer;
+  saveS();
+  if(sbClient&&currentUser)upsertCatToDB(cat).catch(e=>console.warn('recommendedKcal sync:',e));
 }
 
 /* 수동 사료 입력 관리 */
