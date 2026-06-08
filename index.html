@@ -563,7 +563,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.00</span>
+      <span class="cm-beta">v0.6.01</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -1682,14 +1682,9 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
         <div class="cm-ic cm-ic--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
         <span style="font-size:14px;font-weight:700;color:var(--cm-ink)">성분표 사진 AI 분석</span>
       </div>
-      <div style="background:var(--cm-surface-2);border-radius:10px;padding:.75rem 1rem;margin-bottom:.75rem;font-size:12px;color:var(--cm-ink-soft);line-height:1.7">
-        <div style="font-weight:600;color:var(--cm-ink);margin-bottom:.3rem">정확한 분석을 위한 촬영 가이드</div>
-        <div style="display:flex;flex-direction:column;gap:3px">
-          <div><b>포장지 실물 촬영</b> — 뒷면 보증분석치 표 부분만 클로즈업 <span style="color:var(--cm-green-700);font-weight:500">(가장 정확)</span></div>
-          <div><b>성분표 부분만 크롭</b> — 상세페이지에서 영양성분 표만 잘라서 캡처</div>
-          <div style="color:var(--cm-amber,#BA7517)">⚠️ 상세페이지 전체 캡처 — 마케팅 텍스트가 섞여 오류 가능</div>
-          <div style="color:#D85A30">✕ 카카오톡 앱 화면 캡처 — 정확도 매우 낮음</div>
-        </div>
+      <div style="background:var(--cm-green-tint);border:1px solid var(--cm-green-edge);border-radius:10px;padding:.6rem .85rem;margin-bottom:.75rem;display:flex;align-items:flex-start;gap:8px">
+        <span style="font-size:15px;flex-shrink:0;line-height:1.6">💡</span>
+        <span style="font-size:12px;color:var(--cm-green-ink);line-height:1.6">포장지 뒷면 <b>성분표만 클로즈업</b>해서 찍으면 가장 정확해요. 카톡·상세페이지 캡처는 정확도가 낮아요.</span>
       </div>
       <div class="drop-zone" id="fdDrop">
         <div class="drop-title">성분표 사진 업로드</div>
