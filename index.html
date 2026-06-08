@@ -563,7 +563,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.03</span>
+      <span class="cm-beta">v0.6.04</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -1110,40 +1110,42 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
 
   <!-- 업로드 카드 -->
   <div class="card">
-    <div class="card-title">📸 CGM 앱 스크린샷 → AI 혈당 데이터 자동 추출</div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:.75rem">
+      <div class="cm-ic cm-ic--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
+      <span style="font-size:14px;font-weight:700;color:var(--cm-ink)">CGM 스크린샷 AI 혈당 추출</span>
+    </div>
 
     <!-- 앱 선택 -->
     <div style="font-size:11px;color:var(--text2);margin-bottom:.6rem">어떤 앱 화면을 업로드할 건가요?</div>
     <div class="app-selector" id="appSelector">
       <label class="app-opt selected" id="optCaresens">
-        <div class="app-opt-icon" style="background:#E1F5EE">📊</div>
+        <div class="app-opt-icon" style="background:var(--cm-green-tint);color:var(--cm-green-700)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
         <div>
           <div class="app-opt-text">케어센스 에어</div>
           <div class="app-opt-sub">CareSens Air / 센스365</div>
         </div>
-        <input type="radio" name="cgmApp" value="caresens" checked>
+        <input type="radio" name="cgmApp" value="caresens" checked style="accent-color:var(--cm-green-700);margin-left:auto">
       </label>
       <label class="app-opt" id="optPasta">
-        <div class="app-opt-icon" style="background:#FFF3E0">🍝</div>
+        <div class="app-opt-icon" style="background:var(--cm-green-tint);color:var(--cm-green-700)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
         <div>
           <div class="app-opt-text">파스타 (PASTA)</div>
           <div class="app-opt-sub">카카오헬스케어</div>
         </div>
-        <input type="radio" name="cgmApp" value="pasta">
+        <input type="radio" name="cgmApp" value="pasta" style="accent-color:var(--cm-green-700);margin-left:auto">
       </label>
       <label class="app-opt" id="optLibre">
-        <div class="app-opt-icon" style="background:#EDE7F6">🔵</div>
+        <div class="app-opt-icon" style="background:var(--cm-green-tint);color:var(--cm-green-700)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
         <div>
           <div class="app-opt-text">리브레뷰 (LibreView)</div>
           <div class="app-opt-sub">Abbott FreeStyle Libre</div>
         </div>
-        <input type="radio" name="cgmApp" value="libre">
+        <input type="radio" name="cgmApp" value="libre" style="accent-color:var(--cm-green-700);margin-left:auto">
       </label>
     </div>
 
     <div id="cgmAppHint" style="font-size:11px;color:var(--text2);margin-bottom:.75rem;line-height:1.6;padding:.6rem .75rem;background:var(--bg2);border-radius:8px">
-      📊 <b>케어센스 에어</b> — 하루치 혈당 그래프 화면 캡처 (센스365 앱도 OK)<br>
-      5분 간격 측정 데이터, 변동 화살표, 목표범위 밴드를 읽어요.
+      <b>케어센스 에어</b> — 하루치 혈당 그래프 화면을 캡처해주세요. 센스365 앱도 가능해요.<br>5분 간격 측정, 변동 화살표, 목표범위 밴드를 자동으로 읽어요.
     </div>
     <div class="drop-zone" id="cgmDrop">
       <div class="drop-title" id="cgmDropTitle">케어센스 에어 스크린샷 업로드</div>
@@ -6765,9 +6767,9 @@ document.getElementById('cgmCat').value=state.activeCat||'케이';
 /* 앱 선택 토글 */
 let selectedApp='caresens';
 const hintMap={
-  caresens:'📊 <b>케어센스 에어</b> — 하루치 혈당 그래프 화면 캡처 (센스365 앱도 OK)<br>5분 간격 측정, 변동 화살표, 목표범위 밴드 자동 인식.',
-  pasta:'🍝 <b>파스타 (PASTA)</b> — 다이어리 탭 혈당 그래프 또는 리포트 화면 캡처<br>GMI·TIR·CV%·식사/운동 이벤트 아이콘까지 자동 추출해요.',
-  libre:'🔵 <b>리브레뷰 (LibreView)</b> — FreeStyle Libre 앱 또는 LibreView 웹 리포트 화면 캡처<br>15분 간격 측정, AGP 리포트, TIR·GMI·평균혈당 자동 추출해요.'
+  caresens:'<b>케어센스 에어</b> — 하루치 혈당 그래프 화면을 캡처해주세요. 센스365 앱도 가능해요.<br>5분 간격 측정, 변동 화살표, 목표범위 밴드를 자동으로 읽어요.',
+  pasta:'<b>파스타 (PASTA)</b> — 다이어리 탭 혈당 그래프 또는 리포트 화면을 캡처해주세요.<br>GMI·TIR·CV%·식사/운동 이벤트 아이콘까지 자동으로 추출해요.',
+  libre:'<b>리브레뷰 (LibreView)</b> — FreeStyle Libre 앱 또는 LibreView 웹 리포트 화면을 캡처해주세요.<br>15분 간격 측정, AGP 리포트, TIR·GMI·평균혈당을 자동으로 추출해요.'
 };
 document.querySelectorAll('input[name="cgmApp"]').forEach(radio=>{
   radio.addEventListener('change',()=>{
