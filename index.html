@@ -563,7 +563,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.91</span>
+      <span class="cm-beta">v0.5.92</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -4040,7 +4040,7 @@ function renderDailySummary() {
     var twg=document.getElementById('tileWeightStatus');
     if(twg){var tlwt=(tRec.weights||[]).slice(-1)[0];if(tlwt){twg.textContent=tlwt.weight+' kg';twg.dataset.tone='good';_tit('weight','good');}else{twg.textContent='기록 전';twg.dataset.tone='muted';_tit('weight','muted');}}
     var tml=document.getElementById('tileMealStatus');
-    if(tml){var tms=tRec.meals||[];if(tms.length){var ttkc=tms.reduce(function(a,b){return a+(b.kcal||0);},0);tml.textContent=tms.length+'회'+(ttkc?' · '+ttkc+'kcal':'');tml.dataset.tone='good';_tit('meal','good');}else{tml.textContent='급여 전';tml.dataset.tone='muted';_tit('meal','muted');}}
+    if(tml){var tms=tRec.meals||[];if(tms.length){var ttkc=tms.reduce(function(a,b){return a+(b.kcal||0);},0);var _recKcal=((state.catProfiles||{})[cat]||{}).recommendedKcal||0;var _kcalStr=ttkc?' · '+ttkc+'kcal':'';var _mTone='good';if(_recKcal&&ttkc){var _pct=Math.round(ttkc/_recKcal*100);_kcalStr=' · '+ttkc+'/권장'+_recKcal+'kcal ('+_pct+'%)';_mTone=_pct>=100?'good':_pct>=80?'warn':'alert';}tml.textContent=tms.length+'회'+_kcalStr;tml.dataset.tone=_mTone;_tit('meal',_mTone);}else{tml.textContent='급여 전';tml.dataset.tone='muted';_tit('meal','muted');}}
     var tgl=document.getElementById('tileGlucoseStatus');
     if(tgl){var tlbg=(tRec.bg||[]).filter(function(x){return x.bg!=='';}).slice(-1)[0];if(tlbg){var tbgv=parseFloat(tlbg.bg);var _tglT=tbgv<=80?'alert':tbgv>=300?'warn':'good';tgl.textContent=tbgv+' mg/dL';tgl.dataset.tone=_tglT;_tit('glucose',_tglT);}else{tgl.textContent='기록 전';tgl.dataset.tone='muted';_tit('glucose','muted');}}
     var tins2=document.getElementById('tileInsulinStatus');
@@ -6430,6 +6430,14 @@ function calcCalorie(){
 
   // 수동 입력 사료 다시 계산
   updateManualFoodCalc(mer);
+  // 권장 칼로리 프로필 저장 (오늘탭 달성률 표시용)
+  if(state.activeCat){
+    if(!state.catProfiles)state.catProfiles={};
+    if(!state.catProfiles[state.activeCat])state.catProfiles[state.activeCat]={};
+    state.catProfiles[state.activeCat].recommendedKcal=mer;
+    saveS();
+    if(sbClient&&currentUser)upsertCatToDB(state.activeCat).catch(e=>console.warn('recommendedKcal sync:',e));
+  }
 }
 
 /* 수동 사료 입력 관리 */
@@ -8783,7 +8791,7 @@ async function syncFromDB() {
         state.catProfiles[c.name] = {
           breed: c.breed, birth: c.birth_date, gender: c.gender,
           neuter: c.neutered ? 'yes' : 'no', activity: c.activity||'', bcs: c.bcs||'',
-          insulin: c.insulin_type,
+          recommendedKcal: c.recommended_kcal||null, insulin: c.insulin_type,
           diseases: c.diseases || [], memo: c.memo, dbId: c.id
         };
       });
@@ -8803,7 +8811,7 @@ async function syncFromDB() {
             state.catProfiles[c.name] = {
               breed: c.breed, birth: c.birth_date, gender: c.gender,
               neuter: c.neutered?'yes':'no', activity: c.activity||'', bcs: c.bcs||'',
-              insulin: c.insulin_type,
+              recommendedKcal: c.recommended_kcal||null, insulin: c.insulin_type,
               diseases: c.diseases||[], memo: c.memo, dbId: c.id
             };
           });
@@ -9018,6 +9026,7 @@ async function upsertCatToDB(catName) {
       neutered: profile.neuter === 'yes',
       activity: profile.activity || null,
       bcs: profile.bcs || null,
+      recommended_kcal: profile.recommendedKcal || null,
       insulin_type: profile.insulin || null,
       diseases: profile.diseases || [],
       memo: profile.memo || null
