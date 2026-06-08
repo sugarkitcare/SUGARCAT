@@ -563,7 +563,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.99</span>
+      <span class="cm-beta">v0.6.00</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -3713,11 +3713,9 @@ function renderDailySummary() {
         const _tot = _ms.reduce((a,b) => a+(b.kcal||0), 0);
         return _tot > 0 ? _tot : null;
       });
-      // _kcal3[0]=오늘, [1]=어제, [2]=그제
-      const _todayKcal = _kcal3[0];
       let _mealFbAdded = false;
 
-      // 조건 C: 칼로리 미달 + 체중 감소 동시 (priority 2, danger)
+      // 조건 C: 3일 중 2일 이상 미달 + 14일 체중 3% 감소 (priority 2, danger)
       const _kcalLow3 = _kcal3.filter(v => v !== null && v < _recKcal * 0.7).length;
       if(_kcalLow3 >= 2) {
         const _wt14 = getRecentDays(14).map(day => {
@@ -3729,25 +3727,16 @@ function renderDailySummary() {
           const _dropPct = Math.round((_wtF-_wtL)/_wtF*100);
           if(_dropPct >= 3) {
             feedbacks.push({priority:2, ...makeFeedback('danger','🚨','안 먹고 체중도 줄고 있어요',
-              `최근 칼로리 부족 + 체중 ${_wtF}→${_wtL}kg (-${_dropPct}%)<br>식욕 저하 지속 시 병원 상담을 권해요`)});
+              `식사량이 줄면서 체중도 감소했어요<br>빠른 시일 내 수의사와 상담해 주세요`)});
             _mealFbAdded = true;
           }
         }
       }
 
-      // 조건 B: 3일 연속 70% 미만 (priority 3, warn)
+      // 조건 B: 3일 모두 기록 있고 매일 70% 미만 (priority 3, warn)
       if(!_mealFbAdded && _kcal3.every(v => v !== null && v < _recKcal * 0.7)) {
-        const _avg3 = Math.round(_kcal3.reduce((a,b)=>a+b,0)/3);
-        feedbacks.push({priority:3, ...makeFeedback('warn','⚠️','3일째 잘 안 먹어요',
-          `최근 3일 평균 ${_avg3}kcal (권장 ${_recKcal}kcal의 ${Math.round(_avg3/_recKcal*100)}%)<br>고양이는 며칠 안 먹으면 간 부담이 커질 수 있어요`)});
-        _mealFbAdded = true;
-      }
-
-      // 조건 A: 오늘 50% 미만 (priority 3, warn)
-      if(!_mealFbAdded && _todayKcal !== null && _todayKcal < _recKcal * 0.5) {
-        const _pct = Math.round(_todayKcal / _recKcal * 100);
-        feedbacks.push({priority:3, ...makeFeedback('warn','⚠️','오늘 먹은 양이 적어요',
-          `오늘 ${_todayKcal}kcal (권장 ${_recKcal}kcal의 ${_pct}%)<br>사료 거부 또는 소화 문제가 있을 수 있어요`)});
+        feedbacks.push({priority:3, ...makeFeedback('warn','⚠️','며칠째 적게 먹고 있어요',
+          `3일 연속 권장량보다 적게 먹었어요<br>계속되면 수의사와 상담해 주세요`)});
       }
     }
   }
