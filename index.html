@@ -563,7 +563,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.01</span>
+      <span class="cm-beta">v0.6.02</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -1717,9 +1717,10 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="card">
     <div class="card-title">AI 수치 해석 · 케어 질문</div>
     <div class="ai-chat" id="aiChat">
-      <div class="ai-msg bot">안녕하세요! 오늘 기록된 수치나 케어 관련 궁금한 점을 자유롭게 입력해주세요 🐾<br>기록을 바탕으로 함께 분석해드릴게요.</div>
+      <div class="ai-msg bot">안녕하세요! 오늘 기록된 수치나 케어 관련 궁금한 점을 자유롭게 입력해주세요.<br>기록을 바탕으로 함께 분석해드릴게요.</div>
     </div>
-    <button class="btn btn-teal" id="autoAnalyze" style="margin-bottom:.6rem">📊 오늘 기록 자동 분석</button>
+    <button class="btn btn-teal" id="autoAnalyze" style="margin-bottom:.6rem">오늘 기록 자동 분석</button>
+    <div id="aiChips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:.65rem"></div>
     <div class="ai-row">
       <input type="text" id="aiInput" placeholder="예: 케톤이 올랐는데 어떻게 할까요?">
       <button class="ai-send" id="aiSend">전송</button>
@@ -2659,6 +2660,7 @@ window.switchCat = function(c) {
       renderGraphs();try{renderBTTrend();}catch(e){};}
     else if(at==='bloodtest'){try{renderBTGraphs();renderBTHistoryList();}catch(e){};}
     else if(at==='food'){try{renderFdHistory();autoSetFdMode(c);const _wtEl=document.getElementById('calcWt');if(_wtEl)_wtEl.value='';initCalcResult();}catch(e){};}
+    else if(at==='ai'){try{renderAIChips();}catch(e){};}
   }catch(e){}
 };
 
@@ -4192,6 +4194,7 @@ window.showTab = function showTab(tab, btn) {
     if(tab==='history') try{renderHistory();renderRoutineSchedule();}catch(e){console.warn(e);}
     if(tab==='bloodtest') try{renderBTGraphs();renderBTHistoryList();}catch(e){console.warn(e);}
     if(tab==='food') try{renderFdHistory();autoSetFdMode(state.activeCat);initCalcResult();}catch(e){console.warn(e);}
+    if(tab==='ai') try{renderAIChips();}catch(e){console.warn(e);}
     if(tab==='daily') try{window.heroSelectedDate=kstNow();updateHeroDateLabel();updateMetrics();renderRoutineChecklist();renderDailySummary();applyCardOrder(state.activeCat);renderTileGrid(state.activeCat);}catch(e){console.warn(e);}
   } catch(e) { console.error('showTab 오류:', tab, e); }
 }
@@ -5761,6 +5764,31 @@ function buildCtx(){
   if(fdData.length){const last=fdData[0].data;const m=last.moisture??(last.type==='wet'?75:10);const carb=(last.carb_af!=null&&last.carb_af>0)?last.carb_af:estCarb(last.protein_af??0,last.fat_af??0,last.fiber_af??0,last.ash_af??(last.type==='wet'?2:7),m);ctx+=`최근 분석 사료: ${fdData[0].name} (탄수 DM ${cDM(carb,m)}%)\n`;}
   return ctx;
 }
+function renderAIChips() {
+  const el = document.getElementById('aiChips');
+  if(!el) return;
+  const diseases = (state.catProfiles?.[state.activeCat]?.diseases) || [];
+  const hasDM   = diseases.some(d => d.includes('DM'));
+  const hasCKD  = diseases.some(d => d.includes('CKD') || d.includes('PKD'));
+  const hasHCM  = diseases.some(d => d.includes('HCM'));
+  const hasPanc = diseases.includes('췌장염');
+  const chips = [];
+  if(hasDM)   chips.push('혈당이 계속 높아요', '케톤이 올랐어요', '저혈당 증상인가요?');
+  if(hasCKD)  chips.push('BUN이 높아요', '음수량이 부족해요');
+  if(hasHCM)  chips.push('호흡수가 빨라요');
+  if(hasPanc) chips.push('구토를 해요', '밥을 안 먹어요');
+  if(!chips.length) chips.push('케톤이 올랐어요', '음수량이 부족해요', 'BUN이 높아요');
+  el.innerHTML = chips.slice(0, 5).map(q =>
+    `<button type="button" onclick="fillAIChip(${JSON.stringify(q)})"
+      class="cm-chip cm-chip--good"
+      style="font-size:12px;padding:5px 11px;font-weight:600;border-radius:9px;cursor:pointer">${q}</button>`
+  ).join('');
+}
+function fillAIChip(text) {
+  const inp = document.getElementById('aiInput');
+  if(inp) { inp.value = text; inp.focus(); }
+}
+
 async function sendAI(msg){
   if(!checkAILimit('ai')) return;
   const chat=document.getElementById('aiChat');
