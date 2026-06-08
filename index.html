@@ -563,7 +563,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.5.90</span>
+      <span class="cm-beta">v0.5.91</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -948,8 +948,8 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
       </div>
     </div>
     <div class="row2">
-      <div class="ig"><label>사료명</label><input type="text" id="foodName" placeholder="예: 몬지 레날"></div>
-      <div class="ig"><label>급여량 (g)</label><input type="number" id="foodAmt" placeholder="g"></div>
+      <div class="ig"><label>사료명</label><input type="text" id="foodName" placeholder="예: 몬지 레날" oninput="_favKcalPer100=null"></div>
+      <div class="ig"><label>급여량 (g)</label><input type="number" id="foodAmt" placeholder="g" oninput="if(_favKcalPer100){const _a=parseFloat(this.value);const _kEl=document.getElementById('foodKcal');if(_kEl)_kEl.value=isNaN(_a)||_a<=0?'':Math.round(_favKcalPer100*_a/100);}"></div>
       <div class="ig"><label>칼로리 (kcal)</label><input type="number" id="foodKcal" placeholder="kcal"></div>
       <div class="ig"><label>날짜</label><input type="date" id="foodDate"></div>
       <div class="ig"><label>급여 시각</label><input type="time" id="foodTime"></div>
@@ -1741,6 +1741,7 @@ let btData=[],fdData=[];
 let _fdViewData=null;
 let btEditMode=false,btEditOriginals={};
 let favFoods=[];
+let _favKcalPer100=null; // 즐겨찾기 선택 시 세팅, 수동 입력 시 null로 초기화
 try{const _ffd=localStorage.getItem('favFoods_v1');if(_ffd){const _r=JSON.parse(_ffd);favFoods=_r.map(x=>typeof x==='string'?{name:x,kcalPer100g:null,type:null}:x);}}catch(e){}
 try{const d=localStorage.getItem(SK);if(d)state=JSON.parse(d)}catch(e){}
 try{const d=localStorage.getItem(SK_BT);if(d){const raw=JSON.parse(d);btData=raw.map(r=>({...r,items:normalizeBTItems(r.items||[])}));}}catch(e){}
@@ -2555,11 +2556,16 @@ function selectFavFoodDaily(idx) {
   const name = typeof fav === 'string' ? fav : fav.name;
   const kcalPer100 = typeof fav === 'string' ? null : fav.kcalPer100g;
   document.getElementById('foodName').value = name;
+  document.getElementById('foodKcal').value = '';
   if(kcalPer100) {
-    // 칼로리 자동 입력은 급여량 입력 후 계산되므로 힌트만
-    toast('⭐ ' + name + ' 선택됐어요 · 급여량 입력 후 저장하세요', '#BA7517');
+    _favKcalPer100 = kcalPer100;
+    // 급여량이 이미 입력돼 있으면 바로 계산
+    const amt = parseFloat(document.getElementById('foodAmt').value);
+    if(!isNaN(amt) && amt > 0) document.getElementById('foodKcal').value = Math.round(kcalPer100 * amt / 100);
+    toast('⭐ ' + name + ' · 급여량 입력 시 칼로리 자동 계산돼요');
   } else {
-    toast('⭐ ' + name + ' 선택됐어요', '#1D9E75');
+    _favKcalPer100 = null;
+    toast('⭐ ' + name + ' · 칼로리 미입력 사료예요. 사료탭에서 입력해주세요');
   }
   document.getElementById('favFoodPickerDaily').style.display = 'none';
 }
