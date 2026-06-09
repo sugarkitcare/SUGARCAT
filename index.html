@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.11</span>
+      <span class="cm-beta">v0.6.12</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -2358,15 +2358,16 @@ async function loadCardSettingsForCat(cat) {
   const c = cat||state.activeCat;
   if(!sbClient||!currentUser) return;
   try {
-    const {data:orderData} = await sbClient.from('user_settings')
-      .select('value').eq('user_id',currentUser.id).eq('key','card_order_'+c).maybeSingle();
-    if(orderData?.value) {
-      localStorage.setItem(SK_CARD_ORDER+'_'+c, JSON.stringify(orderData.value));
-    }
-    const {data:hiddenData} = await sbClient.from('user_settings')
-      .select('value').eq('user_id',currentUser.id).eq('key','card_hidden_'+c).maybeSingle();
-    if(hiddenData?.value) {
-      localStorage.setItem(SK_CARD_HIDDEN+'_'+c, JSON.stringify(hiddenData.value));
+    const {data} = await sbClient.from('user_settings')
+      .select('key,value').eq('user_id',currentUser.id)
+      .in('key',['card_order_'+c,'card_hidden_'+c]);
+    if(data) {
+      data.forEach(row => {
+        if(row.key==='card_order_'+c && row.value)
+          localStorage.setItem(SK_CARD_ORDER+'_'+c, JSON.stringify(row.value));
+        if(row.key==='card_hidden_'+c && row.value)
+          localStorage.setItem(SK_CARD_HIDDEN+'_'+c, JSON.stringify(row.value));
+      });
     }
   } catch(e) { console.warn('카드설정 로드오류:',e); }
   applyCardOrder(c);
@@ -8733,17 +8734,11 @@ function showApp() {
       if(ab)ab.style.display='block';
     }
     syncFromDB();
-    // 루틴 설정 빠른 로드 (현재 고양이 기준)
-    (async()=>{
-      try { await loadRoutineForCat(state.activeCat); } catch(e) {}
-    })();
   }
   // daily 탭 초기 렌더링
   try { updateMetrics(); } catch(e) {}
   try { renderRoutineChecklist(); } catch(e) {}
   try { renderDailySummary(); } catch(e) {}
-  if(currentUser) try{loadCGMForCat(state.activeCat);}catch(e){}
-  if(currentUser) try{loadCardSettingsForCat(state.activeCat);}catch(e){}
 }
 
 function showOnboarding() {
@@ -8962,19 +8957,28 @@ async function syncFromDB() {
       }
     }
 
-    // 2. 일일 기록 불러오기 (DB 완료 전까지 localStorage 유지 → 화면 깜빡임 방지)
+    // 2. 병렬 페치 준비 (일일 기록은 격리 객체에 적재)
     const localRecordsBackup = JSON.parse(JSON.stringify(state.records || {}));
-    const dbRecords = {}; // DB 데이터를 별도 객체에 적재
-    const origRecords = state.records;
-    state.records = dbRecords; // loadDailyRecords가 dbRecords에 기록
-    try {
-      await loadDailyRecords();
-    } catch(dbErr) {
-      // DB 로드 실패 시 로컬 데이터 복구
-      console.warn('DB 기록 로드 실패, 로컬 데이터 복구:', dbErr);
-      state.records = localRecordsBackup;
-    }
-    // DB 로드 후 빈 상태면 로컬 데이터로 복구
+    const dbRecords = {};
+    state.records = dbRecords;
+    btData = [];
+
+    // 3. cats 이후 독립 쿼리 전부 병렬 실행
+    //    각 쿼리에 개별 .catch() → 하나 실패해도 나머지 결과 보존
+    await Promise.all([
+      loadDailyRecords().catch(e => {
+        console.warn('DB 기록 로드 실패, 로컬 데이터 복구:', e);
+        state.records = localRecordsBackup;
+      }),
+      loadBloodTests().catch(e => console.warn('혈액검사 로드 오류:', e)),
+      loadGraphHiddenFromDB().catch(e => console.warn('그래프 설정 로드 오류:', e)),
+      loadRoutineForCat(state.activeCat).catch(e => console.warn('루틴 로드 오류:', e)),
+      loadCGMForCat(state.activeCat).catch(e => console.warn('CGM 로드 오류:', e)),
+      loadCardSettingsForCat(state.activeCat).catch(e => console.warn('카드설정 로드 오류:', e)),
+      syncFoodDataFromDB(state.activeCat).catch(e => console.warn('사료 DB 로드 오류:', e)),
+    ]);
+
+    // 4. 일일 기록 빈 상태면 로컬 복구
     const dbRecordCount = Object.values(state.records).reduce((a,c)=>a+Object.keys(c).length,0);
     const localRecordCount = Object.values(localRecordsBackup).reduce((a,c)=>a+Object.keys(c).length,0);
     if(dbRecordCount === 0 && localRecordCount > 0) {
@@ -8982,42 +8986,27 @@ async function syncFromDB() {
       state.records = localRecordsBackup;
     }
 
-    // 3. 혈액검사 불러오기
-    btData = [];
-    await loadBloodTests();
-    saveBT(); // localStorage 캐시 갱신
+    saveBT();
 
     renderCatBar();
     updateMetrics();
     updateWtDiff();
     updateInsulinNext();
+    try{applyGraphCards();}catch(e){}
     try{renderBTHistoryList();renderBTGraphs();renderBTTrend();}catch(e){}
-    try{await loadGraphHiddenFromDB();applyGraphCards();}catch(e){}
-    renderBTHistoryList();
-    renderBTGraphs();
-    renderBTTrend();
 
     // 로컬에 기록이 있으면 자동 마이그레이션 (신규 사용자는 조용히 스킵)
     if(cats && cats.length > 0) {
       setTimeout(async ()=>{
         await migrateLocalToDB();
         await migrateBloodTestsToDB();
-        // 사료 데이터 1회 마이그레이션 (localStorage → DB, DB에 없는 경우만)
         for(const _cat of state.cats){
           try{await uploadFoodDataToDB(_cat);}catch(e){}
         }
       }, 2000);
     }
 
-    // 루틴 설정 불러오기 (현재 고양이 기준)
-    try { await loadRoutineForCat(state.activeCat); } catch(e) { console.warn('루틴 로드 오류:', e); }
-    try { await loadCGMForCat(state.activeCat); } catch(e) { console.warn('CGM 로드 오류:', e); }
-    try { await loadCardSettingsForCat(state.activeCat); } catch(e) { console.warn('카드설정 로드 오류:', e); }
-    // 사료 데이터 DB → localStorage + 메모리 로드
-    try { await syncFoodDataFromDB(state.activeCat); } catch(e) { console.warn('사료 DB 로드 오류:', e); }
-
     toast('☁️ 동기화 완료' + (state.cats.length > 0 ? '! 고양이 '+state.cats.length+'마리' : ''));
-    // 동기화 후 daily 탭 데이터만 갱신 (탭 전환 없이)
     try { updateMetrics(); } catch(e) {}
     try { renderRoutineChecklist(); } catch(e) {}
     try { renderDailySummary(); } catch(e) {}
