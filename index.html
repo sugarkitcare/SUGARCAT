@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.14</span>
+      <span class="cm-beta">v0.6.15</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -2356,41 +2356,45 @@ function getCardHidden(cat) {
 
 async function loadCardSettingsForCat(cat) {
   const c = cat||state.activeCat;
-  console.log('[CardLoad] ▶ 호출 cat=', JSON.stringify(cat), '→ c=', JSON.stringify(c), '| state.activeCat=', JSON.stringify(state.activeCat));
-  if(!sbClient||!currentUser) { console.log('[CardLoad] ✖ sbClient/currentUser 없음, 종료'); return; }
+  if(!sbClient||!currentUser) return;
   try {
-    const {data, error} = await sbClient.from('user_settings')
-      .select('key,value').eq('user_id',currentUser.id)
+    const {data} = await sbClient.from('user_settings')
+      .select('key,value,updated_at').eq('user_id',currentUser.id)
       .in('key',['card_order_'+c,'card_hidden_'+c]);
-    console.log('[CardLoad] DB응답 c=', c, '| rows=', data ? data.length : 'null', '| error=', error, '| data=', JSON.stringify(data));
     if(data) {
       data.forEach(row => {
-        const orderKey = 'card_order_'+c;
-        const hiddenKey = 'card_hidden_'+c;
-        const orderMatch = row.key === orderKey;
-        const hiddenMatch = row.key === hiddenKey;
-        console.log('[CardLoad] row.key=', JSON.stringify(row.key), '| 비교대상=', JSON.stringify(orderKey), '| orderMatch=', orderMatch, '| value=', JSON.stringify(row.value));
-        if(orderMatch && row.value)
-          localStorage.setItem(SK_CARD_ORDER+'_'+c, JSON.stringify(row.value));
-        if(hiddenMatch && row.value)
-          localStorage.setItem(SK_CARD_HIDDEN+'_'+c, JSON.stringify(row.value));
+        const dbTs = row.updated_at ? new Date(row.updated_at).getTime() : 0;
+        if(row.key==='card_order_'+c && row.value) {
+          const localTs = parseInt(localStorage.getItem(SK_CARD_ORDER+'_'+c+'_ts')||'0');
+          if(dbTs >= localTs) {
+            localStorage.setItem(SK_CARD_ORDER+'_'+c, JSON.stringify(row.value));
+            localStorage.setItem(SK_CARD_ORDER+'_'+c+'_ts', dbTs.toString());
+          }
+        }
+        if(row.key==='card_hidden_'+c) {
+          const localTs = parseInt(localStorage.getItem(SK_CARD_HIDDEN+'_'+c+'_ts')||'0');
+          if(dbTs >= localTs) {
+            localStorage.setItem(SK_CARD_HIDDEN+'_'+c, JSON.stringify(row.value||[]));
+            localStorage.setItem(SK_CARD_HIDDEN+'_'+c+'_ts', dbTs.toString());
+          }
+        }
       });
     }
   } catch(e) { console.warn('카드설정 로드오류:',e); }
-  const lsVal = localStorage.getItem(SK_CARD_ORDER+'_'+c);
-  console.log('[CardLoad] applyCardOrder 직전 localStorage['+SK_CARD_ORDER+'_'+c+']=', lsVal);
   applyCardOrder(c);
-  console.log('[CardLoad] ◀ 완료 c=', c);
 }
 
 function saveCardHidden(cat, hidden) {
   const c = cat||state.activeCat;
-  const key = SK_CARD_HIDDEN + '_' + c;
-  try { localStorage.setItem(key, JSON.stringify(hidden)); } catch(e) {}
+  const ts = Date.now();
+  try {
+    localStorage.setItem(SK_CARD_HIDDEN+'_'+c, JSON.stringify(hidden));
+    localStorage.setItem(SK_CARD_HIDDEN+'_'+c+'_ts', ts.toString());
+  } catch(e) {}
   if(sbClient&&currentUser) {
     sbClient.from('user_settings').upsert({
       user_id:currentUser.id, key:'card_hidden_'+c,
-      value:hidden, updated_at:new Date().toISOString()
+      value:hidden, updated_at:new Date(ts).toISOString()
     },{onConflict:'user_id,key'}).then(({error})=>{if(error)console.warn('카드숨김 저장오류:',error);});
   }
 }
@@ -2408,12 +2412,15 @@ function autoCardOrder(cat) {
 
 function saveCardOrder(cat, order) {
   const c = cat||state.activeCat;
-  const key = SK_CARD_ORDER + '_' + c;
-  try { localStorage.setItem(key, JSON.stringify(order)); } catch(e) {}
+  const ts = Date.now();
+  try {
+    localStorage.setItem(SK_CARD_ORDER+'_'+c, JSON.stringify(order));
+    localStorage.setItem(SK_CARD_ORDER+'_'+c+'_ts', ts.toString());
+  } catch(e) {}
   if(sbClient&&currentUser) {
     sbClient.from('user_settings').upsert({
       user_id:currentUser.id, key:'card_order_'+c,
-      value:order, updated_at:new Date().toISOString()
+      value:order, updated_at:new Date(ts).toISOString()
     },{onConflict:'user_id,key'}).then(({error})=>{if(error)console.warn('카드순서 저장오류:',error);});
   }
 }
