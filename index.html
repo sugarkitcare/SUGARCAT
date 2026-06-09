@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.12</span>
+      <span class="cm-beta">v0.6.13</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -8978,13 +8978,18 @@ async function syncFromDB() {
       syncFoodDataFromDB(state.activeCat).catch(e => console.warn('사료 DB 로드 오류:', e)),
     ]);
 
-    // 4. 일일 기록 빈 상태면 로컬 복구
-    const dbRecordCount = Object.values(state.records).reduce((a,c)=>a+Object.keys(c).length,0);
-    const localRecordCount = Object.values(localRecordsBackup).reduce((a,c)=>a+Object.keys(c).length,0);
-    if(dbRecordCount === 0 && localRecordCount > 0) {
-      console.warn('DB 기록 없음, 로컬 데이터 복구');
-      state.records = localRecordsBackup;
-    }
+    // 4. merge: 로컬 전체 기록을 기반으로 깔고, DB 180일치를 그 위에 overlay
+    //    같은 기기 = 로컬 전체 보존 + DB 최신 반영
+    //    새 기기 = DB 180일 (3단계 lazy load에서 과거 추가 로딩 예정)
+    const mergedRecords = {};
+    Object.keys(localRecordsBackup).forEach(cat => {
+      mergedRecords[cat] = { ...localRecordsBackup[cat] };
+    });
+    Object.keys(state.records).forEach(cat => {
+      if(!mergedRecords[cat]) mergedRecords[cat] = {};
+      Object.assign(mergedRecords[cat], state.records[cat]);
+    });
+    state.records = mergedRecords;
 
     saveBT();
 
@@ -9018,10 +9023,14 @@ async function syncFromDB() {
 
 async function loadDailyRecords() {
   if(!sbClient || !currentUser) return;
-  // cats JOIN
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 180);
+  const cutoffStr = cutoff.toISOString().slice(0, 10);
+  // cats JOIN, 최근 180일만 fetch
   const { data } = await sbClient.from('daily_records')
     .select('*, cats(name)')
-    .eq('user_id', currentUser.id);
+    .eq('user_id', currentUser.id)
+    .gte('record_date', cutoffStr);
   if(data) {
     data.forEach(r => {
       // JOIN 결과 우선, 없으면 catProfiles에서 매핑
