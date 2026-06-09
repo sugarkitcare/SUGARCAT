@@ -430,82 +430,102 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
 </div>
 
 <!-- 온보딩 화면 -->
-<div id="onboardingPage" style="display:none;min-height:100vh;background:var(--bg);padding:1.5rem 1rem;box-sizing:border-box;max-width:420px;margin:0 auto">
-  <div style="text-align:center;padding-top:2rem;margin-bottom:2rem">
-    <div style="font-size:2.5rem;margin-bottom:.5rem">🐾</div>
-    <div style="font-size:22px;font-weight:700;color:var(--teal)">케어마스터즈</div>
-    <div style="font-size:13px;font-weight:500;color:var(--text);margin-top:.4rem">수치로 관리하는 환묘 질환 케어</div>
-    <div style="font-size:12px;color:var(--text2);margin-top:.3rem;line-height:1.6">혈액검사, 혈당·사료 성분을 데이터로 관리하는<br>환묘 질환 통합 케어 앱이에요</div>
-  </div>
+<div id="onboardingPage" style="display:none;min-height:100vh;background:var(--cm-bg);overflow-y:auto;-webkit-overflow-scrolling:touch;font-family:'Pretendard Variable',Pretendard,-apple-system,system-ui,sans-serif;color:var(--cm-ink);-webkit-font-smoothing:antialiased">
+  <div style="max-width:420px;margin:0 auto;padding:2rem 1.25rem 2.5rem;box-sizing:border-box;word-break:keep-all">
 
-  <!-- 이 앱이 도움이 되는 경우 -->
-  <div class="card" style="margin-bottom:1rem">
-    <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:.75rem">이런 고양이 보호자분께 맞아요</div>
-    <div style="display:flex;flex-direction:column;gap:8px">
-      <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg2);border-radius:8px">
-        <span style="font-size:18px">🩺</span>
-        <div>
-          <div style="font-size:12px;font-weight:500;color:var(--text)">당뇨 고양이</div>
-          <div style="font-size:11px;color:var(--text2)">혈당·케톤·인슐린 기록 + 혈당 커브 분석</div>
-        </div>
+    <!-- 1. 헤더 -->
+    <div style="display:flex;flex-direction:column;align-items:center;text-align:center;padding-top:1.75rem;margin-bottom:2.5rem">
+      <div style="width:56px;height:56px;flex:0 0 auto;background:var(--cm-green-tint);border:1px solid var(--cm-green-edge);border-radius:18px;display:flex;align-items:center;justify-content:center;margin-bottom:1.1rem">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="var(--cm-green-700)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="7" cy="5" r="2"/><circle cx="12" cy="3.5" r="2"/><circle cx="17" cy="5" r="2"/>
+          <circle cx="19.5" cy="10" r="2"/>
+          <path d="M8.5 14.5c1.5-1.5 5.5-1.5 7 0l1.5 4a1.8 1.8 0 0 1-1.7 2.5H8.7A1.8 1.8 0 0 1 7 18.5Z"/>
+        </svg>
       </div>
-      <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg2);border-radius:8px">
-        <span style="font-size:18px">🫘</span>
-        <div>
-          <div style="font-size:12px;font-weight:500;color:var(--text)">신부전(CKD) 고양이</div>
-          <div style="font-size:11px;color:var(--text2)">IRIS 스테이지별 사료 인·단백질 분석</div>
-        </div>
+      <div style="font-size:26px;font-weight:800;color:var(--cm-green-800);letter-spacing:-0.025em;margin-bottom:.4rem">케어마스터즈</div>
+      <div style="font-size:13.5px;color:var(--cm-faint);font-weight:500">환묘집사가 직접 만든 질환 케어 앱</div>
+    </div>
+
+    <!-- 2. 공감 -->
+    <div style="margin-bottom:2.25rem;padding:0 .25rem">
+      <div style="font-size:15.5px;font-weight:500;color:var(--cm-faint);line-height:1.75;margin-bottom:.9rem">
+        검사 수치 해석하고, 사료 성분 따지고,<br>약·음수량 챙기고, 그래프로 추세 보고...
       </div>
-      <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg2);border-radius:8px">
-        <span style="font-size:18px">🫀</span>
-        <div>
-          <div style="font-size:12px;font-weight:500;color:var(--text)">심비대증(HCM) 고양이</div>
-          <div style="font-size:11px;color:var(--text2)">ACVIM 스테이지별 식이 체크리스트</div>
-        </div>
+      <div style="font-size:34px;font-weight:800;color:var(--cm-green-800);letter-spacing:-0.03em;line-height:1.2">
+        다 따로 하고<br>계셨죠?
       </div>
-      <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg2);border-radius:8px">
-        <span style="font-size:18px">🔀</span>
-        <div>
-          <div style="font-size:12px;font-weight:500;color:var(--text)">복합 질환 고양이</div>
-          <div style="font-size:11px;color:var(--text2)">당뇨+신부전, HCM+신부전 동시 관리</div>
+    </div>
+
+    <!-- 3. 약속 -->
+    <div style="background:var(--cm-green-tint);border:1px solid var(--cm-green-edge);border-radius:20px;padding:1.3rem 1.25rem 1.1rem;margin-bottom:1rem">
+      <div style="font-size:15px;font-weight:600;color:var(--cm-green-ink);line-height:1.7;margin-bottom:1rem">
+        케어마스터즈는 이 모든 걸 한 곳에서.<br>아픈 고양이를 키우는 집사가 직접 만들었어요.
+      </div>
+      <div style="border-top:1px solid var(--cm-green-edge);padding-top:.85rem;display:flex;align-items:center;gap:7px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--cm-green-600)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+        <span style="font-size:12.5px;color:var(--cm-green-ink);font-weight:600">같은 마음으로 곁을 지키는 보호자가</span>
+      </div>
+    </div>
+
+    <!-- 4. 차별점 -->
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:1.75rem">
+      <div style="background:var(--cm-surface);border:1px solid var(--cm-line);border-radius:16px;padding:1rem 1.1rem;display:flex;align-items:flex-start;gap:12px;box-shadow:var(--cm-shadow-sm)">
+        <div style="width:34px;height:34px;flex:0 0 auto;background:var(--cm-green-tint);border:1px solid var(--cm-green-edge);border-radius:11px;display:flex;align-items:center;justify-content:center">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--cm-green-700)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2Z"/></svg>
+        </div>
+        <div style="font-size:13.5px;font-weight:600;color:var(--cm-ink);line-height:1.6;padding-top:3px"><span style="color:var(--cm-green-700);font-weight:800">국내 유일</span> · 당뇨·신부전·심근비대증 복합질환 전용 케어 앱</div>
+      </div>
+      <div style="background:var(--cm-surface);border:1px solid var(--cm-line);border-radius:16px;padding:1rem 1.1rem;display:flex;align-items:flex-start;gap:12px;box-shadow:var(--cm-shadow-sm)">
+        <div style="width:34px;height:34px;flex:0 0 auto;background:var(--cm-green-tint);border:1px solid var(--cm-green-edge);border-radius:11px;display:flex;align-items:center;justify-content:center">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--cm-green-700)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg>
+        </div>
+        <div style="font-size:13.5px;font-weight:600;color:var(--cm-ink);line-height:1.6;padding-top:3px"><span style="color:var(--cm-green-700);font-weight:800">IRIS · ACVIM</span> 등 수의학 가이드라인 기반 분석</div>
+      </div>
+    </div>
+
+    <!-- 5. 기능 -->
+    <div style="margin-bottom:2rem">
+      <div style="font-size:13.5px;font-weight:700;color:var(--cm-faint);letter-spacing:.01em;margin-bottom:1.1rem">집사님 대신, 이런 걸 합니다</div>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:flex-start;gap:13px">
+          <div style="width:42px;height:42px;flex:0 0 auto;background:var(--cm-surface);border:1px solid var(--cm-line);border-radius:14px;display:flex;align-items:center;justify-content:center;box-shadow:var(--cm-shadow-sm)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--cm-green-700)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 3h7M10 3v5l-4.2 9A2.4 2.4 0 0 0 8 20.5h8a2.4 2.4 0 0 0 2.2-3.5L14 8V3"/></svg>
+          </div>
+          <div style="padding-top:3px">
+            <div style="font-size:14.5px;font-weight:700;color:var(--cm-ink);margin-bottom:3px">혈액검사 사진 한 장이면</div>
+            <div style="font-size:13px;font-weight:500;color:var(--cm-faint);line-height:1.55">AI가 <span style="color:var(--cm-green-700);font-weight:700">항목별로 자동 해석</span>해 드려요</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:13px">
+          <div style="width:42px;height:42px;flex:0 0 auto;background:var(--cm-surface);border:1px solid var(--cm-line);border-radius:14px;display:flex;align-items:center;justify-content:center;box-shadow:var(--cm-shadow-sm)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--cm-green-700)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11c0 5 2 8 7 8s7-3 7-8"/><path d="M3 11h18"/><path d="M12 3c-3 0-5 1.5-5.5 3"/></svg>
+          </div>
+          <div style="padding-top:3px">
+            <div style="font-size:14.5px;font-weight:700;color:var(--cm-ink);margin-bottom:3px">사료 성분표를 찍으면</div>
+            <div style="font-size:13px;font-weight:500;color:var(--cm-faint);line-height:1.55">우리 아이 <span style="color:var(--cm-green-700);font-weight:700">질환 기준 적합도</span>를 판정해요</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:13px">
+          <div style="width:42px;height:42px;flex:0 0 auto;background:var(--cm-surface);border:1px solid var(--cm-line);border-radius:14px;display:flex;align-items:center;justify-content:center;box-shadow:var(--cm-shadow-sm)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--cm-green-700)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          </div>
+          <div style="padding-top:3px">
+            <div style="font-size:14.5px;font-weight:700;color:var(--cm-ink);margin-bottom:3px">혈액검사 수치도 그래프로</div>
+            <div style="font-size:13px;font-weight:500;color:var(--cm-faint);line-height:1.55">CREA·BUN·인 추세를 자동으로 — <span style="color:var(--cm-green-700);font-weight:700">직접 정리할 필요 없어요</span></div>
+          </div>
         </div>
       </div>
     </div>
-  </div>
 
-  <!-- 주요 기능 -->
-  <div class="card" style="margin-bottom:1rem">
-    <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:.75rem">주요 기능</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-      <div style="padding:8px 10px;background:var(--bg2);border-radius:8px;font-size:11px;color:var(--text2)">📊 혈당·케톤 기록</div>
-      <div style="padding:8px 10px;background:var(--bg2);border-radius:8px;font-size:11px;color:var(--text2)">🩸 혈액검사 AI 분석</div>
-      <div style="padding:8px 10px;background:var(--bg2);border-radius:8px;font-size:11px;color:var(--text2)">🥫 사료 성분 분석</div>
-      <div style="padding:8px 10px;background:var(--bg2);border-radius:8px;font-size:11px;color:var(--text2)">📈 날짜별 추이 그래프</div>
-      <div style="padding:8px 10px;background:var(--bg2);border-radius:8px;font-size:11px;color:var(--text2)">💉 CGM 연속혈당 분석</div>
-      <div style="padding:8px 10px;background:var(--bg2);border-radius:8px;font-size:11px;color:var(--text2)">☁️ 기기간 데이터 동기화</div>
+    <!-- 6. 시작하기 -->
+    <button type="button" onclick="finishOnboarding()" style="width:100%;padding:16px;background:var(--cm-green-700);color:#fff;border:none;border-radius:16px;font-size:17px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 6px 18px rgba(35,91,67,.28);letter-spacing:-0.01em;margin-bottom:.9rem">
+      시작하기
+    </button>
+    <div style="text-align:center;font-size:12px;color:var(--cm-faint);line-height:1.65;padding-bottom:.5rem">
+      모든 분석은 참고용이며, 수의학적 진단을 대체하지 않아요
     </div>
-  </div>
 
-  <!-- 주의사항 -->
-  <div style="background:rgba(186,117,23,0.08);border:1px solid rgba(186,117,23,0.25);border-radius:10px;padding:.75rem 1rem;margin-bottom:1.5rem">
-    <div style="font-size:12px;font-weight:600;color:#BA7517;margin-bottom:.3rem">⚠️ 꼭 읽어주세요</div>
-    <div style="font-size:11px;color:var(--text2);line-height:1.7">
-      이 앱의 모든 분석과 정보는 <b>참고용</b>이에요.<br>
-      진단·처방을 대체하지 않아요. 치료 결정은 반드시 <b>수의사와 상담</b>하세요.<br>
-      AI 분석 결과에 오류가 있을 수 있어요.
-    </div>
   </div>
-
-  <!-- 시작 버튼 -->
-  <button type="button" onclick="finishOnboarding()"
-    style="width:100%;padding:14px;background:var(--teal);color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:600;cursor:pointer;font-family:inherit;margin-bottom:.75rem">
-    시작하기 →
-  </button>
-  <div style="text-align:center;font-size:11px;color:var(--text3);margin-bottom:.5rem">다시 보려면 설정에서 확인할 수 있어요</div>
-  <a href="https://open.kakao.com/o/sjseVrVe" target="_blank"
-    style="display:block;text-align:center;font-size:12px;color:var(--teal);text-decoration:none;padding:.5rem">
-    💬 불편한 점이나 개선 아이디어는 카카오 오픈채팅으로 알려주세요
-  </a>
 </div>
 
 <!-- 피드백 모달 -->
@@ -565,7 +585,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.06</span>
+      <span class="cm-beta">v0.6.07</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
