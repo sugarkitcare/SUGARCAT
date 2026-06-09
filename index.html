@@ -330,102 +330,107 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
 <body>
 
 <!-- 로그인 화면 -->
-<div id="loginPage" style="display:none;min-height:100vh;background:var(--bg);padding:2rem 1rem;box-sizing:border-box;max-width:400px;margin:0 auto">
-  <div style="text-align:center;margin-bottom:2rem;padding-top:2.5rem">
-    <div style="font-size:2rem;margin-bottom:.5rem">🐾</div>
-    <div style="font-size:22px;font-weight:700;color:var(--teal)">케어마스터즈</div>
-    <div style="font-size:12px;color:var(--text2);margin-top:.5rem;line-height:1.8;padding:0 .5rem">
-      환묘집사가 직접 만든<br>
-      <b style="color:var(--text)">수치로 관리하는 환묘 질환 케어 앱</b>
+<div id="loginPage" style="display:none;min-height:100vh;background:var(--cm-bg);padding:2rem 1.25rem;box-sizing:border-box;max-width:400px;margin:0 auto;font-family:'Pretendard Variable',Pretendard,-apple-system,system-ui,sans-serif;color:var(--cm-ink);-webkit-font-smoothing:antialiased;word-break:keep-all">
+
+  <!-- 헤더 -->
+  <div style="margin-bottom:1.75rem;padding-top:2rem">
+    <div style="display:flex;align-items:center;gap:11px;margin-bottom:.75rem">
+      <div style="width:38px;height:38px;flex:0 0 auto;background:var(--cm-green-tint);border:1px solid var(--cm-green-edge);border-radius:12px;display:flex;align-items:center;justify-content:center">
+        <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="var(--cm-green-700)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      </div>
+      <div>
+        <div style="font-size:18px;font-weight:800;color:var(--cm-green-800);letter-spacing:-0.02em;line-height:1.2">케어마스터즈</div>
+        <div style="font-size:12px;color:var(--cm-faint);font-weight:500;margin-top:1px">환묘집사가 직접 만든 질환 케어 앱</div>
+      </div>
     </div>
-    <div style="margin-top:.75rem;display:flex;justify-content:center;gap:6px;flex-wrap:wrap">
-      <span style="font-size:10px;padding:3px 9px;border-radius:12px;background:var(--teal-l);color:var(--teal-d);font-weight:500">🩺 당뇨</span>
-      <span style="font-size:10px;padding:3px 9px;border-radius:12px;background:rgba(24,95,165,0.1);color:var(--blue);font-weight:500">🫘 신부전</span>
-      <span style="font-size:10px;padding:3px 9px;border-radius:12px;background:rgba(216,90,48,0.1);color:var(--coral);font-weight:500">🫀 심근비대증</span>
-      <span style="font-size:10px;padding:3px 9px;border-radius:12px;background:var(--bg2);color:var(--text2);font-weight:500">🔀 복합질환</span>
+    <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:.45rem">
+      <span style="font-size:10.5px;padding:3px 10px;border-radius:999px;background:var(--cm-green-tint);color:var(--cm-green-ink);font-weight:600;border:1px solid var(--cm-green-edge)">당뇨</span>
+      <span style="font-size:10.5px;padding:3px 10px;border-radius:999px;background:var(--cm-surface-2);color:var(--cm-ink-soft);font-weight:600;border:1px solid var(--cm-line)">신부전</span>
+      <span style="font-size:10.5px;padding:3px 10px;border-radius:999px;background:var(--cm-surface-2);color:var(--cm-ink-soft);font-weight:600;border:1px solid var(--cm-line)">심근비대증</span>
+      <span style="font-size:10.5px;padding:3px 10px;border-radius:999px;background:var(--cm-surface-2);color:var(--cm-ink-soft);font-weight:600;border:1px solid var(--cm-line)">복합질환</span>
     </div>
-    <div style="font-size:11px;color:var(--text3);margin-top:.6rem;line-height:1.7">
-      혈액검사 AI 분석 · 혈당 커브 · 사료 성분 분석
-    </div>
+    <div style="font-size:11px;color:var(--cm-faint);line-height:1.6">혈액검사 AI 분석 · 혈당 커브 · 사료 성분 분석</div>
   </div>
 
-  <!-- 탭 -->
-  <div style="display:flex;background:var(--bg2);border-radius:10px;padding:3px;margin-bottom:1.5rem">
+  <!-- 로그인/회원가입 탭 -->
+  <div style="display:flex;background:var(--cm-surface-2);border:1px solid var(--cm-line);border-radius:12px;padding:3px;margin-bottom:1.25rem">
     <button id="tabLogin" onclick="switchAuthTab('login')" type="button"
-      style="flex:1;padding:8px;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;background:var(--teal);color:#fff;font-weight:500">로그인</button>
+      style="flex:1;padding:8px;border:none;border-radius:9px;font-size:13px;cursor:pointer;font-family:inherit;background:var(--cm-green-700);color:#fff;font-weight:600">로그인</button>
     <button id="tabSignup" onclick="switchAuthTab('signup')" type="button"
-      style="flex:1;padding:8px;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;background:transparent;color:var(--text2)">회원가입</button>
+      style="flex:1;padding:8px;border:none;border-radius:9px;font-size:13px;cursor:pointer;font-family:inherit;background:transparent;color:var(--cm-faint);font-weight:500">회원가입</button>
   </div>
 
   <div class="ig" style="margin-bottom:10px"><label>이메일</label>
     <input type="text" id="authEmail" placeholder="이메일 입력 (예: cat@gmail.com)"
       inputmode="email" autocomplete="off" autocapitalize="none" spellcheck="false"
-      style="padding:10px 12px;border:0.5px solid var(--bd);border-radius:10px;font-size:14px;background:var(--bg);color:var(--text);font-family:inherit;width:100%;box-sizing:border-box">
-    <div style="font-size:10px;color:var(--text3);margin-top:4px">Gmail, Naver, Kakao 등 일반 이메일 사용 가능 (언더바_ 포함 가능)</div>
+      style="padding:11px 13px;border:1px solid var(--cm-line);border-radius:10px;font-size:14px;background:var(--cm-surface);color:var(--cm-ink);font-family:inherit;width:100%;box-sizing:border-box">
+    <div style="font-size:10px;color:var(--cm-faint);margin-top:4px">Gmail, Naver, Kakao 등 일반 이메일 사용 가능 (언더바_ 포함 가능)</div>
   </div>
   <div class="ig" style="margin-bottom:.5rem"><label>비밀번호</label>
     <input type="password" id="authPassword" placeholder="비밀번호 입력 (6자 이상)"
-      style="padding:10px 12px;border:0.5px solid var(--bd);border-radius:10px;font-size:14px;background:var(--bg);color:var(--text);font-family:inherit;width:100%;box-sizing:border-box">
+      style="padding:11px 13px;border:1px solid var(--cm-line);border-radius:10px;font-size:14px;background:var(--cm-surface);color:var(--cm-ink);font-family:inherit;width:100%;box-sizing:border-box">
   </div>
-  <div style="text-align:right;margin-bottom:1.25rem">
+  <div style="text-align:right;margin-bottom:1.1rem">
     <button type="button" onclick="showResetPassword()"
-      style="background:none;border:none;font-size:12px;color:var(--teal);cursor:pointer;font-family:inherit;text-decoration:underline">
+      style="background:none;border:none;font-size:12px;color:var(--cm-green-700);cursor:pointer;font-family:inherit;text-decoration:underline">
       비밀번호를 잊으셨나요?
     </button>
   </div>
 
   <button id="authSubmit" onclick="handleAuth()" type="button"
-    style="width:100%;padding:13px;background:var(--teal);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;margin-bottom:1rem">
+    style="width:100%;padding:13px;background:var(--cm-green-700);color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:1rem">
     로그인
   </button>
 
-  <div id="authMsg" style="text-align:center;font-size:12px;color:var(--text2);min-height:20px"></div>
+  <div id="authMsg" style="text-align:center;font-size:12px;color:var(--cm-ink-soft);min-height:20px"></div>
 
   <!-- 비밀번호 재설정 섹션 -->
-  <div id="resetSection" style="display:none;margin-top:1rem;padding-top:1rem;border-top:0.5px solid var(--bd)">
-    <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:.5rem">🔑 비밀번호 재설정</div>
-    <div style="font-size:11px;color:var(--text2);margin-bottom:.75rem;line-height:1.6">
+  <div id="resetSection" style="display:none;margin-top:1rem;padding-top:1rem;border-top:1px solid var(--cm-line)">
+    <div style="font-size:13px;font-weight:700;color:var(--cm-ink);margin-bottom:.4rem">비밀번호 재설정</div>
+    <div style="font-size:11.5px;color:var(--cm-faint);margin-bottom:.75rem;line-height:1.6">
       가입한 이메일을 입력하면 비밀번호 재설정 링크를 보내드려요
     </div>
     <input type="text" id="resetEmail" placeholder="이메일 입력"
-      style="width:100%;padding:10px 12px;border:0.5px solid var(--bd);border-radius:10px;font-size:14px;background:var(--bg);color:var(--text);font-family:inherit;box-sizing:border-box;margin-bottom:.75rem">
+      style="width:100%;padding:11px 13px;border:1px solid var(--cm-line);border-radius:10px;font-size:14px;background:var(--cm-surface);color:var(--cm-ink);font-family:inherit;box-sizing:border-box;margin-bottom:.75rem">
     <button type="button" onclick="sendResetEmail()"
-      style="width:100%;padding:11px;background:var(--teal);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;margin-bottom:.5rem">
+      style="width:100%;padding:11px;background:var(--cm-green-700);color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;margin-bottom:.5rem">
       재설정 메일 보내기
     </button>
     <button type="button" onclick="hideResetPassword()"
-      style="width:100%;padding:8px;background:transparent;color:var(--text3);border:none;font-size:12px;cursor:pointer;font-family:inherit">
+      style="width:100%;padding:8px;background:transparent;color:var(--cm-faint);border:none;font-size:12px;cursor:pointer;font-family:inherit">
       취소
     </button>
     <div id="resetMsg" style="text-align:center;font-size:12px;min-height:18px;margin-top:.25rem"></div>
   </div>
 
-  <div style="text-align:center;margin-top:2rem;font-size:11px;color:var(--text3)">
+  <div style="text-align:center;margin-top:2rem;font-size:11px;color:var(--cm-faint)">
     로그인하면 어떤 기기에서도 데이터가 이어져요
   </div>
 </div>
 
 <!-- 비밀번호 재설정 화면 (이메일 링크 클릭 시) -->
-<div id="newPasswordPage" style="display:none;min-height:100vh;background:var(--bg);padding:1.5rem 1rem;box-sizing:border-box;max-width:420px;margin:0 auto">
+<div id="newPasswordPage" style="display:none;min-height:100vh;background:var(--cm-bg);padding:1.5rem 1.25rem;box-sizing:border-box;max-width:420px;margin:0 auto;font-family:'Pretendard Variable',Pretendard,-apple-system,system-ui,sans-serif;color:var(--cm-ink);-webkit-font-smoothing:antialiased">
   <div style="text-align:center;padding-top:3rem;margin-bottom:2rem">
-    <div style="font-size:2.5rem;margin-bottom:.5rem">🔑</div>
-    <div style="font-size:20px;font-weight:700;color:var(--text)">새 비밀번호 설정</div>
-    <div style="font-size:13px;color:var(--text2);margin-top:.5rem">새로 사용할 비밀번호를 입력해주세요</div>
+    <div style="width:52px;height:52px;background:var(--cm-green-tint);border:1px solid var(--cm-green-edge);border-radius:16px;display:inline-flex;align-items:center;justify-content:center;margin-bottom:1rem">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--cm-green-700)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+    </div>
+    <div style="font-size:20px;font-weight:800;color:var(--cm-ink);letter-spacing:-0.02em">새 비밀번호 설정</div>
+    <div style="font-size:13px;color:var(--cm-faint);margin-top:.4rem">새로 사용할 비밀번호를 입력해주세요</div>
   </div>
   <div style="max-width:360px;margin:0 auto">
     <div class="ig" style="margin-bottom:.75rem"><label>새 비밀번호</label>
       <input type="password" id="newPassword1" placeholder="새 비밀번호 (6자 이상)"
-        style="padding:10px 12px;border:0.5px solid var(--bd);border-radius:10px;font-size:14px;background:var(--bg);color:var(--text);font-family:inherit;width:100%;box-sizing:border-box">
+        style="padding:11px 13px;border:1px solid var(--cm-line);border-radius:10px;font-size:14px;background:var(--cm-surface);color:var(--cm-ink);font-family:inherit;width:100%;box-sizing:border-box">
     </div>
     <div class="ig" style="margin-bottom:1.25rem"><label>비밀번호 확인</label>
       <input type="password" id="newPassword2" placeholder="비밀번호 다시 입력"
-        style="padding:10px 12px;border:0.5px solid var(--bd);border-radius:10px;font-size:14px;background:var(--bg);color:var(--text);font-family:inherit;width:100%;box-sizing:border-box">
+        style="padding:11px 13px;border:1px solid var(--cm-line);border-radius:10px;font-size:14px;background:var(--cm-surface);color:var(--cm-ink);font-family:inherit;width:100%;box-sizing:border-box">
     </div>
     <button type="button" onclick="submitNewPassword()"
-      style="width:100%;padding:13px;background:var(--teal);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;margin-bottom:1rem">
+      style="width:100%;padding:13px;background:var(--cm-green-700);color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:1rem">
       비밀번호 변경
     </button>
-    <div id="newPasswordMsg" style="text-align:center;font-size:12px;min-height:18px;color:var(--coral)"></div>
+    <div id="newPasswordMsg" style="text-align:center;font-size:12px;min-height:18px;color:var(--cm-clay)"></div>
   </div>
 </div>
 
@@ -583,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.10</span>
+      <span class="cm-beta">v0.6.11</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -8762,21 +8767,21 @@ function showCatAddPrompt() {
   if(document.getElementById('catAddPrompt')) return;
   const modal = document.createElement('div');
   modal.id = 'catAddPrompt';
-  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(42,37,29,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem';
 
   const box = document.createElement('div');
-  box.style.cssText = 'background:var(--bg);border-radius:16px;padding:1.5rem;max-width:340px;width:100%;text-align:center';
+  box.style.cssText = 'background:var(--cm-bg);border-radius:20px;padding:1.5rem 1.25rem;max-width:340px;width:100%;text-align:center;font-family:Pretendard,-apple-system,system-ui,sans-serif';
 
   const icon = document.createElement('div');
-  icon.style.cssText = 'font-size:2rem;margin-bottom:.5rem';
-  icon.textContent = '🐾';
+  icon.style.cssText = 'display:flex;justify-content:center;margin-bottom:.85rem';
+  icon.innerHTML = '<div style="width:48px;height:48px;background:var(--cm-green-tint);border:1px solid var(--cm-green-edge);border-radius:15px;display:flex;align-items:center;justify-content:center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--cm-green-700)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>';
 
   const title = document.createElement('div');
-  title.style.cssText = 'font-size:16px;font-weight:700;color:var(--text);margin-bottom:.5rem';
-  title.textContent = '첫 번째 고양이를 등록해요!';
+  title.style.cssText = 'font-size:16px;font-weight:800;color:var(--cm-ink);margin-bottom:.4rem;letter-spacing:-0.01em';
+  title.textContent = '첫 번째 고양이를 등록해요';
 
   const desc = document.createElement('div');
-  desc.style.cssText = 'font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:1.25rem';
+  desc.style.cssText = 'font-size:13px;color:var(--cm-faint);line-height:1.65;margin-bottom:1.25rem';
   desc.innerHTML = '고양이 이름을 등록하면<br>혈당·체중·사료 기록을 시작할 수 있어요';
 
   const nameInput = document.createElement('input');
@@ -8784,19 +8789,19 @@ function showCatAddPrompt() {
   nameInput.id = 'firstCatName';
   nameInput.placeholder = '고양이 이름 입력';
   nameInput.maxLength = 10;
-  nameInput.style.cssText = 'width:100%;padding:10px 12px;border:1.5px solid var(--teal);border-radius:10px;font-size:15px;background:var(--bg);color:var(--text);font-family:inherit;box-sizing:border-box;margin-bottom:.75rem;text-align:center';
+  nameInput.style.cssText = 'width:100%;padding:11px 13px;border:1.5px solid var(--cm-green-700);border-radius:10px;font-size:15px;background:var(--cm-surface);color:var(--cm-ink);font-family:inherit;box-sizing:border-box;margin-bottom:.75rem;text-align:center';
   nameInput.addEventListener('keydown', e => { if(e.key==='Enter') registerFirstCat(); });
 
   const regBtn = document.createElement('button');
   regBtn.type = 'button';
   regBtn.textContent = '등록하기';
-  regBtn.style.cssText = 'width:100%;padding:12px;background:var(--teal);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;margin-bottom:.5rem';
+  regBtn.style.cssText = 'width:100%;padding:13px;background:var(--cm-green-700);color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:.5rem';
   regBtn.onclick = registerFirstCat;
 
   const skipBtn = document.createElement('button');
   skipBtn.type = 'button';
   skipBtn.textContent = '나중에 할게요';
-  skipBtn.style.cssText = 'width:100%;padding:10px;background:transparent;color:var(--text3);border:none;font-size:13px;cursor:pointer;font-family:inherit';
+  skipBtn.style.cssText = 'width:100%;padding:10px;background:transparent;color:var(--cm-faint);border:none;font-size:13px;cursor:pointer;font-family:inherit';
   skipBtn.onclick = closeCatPrompt;
 
   box.appendChild(icon);
@@ -8817,7 +8822,7 @@ function closeCatPrompt() {
 function registerFirstCat() {
   const name = document.getElementById('firstCatName')?.value.trim();
   if(!name) {
-    document.getElementById('firstCatName').style.borderColor = 'var(--coral)';
+    document.getElementById('firstCatName').style.borderColor = 'var(--cm-clay)';
     return;
   }
   state.cats.push(name);
@@ -8826,16 +8831,16 @@ function registerFirstCat() {
   upsertCatToDB(name);
   renderCatBar();
   document.getElementById('catAddPrompt')?.remove();
-  toast('🐾 ' + name + ' 등록 완료! 이제 기록을 시작해보세요');
+  toast(name + ' 등록 완료! 이제 기록을 시작해보세요');
 }
 
 function switchAuthTab(mode) {
   authMode = mode;
   const isLogin = mode === 'login';
-  document.getElementById('tabLogin').style.background = isLogin ? 'var(--teal)' : 'transparent';
-  document.getElementById('tabLogin').style.color = isLogin ? '#fff' : 'var(--text2)';
-  document.getElementById('tabSignup').style.background = !isLogin ? 'var(--teal)' : 'transparent';
-  document.getElementById('tabSignup').style.color = !isLogin ? '#fff' : 'var(--text2)';
+  document.getElementById('tabLogin').style.background = isLogin ? 'var(--cm-green-700)' : 'transparent';
+  document.getElementById('tabLogin').style.color = isLogin ? '#fff' : 'var(--cm-faint)';
+  document.getElementById('tabSignup').style.background = !isLogin ? 'var(--cm-green-700)' : 'transparent';
+  document.getElementById('tabSignup').style.color = !isLogin ? '#fff' : 'var(--cm-faint)';
   document.getElementById('authSubmit').textContent = isLogin ? '로그인' : '회원가입';
   document.getElementById('authMsg').textContent = '';
 }
