@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.18</span>
+      <span class="cm-beta">v0.6.19</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -2688,6 +2688,7 @@ window.switchCat = function(c) {
   try{renderDailySummary();}catch(e){}
   try{ if(currentUser){loadCardSettingsForCat(c);}else{applyCardOrder(c);} }catch(e){}
   try{ renderTileGrid(c); }catch(e){}
+  if(currentUser) try{ loadTileConfigFromDB(c); }catch(e){}
   try{const cc=document.getElementById('cgmCat');if(cc)cc.value=c;}catch(e){}
   try{loadCGMForCat(c).then(()=>{
     const at=document.querySelector('.cm-tab.active')?.dataset?.tab;
