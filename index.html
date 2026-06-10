@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.31</span>
+      <span class="cm-beta">v0.6.32</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -4292,7 +4292,7 @@ function renderRoutineSchedule(date) {
   const _drop = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6c2.8 3.4 6 7 6 10.1a6 6 0 0 1-12 0C6 10.6 9.2 7 12 3.6Z"/></svg>';
   const catDef = [
     {key:'med',   label:'약·보조제', icon:_pill},
-    {key:'food',  label:'간식·음수', icon:_bowl},
+    {key:'food',  label:'간식', icon:_bowl},
     {key:'fluid', label:'수분 공급', icon:_drop},
     {key:'other', label:'기타루틴',  icon:_doc},
   ];
@@ -6097,7 +6097,7 @@ async function loadRoutineForCat(catName) {
 }
 
 const catColor={med:'#534AB7',food:'#BA7517',other:'#1D9E75',fluid:'#2A7A5A'};
-const catLabel={med:'약 및 보조제',food:'간식 및 음수',other:'기타루틴',fluid:'수분 공급'};
+const catLabel={med:'약 및 보조제',food:'간식',other:'기타루틴',fluid:'수분 공급'};
 const routineSelected=new Set();
 
 function renderRoutineTags(){
@@ -6110,7 +6110,7 @@ function renderRoutineChecklist(){
   const today_date = document.getElementById('routineDate')?.value || today();
   const rec = getRec(state.activeCat, today_date);
   const doneItems = new Set((rec.routines||[]).flatMap(r=>r.items||[]));
-  const catLabel2 = {med:'약 및 보조제', food:'간식 및 음수', other:'기타루틴'};
+  const catLabel2 = {med:'약 및 보조제', food:'간식', other:'기타루틴'};
   const cats2 = ['med','food','other'];
   let html = '';
   cats2.forEach(cat=>{
@@ -6258,7 +6258,7 @@ function renderRoutineEditList(){
   const list=document.getElementById('routineItemList');
   if(!list)return;
   const catOrder=['med','food','fluid','other'];
-  const catLabel2={med:'약·보조제',food:'간식·음수',fluid:'수분 공급',other:'기타루틴'};
+  const catLabel2={med:'약·보조제',food:'간식',fluid:'수분 공급',other:'기타루틴'};
   let html='';
   catOrder.forEach(cat=>{
     const items=routineItems.filter((item,i)=>item.cat===cat);
@@ -10093,7 +10093,7 @@ async function uploadFoodDataToDB(cat) {
     <div style="display:flex;gap:6px">
       <select id="newRoutineCat" style="flex:1;padding:9px 8px;border:1px solid var(--cm-line);border-radius:9px;font-size:12px;background:var(--cm-bg);color:var(--cm-ink);font-family:inherit">
         <option value="med">약·보조제</option>
-        <option value="food">간식·음수</option>
+        <option value="food">간식</option>
         <option value="fluid">수분 공급</option>
         <option value="other">기타루틴</option>
       </select>
