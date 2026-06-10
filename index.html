@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.33</span>
+      <span class="cm-beta">v0.6.34</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -6614,13 +6614,19 @@ function renderDiureticAlert(date) {
 function addRoutineItem(){
   const name=document.getElementById('newRoutineName').value.trim();
   const catVal=document.getElementById('newRoutineCat').value;
-  if(!name){toast('항목명을 입력해주세요','#D85A30');return}
-  if(routineItems.find(i=>i.name===name)){toast('이미 있는 항목이에요','#BA7517');return}
-  routineItems.push({name,cat:catVal});
+  if(catVal==='fluid'){
+    if(routineItems.find(i=>i.cat==='fluid')){toast('피하수액은 이미 있어요','#BA7517');return}
+    routineItems.push({name:'피하수액',cat:'fluid',hasValue:true,unit:'ml',defaultVal:120,
+      hasType:true,typeOptions:['하트만','0.9% NS','0.45% NS','플라즈마솔루션','기타']});
+  } else {
+    if(!name){toast('항목명을 입력해주세요','#D85A30');return}
+    if(routineItems.find(i=>i.name===name)){toast('이미 있는 항목이에요','#BA7517');return}
+    routineItems.push({name,cat:catVal});
+  }
   saveRT(currentProfileCat||state.activeCat);
   document.getElementById('newRoutineName').value='';
   renderRoutineChecklist();renderRoutineEditList();
-  toast(name+' 추가 완료!');
+  toast((catVal==='fluid'?'피하수액':name)+' 추가 완료!');
 }
 
 function deleteRoutineItem(idx){
