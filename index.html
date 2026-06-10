@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.15</span>
+      <span class="cm-beta">v0.6.16</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -2386,16 +2386,25 @@ async function loadCardSettingsForCat(cat) {
 
 function saveCardHidden(cat, hidden) {
   const c = cat||state.activeCat;
+  console.log('[CardHidden] 호출. sbClient=', !!sbClient, 'currentUser=', !!currentUser, 'cat=', cat, 'hidden=', JSON.stringify(hidden));
   const ts = Date.now();
   try {
     localStorage.setItem(SK_CARD_HIDDEN+'_'+c, JSON.stringify(hidden));
     localStorage.setItem(SK_CARD_HIDDEN+'_'+c+'_ts', ts.toString());
   } catch(e) {}
   if(sbClient&&currentUser) {
+    console.log('[CardHidden] upsert 시도');
     sbClient.from('user_settings').upsert({
       user_id:currentUser.id, key:'card_hidden_'+c,
       value:hidden, updated_at:new Date(ts).toISOString()
-    },{onConflict:'user_id,key'}).then(({error})=>{if(error)console.warn('카드숨김 저장오류:',error);});
+    },{onConflict:'user_id,key'})
+      .then(({error})=>{
+        if(error) console.warn('[CardHidden] 저장오류:', error);
+        else console.log('[CardHidden] upsert 성공');
+      })
+      .catch(e => console.error('[CardHidden] upsert reject(네트워크/토큰):', e));
+  } else {
+    console.warn('[CardHidden] DB skip - 조건 false');
   }
 }
 
@@ -2412,16 +2421,25 @@ function autoCardOrder(cat) {
 
 function saveCardOrder(cat, order) {
   const c = cat||state.activeCat;
+  console.log('[CardOrder] 호출. sbClient=', !!sbClient, 'currentUser=', !!currentUser, 'cat=', cat);
   const ts = Date.now();
   try {
     localStorage.setItem(SK_CARD_ORDER+'_'+c, JSON.stringify(order));
     localStorage.setItem(SK_CARD_ORDER+'_'+c+'_ts', ts.toString());
   } catch(e) {}
   if(sbClient&&currentUser) {
+    console.log('[CardOrder] upsert 시도');
     sbClient.from('user_settings').upsert({
       user_id:currentUser.id, key:'card_order_'+c,
       value:order, updated_at:new Date(ts).toISOString()
-    },{onConflict:'user_id,key'}).then(({error})=>{if(error)console.warn('카드순서 저장오류:',error);});
+    },{onConflict:'user_id,key'})
+      .then(({error})=>{
+        if(error) console.warn('[CardOrder] 저장오류:', error);
+        else console.log('[CardOrder] upsert 성공');
+      })
+      .catch(e => console.error('[CardOrder] upsert reject(네트워크/토큰):', e));
+  } else {
+    console.warn('[CardOrder] DB skip - 조건 false');
   }
 }
 
