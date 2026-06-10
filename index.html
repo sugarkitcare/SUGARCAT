@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.26</span>
+      <span class="cm-beta">v0.6.27</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -4810,8 +4810,8 @@ function renderGraphs(){
       const nat0=natData.map(v=>v||0);
       const flu0=fluidData.map(v=>v||0);
       const datasets=[
-        {label:'자발음수',data:nat0,backgroundColor:'rgba(35,91,67,0.75)',borderRadius:4,borderWidth:0,stack:'w'},
-        {label:'피하수액',data:flu0,backgroundColor:'rgba(107,175,139,0.75)',borderRadius:4,borderWidth:0,stack:'w'},
+        {label:'피하수액',data:flu0,backgroundColor:'rgba(107,175,139,0.75)',borderWidth:0},
+        {label:'자발음수',data:nat0,backgroundColor:'rgba(35,91,67,0.75)',borderWidth:0},
       ];
       const inst=new Chart(document.getElementById('gc_water'),{
         type:'bar',data:{labels,datasets},
