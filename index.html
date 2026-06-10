@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.24</span>
+      <span class="cm-beta">v0.6.25</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -4483,7 +4483,7 @@ function renderHistory(){
     else if(item.type==='ins'){dot='ld-i';txt=`[인슐린] ${d.time} | ${d.type} ${d.dose}U${d.preBg?' (투여 전 '+d.preBg+')':''}`;}
     else if(item.type==='meal'){dot='ld-m';txt=`[식사] ${d.time} | ${d.name||'–'} ${d.amt}g${d.kcal?' · '+d.kcal+'kcal':''}`;}
     else if(item.type==='wt'){dot='ld-wt';txt=`[체중] ${d.time} | ${d.weight}kg${d.note?' · '+d.note:''}`;}
-    else if(item.type==='routine'){dot='ld-m';txt=`[투약·루틴] ${d.time} | ${d.items.join(', ')}${d.memo?' · '+d.memo:''}`;}
+    else if(item.type==='routine'){dot='ld-m';const _rTxt=(d.ml&&d.ml>0)?`${(d.items||[]).join(', ')} ${d.ml}ml${d.fluidType?' · '+d.fluidType:''}`:(d.items||[]).join(', ');txt=`[투약·루틴] ${d.time} | ${_rTxt}${d.memo?' · '+d.memo:''}`;}
     else if(item.type==='rr'){dot=d.rr>=40?'ld-d':d.rr>=30?'ld-w':'ld-n';const sLbl=d.stateLabel||'';txt=`[호흡수] ${d.time} | ${d.rr}회/분 ${sLbl?'('+sLbl+')':''}${d.rr>=40?' ⚠️위험':d.rr>=30?' △주의':''}`;}
     else if(item.type==='water'){dot='ld-n';txt=`[음수] ${d.time} | ${d.ml}ml`;}
     else if(item.type==='urine'){dot=d.amount==='혈뇨'?'ld-d':d.amount==='핍뇨'||d.amount==='소량'?'ld-w':'ld-n';txt=`[소변] ${d.time} | ${d.amount}`;}
@@ -8536,7 +8536,7 @@ function exportCSV() {
     (rec.weights||[]).forEach(r => rows.push([date, r.time, '체중', '', '', r.weight||'', '', '', '', '', r.note||'']));
     rec.ins.forEach(r => rows.push([date, r.time, '인슐린', r.preBg||'', '', '', r.type||'', r.dose||'', '', '', '']));
     rec.meals.forEach(r => rows.push([date, r.time, '식사', '', '', '', '', '', r.name||'', r.kcal||'', '']));
-    (rec.routines||[]).forEach(r => rows.push([date, r.time, '투약·루틴', '', '', '', '', '', '', '', (r.items||[]).join('/')+' '+( r.memo||'')]));
+    (rec.routines||[]).forEach(r => {const _rTxt=(r.ml&&r.ml>0)?`${(r.items||[]).join('/')} ${r.ml}ml${r.fluidType?' · '+r.fluidType:''}`:(r.items||[]).join('/');rows.push([date, r.time, '투약·루틴', '', '', '', '', '', '', '', _rTxt+(r.memo?' '+r.memo:'')]);});
   });
   
   const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
