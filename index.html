@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.20</span>
+      <span class="cm-beta">v0.6.21</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -8746,6 +8746,7 @@ function showLogin() {
 }
 
 function showApp() {
+  const _showT0 = performance.now();
   document.getElementById('loginPage').style.display = 'none';
   document.getElementById('onboardingPage').style.display = 'none';
   document.getElementById('app').style.display = 'block';
@@ -8762,6 +8763,7 @@ function showApp() {
   try { renderRoutineChecklist(); } catch(e) {}
   try { renderDailySummary(); } catch(e) {}
   try { renderTileGrid(state.activeCat); } catch(e) {}
+  console.log(`[Perf] showApp 초기렌더(동기): ${(performance.now()-_showT0).toFixed(0)}ms`);
 }
 
 function showOnboarding() {
@@ -8934,11 +8936,15 @@ async function handleLogout() {
 /* ── DB 동기화 ── */
 async function syncFromDB() {
   if(!sbClient || !currentUser) return;
+  const _syncT0 = performance.now();
+  console.log('[Perf] syncFromDB 시작');
   toast('☁️ 동기화 중...', '#534AB7');
   try {
     // 1. 고양이 목록 불러오기
+    const _catsT0 = performance.now();
     const { data: cats, error: catsErr } = await sbClient.from('cats')
       .select('*').eq('user_id', currentUser.id).order('created_at');
+    console.log(`[Perf] cats: ${(performance.now()-_catsT0).toFixed(0)}ms (${cats?.length||0}마리)`);
 
     if(catsErr) throw catsErr;
 
@@ -8988,19 +8994,23 @@ async function syncFromDB() {
 
     // 3. cats 이후 독립 쿼리 전부 병렬 실행
     //    각 쿼리에 개별 .catch() → 하나 실패해도 나머지 결과 보존
+    const _parallelT0 = performance.now();
+    const _tw = (label, p) => p.finally(() =>
+      console.log(`[Perf]   ${label}: ${(performance.now()-_parallelT0).toFixed(0)}ms`));
     await Promise.all([
-      loadDailyRecords().catch(e => {
+      _tw('daily_records', loadDailyRecords().catch(e => {
         console.warn('DB 기록 로드 실패, 로컬 데이터 복구:', e);
         state.records = localRecordsBackup;
-      }),
-      loadBloodTests().catch(e => console.warn('혈액검사 로드 오류:', e)),
-      loadGraphHiddenFromDB().catch(e => console.warn('그래프 설정 로드 오류:', e)),
-      loadRoutineForCat(state.activeCat).catch(e => console.warn('루틴 로드 오류:', e)),
-      loadCGMForCat(state.activeCat).catch(e => console.warn('CGM 로드 오류:', e)),
-      loadCardSettingsForCat(state.activeCat).catch(e => console.warn('카드설정 로드 오류:', e)),
-      loadTileConfigFromDB(state.activeCat).catch(e => console.warn('타일설정 로드 오류:', e)),
-      syncFoodDataFromDB(state.activeCat).catch(e => console.warn('사료 DB 로드 오류:', e)),
+      })),
+      _tw('blood_tests',    loadBloodTests().catch(e => console.warn('혈액검사 로드 오류:', e))),
+      _tw('graph_hidden',   loadGraphHiddenFromDB().catch(e => console.warn('그래프 설정 로드 오류:', e))),
+      _tw('routine',        loadRoutineForCat(state.activeCat).catch(e => console.warn('루틴 로드 오류:', e))),
+      _tw('cgm',            loadCGMForCat(state.activeCat).catch(e => console.warn('CGM 로드 오류:', e))),
+      _tw('card_settings',  loadCardSettingsForCat(state.activeCat).catch(e => console.warn('카드설정 로드 오류:', e))),
+      _tw('tile_config',    loadTileConfigFromDB(state.activeCat).catch(e => console.warn('타일설정 로드 오류:', e))),
+      _tw('food_sync',      syncFoodDataFromDB(state.activeCat).catch(e => console.warn('사료 DB 로드 오류:', e))),
     ]);
+    console.log(`[Perf] Promise.all 전체: ${(performance.now()-_parallelT0).toFixed(0)}ms`);
 
     // 4. merge: 로컬 전체 기록을 기반으로 깔고, DB 180일치를 그 위에 overlay
     //    같은 기기 = 로컬 전체 보존 + DB 최신 반영
@@ -9039,6 +9049,7 @@ async function syncFromDB() {
     try { updateMetrics(); } catch(e) {}
     try { renderRoutineChecklist(); } catch(e) {}
     try { renderDailySummary(); } catch(e) {}
+    console.log(`[Perf] syncFromDB 총: ${(performance.now()-_syncT0).toFixed(0)}ms`);
   } catch(e) {
     console.error('DB 동기화 오류:', e);
     toast('⚠️ 동기화 실패: '+e.message, '#D85A30');
@@ -9051,10 +9062,12 @@ async function loadDailyRecords() {
   cutoff.setDate(cutoff.getDate() - 180);
   const cutoffStr = cutoff.toISOString().slice(0, 10);
   // cats JOIN, 최근 180일만 fetch
+  const _t0 = performance.now();
   const { data } = await sbClient.from('daily_records')
     .select('*, cats(name)')
     .eq('user_id', currentUser.id)
     .gte('record_date', cutoffStr);
+  console.log(`[Perf]   daily_records 쿼리: ${(performance.now()-_t0).toFixed(0)}ms, ${data?.length||0}행`);
   if(data) {
     data.forEach(r => {
       // JOIN 결과 우선, 없으면 catProfiles에서 매핑
@@ -9072,12 +9085,13 @@ async function loadDailyRecords() {
 
 async function loadBloodTests() {
   if(!sbClient || !currentUser) return;
+  const _btT0 = performance.now();
   // cats 테이블과 JOIN해서 고양이 이름 직접 가져오기
   const { data, error } = await sbClient.from('blood_tests')
     .select('*, cats(name)')
     .eq('user_id', currentUser.id)
     .order('created_at', {ascending: false});
-  
+
   // JOIN 실패 or cats 빈 경우 단순 조회로 폴백
   let btRaw = data;
   if(error || !data || data.length === 0) {
@@ -9086,6 +9100,7 @@ async function loadBloodTests() {
       .order('created_at', {ascending: false});
     if(plain && plain.length > 0) btRaw = plain;
   }
+  console.log(`[Perf]   blood_tests 쿼리: ${(performance.now()-_btT0).toFixed(0)}ms, ${btRaw?.length||0}행 (전체기간, 날짜필터 없음)`);
   
   if(btRaw && btRaw.length > 0) {
     const dbEntries = btRaw.map(r => ({
