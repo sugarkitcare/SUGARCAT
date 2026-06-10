@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.27</span>
+      <span class="cm-beta">v0.6.28</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -973,7 +973,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
       </div>
     </div>
     <div class="row2">
-      <div class="ig"><label>사료명</label><input type="text" id="foodName" placeholder="예: 몬지 레날" oninput="_favKcalPer100=null"></div>
+      <div class="ig"><label>사료명</label><input type="text" id="foodName" placeholder="예: 몬지 레날" oninput="_favKcalPer100=null;_favMoisture=null"></div>
       <div class="ig"><label>급여량 (g)</label><input type="number" id="foodAmt" placeholder="g" oninput="if(_favKcalPer100){const _a=parseFloat(this.value);const _kEl=document.getElementById('foodKcal');if(_kEl)_kEl.value=isNaN(_a)||_a<=0?'':Math.round(_favKcalPer100*_a/100);}"></div>
       <div class="ig"><label>칼로리 (kcal)</label><input type="number" id="foodKcal" placeholder="kcal"></div>
       <div class="ig"><label>날짜</label><input type="date" id="foodDate"></div>
@@ -1764,6 +1764,7 @@ let _fdViewData=null;
 let btEditMode=false,btEditOriginals={};
 let favFoods=[];
 let _favKcalPer100=null; // 즐겨찾기 선택 시 세팅, 수동 입력 시 null로 초기화
+let _favMoisture=null;   // 즐겨찾기 선택 시 moisture% 세팅, 수동 입력 시 null
 try{const _ffd=localStorage.getItem('favFoods_v1');if(_ffd){const _r=JSON.parse(_ffd);favFoods=_r.map(x=>typeof x==='string'?{name:x,kcalPer100g:null,type:null}:x);}}catch(e){}
 try{const d=localStorage.getItem(SK);if(d)state=JSON.parse(d)}catch(e){}
 try{const d=localStorage.getItem(SK_BT);if(d){const raw=JSON.parse(d);btData=raw.map(r=>({...r,items:normalizeBTItems(r.items||[])}));}}catch(e){}
@@ -2587,6 +2588,7 @@ function selectFavFoodDaily(idx) {
   if(!fav) return;
   const name = typeof fav === 'string' ? fav : fav.name;
   const kcalPer100 = typeof fav === 'string' ? null : fav.kcalPer100g;
+  _favMoisture = (typeof fav === 'object' && fav.moisture != null) ? fav.moisture : null;
   document.getElementById('foodName').value = name;
   document.getElementById('foodKcal').value = '';
   if(kcalPer100) {
@@ -4199,7 +4201,8 @@ document.getElementById('saveMeal').onclick=()=>{
   const name=document.getElementById('foodName').value,amt=document.getElementById('foodAmt').value;
   if(!name&&!amt){toast('사료명 또는 급여량을 입력해주세요','#D85A30');return}
   const mealD=document.getElementById('foodDate').value||today();
-  getRec(state.activeCat,mealD).meals.push({name,amt:parseFloat(amt)||0,kcal:parseFloat(document.getElementById('foodKcal').value)||0,time:document.getElementById('foodTime').value,ts:Date.now()});
+  getRec(state.activeCat,mealD).meals.push({name,amt:parseFloat(amt)||0,kcal:parseFloat(document.getElementById('foodKcal').value)||0,time:document.getElementById('foodTime').value,ts:Date.now(),moisture:_favMoisture});
+  _favMoisture=null;
   saveS();['foodName','foodAmt','foodKcal'].forEach(id=>document.getElementById(id).value='');
   toast(mealD!==today()?mealD+' 날짜로 저장됐어요':'식사 저장 완료!');renderDailySummary();
 };
@@ -8735,7 +8738,12 @@ const saveFavFoods=()=>{
 function toggleFavFood(name, el, kcalPer100g, type) {
   const idx=favFoods.findIndex(f=>(f.name||f)===name);
   if(idx>-1){favFoods.splice(idx,1);el.innerHTML=_starEmpty;}
-  else{favFoods.push({name,kcalPer100g:kcalPer100g||null,type:type||null});el.innerHTML=_starFilled;}
+  else{
+    const _fd=fdData.find(h=>(h.data?.name||h.name)===name);
+    const _moisture=(_fd?.data?.moisture!=null)?_fd.data.moisture:null;
+    favFoods.push({name,kcalPer100g:kcalPer100g||null,type:type||null,moisture:_moisture});
+    el.innerHTML=_starFilled;
+  }
   saveFavFoods();
   toast(idx>-1?`${name} 즐겨찾기 해제`:`${name} 즐겨찾기 추가!`);
 }
