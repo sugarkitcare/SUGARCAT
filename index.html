@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.23</span>
+      <span class="cm-beta">v0.6.24</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -4366,37 +4366,78 @@ function renderRoutineSchedule(date) {
       + '<span style="font-size:11px;font-weight:600;color:' + (allCatDone?'var(--cm-green-700)':'var(--cm-faint)') + '">' + catDone + '/' + catAll + '</span>'
       + '</div>';
 
-    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;overflow:hidden">';
-    filtered.forEach(item => {
-      const done = doneItems.has(item.name);
-      const doneRec = done ? (rec.routines||[]).find(r=>r.items?.includes(item.name)) : null;
-      html += '<div onclick="toggleScheduleCheck(this)" data-item="'+item.name+'" data-date="'+schedDate+'"'
-        + ' style="display:flex;flex-direction:column;gap:6px;padding:10px 10px 8px;border-radius:12px;cursor:pointer;'
-        + 'min-width:0;box-sizing:border-box;'
-        + 'background:' + (done?'var(--cm-green-700)':'var(--cm-surface)') + ';'
-        + 'border:1px solid ' + (done?'var(--cm-green-700)':'var(--cm-line)') + '">';
-
-      html += '<div style="display:flex;align-items:flex-start;gap:7px">'
-        + '<div style="width:18px;height:18px;border-radius:50%;flex-shrink:0;margin-top:1px;'
-        + 'background:' + (done?'rgba(255,255,255,.25)':'transparent') + ';'
-        + 'border:1.5px solid ' + (done?'rgba(255,255,255,.7)':'var(--cm-line-2)') + ';'
-        + 'display:flex;align-items:center;justify-content:center">'
-        + (done?_chk:'') + '</div>'
-        + '<span style="font-size:13px;font-weight:' + (done?'700':'500') + ';'
-        + 'color:' + (done?'#fff':'var(--cm-ink)') + ';'
-        + 'line-height:1.3;word-break:keep-all;overflow-wrap:break-word;'
-        + 'display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">'
-        + item.name + '</span>'
-        + '</div>';
-
-      if(done && doneRec) {
-        const _isFluid = routineItems.find(i=>i.name===item.name)?.cat==='fluid';
-        const _info = [doneRec.time, (_isFluid&&doneRec.ml)?doneRec.ml+'ml':null].filter(Boolean).join(' · ');
-        if(_info) html += '<div style="font-size:10px;color:rgba(255,255,255,.65);text-align:right;padding-right:2px">'+_info+'</div>';
-      }
+    if(c.key === 'fluid') {
+      // 수분 공급: 전체너비 입력 카드 (ml+종류 입력, 과거날짜 기록 지원)
+      filtered.forEach(item => {
+        const fluidRec = (rec.routines||[]).find(r=>r.items?.length===1 && r.items[0]===item.name);
+        const done = !!fluidRec;
+        const savedMl = fluidRec?.ml || item.defaultVal || 120;
+        const savedType = fluidRec?.fluidType || (item.typeOptions?.[0]||'');
+        const bg = done ? 'var(--cm-green-700)' : 'var(--cm-surface)';
+        const bd = done ? 'var(--cm-green-700)' : 'var(--cm-line)';
+        const txtClr = done ? '#fff' : 'var(--cm-ink)';
+        const typeOpts = (item.typeOptions||[]).map(t=>'<option value="'+t+'"'+(savedType===t?' selected':'')+'>'+t+'</option>').join('');
+        html += '<div style="background:'+bg+';border:1px solid '+bd+';border-radius:12px;padding:12px;margin-bottom:8px">';
+        html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:'+(item.hasValue?'10px':'0')+'">';
+        html += '<div onclick="toggleFluidCheck(\''+item.name+'\',\''+schedDate+'\',\'_sched\')"'
+          +' style="width:18px;height:18px;border-radius:50%;flex-shrink:0;'
+          +'background:'+(done?'rgba(255,255,255,.25)':'transparent')
+          +';border:1.5px solid '+(done?'rgba(255,255,255,.7)':'var(--cm-line-2)')
+          +';display:flex;align-items:center;justify-content:center;cursor:pointer">'+(done?_chk:'')+'</div>';
+        html += '<span style="font-size:13px;font-weight:'+(done?'700':'500')+';color:'+txtClr+';flex:1">'+item.name;
+        if(done) html += '<span style="font-size:11px;font-weight:400;opacity:.75"> · '+savedMl+'ml'+(savedType?' · '+savedType:'')+'</span>';
+        html += '</span>';
+        if(done) html += '<button type="button" onclick="toggleFluidCheck(\''+item.name+'\',\''+schedDate+'\',\'_sched\')" style="font-size:11px;color:rgba(255,255,255,.7);background:none;border:none;cursor:pointer;padding:2px 6px">취소</button>';
+        html += '</div>';
+        if(item.hasValue) {
+          html += '<div style="display:flex;gap:6px;align-items:center">';
+          html += '<input id="fluidMl_'+item.name+'_sched" type="number" value="'+savedMl+'" min="0" step="10"'
+            +' style="width:68px;padding:7px 8px;border:1px solid '+(done?'rgba(255,255,255,.3)':'var(--cm-line)')
+            +';border-radius:8px;font-size:13px;background:'+(done?'rgba(255,255,255,.15)':'var(--cm-bg)')
+            +';color:'+txtClr+';font-family:inherit;text-align:center">';
+          html += '<span style="font-size:12px;color:'+(done?'rgba(255,255,255,.7)':'var(--cm-faint)')+'">ml</span>';
+          if(item.hasType && typeOpts) html += '<select id="fluidType_'+item.name+'_sched"'
+            +' style="flex:1;padding:7px 8px;border:1px solid '+(done?'rgba(255,255,255,.3)':'var(--cm-line)')
+            +';border-radius:8px;font-size:12px;background:'+(done?'rgba(255,255,255,.15)':'var(--cm-bg)')
+            +';color:'+txtClr+';font-family:inherit">'+typeOpts+'</select>';
+          html += '<button type="button" onclick="saveFluidRoutine(\''+item.name+'\',\''+schedDate+'\',\'_sched\')"'
+            +' style="padding:7px 14px;background:'+(done?'rgba(255,255,255,.2)':'var(--cm-green-700)')
+            +';color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap">'
+            +(done?'수정':'저장')+'</button>';
+          html += '</div>';
+        }
+        html += '</div>';
+      });
       html += '</div>';
-    });
-    html += '</div></div>';
+    } else {
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;overflow:hidden">';
+      filtered.forEach(item => {
+        const done = doneItems.has(item.name);
+        const doneRec = done ? (rec.routines||[]).find(r=>r.items?.includes(item.name)) : null;
+        html += '<div onclick="toggleScheduleCheck(this)" data-item="'+item.name+'" data-date="'+schedDate+'"'
+          + ' style="display:flex;flex-direction:column;gap:6px;padding:10px 10px 8px;border-radius:12px;cursor:pointer;'
+          + 'min-width:0;box-sizing:border-box;'
+          + 'background:' + (done?'var(--cm-green-700)':'var(--cm-surface)') + ';'
+          + 'border:1px solid ' + (done?'var(--cm-green-700)':'var(--cm-line)') + '">';
+        html += '<div style="display:flex;align-items:flex-start;gap:7px">'
+          + '<div style="width:18px;height:18px;border-radius:50%;flex-shrink:0;margin-top:1px;'
+          + 'background:' + (done?'rgba(255,255,255,.25)':'transparent') + ';'
+          + 'border:1.5px solid ' + (done?'rgba(255,255,255,.7)':'var(--cm-line-2)') + ';'
+          + 'display:flex;align-items:center;justify-content:center">'
+          + (done?_chk:'') + '</div>'
+          + '<span style="font-size:13px;font-weight:' + (done?'700':'500') + ';'
+          + 'color:' + (done?'#fff':'var(--cm-ink)') + ';'
+          + 'line-height:1.3;word-break:keep-all;overflow-wrap:break-word;'
+          + 'display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">'
+          + item.name + '</span>'
+          + '</div>';
+        if(done && doneRec?.time) {
+          html += '<div style="font-size:10px;color:rgba(255,255,255,.65);text-align:right;padding-right:2px">'+doneRec.time+'</div>';
+        }
+        html += '</div>';
+      });
+      html += '</div></div>';
+    }
   });
 
   el.innerHTML = html;
@@ -5972,7 +6013,7 @@ function renderRoutineChecklist(){
   const today_date = document.getElementById('routineDate')?.value || today();
   const rec = getRec(state.activeCat, today_date);
   const doneItems = new Set((rec.routines||[]).flatMap(r=>r.items||[]));
-  const catLabel2 = {med:'💊 약 및 보조제', food:'🍖 간식 및 음수', other:'📋 기타루틴'};
+  const catLabel2 = {med:'약 및 보조제', food:'간식 및 음수', other:'기타루틴'};
   const cats2 = ['med','food','other'];
   let html = '';
   cats2.forEach(cat=>{
@@ -5998,7 +6039,7 @@ function renderRoutineChecklist(){
   // 💧 수분 공급 (fluid) - 전체너비 카드, ml입력 + 종류 드롭다운
   const fluidItems = routineItems.filter(i=>i.cat==='fluid');
   if(fluidItems.length) {
-    html += '<div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:.4rem;margin-top:.5rem">💧 수분 공급</div>';
+    html += '<div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:.4rem;margin-top:.5rem">수분 공급</div>';
     fluidItems.forEach(item=>{
       const fluidRec = (rec.routines||[]).find(r=>r.items?.length===1 && r.items[0]===item.name);
       const done = !!fluidRec;
@@ -6065,12 +6106,13 @@ function toggleRoutineCheck(itemName){
 }
 
 
-function saveFluidRoutine(itemName) {
-  const today_date = document.getElementById('routineDate')?.value || today();
+function saveFluidRoutine(itemName, dateOverride, idSuffix) {
+  const _sfx = idSuffix || '';
+  const today_date = dateOverride || document.getElementById('routineDate')?.value || today();
   const rec = getRec(state.activeCat, today_date);
   if(!rec.routines) rec.routines = [];
-  const mlEl = document.getElementById('fluidMl_' + itemName);
-  const typeEl = document.getElementById('fluidType_' + itemName);
+  const mlEl = document.getElementById('fluidMl_' + itemName + _sfx);
+  const typeEl = document.getElementById('fluidType_' + itemName + _sfx);
   const ml = parseInt(mlEl?.value || '0');
   const fluidType = typeEl?.value || '';
   if(!ml || ml <= 0) { toast('수액량을 입력해주세요', '#D85A30'); return; }
@@ -6079,22 +6121,34 @@ function saveFluidRoutine(itemName) {
   rec.routines.push({items:[itemName], ml, fluidType, memo:'', time:nowTime(), ts:Date.now()});
   saveS(today_date);
   renderRoutineChecklist();
+  try{renderRoutineSchedule();}catch(e){}
   renderHistory();
   try{renderDailySummary();}catch(e){}
   toast('💧 ' + itemName + ' ' + ml + 'ml 저장됐어요', '#1D9E75');
 }
 
-function toggleFluidCheck(itemName) {
-  const today_date = document.getElementById('routineDate')?.value || today();
-  const rec = getRec(state.activeCat, today_date);
+function toggleFluidCheck(itemName, dateOverride, idSuffix) {
+  const _sfx = idSuffix || '';
+  const date = dateOverride || document.getElementById('routineDate')?.value || today();
+  const rec = getRec(state.activeCat, date);
   if(!rec.routines) rec.routines = [];
   const existIdx = rec.routines.findIndex(r=>r.items?.length===1 && r.items[0]===itemName);
   if(existIdx > -1) {
+    // 언체크
     rec.routines.splice(existIdx, 1);
-    saveS(today_date);
+    saveS(date);
     renderRoutineChecklist();
+    try{renderRoutineSchedule();}catch(e){}
     renderHistory();
     try{renderDailySummary();}catch(e){}
+  } else {
+    // 체크: 현재 입력값으로 저장, 빈값이면 defaultVal 적용
+    const mlEl = document.getElementById('fluidMl_' + itemName + _sfx);
+    if(mlEl && (!mlEl.value || parseInt(mlEl.value) <= 0)) {
+      const itemDef = routineItems.find(i=>i.name===itemName);
+      mlEl.value = String(itemDef?.defaultVal || 120);
+    }
+    saveFluidRoutine(itemName, dateOverride, _sfx);
   }
 }
 
