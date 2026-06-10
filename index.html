@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.30</span>
+      <span class="cm-beta">v0.6.31</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -5998,7 +5998,7 @@ const defaultItems=[
   {name:'세레니아',cat:'med'},{name:'미르타자핀',cat:'med'},
   {name:'피하수액',cat:'fluid',hasValue:true,unit:'ml',defaultVal:120,hasType:true,typeOptions:['하트만','0.9% NS','0.45% NS','플라즈마솔루션','기타']},
   {name:'비상이뇨제',cat:'med',diuretic:'emergency'},
-  {name:'간식',cat:'food'},{name:'황금푸딩',cat:'food'},{name:'물 섭취',cat:'food'},
+  {name:'간식',cat:'food'},{name:'황금푸딩',cat:'food'},
   {name:'병원 방문',cat:'other'},{name:'배변 확인',cat:'other'},{name:'구토',cat:'other'}
 ];
 let routineItems=defaultItems;
@@ -6081,6 +6081,14 @@ async function loadRoutineForCat(catName) {
       saveRT(cat);
     }
     try{localStorage.setItem(subqInitKey,'1');}catch(e){}
+  }
+  // '물 섭취' 루틴 항목 제거 - 최초 1회만
+  const waterCleanupKey = 'water_cleanup_' + cat;
+  if(!localStorage.getItem(waterCleanupKey)) {
+    const before = routineItems.length;
+    routineItems = routineItems.filter(i=>!(i.name==='물 섭취' && i.cat==='food'));
+    if(routineItems.length !== before) saveRT(cat);
+    try{localStorage.setItem(waterCleanupKey,'1');}catch(e){}
   }
 
   renderRoutineChecklist();
