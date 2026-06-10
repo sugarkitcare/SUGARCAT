@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.19</span>
+      <span class="cm-beta">v0.6.20</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -9401,21 +9401,21 @@ function toggleTileEditMode() {
       grip.style.cssText = 'display:flex;align-items:center;justify-content:center;min-height:44px;touch-action:none;cursor:grab;padding:4px 0';
       grip.innerHTML = '<svg viewBox="0 0 16 24" width="14" height="20" fill="var(--cm-faint)"><circle cx="5" cy="6" r="2"/><circle cx="11" cy="6" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="11" cy="12" r="2"/><circle cx="5" cy="18" r="2"/><circle cx="11" cy="18" r="2"/></svg>';
       t.appendChild(grip);
-      // touch drag handlers
+      // pointer drag handlers (mouse + touch + pen)
       (function(tile) {
         var _prevTarget = null;
-        tile._thStart = function(e) {
+        tile._phStart = function(e) {
           if(e.target.closest('.tile__rm')) return;
           _tileDragSrc = tile;
+          tile.setPointerCapture(e.pointerId);
           tile.style.cssText += ';opacity:0.4;border:2px dashed var(--cm-green-700);transform:scale(1.03);box-shadow:0 8px 24px rgba(35,91,67,.22);z-index:10;position:relative';
           if(navigator.vibrate) navigator.vibrate(10);
           e.stopPropagation();
         };
-        tile._thMove = function(e) {
+        tile._phMove = function(e) {
           if(!_tileDragSrc) return;
           e.preventDefault();
-          var touch = e.touches[0];
-          var el = document.elementFromPoint(touch.clientX, touch.clientY);
+          var el = document.elementFromPoint(e.clientX, e.clientY);
           var target = el ? el.closest('.tile[data-tile]') : null;
           // drop indicator
           if(target !== _prevTarget) {
@@ -9430,7 +9430,7 @@ function toggleTileEditMode() {
             else grid.insertBefore(_tileDragSrc, target);
           }
         };
-        tile._thEnd = function() {
+        tile._phEnd = function() {
           if(!_tileDragSrc) return;
           // clear drop indicator
           if(_prevTarget && _prevTarget !== _tileDragSrc) _prevTarget.style.boxShadow = '';
@@ -9447,9 +9447,10 @@ function toggleTileEditMode() {
           setTimeout(function() { dropped.style.transform = ''; }, 150);
           _tileDragSrc = null;
         };
-        tile.addEventListener('touchstart', tile._thStart, {passive: true});
-        tile.addEventListener('touchmove', tile._thMove, {passive: false});
-        tile.addEventListener('touchend', tile._thEnd);
+        tile.addEventListener('pointerdown', tile._phStart);
+        tile.addEventListener('pointermove', tile._phMove, {passive: false});
+        tile.addEventListener('pointerup', tile._phEnd);
+        tile.addEventListener('pointercancel', tile._phEnd);
       })(t);
     });
 
@@ -9470,9 +9471,9 @@ function toggleTileEditMode() {
       var grip = t.querySelector('.tile__grip'); if(grip) grip.remove();
       t.style.opacity = ''; t.style.border = ''; t.style.transform = '';
       t.style.boxShadow = ''; t.style.position = ''; t.style.zIndex = '';
-      if(t._thStart) { t.removeEventListener('touchstart', t._thStart); delete t._thStart; }
-      if(t._thMove) { t.removeEventListener('touchmove', t._thMove); delete t._thMove; }
-      if(t._thEnd) { t.removeEventListener('touchend', t._thEnd); delete t._thEnd; }
+      if(t._phStart) { t.removeEventListener('pointerdown', t._phStart); delete t._phStart; }
+      if(t._phMove) { t.removeEventListener('pointermove', t._phMove); delete t._phMove; }
+      if(t._phEnd) { t.removeEventListener('pointerup', t._phEnd); t.removeEventListener('pointercancel', t._phEnd); delete t._phEnd; }
     });
     saveTileConfig(c, newOrder, newHidden);
     renderTileGrid(c);
