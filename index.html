@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.25</span>
+      <span class="cm-beta">v0.6.26</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -3791,7 +3791,8 @@ function renderDailySummary() {
   // 4. 음수량 목표 진행바 (체중 있을 때)
   // ════════════════════════════════
   const latestWt2 = getLatestWeight();
-  const todayWaterTotal = (rec.water||[]).reduce((a,b)=>a+b.ml,0);
+  const todayFluidMl = (rec.routines||[]).filter(r=>r.ml&&r.ml>0).reduce((a,r)=>a+r.ml,0);
+  const todayWaterTotal = (rec.water||[]).reduce((a,b)=>a+b.ml,0) + todayFluidMl;
   if(waterBarEl) {
     if(latestWt2) {
       const minGoal = Math.round(latestWt2 * 40);
@@ -4722,8 +4723,9 @@ function renderGraphs(){
      annotations:[{value:40,color:'#BB5538',label:'40 위험'},{value:30,color:'rgba(35,91,67,0.45)',label:'30 주의'}],
      fn:d=>{const r=getRec(state.activeCat,d);const arr=(r.rr||[]).map(x=>x.rr).filter(x=>x>0);return arr.length?Math.min(...arr):null}, // ACVIM 수면중 최솟값
      fnByState:(d,st)=>{const r=getRec(state.activeCat,d);const arr=(r.rr||[]).filter(x=>x.state===st).map(x=>x.rr).filter(x=>x>0);return arr.length?Math.min(...arr):null}},
-    {k:'water',label:`음수량 (ml) — ${periodLabel}`,color:'#235B43',type:'bar',
-     fn:d=>{const r=getRec(state.activeCat,d);const arr=r.water||[];return arr.length?arr.reduce((a,b)=>a+b.ml,0):null}},
+    {k:'water',label:`음수량 (ml) — ${periodLabel}`,type:'bar',stackedWater:true,
+     fnNatural:d=>{const r=getRec(state.activeCat,d);const v=(r.water||[]).reduce((a,b)=>a+b.ml,0);return v>0?v:null},
+     fnFluid:d=>{const r=getRec(state.activeCat,d);const v=(r.routines||[]).filter(x=>x.ml&&x.ml>0).reduce((a,x)=>a+x.ml,0);return v>0?v:null}},
   ];
 
   defs.forEach(def=>{
@@ -4787,6 +4789,35 @@ function renderGraphs(){
           plugins:{legend:{display:false},
             tooltip:{callbacks:{label:ctx=>ctx.dataset.label&&ctx.parsed.y!==null?`${ctx.dataset.label}: ${ctx.parsed.y}회/분`:''}}},
           scales:{x:{grid:{color:gc},ticks:{color:tc,font:{size:10},maxTicksLimit:days.length>60?8:15}},y:yOpts}
+        }
+      });
+      gInst.push(inst);
+      return;
+    }
+
+    // water: 자발음수 + 피하수액 stacked bar
+    if(def.stackedWater) {
+      const natData=days.map(def.fnNatural);
+      const fluidData=days.map(def.fnFluid);
+      const hasAny=natData.some(v=>v!==null)||fluidData.some(v=>v!==null);
+      const card=document.createElement('div');card.className='cm-card cm-card--flat';
+      const _hd_w='<div class="cm-sechead" style="margin-bottom:.5rem"><div class="cm-ic cm-ic--sm">'+_gcIcons.water+'</div><div><div class="cm-sechead__t">음수량 <span style="font-size:11px;font-weight:500;color:var(--cm-faint)">ml</span></div></div><div class="cm-sechead__r" style="font-size:12px;color:var(--cm-faint)">'+periodLabel+'</div></div>';
+      if(!hasAny){card.innerHTML=_hd_w+'<div style="text-align:center;padding:1.5rem;color:var(--cm-faint);font-size:12px">아직 기록이 없어요<br><span style="font-size:11px">오늘 기록 탭에서 입력하면 그래프가 그려져요</span></div>';wrap.appendChild(card);return;}
+      const hasFluid=fluidData.some(v=>v!==null);
+      const leg='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:.4rem;font-size:10px;color:var(--cm-faint)"><span style="color:#235B43;font-weight:600"><span style="display:inline-block;width:12px;height:8px;background:#235B43;border-radius:2px;vertical-align:middle;margin-right:3px"></span>자발음수</span>'+(hasFluid?'<span style="color:#6BAF8B;font-weight:600"><span style="display:inline-block;width:12px;height:8px;background:#6BAF8B;border-radius:2px;vertical-align:middle;margin-right:3px"></span>피하수액</span>':'')+'</div>';
+      card.innerHTML=_hd_w+leg+'<div class="chart-wrap" style="height:160px"><canvas id="gc_water"></canvas></div>';
+      wrap.appendChild(card);
+      const nat0=natData.map(v=>v||0);
+      const flu0=fluidData.map(v=>v||0);
+      const datasets=[
+        {label:'자발음수',data:nat0,backgroundColor:'rgba(35,91,67,0.75)',borderRadius:4,borderWidth:0,stack:'w'},
+        {label:'피하수액',data:flu0,backgroundColor:'rgba(107,175,139,0.75)',borderRadius:4,borderWidth:0,stack:'w'},
+      ];
+      const inst=new Chart(document.getElementById('gc_water'),{
+        type:'bar',data:{labels,datasets},
+        options:{responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>ctx.parsed.y>0?`${ctx.dataset.label}: ${ctx.parsed.y}ml`:''}}},
+          scales:{x:{grid:{color:gc},ticks:{color:tc,font:{size:10},maxTicksLimit:days.length>60?8:15},stacked:true},y:{grid:{color:gc},ticks:{color:tc,font:{size:10}},stacked:true}}
         }
       });
       gInst.push(inst);
