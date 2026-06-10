@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.22</span>
+      <span class="cm-beta">v0.6.23</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -4284,9 +4284,11 @@ function renderRoutineSchedule(date) {
   const _doc  = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3.5h7l4 4V20.5H7Z"/><path d="M14 3.5V8h4"/><path d="M9.5 12.5h5M9.5 15.5h5"/></svg>';
   const _chk  = '<svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>';
 
+  const _drop = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6c2.8 3.4 6 7 6 10.1a6 6 0 0 1-12 0C6 10.6 9.2 7 12 3.6Z"/></svg>';
   const catDef = [
     {key:'med',   label:'약·보조제', icon:_pill},
     {key:'food',  label:'간식·음수', icon:_bowl},
+    {key:'fluid', label:'수분 공급', icon:_drop},
     {key:'other', label:'기타루틴',  icon:_doc},
   ];
 
@@ -4387,8 +4389,10 @@ function renderRoutineSchedule(date) {
         + item.name + '</span>'
         + '</div>';
 
-      if(done && doneRec?.time) {
-        html += '<div style="font-size:10px;color:rgba(255,255,255,.65);text-align:right;padding-right:2px">' + doneRec.time + '</div>';
+      if(done && doneRec) {
+        const _isFluid = routineItems.find(i=>i.name===item.name)?.cat==='fluid';
+        const _info = [doneRec.time, (_isFluid&&doneRec.ml)?doneRec.ml+'ml':null].filter(Boolean).join(' · ');
+        if(_info) html += '<div style="font-size:10px;color:rgba(255,255,255,.65);text-align:right;padding-right:2px">'+_info+'</div>';
       }
       html += '</div>';
     });
@@ -5861,7 +5865,8 @@ const SK_RT='routineItems_v1';
 const defaultItems=[
   {name:'레나딜',cat:'med'},{name:'레나메진',cat:'med'},{name:'오메가3',cat:'med'},
   {name:'유산균',cat:'med'},{name:'사메탑',cat:'med'},{name:'항생제',cat:'med'},
-  {name:'세레니아',cat:'med'},{name:'미르타자핀',cat:'med'},{name:'피하수액',cat:'med'},
+  {name:'세레니아',cat:'med'},{name:'미르타자핀',cat:'med'},
+  {name:'피하수액',cat:'fluid',hasValue:true,unit:'ml',defaultVal:120,hasType:true,typeOptions:['하트만','0.9% NS','0.45% NS','플라즈마솔루션','기타']},
   {name:'비상이뇨제',cat:'med',diuretic:'emergency'},
   {name:'간식',cat:'food'},{name:'황금푸딩',cat:'food'},{name:'물 섭취',cat:'food'},
   {name:'병원 방문',cat:'other'},{name:'배변 확인',cat:'other'},{name:'구토',cat:'other'}
@@ -5935,14 +5940,26 @@ async function loadRoutineForCat(catName) {
     // 초기화 완료 표시 (이후엔 자동 추가 안 함)
     try{localStorage.setItem(emergInitKey, '1');}catch(e){}
   }
+  // 피하수액 fluid 카테고리 업그레이드 - 최초 1회만
+  const subqInitKey = 'subq_init_' + cat;
+  if(!localStorage.getItem(subqInitKey)) {
+    const hasFluid = routineItems.some(i=>i.cat==='fluid' && i.name==='피하수액');
+    if(!hasFluid) {
+      routineItems = routineItems.filter(i=>i.name!=='피하수액');
+      routineItems.push({name:'피하수액',cat:'fluid',hasValue:true,unit:'ml',defaultVal:120,
+        hasType:true,typeOptions:['하트만','0.9% NS','0.45% NS','플라즈마솔루션','기타']});
+      saveRT(cat);
+    }
+    try{localStorage.setItem(subqInitKey,'1');}catch(e){}
+  }
 
   renderRoutineChecklist();
   try{renderRoutineEditList();}catch(e){}
   try{renderRoutineSchedule();}catch(e){}
 }
 
-const catColor={med:'#534AB7',food:'#BA7517',other:'#1D9E75'};
-const catLabel={med:'약 및 보조제',food:'간식 및 음수',other:'기타루틴'};
+const catColor={med:'#534AB7',food:'#BA7517',other:'#1D9E75',fluid:'#2A7A5A'};
+const catLabel={med:'약 및 보조제',food:'간식 및 음수',other:'기타루틴',fluid:'수분 공급'};
 const routineSelected=new Set();
 
 function renderRoutineTags(){
@@ -5978,6 +5995,43 @@ function renderRoutineChecklist(){
     });
     html += '</div>';
   });
+  // 💧 수분 공급 (fluid) - 전체너비 카드, ml입력 + 종류 드롭다운
+  const fluidItems = routineItems.filter(i=>i.cat==='fluid');
+  if(fluidItems.length) {
+    html += '<div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:.4rem;margin-top:.5rem">💧 수분 공급</div>';
+    fluidItems.forEach(item=>{
+      const fluidRec = (rec.routines||[]).find(r=>r.items?.length===1 && r.items[0]===item.name);
+      const done = !!fluidRec;
+      const savedMl = fluidRec?.ml || item.defaultVal || 120;
+      const savedType = fluidRec?.fluidType || (item.typeOptions?.[0]||'');
+      const bg = done ? 'var(--cm-green-tint)' : 'var(--bg2)';
+      const border = done ? '1.5px solid var(--cm-green-700)' : '1.5px solid transparent';
+      const circBg2 = done ? 'var(--cm-green-700)' : 'transparent';
+      const circBd2 = done ? 'var(--cm-green-700)' : 'var(--cm-line-2)';
+      const txtClr2 = done ? 'var(--cm-green-700)' : 'var(--text)';
+      const typeOpts = (item.typeOptions||[]).map(t=>'<option value="'+t+'"'+(savedType===t?' selected':'')+'>'+t+'</option>').join('');
+      html += '<div style="background:'+bg+';border:'+border+';border-radius:12px;padding:10px 12px;margin-bottom:6px">';
+      // 헤더 행
+      html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">';
+      html += '<div onclick="toggleFluidCheck(\''+item.name+'\')" style="width:18px;height:18px;border-radius:50%;flex-shrink:0;background:'+circBg2+';border:2px solid '+circBd2+';display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;cursor:pointer">'+(done?'✓':'')+'</div>';
+      html += '<span style="font-size:13px;font-weight:'+(done?'600':'400')+';color:'+txtClr2+';flex:1">'+item.name;
+      if(done) html += '<span style="font-size:11px;font-weight:400;opacity:.7"> · '+savedMl+'ml'+(savedType?' · '+savedType:'')+'</span>';
+      html += '</span>';
+      if(done) html += '<button type="button" onclick="toggleFluidCheck(\''+item.name+'\')" style="font-size:11px;color:var(--cm-faint);background:none;border:none;cursor:pointer;padding:2px 4px">취소</button>';
+      html += '</div>';
+      // 입력 행
+      if(item.hasValue) {
+        html += '<div style="display:flex;gap:6px;align-items:center">';
+        html += '<input id="fluidMl_'+item.name+'" type="number" value="'+savedMl+'" min="0" step="10" style="width:68px;padding:7px 8px;border:1px solid var(--cm-line);border-radius:8px;font-size:13px;background:var(--cm-bg);color:var(--cm-ink);font-family:inherit;text-align:center">';
+        html += '<span style="font-size:12px;color:var(--text2)">ml</span>';
+        if(item.hasType && typeOpts) html += '<select id="fluidType_'+item.name+'" style="flex:1;padding:7px 8px;border:1px solid var(--cm-line);border-radius:8px;font-size:12px;background:var(--cm-bg);color:var(--cm-ink);font-family:inherit">'+typeOpts+'</select>';
+        html += '<button type="button" onclick="saveFluidRoutine(\''+item.name+'\')" style="padding:7px 14px;background:var(--cm-green-700);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap">'+(done?'수정':'저장')+'</button>';
+        html += '</div>';
+      }
+      html += '</div>';
+    });
+  }
+
   if(!html) html = '<div style="font-size:12px;color:var(--text3);text-align:center;padding:.75rem">등록된 항목이 없어요<br><span style="font-size:11px">고양이 ⚙️ 설정에서 항목을 추가해보세요</span></div>';
   cl.innerHTML = html;
 }
@@ -6011,6 +6065,39 @@ function toggleRoutineCheck(itemName){
 }
 
 
+function saveFluidRoutine(itemName) {
+  const today_date = document.getElementById('routineDate')?.value || today();
+  const rec = getRec(state.activeCat, today_date);
+  if(!rec.routines) rec.routines = [];
+  const mlEl = document.getElementById('fluidMl_' + itemName);
+  const typeEl = document.getElementById('fluidType_' + itemName);
+  const ml = parseInt(mlEl?.value || '0');
+  const fluidType = typeEl?.value || '';
+  if(!ml || ml <= 0) { toast('수액량을 입력해주세요', '#D85A30'); return; }
+  const existIdx = rec.routines.findIndex(r=>r.items?.length===1 && r.items[0]===itemName);
+  if(existIdx > -1) rec.routines.splice(existIdx, 1);
+  rec.routines.push({items:[itemName], ml, fluidType, memo:'', time:nowTime(), ts:Date.now()});
+  saveS(today_date);
+  renderRoutineChecklist();
+  renderHistory();
+  try{renderDailySummary();}catch(e){}
+  toast('💧 ' + itemName + ' ' + ml + 'ml 저장됐어요', '#1D9E75');
+}
+
+function toggleFluidCheck(itemName) {
+  const today_date = document.getElementById('routineDate')?.value || today();
+  const rec = getRec(state.activeCat, today_date);
+  if(!rec.routines) rec.routines = [];
+  const existIdx = rec.routines.findIndex(r=>r.items?.length===1 && r.items[0]===itemName);
+  if(existIdx > -1) {
+    rec.routines.splice(existIdx, 1);
+    saveS(today_date);
+    renderRoutineChecklist();
+    renderHistory();
+    try{renderDailySummary();}catch(e){}
+  }
+}
+
 function toggleRT(el,v){
   if(routineSelected.has(v)){routineSelected.delete(v);el.classList.remove('selected')}
   else{routineSelected.add(v);el.classList.add('selected')}
@@ -6019,8 +6106,8 @@ function toggleRT(el,v){
 function renderRoutineEditList(){
   const list=document.getElementById('routineItemList');
   if(!list)return;
-  const catOrder=['med','food','other'];
-  const catLabel2={med:'약·보조제',food:'간식·음수',other:'기타루틴'};
+  const catOrder=['med','food','fluid','other'];
+  const catLabel2={med:'약·보조제',food:'간식·음수',fluid:'수분 공급',other:'기타루틴'};
   let html='';
   catOrder.forEach(cat=>{
     const items=routineItems.filter((item,i)=>item.cat===cat);
@@ -9851,6 +9938,7 @@ async function uploadFoodDataToDB(cat) {
       <select id="newRoutineCat" style="flex:1;padding:9px 8px;border:1px solid var(--cm-line);border-radius:9px;font-size:12px;background:var(--cm-bg);color:var(--cm-ink);font-family:inherit">
         <option value="med">약·보조제</option>
         <option value="food">간식·음수</option>
+        <option value="fluid">수분 공급</option>
         <option value="other">기타루틴</option>
       </select>
       <button onclick="addRoutineItem()" class="cm-btn" style="padding:9px 20px;white-space:nowrap;border-radius:9px">+ 추가</button>
