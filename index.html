@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.32</span>
+      <span class="cm-beta">v0.6.33</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -4293,7 +4293,7 @@ function renderRoutineSchedule(date) {
   const catDef = [
     {key:'med',   label:'약·보조제', icon:_pill},
     {key:'food',  label:'간식', icon:_bowl},
-    {key:'fluid', label:'수분 공급', icon:_drop},
+    {key:'fluid', label:'피하수액', icon:_drop},
     {key:'other', label:'기타루틴',  icon:_doc},
   ];
 
@@ -6097,7 +6097,7 @@ async function loadRoutineForCat(catName) {
 }
 
 const catColor={med:'#534AB7',food:'#BA7517',other:'#1D9E75',fluid:'#2A7A5A'};
-const catLabel={med:'약 및 보조제',food:'간식',other:'기타루틴',fluid:'수분 공급'};
+const catLabel={med:'약 및 보조제',food:'간식',other:'기타루틴',fluid:'피하수액'};
 const routineSelected=new Set();
 
 function renderRoutineTags(){
@@ -6136,7 +6136,7 @@ function renderRoutineChecklist(){
   // 💧 수분 공급 (fluid) - 전체너비 카드, ml입력 + 종류 드롭다운
   const fluidItems = routineItems.filter(i=>i.cat==='fluid');
   if(fluidItems.length) {
-    html += '<div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:.4rem;margin-top:.5rem">수분 공급</div>';
+    html += '<div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:.4rem;margin-top:.5rem">피하수액</div>';
     fluidItems.forEach(item=>{
       const fluidRec = (rec.routines||[]).find(r=>r.items?.length===1 && r.items[0]===item.name);
       const done = !!fluidRec;
@@ -6258,7 +6258,7 @@ function renderRoutineEditList(){
   const list=document.getElementById('routineItemList');
   if(!list)return;
   const catOrder=['med','food','fluid','other'];
-  const catLabel2={med:'약·보조제',food:'간식',fluid:'수분 공급',other:'기타루틴'};
+  const catLabel2={med:'약·보조제',food:'간식',fluid:'피하수액',other:'기타루틴'};
   let html='';
   catOrder.forEach(cat=>{
     const items=routineItems.filter((item,i)=>item.cat===cat);
@@ -10094,7 +10094,7 @@ async function uploadFoodDataToDB(cat) {
       <select id="newRoutineCat" style="flex:1;padding:9px 8px;border:1px solid var(--cm-line);border-radius:9px;font-size:12px;background:var(--cm-bg);color:var(--cm-ink);font-family:inherit">
         <option value="med">약·보조제</option>
         <option value="food">간식</option>
-        <option value="fluid">수분 공급</option>
+        <option value="fluid">피하수액</option>
         <option value="other">기타루틴</option>
       </select>
       <button onclick="addRoutineItem()" class="cm-btn" style="padding:9px 20px;white-space:nowrap;border-radius:9px">+ 추가</button>
