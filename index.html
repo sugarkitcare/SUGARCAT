@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.34</span>
+      <span class="cm-beta">v0.6.35</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -6081,6 +6081,18 @@ async function loadRoutineForCat(catName) {
       saveRT(cat);
     }
     try{localStorage.setItem(subqInitKey,'1');}catch(e){}
+  }
+  // 신버전 피하수액(hasType) 보장 - subq_init_ 이미 적용된 고양이도 포함, 최초 1회만
+  const subqV2Key = 'subq_v2_' + cat;
+  if(!localStorage.getItem(subqV2Key)) {
+    const hasNewFluid = routineItems.some(i => i.cat==='fluid' && i.hasType===true);
+    if(!hasNewFluid) {
+      routineItems.push({name:'피하수액', cat:'fluid', hasValue:true, unit:'ml',
+        defaultVal:120, hasType:true,
+        typeOptions:['하트만','0.9% NS','0.45% NS','플라즈마솔루션','기타']});
+      saveRT(cat);
+    }
+    try{localStorage.setItem(subqV2Key,'1');}catch(e){}
   }
   // '물 섭취' 루틴 항목 제거 - 최초 1회만
   const waterCleanupKey = 'water_cleanup_' + cat;
