@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.44</span>
+      <span class="cm-beta">v0.6.45</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -2742,9 +2742,12 @@ function addFavFoodToCalc(name, kcalPer100, per) {
 
 /* ── 고양이 전환 전역 함수 (iOS 호환) ── */
 window.switchCat = function(c) {
+  // 강급 작업대: 현재 고양이 배열 보존 → 새 고양이 배열 복원 (세션 메모리만)
+  _tubeItemsByCat[state.activeCat]=_tubeItems.slice();
   state.activeCat=c;
+  _tubeItems=(_tubeItemsByCat[c]||[]).slice();
   try{loadFoodDataForCat(c);}catch(e){}
-  _tubeItems=[];try{renderTubeItemList();}catch(e){}try{const _ne=document.getElementById('tubeRecipeName');if(_ne)_ne.value='';}catch(e){}
+  try{renderTubeItemList();}catch(e){}try{const _ne=document.getElementById('tubeRecipeName');if(_ne)_ne.value='';}catch(e){}
   if(sbClient&&currentUser){try{syncFoodDataFromDB(c).then(()=>{try{renderFdHistory();renderManualFoodList();renderTubeRecipeList();calcCalorie();}catch(e){}});}catch(e){}}
   renderCatBar();updateMetrics();updateWtDiff();updateInsulinNext();saveS();
   const prof=(state.catProfiles||{})[c];
@@ -7046,6 +7049,7 @@ renderManualFoodList();
 /* ── 강급 레시피 ── */
 let tubeRecipes=[];
 let _tubeItems=[];
+let _tubeItemsByCat={};   // 고양이별 작업대 임시 보관 (세션 메모리만, 저장 안 함)
 let _tubeMethod='slurry';
 let _tubeRecipesPending=false;
 
