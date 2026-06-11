@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.41</span>
+      <span class="cm-beta">v0.6.42</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -1475,6 +1475,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="f-seg" style="margin-bottom:.75rem">
     <button id="fSegCalc" data-on="1" onclick="setFoodSeg('calc')" style="padding:7px 0;font-size:13px">급여량 계산</button>
     <button id="fSegAnalysis" data-on="0" onclick="setFoodSeg('analysis')" style="padding:7px 0;font-size:13px">성분 분석</button>
+    <button id="fSegTube" data-on="0" onclick="setFoodSeg('tube')" style="padding:7px 0;font-size:13px">강급 레시피</button>
   </div>
 
   <!-- ── 급여량 계산 ── -->
@@ -1726,6 +1727,61 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
       </div>
       <div id="fdStatus" style="display:none"></div>
       <div id="fdResult"></div>
+    </div>
+
+  </div>
+
+  <!-- ── 강급 레시피 ── -->
+  <div id="foodSegTube" style="display:none">
+
+    <div style="font-size:11.5px;color:var(--cm-faint);line-height:1.6;margin-bottom:.75rem">스스로 먹지 못하는 아이를 위한 급여 레시피예요 · 슬러리와 사료환 모두 지원해요</div>
+
+    <!-- 급여 방식 -->
+    <div class="cm-card cm-card--flat" style="margin-bottom:.75rem">
+      <div style="font-size:12px;font-weight:600;color:var(--cm-ink-soft);margin-bottom:.6rem">급여 방식</div>
+      <div class="f-seg">
+        <button id="tubeMethodSlurry" type="button" data-on="1" onclick="setTubeMethod('slurry')" style="padding:8px 6px;font-size:13px">슬러리</button>
+        <button id="tubeMethodBall"   type="button" data-on="0" onclick="setTubeMethod('ball')"   style="padding:8px 6px;font-size:13px">사료환</button>
+      </div>
+    </div>
+
+    <!-- 재료 -->
+    <div class="cm-card cm-card--flat" style="margin-bottom:.75rem">
+      <div style="font-size:12px;font-weight:600;color:var(--cm-ink-soft);margin-bottom:.6rem">재료</div>
+      <div id="tubeItemList"></div>
+      <button type="button" onclick="openTubeFavPicker()" style="padding:5px 12px;border:1px solid var(--cm-green-edge);border-radius:8px;background:var(--cm-green-tint);color:var(--cm-green-700);font-size:12px;cursor:pointer;font-family:inherit;font-weight:500;margin-top:.35rem">+ 즐겨찾기에서 사료 추가</button>
+      <div id="tubeFavPicker" style="display:none;background:var(--cm-surface-2);border-radius:10px;padding:.75rem;margin-top:.5rem">
+        <div style="font-size:11px;font-weight:500;color:var(--cm-faint);margin-bottom:.5rem">즐겨찾기 사료 선택</div>
+        <div id="tubeFavPickerList"></div>
+        <button type="button" onclick="document.getElementById('tubeFavPicker').style.display='none'"
+          style="padding:4px 10px;border:0.5px solid var(--cm-line);border-radius:7px;background:transparent;color:var(--cm-faint);font-size:11px;cursor:pointer;font-family:inherit;margin-top:.5rem">닫기</button>
+      </div>
+    </div>
+
+    <!-- 합산 -->
+    <div class="cm-card cm-card--flat" style="margin-bottom:.75rem">
+      <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:.3rem">
+        <span id="tubeTotalKcal" style="font-size:32px;font-weight:800;color:var(--cm-green-700);font-variant-numeric:tabular-nums">0</span>
+        <span style="font-size:14px;color:var(--cm-faint)">kcal</span>
+      </div>
+      <div id="tubeKcalCompare" style="font-size:12px;color:var(--cm-faint);display:none"></div>
+    </div>
+
+    <!-- 레시피 저장 -->
+    <div class="cm-card cm-card--flat" style="margin-bottom:.75rem">
+      <div style="font-size:12px;font-weight:600;color:var(--cm-ink-soft);margin-bottom:.6rem">레시피 저장</div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <input type="text" id="tubeRecipeName" placeholder="레시피 이름 (예: 달래 슬러리 A)"
+          style="flex:1;padding:7px 10px;border:0.5px solid var(--cm-line);border-radius:9px;font-size:13px;background:var(--cm-surface-2);color:var(--cm-ink);font-family:inherit;min-width:0">
+        <button type="button" onclick="saveTubeRecipeEntry()"
+          style="padding:7px 16px;border:none;border-radius:9px;background:var(--cm-green-700);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">저장</button>
+      </div>
+    </div>
+
+    <!-- 저장된 레시피 목록 -->
+    <div id="tubeRecipeListSection">
+      <div style="font-size:12px;font-weight:600;color:var(--cm-ink-soft);margin-bottom:.5rem">저장된 레시피</div>
+      <div id="tubeRecipeList"></div>
     </div>
 
   </div>
@@ -2615,7 +2671,7 @@ function openFavFoodPicker() {
   picker.style.display = picker.style.display === 'none' ? 'block' : 'none';
 }
 
-function _renderFavFoodPickerList(listId) {
+function _renderFavFoodPickerList(listId, onSelect) {
   const _list = document.getElementById(listId);
   if(!_list) return;
   if(!favFoods.length) {
@@ -2634,19 +2690,24 @@ function _renderFavFoodPickerList(listId) {
         + '</div>';
     }).join('');
   } else {
+    var _isTube = listId === 'tubeFavPickerList';
     _list.innerHTML = favFoods.map(function(f, i) {
       var nm = typeof f === 'string' ? f : f.name;
       var kp = typeof f === 'string' ? null : f.kcalPer100g;
+      var moi = (typeof f !== 'string' && f.moisture != null) ? f.moisture : null;
       var tp = typeof f === 'string' ? null : f.type;
       var per = tp === 'dry' ? 100 : 85;
       var kLbl = kp ? kp + 'kcal/100g' : '칼로리 미입력 (사료 분석탭에서 입력)';
       var safe = nm.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      var addCb = _isTube
+        ? 'addFoodToTubeRecipe(\u0027' + safe + '\u0027,' + (kp||0) + ',' + (moi != null ? moi : 'null') + ')'
+        : 'addFavFoodToCalc(\u0027' + safe + '\u0027,' + (kp||0) + ',' + per + ')';
       return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--bg);border-radius:8px;margin-bottom:5px">'
         + '<div style="flex:1"><div style="font-size:13px;color:var(--text)">' + nm + '</div>'
         + '<div style="font-size:11px;color:' + (kp ? 'var(--text3)' : 'var(--cm-amber)') + '">' + kLbl + '</div></div>'
         + '<div style="display:flex;gap:6px;align-items:center">'
-        + '<button type="button" onclick="addFavFoodToCalc(\u0027' + safe + '\u0027,' + (kp||0) + ',' + per + ')" style="padding:4px 10px;border:0.5px solid var(--teal);border-radius:7px;background:var(--teal-l);color:var(--teal-d);font-size:11px;cursor:pointer;font-family:inherit">추가</button>'
-        + '<button type="button" onclick="deleteFavFood(' + i + ',\u0027favFoodPickerList\u0027)" style="background:none;border:none;color:var(--cm-faint);cursor:pointer;padding:2px 6px;font-size:15px;line-height:1">×</button>'
+        + '<button type="button" onclick="' + addCb + '" style="padding:4px 10px;border:0.5px solid var(--teal);border-radius:7px;background:var(--teal-l);color:var(--teal-d);font-size:11px;cursor:pointer;font-family:inherit">추가</button>'
+        + '<button type="button" onclick="deleteFavFood(' + i + ',\u0027' + listId + '\u0027)" style="background:none;border:none;color:var(--cm-faint);cursor:pointer;padding:2px 6px;font-size:15px;line-height:1">×</button>'
         + '</div></div>';
     }).join('');
   }
@@ -2682,7 +2743,7 @@ function addFavFoodToCalc(name, kcalPer100, per) {
 window.switchCat = function(c) {
   state.activeCat=c;
   try{loadFoodDataForCat(c);}catch(e){}
-  if(sbClient&&currentUser){try{syncFoodDataFromDB(c).then(()=>{try{renderFdHistory();renderManualFoodList();calcCalorie();}catch(e){}});}catch(e){}}
+  if(sbClient&&currentUser){try{syncFoodDataFromDB(c).then(()=>{try{renderFdHistory();renderManualFoodList();renderTubeRecipeList();calcCalorie();}catch(e){}});}catch(e){}}
   renderCatBar();updateMetrics();updateWtDiff();updateInsulinNext();saveS();
   const prof=(state.catProfiles||{})[c];
   if(prof&&prof.insulin){const el=document.getElementById('insType');if(el)el.value=prof.insulin;}
@@ -5226,12 +5287,14 @@ const CKD_CRITERIA = {
 };
 
 function setFoodSeg(seg) {
-  const isCalc = seg === 'calc';
-  document.getElementById('foodSegCalc').style.display = isCalc ? 'block' : 'none';
-  document.getElementById('foodSegAnalysis').style.display = isCalc ? 'none' : 'block';
-  document.getElementById('fSegCalc').dataset.on = isCalc ? '1' : '0';
-  document.getElementById('fSegAnalysis').dataset.on = isCalc ? '0' : '1';
-  try { renderFdHistory(); } catch(e) {}
+  ['calc','analysis','tube'].forEach(s=>{
+    const sec=document.getElementById('foodSeg'+s[0].toUpperCase()+s.slice(1));
+    const btn=document.getElementById('fSeg'+s[0].toUpperCase()+s.slice(1));
+    if(sec)sec.style.display=s===seg?'block':'none';
+    if(btn)btn.dataset.on=s===seg?'1':'0';
+  });
+  try{renderFdHistory();}catch(e){}
+  if(seg==='tube')try{renderTubeRecipeList();}catch(e){}
 }
 function toggleCalcCond() {
   const body = document.getElementById('calcCondBody');
@@ -6976,6 +7039,157 @@ function updateManualFoodCalc(mer){
 
 // 초기 렌더
 renderManualFoodList();
+
+
+/* ── 강급 레시피 ── */
+let tubeRecipes=[];
+let _tubeItems=[];
+let _tubeMethod='slurry';
+let _tubeRecipesPending=false;
+
+const saveTubeRecipes=()=>{
+  const _cat=state.activeCat||'_global';
+  try{localStorage.setItem('tubeRecipes_v1_'+_cat,JSON.stringify(tubeRecipes));}catch(e){}
+  if(sbClient&&currentUser&&state.activeCat){
+    _tubeRecipesPending=true;
+    sbClient.from('user_settings').upsert({user_id:currentUser.id,key:'tubeRecipes_v1_'+_cat,value:tubeRecipes,updated_at:new Date().toISOString()},{onConflict:'user_id,key'}).then(({error})=>{if(error)console.warn('tubeRecipes DB 저장 오류:',error);_tubeRecipesPending=false;}).catch(e=>{console.warn('tubeRecipes DB 저장 오류:',e);_tubeRecipesPending=false;});
+  }
+};
+
+function setTubeMethod(m){
+  _tubeMethod=m;
+  ['slurry','ball'].forEach(s=>{
+    const el=document.getElementById('tubeMethod'+s[0].toUpperCase()+s.slice(1));
+    if(el)el.dataset.on=s===m?'1':'0';
+  });
+}
+
+function calcTubeTotal(){
+  let total=0;
+  _tubeItems.forEach(item=>{
+    const g=parseFloat(item.grams)||0;
+    const k=parseFloat(item.kcalPer100g)||0;
+    total+=g*k/100;
+  });
+  const rounded=Math.round(total);
+  const kEl=document.getElementById('tubeTotalKcal');
+  if(kEl)kEl.textContent=rounded;
+  const rec=(state.catProfiles||{})[state.activeCat||'']?.recommendedKcal;
+  const cEl=document.getElementById('tubeKcalCompare');
+  if(cEl){
+    if(rec&&rec>0){
+      const pct=Math.round(rounded/rec*100);
+      cEl.textContent='권장 '+rec+'kcal의 '+pct+'%';
+      cEl.style.display='block';
+    }else{
+      cEl.style.display='none';
+    }
+  }
+}
+
+function renderTubeItemList(){
+  const list=document.getElementById('tubeItemList');
+  if(!list)return;
+  if(!_tubeItems.length){
+    list.innerHTML='<div style="font-size:12px;color:var(--cm-faint);padding:.35rem 0">즐겨찾기에서 사료를 추가해 레시피를 구성해요</div>';
+    calcTubeTotal();
+    return;
+  }
+  list.innerHTML=_tubeItems.map((item,i)=>{
+    const safe=item.foodName.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+    return '<div style="display:flex;align-items:center;gap:6px;padding:.5rem 0;border-bottom:0.5px solid var(--cm-line)">'
+      +'<span style="flex:1;font-size:13px;color:var(--cm-ink)">'+safe+'</span>'
+      +'<input type="number" min="0" step="0.1" value="'+(item.grams||'')+'" placeholder="g"'
+      +' oninput="_tubeItems['+i+'].grams=parseFloat(this.value)||0;calcTubeTotal()"'
+      +' style="width:64px;padding:4px 6px;border:0.5px solid var(--cm-line);border-radius:7px;font-size:12px;background:var(--cm-surface-2);color:var(--cm-ink);font-family:inherit;text-align:right">'
+      +'<span style="font-size:11px;color:var(--cm-faint)">g</span>'
+      +'<button type="button" onclick="removeTubeItem('+i+')" style="padding:3px 8px;border:none;background:var(--cm-clay-tint);color:var(--cm-clay-ink);border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit">삭제</button>'
+      +'</div>';
+  }).join('');
+  calcTubeTotal();
+}
+
+function renderTubeRecipeList(){
+  const list=document.getElementById('tubeRecipeList');
+  if(!list)return;
+  if(!tubeRecipes.length){
+    list.innerHTML='<div style="font-size:12px;color:var(--cm-faint);padding:.35rem 0">저장된 레시피가 없어요</div>';
+    return;
+  }
+  list.innerHTML=tubeRecipes.map((r,i)=>{
+    const mLbl=r.method==='ball'?'사료환':'슬러리';
+    const safe=r.name.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+    return '<div style="display:flex;align-items:center;gap:6px;padding:.6rem .75rem;background:var(--cm-surface-2);border-radius:9px;margin-bottom:5px">'
+      +'<div style="flex:1;min-width:0">'
+      +'<div style="font-size:13px;font-weight:600;color:var(--cm-ink)">'+safe+'</div>'
+      +'<div style="font-size:11px;color:var(--cm-faint)">'+(r.totalKcal||0)+'kcal · '+mLbl+'</div>'
+      +'</div>'
+      +'<button type="button" onclick="loadTubeRecipe('+i+')" style="padding:4px 10px;border:0.5px solid var(--cm-green-edge);border-radius:7px;background:var(--cm-green-tint);color:var(--cm-green-700);font-size:11px;cursor:pointer;font-family:inherit;font-weight:500">불러오기</button>'
+      +'<button type="button" onclick="deleteTubeRecipe('+i+')" style="padding:4px 8px;border:none;background:var(--cm-clay-tint);color:var(--cm-clay-ink);border-radius:7px;font-size:11px;cursor:pointer;font-family:inherit">삭제</button>'
+      +'</div>';
+  }).join('');
+}
+
+function addFoodToTubeRecipe(name,kcalPer100g,moisture){
+  _tubeItems.push({foodName:name,grams:0,kcalPer100g:kcalPer100g||0,moisture:moisture??null});
+  renderTubeItemList();
+  const p=document.getElementById('tubeFavPicker');
+  if(p)p.style.display='none';
+}
+
+function removeTubeItem(idx){
+  if(idx<0||idx>=_tubeItems.length)return;
+  _tubeItems.splice(idx,1);
+  renderTubeItemList();
+}
+
+function saveTubeRecipeEntry(){
+  const nameEl=document.getElementById('tubeRecipeName');
+  const name=(nameEl?nameEl.value.trim():'');
+  if(!name){toast('레시피 이름을 입력해주세요','#BA7517');return;}
+  if(!_tubeItems.length){toast('재료를 먼저 추가해주세요','#BA7517');return;}
+  let total=0;
+  _tubeItems.forEach(item=>{total+=(parseFloat(item.grams)||0)*(parseFloat(item.kcalPer100g)||0)/100;});
+  const entry={
+    id:String(Date.now()),
+    name:name,
+    method:_tubeMethod,
+    items:_tubeItems.map(x=>({...x})),
+    totalKcal:Math.round(total),
+    createdAt:new Date().toISOString()
+    // 2단계 예약: addedWaterMl, totalMl, feedingCount, mlPerFeeding, phosphorusTotal, syringeSize, riskFlags
+  };
+  tubeRecipes.unshift(entry);
+  saveTubeRecipes();
+  renderTubeRecipeList();
+  if(nameEl)nameEl.value='';
+  toast(name+' 저장됐어요');
+}
+
+function loadTubeRecipe(idx){
+  if(idx<0||idx>=tubeRecipes.length)return;
+  const r=tubeRecipes[idx];
+  _tubeItems=(r.items||[]).map(x=>({...x}));
+  setTubeMethod(r.method||'slurry');
+  renderTubeItemList();
+  toast(r.name+' 불러왔어요');
+}
+
+function deleteTubeRecipe(idx){
+  if(idx<0||idx>=tubeRecipes.length)return;
+  const nm=tubeRecipes[idx].name;
+  tubeRecipes.splice(idx,1);
+  saveTubeRecipes();
+  renderTubeRecipeList();
+  toast(nm+' 삭제됐어요');
+}
+
+function openTubeFavPicker(){
+  const p=document.getElementById('tubeFavPicker');
+  if(!p)return;
+  _renderFavFoodPickerList('tubeFavPickerList',true);
+  p.style.display=p.style.display==='none'?'block':'none';
+}
 
 
 /* ── 혈액검사 AI 코멘트 ── */
@@ -9958,6 +10172,7 @@ function loadFoodDataForCat(cat) {
   try{const d=localStorage.getItem('favFoods_v1_'+cat);const _r=d?JSON.parse(d):[];favFoods=_r.map(x=>typeof x==='string'?{name:x,kcalPer100g:null,type:null}:x);}catch(e){favFoods=[];}
   try{const d=localStorage.getItem('manualFoods_v1_'+cat);manualFoods=d?JSON.parse(d):[];}catch(e){manualFoods=[];}
   try{const d=localStorage.getItem('fd_v2_'+cat);fdData=d?JSON.parse(d):[];}catch(e){fdData=[];}
+  try{const d=localStorage.getItem('tubeRecipes_v1_'+cat);tubeRecipes=d?JSON.parse(d):[];}catch(e){tubeRecipes=[];}
 }
 
 function migrateFoodDataToCat() {
@@ -10004,14 +10219,14 @@ function migrateInferType(){
 async function syncFoodDataFromDB(cat) {
   if(!sbClient||!currentUser||!cat) return;
   try{
-    const keys=['favFoods_v1_'+cat,'manualFoods_v1_'+cat,'fd_v2_'+cat];
+    const keys=['favFoods_v1_'+cat,'manualFoods_v1_'+cat,'fd_v2_'+cat,'tubeRecipes_v1_'+cat];
     const {data}=await sbClient.from('user_settings')
       .select('key,value').eq('user_id',currentUser.id).in('key',keys);
     if(!data||!data.length) return;
     let updated=false;
     data.forEach(row=>{
       const val=Array.isArray(row.value)?row.value:(typeof row.value==='string'?JSON.parse(row.value):[]);
-      if(row.key==='manualFoods_v1_'+cat&&_manualFoodsPending){
+      if((row.key==='manualFoods_v1_'+cat&&_manualFoodsPending)||(row.key==='tubeRecipes_v1_'+cat&&_tubeRecipesPending)){
         // 로컬 upsert 진행 중 — DB 값이 구버전일 수 있으므로 이 키 스킵
       }else{
         try{localStorage.setItem(row.key,JSON.stringify(val));}catch(e){}
@@ -10019,9 +10234,10 @@ async function syncFoodDataFromDB(cat) {
       if(row.key==='favFoods_v1_'+cat&&cat===state.activeCat){favFoods=(val||[]).map(x=>typeof x==='string'?{name:x,kcalPer100g:null,type:null}:x);updated=true;}
       if(row.key==='manualFoods_v1_'+cat&&cat===state.activeCat&&!_manualFoodsPending){manualFoods=val;updated=true;}
       if(row.key==='fd_v2_'+cat&&cat===state.activeCat){fdData=val;updated=true;}
+      if(row.key==='tubeRecipes_v1_'+cat&&cat===state.activeCat&&!_tubeRecipesPending){tubeRecipes=val;updated=true;}
     });
-    // renderManualFoodList 포함: syncFromDB 로그인 후 activeCat 변경 시 stale 목록 방지
-    if(updated){try{renderFdHistory();}catch(e){}try{renderManualFoodList();}catch(e){}try{calcCalorie();}catch(e){}}
+    // renderManualFoodList/renderTubeRecipeList 포함: syncFromDB 로그인 후 activeCat 변경 시 stale 목록 방지
+    if(updated){try{renderFdHistory();}catch(e){}try{renderManualFoodList();}catch(e){}try{renderTubeRecipeList();}catch(e){}try{calcCalorie();}catch(e){}}
   }catch(e){console.warn('사료 DB 로드 오류:',e);}
 }
 
@@ -10029,7 +10245,7 @@ async function syncFoodDataFromDB(cat) {
 async function uploadFoodDataToDB(cat) {
   if(!sbClient||!currentUser||!cat) return;
   try{
-    const keys=['favFoods_v1_'+cat,'manualFoods_v1_'+cat,'fd_v2_'+cat];
+    const keys=['favFoods_v1_'+cat,'manualFoods_v1_'+cat,'fd_v2_'+cat,'tubeRecipes_v1_'+cat];
     const {data:existing}=await sbClient.from('user_settings')
       .select('key').eq('user_id',currentUser.id).in('key',keys);
     const existingSet=new Set((existing||[]).map(r=>r.key));
