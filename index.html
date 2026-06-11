@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.38</span>
+      <span class="cm-beta">v0.6.39</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -6894,12 +6894,14 @@ function updateRecommendedKcal(cat,wt){
 
 /* 수동 사료 입력 관리 */
 let manualFoods=[];
+let _manualFoodsPending=false;
 try{const d=localStorage.getItem('manualFoods_v1');if(d)manualFoods=JSON.parse(d);}catch(e){}
 const saveManualFoods=()=>{
   const _cat=state.activeCat||'_global';
   try{localStorage.setItem('manualFoods_v1_'+_cat,JSON.stringify(manualFoods));}catch(e){}
   if(sbClient&&currentUser&&state.activeCat){
-    sbClient.from('user_settings').upsert({user_id:currentUser.id,key:'manualFoods_v1_'+_cat,value:manualFoods,updated_at:new Date().toISOString()},{onConflict:'user_id,key'}).then(({error})=>{if(error)console.warn('manualFoods DB 저장 오류:',error);});
+    _manualFoodsPending=true;
+    sbClient.from('user_settings').upsert({user_id:currentUser.id,key:'manualFoods_v1_'+_cat,value:manualFoods,updated_at:new Date().toISOString()},{onConflict:'user_id,key'}).then(({error})=>{if(error)console.warn('manualFoods DB 저장 오류:',error);_manualFoodsPending=false;}).catch(e=>{console.warn('manualFoods DB 저장 오류:',e);_manualFoodsPending=false;});
   }
 };
 
@@ -9996,9 +9998,13 @@ async function syncFoodDataFromDB(cat) {
     let updated=false;
     data.forEach(row=>{
       const val=Array.isArray(row.value)?row.value:(typeof row.value==='string'?JSON.parse(row.value):[]);
-      try{localStorage.setItem(row.key,JSON.stringify(val));}catch(e){}
+      if(row.key==='manualFoods_v1_'+cat&&_manualFoodsPending){
+        // 로컬 upsert 진행 중 — DB 값이 구버전일 수 있으므로 이 키 스킵
+      }else{
+        try{localStorage.setItem(row.key,JSON.stringify(val));}catch(e){}
+      }
       if(row.key==='favFoods_v1_'+cat&&cat===state.activeCat){favFoods=(val||[]).map(x=>typeof x==='string'?{name:x,kcalPer100g:null,type:null}:x);updated=true;}
-      if(row.key==='manualFoods_v1_'+cat&&cat===state.activeCat){manualFoods=val;updated=true;}
+      if(row.key==='manualFoods_v1_'+cat&&cat===state.activeCat&&!_manualFoodsPending){manualFoods=val;updated=true;}
       if(row.key==='fd_v2_'+cat&&cat===state.activeCat){fdData=val;updated=true;}
     });
     if(updated){try{renderFdHistory();}catch(e){}try{calcCalorie();}catch(e){}}
