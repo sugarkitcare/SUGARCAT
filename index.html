@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.37</span>
+      <span class="cm-beta">v0.6.38</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -1721,7 +1721,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
       </div>
       <img id="fdPreview" class="img-prev" style="display:none">
       <div class="row2" style="margin-bottom:.75rem">
-        <div class="ig"><label>사료 종류 <span style="color:#D85A30;font-size:10px">★ 필수</span></label><select id="fdType"><option value="wet">습식(캔/파우치)</option><option value="dry">건식</option></select><div style="font-size:10px;color:var(--cm-faint);margin-top:2px">수분 기본값에 영향해요 — 꼭 선택해 주세요</div></div>
+        <div class="ig" style="display:none"><label>사료 종류</label><select id="fdType"><option value="wet">습식(캔/파우치)</option><option value="dry">건식</option></select></div>
         <div class="ig"><label>사료명(선택)</label><input type="text" id="fdName" placeholder="예: 몬지 레날"></div>
       </div>
       <div id="fdStatus" style="display:none"></div>
@@ -5131,6 +5131,10 @@ const estCarb=(p,f,fi,a,m)=>{
   const ash=a!==null&&a!==undefined?a:(m<30?7:2);
   return parseFloat(Math.max(0,100-p-f-fi-ash-m).toFixed(1));
 };
+function inferFoodType(moisture,aiType){
+  if(moisture!=null&&!isNaN(moisture))return moisture>=60?'wet':'dry';
+  return aiType||null;
+}
 const getLv=cdm=>cdm<=5?'best':cdm<=10?'good':cdm<=15?'caution':'bad';
 const lvColor=lv=>({best:'#1D9E75',good:'#3B6D11',caution:'#BA7517',bad:'#D85A30'})[lv];
 
@@ -5173,6 +5177,7 @@ setupDrop('fdDrop','fdFile',async file=>{
     if(!jsonMatch2)throw new Error('JSON 파싱 실패');
     const parsed=JSON.parse(jsonMatch2[0]);
     parsed.foodNameInput=fdNm;
+    parsed.type=inferFoodType(parsed.moisture,parsed.type);
     fdData.unshift({ts:Date.now(),data:parsed,name:parsed.name||fdNm});
     if(fdData.length>20)fdData=fdData.slice(0,20);saveFD();contributeFoodMaster(parsed,'ai');
     _fdViewData=fdData[0];hideStat('fdStatus');renderFdHistory();renderFdResult(parsed);
@@ -5646,6 +5651,7 @@ function renderFdResult(d){
   const dmError = (pdm !== null && pdm > 100) || (fdm !== null && fdm > 100);
   const kcal=d.kcal_per_100g??null;
   const isEstC=!hasExplicitCarb,isEstK=kcal===null;
+  const typeDisp=(d.type==='wet'?'습식':'건식')+(d.moisture!=null?' (수분 '+m.toFixed(0)+'%)':'');
   // === 강화 검증 블록 ===
   const afSum=parseFloat((p+f+fi+a+m).toFixed(1));
   const afSumError=afSum>110;const afSumWarn=!afSumError&&afSum>100;
@@ -5716,7 +5722,7 @@ function renderFdResult(d){
     basicDiv.innerHTML = '<div class="n-grid">'
       + '<div class="n-card '+(pdm>=35?'hl':'')+'"><div class="n-val">'+p.toFixed(1)+'%</div><div class="n-lbl">단백질 as-fed</div><div class="n-dm">DM '+pdm?.toFixed(1)+'%</div></div>'
       + '<div class="n-card"><div class="n-val">'+f.toFixed(1)+'%</div><div class="n-lbl">지방 as-fed</div><div class="n-dm">DM '+fdm?.toFixed(1)+'%</div></div>'
-      + '<div class="n-card"><div class="n-val">'+m.toFixed(1)+'%</div><div class="n-lbl">수분</div><div class="n-dm">'+(d.type==='wet'?'습식':'건식')+'</div></div>'
+      + '<div class="n-card"><div class="n-val">'+m.toFixed(1)+'%</div><div class="n-lbl">수분</div><div class="n-dm">'+typeDisp+'</div></div>'
       + (d.phosphorus_af!==null?'<div class="n-card '+(d.phosphorus_af>0.5?'wn':'hl')+'"><div class="n-val">'+d.phosphorus_af+'%</div><div class="n-lbl">인(P) as-fed</div><div class="n-dm">DM '+cDM(d.phosphorus_af,m)+'%</div></div>':'')
       + (d.sodium_af?'<div class="n-card"><div class="n-val">'+d.sodium_af+'%</div><div class="n-lbl">나트륨 as-fed</div></div>':'')
       + '</div>';
@@ -5751,7 +5757,7 @@ ${buildKcalRow(kcal, d.type==='wet')}
   <div class="n-card ${pdm>=35?'hl':''}"><div class="n-val">${p.toFixed(1)}%</div><div class="n-lbl">단백질 as-fed</div><div class="n-dm">DM ${pdm?.toFixed(1)}%</div></div>
   <div class="n-card"><div class="n-val">${f.toFixed(1)}%</div><div class="n-lbl">지방 as-fed</div><div class="n-dm">DM ${fdm?.toFixed(1)}%</div></div>
   <div class="n-card ${cdm<=5?'hl':cdm<=10?'':cdm<=15?'wn':'dg'}"><div class="n-val">${carb.toFixed(1)}%${isEstC?' *':''}</div><div class="n-lbl">탄수화물${isEstC?' (추정)':''}</div><div class="n-dm">DM ${cdm?.toFixed(1)}%</div></div>
-  <div class="n-card"><div class="n-val">${m.toFixed(1)}%${d.moisture==null?' *':''}</div><div class="n-lbl">수분${d.moisture==null?' (기본값)':''}</div><div class="n-dm">${d.type==='wet'?'습식':'건식'}</div></div>
+  <div class="n-card"><div class="n-val">${m.toFixed(1)}%${d.moisture==null?' *':''}</div><div class="n-lbl">수분${d.moisture==null?' (기본값)':''}</div><div class="n-dm">${typeDisp}</div></div>
   ${d.phosphorus_af!==null&&d.phosphorus_af!==undefined?`<div class="n-card ${d.phosphorus_af>0.5?'wn':'hl'}"><div class="n-val">${d.phosphorus_af}%</div><div class="n-lbl">인 (P)</div><div class="n-dm">>0.5% 신장 주의</div></div>`:''}
 </div>
 ${tags?`<div class="tags">${tags}</div><div style="font-size:10px;color:var(--text3);margin-bottom:.5rem">초록: 단백질원 · 주황: 탄수화물원</div>`:''}
@@ -5881,10 +5887,11 @@ function saveFdFields(){
     if(v!==d[fk]){d[fk]=v;changed=true;}
   });
   if(!changed){toast('변경사항이 없어요');return;}
+  d.type=inferFoodType(d.moisture,d.type);
   saveFD();contributeFoodMaster(Object.assign({},_fdViewData.data,{name:_fdViewData.data.name||_fdViewData.name}),'user_edit');
-  // moisture 변경 시 favFoods 동기화
+  // moisture/type 변경 시 favFoods 동기화
   const _fi=favFoods.findIndex(f=>(f.name||f)===_fdViewData.name);
-  if(_fi>-1){if(d.moisture!=null)favFoods[_fi].moisture=d.moisture;saveFavFoods();}
+  if(_fi>-1){if(d.moisture!=null)favFoods[_fi].moisture=d.moisture;favFoods[_fi].type=d.type;saveFavFoods();}
   renderFdResult(d);
   toast('수치 저장 완료 · DM 재계산됐어요 ✓');
 }
@@ -9956,6 +9963,28 @@ function migrateFoodDataToCat() {
   localStorage.setItem('migrated_food_v1','1');
 }
 
+function migrateInferType(){
+  if(localStorage.getItem('migrated_infertype_v1'))return;
+  const cats=(state.cats&&state.cats.length)?state.cats:[state.activeCat].filter(Boolean);
+  cats.forEach(cat=>{
+    try{
+      const fk='favFoods_v1_'+cat;const fd=localStorage.getItem(fk);
+      if(fd){const arr=JSON.parse(fd);let dirty=false;
+        arr.forEach(x=>{if(x&&typeof x==='object'&&x.moisture!=null){const t=inferFoodType(x.moisture,x.type);if(t!==x.type){x.type=t;dirty=true;}}});
+        if(dirty)try{localStorage.setItem(fk,JSON.stringify(arr));}catch(e){}
+      }
+    }catch(e){}
+    try{
+      const dk='fd_v2_'+cat;const dd=localStorage.getItem(dk);
+      if(dd){const arr=JSON.parse(dd);let dirty=false;
+        arr.forEach(h=>{if(h&&h.data&&h.data.moisture!=null){const t=inferFoodType(h.data.moisture,h.data.type);if(t!==h.data.type){h.data.type=t;dirty=true;}}});
+        if(dirty)try{localStorage.setItem(dk,JSON.stringify(arr));}catch(e){}
+      }
+    }catch(e){}
+  });
+  localStorage.setItem('migrated_infertype_v1','1');
+}
+
 /* DB → localStorage + 메모리 동기화 (한 고양이) */
 async function syncFoodDataFromDB(cat) {
   if(!sbClient||!currentUser||!cat) return;
@@ -10002,6 +10031,7 @@ async function uploadFoodDataToDB(cat) {
 (function(){
   try{
     migrateFoodDataToCat();
+    migrateInferType();
     if(state.activeCat) loadFoodDataForCat(state.activeCat);
   }catch(e){}
 })();
