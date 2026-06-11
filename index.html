@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.35</span>
+      <span class="cm-beta">v0.6.36</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -1520,7 +1520,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
       <div id="calcCondBody" style="display:none;margin-top:.75rem">
         <div class="row2" style="margin-bottom:8px">
           <div class="ig"><label>현재 체중 (kg)</label><input type="number" id="calcWt" placeholder="예: 3.5" step="0.1" oninput="calcCalorie()"></div>
-          <div class="ig"><label>목표 체중 (kg)</label><input type="number" id="calcTargetWt" placeholder="없으면 비워두세요" step="0.1" oninput="calcCalorie()"></div>
+          <div class="ig"><label>목표 체중 (kg)</label><input type="number" id="calcTargetWt" placeholder="없으면 비워두세요" step="0.1" oninput="calcCalorie();saveTargetWtToProfile()"></div>
         </div>
         <div class="row2" style="margin-bottom:8px">
           <div class="ig"><label>나이</label>
@@ -6679,6 +6679,7 @@ function toggleCalcDisease(el){
   if(calcDiseases.has(v)){calcDiseases.delete(v);el.classList.remove('selected')}
   else{calcDiseases.add(v);el.classList.add('selected')}
   calcCalorie();
+  saveCalcDiseasesToProfile();
 }
 
 function saveActivityBCSToProfile(){
@@ -6690,6 +6691,27 @@ function saveActivityBCSToProfile(){
   state.catProfiles[cat].bcs=document.getElementById('calcBCS').value;
   saveS();
   if(sbClient&&currentUser)upsertCatToDB(cat).catch(e=>console.warn('activity/bcs sync:',e));
+}
+
+function saveTargetWtToProfile(){
+  const cat=state.activeCat;
+  if(!cat)return;
+  if(!state.catProfiles)state.catProfiles={};
+  if(!state.catProfiles[cat])state.catProfiles[cat]={};
+  const v=parseFloat(document.getElementById('calcTargetWt').value);
+  state.catProfiles[cat].targetWt=(!isNaN(v)&&v>0)?v:null;
+  saveS();
+  if(sbClient&&currentUser)upsertCatToDB(cat).catch(e=>console.warn('targetWt sync:',e));
+}
+
+function saveCalcDiseasesToProfile(){
+  const cat=state.activeCat;
+  if(!cat)return;
+  if(!state.catProfiles)state.catProfiles={};
+  if(!state.catProfiles[cat])state.catProfiles[cat]={};
+  state.catProfiles[cat].calcDiseases=Array.from(calcDiseases);
+  saveS();
+  if(sbClient&&currentUser)upsertCatToDB(cat).catch(e=>console.warn('calcDiseases sync:',e));
 }
 
 function initCalcResult(){
@@ -6706,6 +6728,16 @@ function initCalcResult(){
   if(activity){const el=document.getElementById('calcActivity');if(el)el.value=activity;}
   const bcs=state.catProfiles?.[state.activeCat]?.bcs;
   if(bcs){const el=document.getElementById('calcBCS');if(el)el.value=bcs;}
+  const targetWt=state.catProfiles?.[state.activeCat]?.targetWt;
+  const targetWtEl=document.getElementById('calcTargetWt');
+  if(targetWtEl)targetWtEl.value=(targetWt!=null&&targetWt>0)?targetWt:'';
+  const savedDis=state.catProfiles?.[state.activeCat]?.calcDiseases||[];
+  calcDiseases.clear();
+  savedDis.forEach(v=>calcDiseases.add(v));
+  const tagsEl=document.getElementById('calcDiseaseTags');
+  if(tagsEl){tagsEl.querySelectorAll('.routine-tag').forEach(chip=>{
+    chip.classList.toggle('selected',calcDiseases.has(chip.dataset.val));
+  });}
   try{calcCalorie();}catch(e){}
 }
 
@@ -9219,7 +9251,8 @@ async function syncFromDB() {
           breed: c.breed, birth: c.birth_date, gender: c.gender,
           neuter: c.neutered ? 'yes' : 'no', activity: c.activity||'', bcs: c.bcs||'',
           recommendedKcal: c.recommended_kcal||null, insulin: c.insulin_type,
-          diseases: c.diseases || [], memo: c.memo, dbId: c.id
+          diseases: c.diseases || [], memo: c.memo, dbId: c.id,
+          targetWt: c.target_weight||null, calcDiseases: c.calc_diseases||[]
         };
       });
       try{localStorage.setItem(SK, JSON.stringify(state));}catch(e){}
@@ -9239,7 +9272,8 @@ async function syncFromDB() {
               breed: c.breed, birth: c.birth_date, gender: c.gender,
               neuter: c.neutered?'yes':'no', activity: c.activity||'', bcs: c.bcs||'',
               recommendedKcal: c.recommended_kcal||null, insulin: c.insulin_type,
-              diseases: c.diseases||[], memo: c.memo, dbId: c.id
+              diseases: c.diseases||[], memo: c.memo, dbId: c.id,
+              targetWt: c.target_weight||null, calcDiseases: c.calc_diseases||[]
             };
           });
           try{localStorage.setItem(SK, JSON.stringify(state));}catch(e){}
@@ -9470,7 +9504,9 @@ async function upsertCatToDB(catName) {
       recommended_kcal: profile.recommendedKcal || null,
       insulin_type: profile.insulin || null,
       diseases: profile.diseases || [],
-      memo: profile.memo || null
+      memo: profile.memo || null,
+      target_weight: profile.targetWt != null ? profile.targetWt : null,
+      calc_diseases: profile.calcDiseases || []
     };
     let result;
     if(profile.dbId) {
