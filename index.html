@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.36</span>
+      <span class="cm-beta">v0.6.37</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -5174,7 +5174,7 @@ setupDrop('fdDrop','fdFile',async file=>{
     const parsed=JSON.parse(jsonMatch2[0]);
     parsed.foodNameInput=fdNm;
     fdData.unshift({ts:Date.now(),data:parsed,name:parsed.name||fdNm});
-    if(fdData.length>20)fdData=fdData.slice(0,20);saveFD();
+    if(fdData.length>20)fdData=fdData.slice(0,20);saveFD();contributeFoodMaster(parsed,'ai');
     _fdViewData=fdData[0];hideStat('fdStatus');renderFdHistory();renderFdResult(parsed);
   }catch(e){
     console.error('FD error:',e);
@@ -5881,7 +5881,7 @@ function saveFdFields(){
     if(v!==d[fk]){d[fk]=v;changed=true;}
   });
   if(!changed){toast('변경사항이 없어요');return;}
-  saveFD();
+  saveFD();contributeFoodMaster(Object.assign({},_fdViewData.data,{name:_fdViewData.data.name||_fdViewData.name}),'user_edit');
   // moisture 변경 시 favFoods 동기화
   const _fi=favFoods.findIndex(f=>(f.name||f)===_fdViewData.name);
   if(_fi>-1){if(d.moisture!=null)favFoods[_fi].moisture=d.moisture;saveFavFoods();}
@@ -8837,6 +8837,34 @@ function saveCatProfile() {
   const ins=state.catProfiles[currentProfileCat].insulin;
   if(ins)document.getElementById('insType').value=ins;
   toast(currentProfileCat+' 기본 정보 저장 완료!');
+}
+
+/* ── foods_master 백그라운드 적립 ── */
+function contributeFoodMaster(parsed,source){
+  if(!currentUser||!sbClient)return;
+  try{
+    sbClient.from('foods_master').insert({
+      name:parsed.name||null,
+      name_input:parsed.foodNameInput||null,
+      type:parsed.type||null,
+      moisture:parsed.moisture??null,
+      protein_af:parsed.protein_af??null,
+      fat_af:parsed.fat_af??null,
+      fiber_af:parsed.fiber_af??null,
+      ash_af:parsed.ash_af??null,
+      carb_af:parsed.carb_af??null,
+      kcal_per_100g:parsed.kcal_per_100g??null,
+      phosphorus_af:parsed.phosphorus_af??null,
+      sodium_af:parsed.sodium_af??null,
+      potassium_af:parsed.potassium_af??null,
+      ingredients_top5:parsed.ingredients_top5||null,
+      grain_free:parsed.grain_free??null,
+      main_protein_source:parsed.main_protein_source||null,
+      special_notes:parsed.special_notes||null,
+      source:source,
+      contributed_by:currentUser.id
+    }).then(({error})=>{if(error)console.warn('foods_master 적립 오류:',error);}).catch(e=>console.warn('foods_master 적립 오류:',e));
+  }catch(e){console.warn('foods_master 적립 오류:',e);}
 }
 
 /* ── 11번: 사료 즐겨찾기 ── */
