@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.40</span>
+      <span class="cm-beta">v0.6.41</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -10020,7 +10020,8 @@ async function syncFoodDataFromDB(cat) {
       if(row.key==='manualFoods_v1_'+cat&&cat===state.activeCat&&!_manualFoodsPending){manualFoods=val;updated=true;}
       if(row.key==='fd_v2_'+cat&&cat===state.activeCat){fdData=val;updated=true;}
     });
-    if(updated){try{renderFdHistory();}catch(e){}try{calcCalorie();}catch(e){}}
+    // renderManualFoodList 포함: syncFromDB 로그인 후 activeCat 변경 시 stale 목록 방지
+    if(updated){try{renderFdHistory();}catch(e){}try{renderManualFoodList();}catch(e){}try{calcCalorie();}catch(e){}}
   }catch(e){console.warn('사료 DB 로드 오류:',e);}
 }
 
