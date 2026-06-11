@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.45</span>
+      <span class="cm-beta">v0.6.46</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -1766,6 +1766,37 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
       </div>
       <div id="tubeKcalCompare" style="font-size:12px;color:var(--cm-faint);display:none"></div>
       <button type="button" id="tubeMatchRecommendedBtn" onclick="matchTubeToRecommended()" style="display:none;margin-top:.6rem;padding:5px 14px;border:0.5px solid var(--cm-green-edge);border-radius:8px;background:var(--cm-green-tint);color:var(--cm-green-700);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">권장 칼로리에 맞추기</button>
+    </div>
+
+    <!-- 슬러리 계산 (슬러리 방식일 때만 표시) -->
+    <div class="cm-card cm-card--flat" id="tubeSlurryCard" style="margin-bottom:.75rem">
+      <div style="font-size:12px;font-weight:600;color:var(--cm-ink-soft);margin-bottom:.6rem">슬러리 계산</div>
+      <div style="display:flex;gap:8px;margin-bottom:.6rem">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:11px;color:var(--cm-faint);margin-bottom:3px">추가한 물 (ml)</div>
+          <input type="number" id="tubeWaterMl" min="0" step="1" placeholder="0" oninput="calcTubeSlurry()"
+            style="width:100%;box-sizing:border-box;padding:7px 10px;border:0.5px solid var(--cm-line);border-radius:9px;font-size:13px;background:var(--cm-surface-2);color:var(--cm-ink);font-family:inherit">
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:11px;color:var(--cm-faint);margin-bottom:3px">하루 나눌 횟수</div>
+          <input type="number" id="tubeFeedCount" min="1" step="1" value="4" oninput="calcTubeSlurry()"
+            style="width:100%;box-sizing:border-box;padding:7px 10px;border:0.5px solid var(--cm-line);border-radius:9px;font-size:13px;background:var(--cm-surface-2);color:var(--cm-ink);font-family:inherit">
+        </div>
+      </div>
+      <div style="margin-bottom:.6rem">
+        <div style="font-size:11px;color:var(--cm-faint);margin-bottom:3px">급여 도구</div>
+        <select id="tubeTool" onchange="calcTubeSlurry()"
+          style="width:100%;box-sizing:border-box;padding:7px 10px;border:0.5px solid var(--cm-line);border-radius:9px;font-size:13px;background:var(--cm-surface-2);color:var(--cm-ink);font-family:inherit">
+          <option value="syr1">주사기 1ml</option>
+          <option value="syr3">주사기 3ml</option>
+          <option value="syr5">주사기 5ml</option>
+          <option value="syr10" selected>주사기 10ml</option>
+          <option value="syr20">주사기 20ml</option>
+          <option value="sauce">소스통</option>
+          <option value="spoon">스푼</option>
+        </select>
+      </div>
+      <div id="tubeSlurryResult"></div>
     </div>
 
     <!-- 레시피 저장 -->
@@ -7068,6 +7099,9 @@ function setTubeMethod(m){
     const el=document.getElementById('tubeMethod'+s[0].toUpperCase()+s.slice(1));
     if(el)el.dataset.on=s===m?'1':'0';
   });
+  const sc=document.getElementById('tubeSlurryCard');
+  if(sc)sc.style.display=m==='slurry'?'block':'none';
+  try{calcTubeSlurry();}catch(e){}
 }
 
 function calcTubeTotal(){
@@ -7104,6 +7138,45 @@ function calcTubeTotal(){
       btnEl.style.display='none';
     }
   }
+  try{calcTubeSlurry();}catch(e){}
+}
+
+/* 작업대 기준 사료 수분(ml) — moisture 미입력 항목은 0 처리 */
+function _tubeFoodWaterMl(items){
+  let w=0;
+  (items||[]).forEach(item=>{
+    const g=parseFloat(item.grams)||0;
+    const moi=parseFloat(item.moisture);
+    if(g>0&&!isNaN(moi)&&moi>0)w+=g*moi/100;
+  });
+  return w;
+}
+
+function calcTubeSlurry(){
+  const out=document.getElementById('tubeSlurryResult');
+  if(!out||_tubeMethod!=='slurry')return;
+  const water=parseFloat(document.getElementById('tubeWaterMl')?.value)||0;
+  const cnt=Math.max(1,parseInt(document.getElementById('tubeFeedCount')?.value)||4);
+  const tool=document.getElementById('tubeTool')?.value||'syr10';
+  const foodWater=_tubeFoodWaterMl(_tubeItems);
+  const totalMl=Math.round(foodWater+water);
+  if(!totalMl){
+    out.innerHTML='<div style="font-size:12px;color:var(--cm-faint);padding:.2rem 0">재료 g수와 물을 입력하면 계산돼요</div>';
+    return;
+  }
+  const perFeed=Math.round(totalMl/cnt);
+  const syrCap={syr1:1,syr3:3,syr5:5,syr10:10,syr20:20}[tool];
+  let html='<div style="background:var(--cm-surface-2);border-radius:10px;padding:.6rem .85rem">'
+    +'<div style="display:flex;align-items:baseline;gap:6px"><span style="font-size:12px;color:var(--cm-faint);width:84px;flex-shrink:0">총 완성량</span><span style="font-size:15px;font-weight:700;color:var(--cm-ink)">'+totalMl+' ml</span></div>'
+    +'<div style="font-size:10px;color:var(--cm-faint);margin:1px 0 .45rem 90px">사료 고형분 부피는 포함되지 않은 근사치예요</div>'
+    +'<div style="display:flex;align-items:baseline;gap:6px;margin-bottom:.3rem"><span style="font-size:12px;color:var(--cm-faint);width:84px;flex-shrink:0">1회 급여량</span><span style="font-size:15px;font-weight:700;color:var(--cm-green-700)">'+perFeed+' ml × '+cnt+'회</span></div>';
+  if(syrCap){
+    const pushes=Math.ceil(perFeed/syrCap);
+    html+='<div style="display:flex;align-items:baseline;gap:6px;margin-bottom:.3rem"><span style="font-size:12px;color:var(--cm-faint);width:84px;flex-shrink:0">주사기 횟수</span><span style="font-size:13px;color:var(--cm-ink)">1회에 주사기('+syrCap+'ml) 약 '+pushes+'번</span></div>';
+  }
+  html+='<div style="display:flex;align-items:baseline;gap:6px"><span style="font-size:12px;color:var(--cm-faint);width:84px;flex-shrink:0">총 수분</span><span style="font-size:13px;color:var(--cm-ink)">'+totalMl+' ml <span style="font-size:11px;color:var(--cm-faint)">(사료 '+Math.round(foodWater)+' + 물 '+Math.round(water)+')</span></span></div>'
+    +'</div>';
+  out.innerHTML=html;
 }
 
 function renderTubeItemList(){
@@ -7138,11 +7211,13 @@ function renderTubeRecipeList(){
   list.innerHTML=tubeRecipes.map((r,i)=>{
     const mLbl=r.method==='ball'?'사료환':'슬러리';
     const safe=r.name.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+    const mlInfo=(r.totalMl!=null&&r.totalMl>0)?' · '+r.totalMl+'ml':'';
     return '<div style="display:flex;align-items:center;gap:6px;padding:.6rem .75rem;background:var(--cm-surface-2);border-radius:9px;margin-bottom:5px">'
       +'<div style="flex:1;min-width:0">'
       +'<div style="font-size:13px;font-weight:600;color:var(--cm-ink)">'+safe+'</div>'
-      +'<div style="font-size:11px;color:var(--cm-faint)">'+(r.totalKcal||0)+'kcal · '+mLbl+'</div>'
+      +'<div style="font-size:11px;color:var(--cm-faint)">'+(r.totalKcal||0)+'kcal · '+mLbl+mlInfo+'</div>'
       +'</div>'
+      +'<button type="button" onclick="feedTubeRecipe('+i+')" style="padding:4px 10px;border:none;border-radius:7px;background:var(--cm-green-700);color:#fff;font-size:11px;cursor:pointer;font-family:inherit;font-weight:600;white-space:nowrap">먹였어요</button>'
       +'<button type="button" onclick="loadTubeRecipe('+i+')" style="padding:4px 10px;border:0.5px solid var(--cm-green-edge);border-radius:7px;background:var(--cm-green-tint);color:var(--cm-green-700);font-size:11px;cursor:pointer;font-family:inherit;font-weight:500">불러오기</button>'
       +'<button type="button" onclick="deleteTubeRecipe('+i+')" style="padding:4px 8px;border:none;background:var(--cm-clay-tint);color:var(--cm-clay-ink);border-radius:7px;font-size:11px;cursor:pointer;font-family:inherit">삭제</button>'
       +'</div>';
@@ -7169,14 +7244,24 @@ function saveTubeRecipeEntry(){
   if(!_tubeItems.length){toast('재료를 먼저 추가해주세요','#BA7517');return;}
   let total=0;
   _tubeItems.forEach(item=>{total+=(parseFloat(item.grams)||0)*(parseFloat(item.kcalPer100g)||0)/100;});
+  // 슬러리 계산 필드 (사료환이면 물 0으로 저장)
+  const _water=_tubeMethod==='slurry'?(parseFloat(document.getElementById('tubeWaterMl')?.value)||0):0;
+  const _cnt=Math.max(1,parseInt(document.getElementById('tubeFeedCount')?.value)||4);
+  const _tool=document.getElementById('tubeTool')?.value||'syr10';
+  const _totalMl=Math.round(_tubeFoodWaterMl(_tubeItems)+_water);
   const entry={
     id:String(Date.now()),
     name:name,
     method:_tubeMethod,
     items:_tubeItems.map(x=>({...x})),
     totalKcal:Math.round(total),
+    addedWaterMl:_water,
+    feedingCount:_cnt,
+    tool:_tool,
+    totalMl:_totalMl,
+    mlPerFeeding:Math.round(_totalMl/_cnt),
+    totalWaterMl:_totalMl,
     createdAt:new Date().toISOString()
-    // 2단계 예약: addedWaterMl, totalMl, feedingCount, mlPerFeeding, phosphorusTotal, syringeSize, riskFlags
   };
   tubeRecipes.unshift(entry);
   saveTubeRecipes();
@@ -7189,6 +7274,13 @@ function loadTubeRecipe(idx){
   if(idx<0||idx>=tubeRecipes.length)return;
   const r=tubeRecipes[idx];
   _tubeItems=(r.items||[]).map(x=>({...x}));
+  // 1단계 구버전 레시피(슬러리 필드 없음)는 기본값(물 0, 횟수 4)으로 복원
+  const wEl=document.getElementById('tubeWaterMl');
+  if(wEl)wEl.value=(r.addedWaterMl!=null&&r.addedWaterMl>0)?r.addedWaterMl:'';
+  const fEl=document.getElementById('tubeFeedCount');
+  if(fEl)fEl.value=r.feedingCount!=null?r.feedingCount:4;
+  const tEl=document.getElementById('tubeTool');
+  if(tEl&&r.tool)tEl.value=r.tool;
   setTubeMethod(r.method||'slurry');
   renderTubeItemList();
   toast(r.name+' 불러왔어요');
@@ -7201,6 +7293,38 @@ function deleteTubeRecipe(idx){
   saveTubeRecipes();
   renderTubeRecipeList();
   toast(nm+' 삭제됐어요');
+}
+
+/* "먹였어요" — 레시피를 오늘 식사 기록으로 반영. 여러 번 누르면 매번 추가(의도된 동작).
+   추가 물은 moisture:100 meal 항목으로 넣어 기존 습식수분 경로로 게이지에 합산 — rec.water(자발음수)에는 절대 넣지 않음 */
+function feedTubeRecipe(idx){
+  if(idx<0||idx>=tubeRecipes.length)return;
+  const r=tubeRecipes[idx];
+  const items=r.items||[];
+  if(!items.length){toast('레시피에 재료가 없어요','#BA7517');return;}
+  const d=today();
+  const recd=getRec(state.activeCat,d);
+  const t=nowTime();
+  const base=Date.now();
+  let kcalSum=0,waterSum=0,n=0;
+  items.forEach(item=>{
+    const g=parseFloat(item.grams)||0;
+    const k=parseFloat(item.kcalPer100g)||0;
+    const moi=parseFloat(item.moisture);
+    const kc=Math.round(g*k/100*10)/10;
+    recd.meals.push({name:item.foodName||'강급 사료',amt:g,kcal:kc,time:t,ts:base+(n++),moisture:!isNaN(moi)?moi:null});
+    kcalSum+=kc;
+    if(!isNaN(moi)&&moi>=60)waterSum+=g*moi/100;
+  });
+  const aw=parseFloat(r.addedWaterMl)||0;
+  if(aw>0){
+    recd.meals.push({name:'강급 추가 수분',amt:aw,kcal:0,time:t,ts:base+(n++),moisture:100});
+    waterSum+=aw;
+  }
+  saveS(d);
+  try{updateMetrics();}catch(e){}
+  try{renderDailySummary();}catch(e){}
+  toast('오늘 기록에 추가했어요 · '+Math.round(kcalSum)+'kcal · 수분 '+Math.round(waterSum)+'ml');
 }
 
 function openTubeFavPicker(){
