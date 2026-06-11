@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.43</span>
+      <span class="cm-beta">v0.6.44</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -1765,6 +1765,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
         <span style="font-size:14px;color:var(--cm-faint)">kcal</span>
       </div>
       <div id="tubeKcalCompare" style="font-size:12px;color:var(--cm-faint);display:none"></div>
+      <button type="button" id="tubeMatchRecommendedBtn" onclick="matchTubeToRecommended()" style="display:none;margin-top:.6rem;padding:5px 14px;border:0.5px solid var(--cm-green-edge);border-radius:8px;background:var(--cm-green-tint);color:var(--cm-green-700);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">권장 칼로리에 맞추기</button>
     </div>
 
     <!-- 레시피 저장 -->
@@ -2743,6 +2744,7 @@ function addFavFoodToCalc(name, kcalPer100, per) {
 window.switchCat = function(c) {
   state.activeCat=c;
   try{loadFoodDataForCat(c);}catch(e){}
+  _tubeItems=[];try{renderTubeItemList();}catch(e){}try{const _ne=document.getElementById('tubeRecipeName');if(_ne)_ne.value='';}catch(e){}
   if(sbClient&&currentUser){try{syncFoodDataFromDB(c).then(()=>{try{renderFdHistory();renderManualFoodList();renderTubeRecipeList();calcCalorie();}catch(e){}});}catch(e){}}
   renderCatBar();updateMetrics();updateWtDiff();updateInsulinNext();saveS();
   const prof=(state.catProfiles||{})[c];
@@ -7085,6 +7087,19 @@ function calcTubeTotal(){
       cEl.style.display='none';
     }
   }
+  const btnEl=document.getElementById('tubeMatchRecommendedBtn');
+  if(btnEl){
+    if(rec&&rec>0&&rounded>0){
+      const pct2=Math.round(rounded/rec*100);
+      const near=Math.abs(pct2-100)<=3;
+      btnEl.style.display='inline-block';
+      btnEl.disabled=near;
+      btnEl.style.opacity=near?'0.4':'1';
+      btnEl.style.cursor=near?'default':'pointer';
+    }else{
+      btnEl.style.display='none';
+    }
+  }
 }
 
 function renderTubeItemList(){
@@ -7190,6 +7205,17 @@ function openTubeFavPicker(){
   try{const d=localStorage.getItem('favFoods_v1_'+state.activeCat);if(d)favFoods=JSON.parse(d);}catch(e){}
   _renderFavFoodPickerList('tubeFavPickerList',true);
   p.style.display=p.style.display==='none'?'block':'none';
+}
+
+function matchTubeToRecommended(){
+  const target=(state.catProfiles||{})[state.activeCat||'']?.recommendedKcal;
+  let totalKcal=0;
+  _tubeItems.forEach(item=>{totalKcal+=(parseFloat(item.grams)||0)*(parseFloat(item.kcalPer100g)||0)/100;});
+  if(!totalKcal){toast('재료를 추가하고 g수를 입력해주세요','#BA7517');return;}
+  if(!target||target<=0){toast('고양이 프로필에 권장 칼로리를 먼저 설정해주세요','#BA7517');return;}
+  const ratio=target/totalKcal;
+  _tubeItems=_tubeItems.map(item=>({...item,grams:Math.round((parseFloat(item.grams)||0)*ratio)}));
+  renderTubeItemList();
 }
 
 
