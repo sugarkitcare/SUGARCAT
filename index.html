@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.46</span>
+      <span class="cm-beta">v0.6.47</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -1787,11 +1787,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
         <div style="font-size:11px;color:var(--cm-faint);margin-bottom:3px">급여 도구</div>
         <select id="tubeTool" onchange="calcTubeSlurry()"
           style="width:100%;box-sizing:border-box;padding:7px 10px;border:0.5px solid var(--cm-line);border-radius:9px;font-size:13px;background:var(--cm-surface-2);color:var(--cm-ink);font-family:inherit">
-          <option value="syr1">주사기 1ml</option>
-          <option value="syr3">주사기 3ml</option>
-          <option value="syr5">주사기 5ml</option>
-          <option value="syr10" selected>주사기 10ml</option>
-          <option value="syr20">주사기 20ml</option>
+          <option value="syringe" selected>주사기</option>
           <option value="sauce">소스통</option>
           <option value="spoon">스푼</option>
         </select>
@@ -7157,7 +7153,6 @@ function calcTubeSlurry(){
   if(!out||_tubeMethod!=='slurry')return;
   const water=parseFloat(document.getElementById('tubeWaterMl')?.value)||0;
   const cnt=Math.max(1,parseInt(document.getElementById('tubeFeedCount')?.value)||4);
-  const tool=document.getElementById('tubeTool')?.value||'syr10';
   const foodWater=_tubeFoodWaterMl(_tubeItems);
   const totalMl=Math.round(foodWater+water);
   if(!totalMl){
@@ -7165,18 +7160,13 @@ function calcTubeSlurry(){
     return;
   }
   const perFeed=Math.round(totalMl/cnt);
-  const syrCap={syr1:1,syr3:3,syr5:5,syr10:10,syr20:20}[tool];
-  let html='<div style="background:var(--cm-surface-2);border-radius:10px;padding:.6rem .85rem">'
+  out.innerHTML='<div style="background:var(--cm-surface-2);border-radius:10px;padding:.6rem .85rem">'
     +'<div style="display:flex;align-items:baseline;gap:6px"><span style="font-size:12px;color:var(--cm-faint);width:84px;flex-shrink:0">총 완성량</span><span style="font-size:15px;font-weight:700;color:var(--cm-ink)">'+totalMl+' ml</span></div>'
     +'<div style="font-size:10px;color:var(--cm-faint);margin:1px 0 .45rem 90px">사료 고형분 부피는 포함되지 않은 근사치예요</div>'
-    +'<div style="display:flex;align-items:baseline;gap:6px;margin-bottom:.3rem"><span style="font-size:12px;color:var(--cm-faint);width:84px;flex-shrink:0">1회 급여량</span><span style="font-size:15px;font-weight:700;color:var(--cm-green-700)">'+perFeed+' ml × '+cnt+'회</span></div>';
-  if(syrCap){
-    const pushes=Math.ceil(perFeed/syrCap);
-    html+='<div style="display:flex;align-items:baseline;gap:6px;margin-bottom:.3rem"><span style="font-size:12px;color:var(--cm-faint);width:84px;flex-shrink:0">주사기 횟수</span><span style="font-size:13px;color:var(--cm-ink)">1회에 주사기('+syrCap+'ml) 약 '+pushes+'번</span></div>';
-  }
-  html+='<div style="display:flex;align-items:baseline;gap:6px"><span style="font-size:12px;color:var(--cm-faint);width:84px;flex-shrink:0">총 수분</span><span style="font-size:13px;color:var(--cm-ink)">'+totalMl+' ml <span style="font-size:11px;color:var(--cm-faint)">(사료 '+Math.round(foodWater)+' + 물 '+Math.round(water)+')</span></span></div>'
+    +'<div style="display:flex;align-items:baseline;gap:6px;margin-bottom:.3rem"><span style="font-size:12px;color:var(--cm-faint);width:84px;flex-shrink:0">1회 급여량</span><span style="font-size:15px;font-weight:700;color:var(--cm-green-700)">'+perFeed+' ml × '+cnt+'회</span></div>'
+    +'<div style="display:flex;align-items:baseline;gap:6px"><span style="font-size:12px;color:var(--cm-faint);width:84px;flex-shrink:0">총 수분</span><span style="font-size:13px;color:var(--cm-ink)">'+totalMl+' ml <span style="font-size:11px;color:var(--cm-faint)">(사료 '+Math.round(foodWater)+' + 물 '+Math.round(water)+')</span></span></div>'
+    +'<div style="font-size:11px;color:var(--cm-faint);line-height:1.6;margin-top:.55rem;padding-top:.5rem;border-top:0.5px solid var(--cm-line)">한 번에 밀어 넣지 말고, 삼키는 걸 확인하며 조금씩 나눠 급여하세요. 급하게 먹이면 오연(사레) 위험이 있어요.</div>'
     +'</div>';
-  out.innerHTML=html;
 }
 
 function renderTubeItemList(){
@@ -7247,7 +7237,7 @@ function saveTubeRecipeEntry(){
   // 슬러리 계산 필드 (사료환이면 물 0으로 저장)
   const _water=_tubeMethod==='slurry'?(parseFloat(document.getElementById('tubeWaterMl')?.value)||0):0;
   const _cnt=Math.max(1,parseInt(document.getElementById('tubeFeedCount')?.value)||4);
-  const _tool=document.getElementById('tubeTool')?.value||'syr10';
+  const _tool=document.getElementById('tubeTool')?.value||'syringe';
   const _totalMl=Math.round(_tubeFoodWaterMl(_tubeItems)+_water);
   const entry={
     id:String(Date.now()),
@@ -7280,7 +7270,11 @@ function loadTubeRecipe(idx){
   const fEl=document.getElementById('tubeFeedCount');
   if(fEl)fEl.value=r.feedingCount!=null?r.feedingCount:4;
   const tEl=document.getElementById('tubeTool');
-  if(tEl&&r.tool)tEl.value=r.tool;
+  // 구버전 tool 값(syr1~syr20 등 주사기 크기 구분)은 '주사기'로 매핑
+  if(tEl&&r.tool){
+    const _t=/^syr/.test(r.tool)?'syringe':r.tool;
+    tEl.value=['syringe','sauce','spoon'].includes(_t)?_t:'syringe';
+  }
   setTubeMethod(r.method||'slurry');
   renderTubeItemList();
   toast(r.name+' 불러왔어요');
