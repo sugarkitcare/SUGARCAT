@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.42</span>
+      <span class="cm-beta">v0.6.43</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -2637,6 +2637,7 @@ function openFavFoodPickerDaily() {
   if(!picker || !list) return;
   picker.style.display = picker.style.display === 'none' ? 'block' : 'none';
   if(picker.style.display === 'none') return;
+  try{const d=localStorage.getItem('favFoods_v1_'+state.activeCat);if(d)favFoods=JSON.parse(d);}catch(e){}
   _renderFavFoodPickerList('favFoodPickerDailyList');
 }
 function selectFavFoodDaily(idx) {
@@ -2665,9 +2666,8 @@ function openFavFoodPicker() {
   const picker = document.getElementById('favFoodPicker');
   const list = document.getElementById('favFoodPickerList');
   if(!picker || !list) return;
-
+  try{const d=localStorage.getItem('favFoods_v1_'+state.activeCat);if(d)favFoods=JSON.parse(d);}catch(e){}
   _renderFavFoodPickerList('favFoodPickerList');
-
   picker.style.display = picker.style.display === 'none' ? 'block' : 'none';
 }
 
@@ -7187,6 +7187,7 @@ function deleteTubeRecipe(idx){
 function openTubeFavPicker(){
   const p=document.getElementById('tubeFavPicker');
   if(!p)return;
+  try{const d=localStorage.getItem('favFoods_v1_'+state.activeCat);if(d)favFoods=JSON.parse(d);}catch(e){}
   _renderFavFoodPickerList('tubeFavPickerList',true);
   p.style.display=p.style.display==='none'?'block':'none';
 }
@@ -10224,6 +10225,7 @@ async function syncFoodDataFromDB(cat) {
       .select('key,value').eq('user_id',currentUser.id).in('key',keys);
     if(!data||!data.length) return;
     let updated=false;
+    let _favUpdated=false;
     data.forEach(row=>{
       const val=Array.isArray(row.value)?row.value:(typeof row.value==='string'?JSON.parse(row.value):[]);
       if((row.key==='manualFoods_v1_'+cat&&_manualFoodsPending)||(row.key==='tubeRecipes_v1_'+cat&&_tubeRecipesPending)){
@@ -10231,13 +10233,15 @@ async function syncFoodDataFromDB(cat) {
       }else{
         try{localStorage.setItem(row.key,JSON.stringify(val));}catch(e){}
       }
-      if(row.key==='favFoods_v1_'+cat&&cat===state.activeCat){favFoods=(val||[]).map(x=>typeof x==='string'?{name:x,kcalPer100g:null,type:null}:x);updated=true;}
+      if(row.key==='favFoods_v1_'+cat&&cat===state.activeCat){favFoods=(val||[]).map(x=>typeof x==='string'?{name:x,kcalPer100g:null,type:null}:x);updated=true;_favUpdated=true;}
       if(row.key==='manualFoods_v1_'+cat&&cat===state.activeCat&&!_manualFoodsPending){manualFoods=val;updated=true;}
       if(row.key==='fd_v2_'+cat&&cat===state.activeCat){fdData=val;updated=true;}
       if(row.key==='tubeRecipes_v1_'+cat&&cat===state.activeCat&&!_tubeRecipesPending){tubeRecipes=val;updated=true;}
     });
     // renderManualFoodList/renderTubeRecipeList 포함: syncFromDB 로그인 후 activeCat 변경 시 stale 목록 방지
     if(updated){try{renderFdHistory();}catch(e){}try{renderManualFoodList();}catch(e){}try{renderTubeRecipeList();}catch(e){}try{calcCalorie();}catch(e){}}
+    // favFoods 갱신 시 현재 열려 있는 피커 재렌더 (switchCat 후 sync 완료 전에 열린 피커 최신화)
+    if(_favUpdated){try{[['favFoodPicker','favFoodPickerList'],['favFoodPickerDaily','favFoodPickerDailyList'],['tubeFavPicker','tubeFavPickerList']].forEach(([pid,lid])=>{const p=document.getElementById(pid);if(p&&p.style.display!=='none')_renderFavFoodPickerList(lid);});}catch(e){}}
   }catch(e){console.warn('사료 DB 로드 오류:',e);}
 }
 
