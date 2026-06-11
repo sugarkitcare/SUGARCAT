@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.47</span>
+      <span class="cm-beta">v0.6.48</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -1770,7 +1770,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
 
     <!-- 슬러리 계산 (슬러리 방식일 때만 표시) -->
     <div class="cm-card cm-card--flat" id="tubeSlurryCard" style="margin-bottom:.75rem">
-      <div style="font-size:12px;font-weight:600;color:var(--cm-ink-soft);margin-bottom:.6rem">슬러리 계산</div>
+      <div style="margin-bottom:.6rem"><span style="font-size:12px;font-weight:600;color:var(--cm-ink-soft)">슬러리 계산</span><span style="font-size:10.5px;color:var(--cm-faint);margin-left:6px">지금 조합 중인 재료 기준이에요</span></div>
       <div style="display:flex;gap:8px;margin-bottom:.6rem">
         <div style="flex:1;min-width:0">
           <div style="font-size:11px;color:var(--cm-faint);margin-bottom:3px">추가한 물 (ml)</div>
@@ -2769,10 +2769,12 @@ function addFavFoodToCalc(name, kcalPer100, per) {
 
 /* ── 고양이 전환 전역 함수 (iOS 호환) ── */
 window.switchCat = function(c) {
-  // 강급 작업대: 현재 고양이 배열 보존 → 새 고양이 배열 복원 (세션 메모리만)
+  // 강급 작업대: 현재 고양이 배열·슬러리 입력 보존 → 새 고양이 것 복원 (세션 메모리만)
   _tubeItemsByCat[state.activeCat]=_tubeItems.slice();
+  try{_tubeSlurryByCat[state.activeCat]={water:document.getElementById('tubeWaterMl')?.value||'',count:document.getElementById('tubeFeedCount')?.value||'4',tool:document.getElementById('tubeTool')?.value||'syringe'};}catch(e){}
   state.activeCat=c;
   _tubeItems=(_tubeItemsByCat[c]||[]).slice();
+  try{const _ts=_tubeSlurryByCat[c]||{water:'',count:'4',tool:'syringe'};const _w=document.getElementById('tubeWaterMl');if(_w)_w.value=_ts.water;const _f=document.getElementById('tubeFeedCount');if(_f)_f.value=_ts.count;const _t=document.getElementById('tubeTool');if(_t)_t.value=_ts.tool;}catch(e){}
   try{loadFoodDataForCat(c);}catch(e){}
   try{renderTubeItemList();}catch(e){}try{const _ne=document.getElementById('tubeRecipeName');if(_ne)_ne.value='';}catch(e){}
   if(sbClient&&currentUser){try{syncFoodDataFromDB(c).then(()=>{try{renderFdHistory();renderManualFoodList();renderTubeRecipeList();calcCalorie();}catch(e){}});}catch(e){}}
@@ -7077,6 +7079,7 @@ renderManualFoodList();
 let tubeRecipes=[];
 let _tubeItems=[];
 let _tubeItemsByCat={};   // 고양이별 작업대 임시 보관 (세션 메모리만, 저장 안 함)
+let _tubeSlurryByCat={};  // 고양이별 슬러리 입력(물/횟수/도구) 임시 보관 (세션 메모리만)
 let _tubeMethod='slurry';
 let _tubeRecipesPending=false;
 
@@ -7151,6 +7154,11 @@ function _tubeFoodWaterMl(items){
 function calcTubeSlurry(){
   const out=document.getElementById('tubeSlurryResult');
   if(!out||_tubeMethod!=='slurry')return;
+  // 재료 없이 물만 넣은 무의미한 계산 방지
+  if(!_tubeItems.length){
+    out.innerHTML='<div style="font-size:12px;color:var(--cm-faint);padding:.2rem 0">재료를 먼저 추가해주세요</div>';
+    return;
+  }
   const water=parseFloat(document.getElementById('tubeWaterMl')?.value)||0;
   const cnt=Math.max(1,parseInt(document.getElementById('tubeFeedCount')?.value)||4);
   const foodWater=_tubeFoodWaterMl(_tubeItems);
@@ -7160,10 +7168,14 @@ function calcTubeSlurry(){
     return;
   }
   const perFeed=Math.round(totalMl/cnt);
+  let totalKcal=0;
+  _tubeItems.forEach(item=>{totalKcal+=(parseFloat(item.grams)||0)*(parseFloat(item.kcalPer100g)||0)/100;});
+  const perKcal=Math.round(totalKcal/cnt);
+  const perKcalLbl=perKcal>0?' <span style="font-size:12px;font-weight:600;color:var(--cm-faint)">· 1회 약 '+perKcal+'kcal</span>':'';
   out.innerHTML='<div style="background:var(--cm-surface-2);border-radius:10px;padding:.6rem .85rem">'
     +'<div style="display:flex;align-items:baseline;gap:6px"><span style="font-size:12px;color:var(--cm-faint);width:84px;flex-shrink:0">총 완성량</span><span style="font-size:15px;font-weight:700;color:var(--cm-ink)">'+totalMl+' ml</span></div>'
     +'<div style="font-size:10px;color:var(--cm-faint);margin:1px 0 .45rem 90px">사료 고형분 부피는 포함되지 않은 근사치예요</div>'
-    +'<div style="display:flex;align-items:baseline;gap:6px;margin-bottom:.3rem"><span style="font-size:12px;color:var(--cm-faint);width:84px;flex-shrink:0">1회 급여량</span><span style="font-size:15px;font-weight:700;color:var(--cm-green-700)">'+perFeed+' ml × '+cnt+'회</span></div>'
+    +'<div style="display:flex;align-items:baseline;gap:6px;margin-bottom:.3rem"><span style="font-size:12px;color:var(--cm-faint);width:84px;flex-shrink:0">1회 급여량</span><span style="font-size:15px;font-weight:700;color:var(--cm-green-700)">'+perFeed+' ml × '+cnt+'회'+perKcalLbl+'</span></div>'
     +'<div style="display:flex;align-items:baseline;gap:6px"><span style="font-size:12px;color:var(--cm-faint);width:84px;flex-shrink:0">총 수분</span><span style="font-size:13px;color:var(--cm-ink)">'+totalMl+' ml <span style="font-size:11px;color:var(--cm-faint)">(사료 '+Math.round(foodWater)+' + 물 '+Math.round(water)+')</span></span></div>'
     +'<div style="font-size:11px;color:var(--cm-faint);line-height:1.6;margin-top:.55rem;padding-top:.5rem;border-top:0.5px solid var(--cm-line)">한 번에 밀어 넣지 말고, 삼키는 걸 확인하며 조금씩 나눠 급여하세요. 급하게 먹이면 오연(사레) 위험이 있어요.</div>'
     +'</div>';
@@ -7201,11 +7213,14 @@ function renderTubeRecipeList(){
   list.innerHTML=tubeRecipes.map((r,i)=>{
     const mLbl=r.method==='ball'?'사료환':'슬러리';
     const safe=r.name.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
-    const mlInfo=(r.totalMl!=null&&r.totalMl>0)?' · '+r.totalMl+'ml':'';
+    // 2단계 필드 있는 슬러리 레시피는 핵심 답(총량·1회량)을 바로 표시
+    const hasMl=r.method!=='ball'&&r.totalMl!=null&&r.totalMl>0&&r.feedingCount>0;
+    const perMl=hasMl?(r.mlPerFeeding!=null?r.mlPerFeeding:Math.round(r.totalMl/r.feedingCount)):0;
+    const meta=(r.totalKcal||0)+'kcal · '+(hasMl?('총 '+r.totalMl+'ml · 1회 '+perMl+'ml×'+r.feedingCount+'회'):mLbl);
     return '<div style="display:flex;align-items:center;gap:6px;padding:.6rem .75rem;background:var(--cm-surface-2);border-radius:9px;margin-bottom:5px">'
       +'<div style="flex:1;min-width:0">'
       +'<div style="font-size:13px;font-weight:600;color:var(--cm-ink)">'+safe+'</div>'
-      +'<div style="font-size:11px;color:var(--cm-faint)">'+(r.totalKcal||0)+'kcal · '+mLbl+mlInfo+'</div>'
+      +'<div style="font-size:11px;color:var(--cm-faint)">'+meta+'</div>'
       +'</div>'
       +'<button type="button" onclick="feedTubeRecipe('+i+')" style="padding:4px 10px;border:none;border-radius:7px;background:var(--cm-green-700);color:#fff;font-size:11px;cursor:pointer;font-family:inherit;font-weight:600;white-space:nowrap">먹였어요</button>'
       +'<button type="button" onclick="loadTubeRecipe('+i+')" style="padding:4px 10px;border:0.5px solid var(--cm-green-edge);border-radius:7px;background:var(--cm-green-tint);color:var(--cm-green-700);font-size:11px;cursor:pointer;font-family:inherit;font-weight:500">불러오기</button>'
