@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.39</span>
+      <span class="cm-beta">v0.6.40</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -1722,7 +1722,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
       <img id="fdPreview" class="img-prev" style="display:none">
       <div class="row2" style="margin-bottom:.75rem">
         <div class="ig" style="display:none"><label>사료 종류</label><select id="fdType"><option value="wet">습식(캔/파우치)</option><option value="dry">건식</option></select></div>
-        <div class="ig"><label>사료명(선택)</label><input type="text" id="fdName" placeholder="예: 몬지 레날"></div>
+        <div class="ig" style="display:none"><label>사료명(선택)</label><input type="text" id="fdName" placeholder="예: 몬지 레날"></div>
       </div>
       <div id="fdStatus" style="display:none"></div>
       <div id="fdResult"></div>
@@ -5144,7 +5144,7 @@ setupDrop('fdDrop','fdFile',async file=>{
   if(!checkAILimit('food')) return;
   document.getElementById('fdResult').innerHTML='';
   showStat('fdStatus','loading','AI가 성분표를 분석하고 있어요...');
-  const b64=await toB64(file);const isWet=document.getElementById('fdType').value==='wet';const fdNm=document.getElementById('fdName').value||'분석 사료';
+  const b64=await toB64(file);const isWet=document.getElementById('fdType').value==='wet';const fdNm=document.getElementById('fdName').value||'';
   const sys=`사료 성분표를 분석하여 아래 JSON만 출력하세요.
 {"name":"사료명","type":"${isWet?'wet':'dry'}","moisture":수분%,"protein_af":단백질%,"fat_af":지방%,"fiber_af":조섬유%,"ash_af":조회분%,"carb_af":탄수화물%or null,"kcal_per_100g":칼로리or null,"phosphorus_af":인%or null,"sodium_af":나트륨%or null,"potassium_af":칼륨%or null,"ingredients_top5":["원료1","원료2","원료3","원료4","원료5"],"grain_free":true/false,"main_protein_source":"주단백질원","special_notes":"특이사항or 빈문자열"}
 수치 추출 규칙:
@@ -5865,7 +5865,8 @@ function saveFdKcal(){
 }
 function _buildFdEditHtml(d){
   const _f=(id,lbl,v,step,isMoist)=>`<div><div style="font-size:10px;color:var(--text3)">${lbl}</div><input type="number" id="${id}" value="${v!=null?v:''}" step="${step}" style="width:100%;padding:4px 6px;border:${isMoist?'1.5px solid var(--teal)':'0.5px solid var(--bd)'};border-radius:6px;font-size:13px;font-weight:700;background:var(--bg);color:var(--text);font-family:inherit;text-align:center"></div>`;
-  return `<div style="background:var(--bg2);border-radius:9px;padding:.5rem .75rem;margin-top:.5rem"><div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:.4rem">✏️ 수치 직접 수정 — 저장 시 DM 재계산</div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:.5rem">${_f('fdEdit_moisture','수분%',d.moisture,0.1,true)}${_f('fdEdit_protein_af','단백질%',d.protein_af,0.1,false)}${_f('fdEdit_fat_af','지방%',d.fat_af,0.1,false)}${_f('fdEdit_fiber_af','조섬유%',d.fiber_af,0.1,false)}${_f('fdEdit_ash_af','조회분%',d.ash_af,0.1,false)}${_f('fdEdit_phosphorus_af','인(P)%',d.phosphorus_af,0.01,false)}</div><button type="button" onclick="saveFdFields()" style="padding:5px 14px;background:#1a6b43;color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">저장 (DM 재계산)</button></div>`;
+  const _nmPh=d.name&&d.name.length>=5?'사료명 수정':'사료명을 입력하세요 (예: 몬지 레날)';
+  return `<div style="background:var(--bg2);border-radius:9px;padding:.5rem .75rem;margin-top:.5rem"><div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:.4rem">✏️ 수치 직접 수정 — 저장 시 DM 재계산</div><div style="margin-bottom:.5rem"><div style="font-size:10px;color:var(--text3);margin-bottom:2px">사료명</div><input type="text" id="fdEdit_name" value="${d.name||''}" placeholder="${_nmPh}" style="width:100%;padding:4px 6px;border:0.5px solid var(--bd);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit"></div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:.5rem">${_f('fdEdit_moisture','수분%',d.moisture,0.1,true)}${_f('fdEdit_protein_af','단백질%',d.protein_af,0.1,false)}${_f('fdEdit_fat_af','지방%',d.fat_af,0.1,false)}${_f('fdEdit_fiber_af','조섬유%',d.fiber_af,0.1,false)}${_f('fdEdit_ash_af','조회분%',d.ash_af,0.1,false)}${_f('fdEdit_phosphorus_af','인(P)%',d.phosphorus_af,0.01,false)}</div><button type="button" onclick="saveFdFields()" style="padding:5px 14px;background:#1a6b43;color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">저장 (DM 재계산)</button></div>`;
 }
 function applyDigitFix(field,value){
   if(!_fdViewData){toast('분석 후 수정하세요','#D85A30');return;}
@@ -5878,8 +5879,14 @@ function applyDigitFix(field,value){
 function saveFdFields(){
   if(!_fdViewData){toast('분석 후 수정하세요','#D85A30');return;}
   const d=_fdViewData.data;
+  const _oldName=_fdViewData.name;
   let changed=false;
-  [['moisture',true],['protein_af',false],['fat_af',false],['fiber_af',false],['ash_af',false],['phosphorus_af',false]].forEach(([fk,syncMoisture])=>{
+  let nameChanged=false;
+  // 사료명 수정
+  const _nmEl=document.getElementById('fdEdit_name');
+  if(_nmEl){const _newName=_nmEl.value.trim();if(_newName&&_newName!==_oldName){d.name=_newName;_fdViewData.name=_newName;nameChanged=true;changed=true;}}
+  // 수치 필드
+  [['moisture'],['protein_af'],['fat_af'],['fiber_af'],['ash_af'],['phosphorus_af']].forEach(([fk])=>{
     const el=document.getElementById('fdEdit_'+fk);if(!el)return;
     const raw=el.value.trim();
     if(raw===''){if(d[fk]!=null){d[fk]=null;changed=true;}return;}
@@ -5889,9 +5896,15 @@ function saveFdFields(){
   if(!changed){toast('변경사항이 없어요');return;}
   d.type=inferFoodType(d.moisture,d.type);
   saveFD();contributeFoodMaster(Object.assign({},_fdViewData.data,{name:_fdViewData.data.name||_fdViewData.name}),'user_edit');
-  // moisture/type 변경 시 favFoods 동기화
-  const _fi=favFoods.findIndex(f=>(f.name||f)===_fdViewData.name);
-  if(_fi>-1){if(d.moisture!=null)favFoods[_fi].moisture=d.moisture;favFoods[_fi].type=d.type;saveFavFoods();}
+  // moisture/type/name 변경 시 favFoods 동기화 (수정 전 이름으로 매칭)
+  const _fi=favFoods.findIndex(f=>(f.name||f)===_oldName);
+  if(_fi>-1){
+    if(nameChanged)favFoods[_fi].name=_fdViewData.name;
+    if(d.moisture!=null)favFoods[_fi].moisture=d.moisture;
+    favFoods[_fi].type=d.type;
+    saveFavFoods();
+  }
+  if(nameChanged)try{renderFdHistory();}catch(e){}
   renderFdResult(d);
   toast('수치 저장 완료 · DM 재계산됐어요 ✓');
 }
