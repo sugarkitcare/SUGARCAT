@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.53</span>
+      <span class="cm-beta">v0.6.54</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -9310,19 +9310,16 @@ async function searchFoodMaster(q){
     return (data||[]).map(r=>({id:r.id,name:r.name,type:r.type}));
   }catch(e){console.warn('foods_master 검색 오류:',e);return [];}
 }
-// 유사 사료 후보 검색 — 이름 앞부분 토큰으로 넓게 가져옴(과잉 차단 방지, 판단은 사용자)
+// 유사 사료 후보 검색 — trigram 유사도 RPC(표기 흔들림 "카토빗"↔"카토비트" 매칭)
 async function findSimilarFoodMaster(name){
   name=(name||'').trim();
   if(name.length<2)return [];
   if(!sbClient||!currentUser)return [];
-  // 앞부분 토큰: 첫 단어, 너무 길면 앞 4글자로 넓힘
-  let q=(name.split(/\s+/)[0]||name);
-  if(q.length>4)q=q.slice(0,4);
-  if(q.length<2)q=name.slice(0,4);
   try{
-    const {data,error}=await sbClient.from('foods_master').select('id,name,type').ilike('name','%'+q+'%').limit(8);
+    const {data,error}=await sbClient.rpc('search_foods_similar',{q:name,threshold:0.2});
     if(error){console.warn('foods_master 유사검색 오류:',error);return [];}
-    return (data||[]).map(r=>({id:r.id,name:r.name,type:r.type}));
+    // 함수가 sim 내림차순 정렬해서 반환
+    return (data||[]).map(r=>({id:r.id,name:r.name,type:r.type,sim:r.sim}));
   }catch(e){console.warn('foods_master 유사검색 오류:',e);return [];}
 }
 // id 우선 매칭 헬퍼 (하위호환: masterId 있으면 우선, 매칭 없으면 name fallback)
