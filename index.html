@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.52</span>
+      <span class="cm-beta">v0.6.53</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -9310,6 +9310,21 @@ async function searchFoodMaster(q){
     return (data||[]).map(r=>({id:r.id,name:r.name,type:r.type}));
   }catch(e){console.warn('foods_master 검색 오류:',e);return [];}
 }
+// 유사 사료 후보 검색 — 이름 앞부분 토큰으로 넓게 가져옴(과잉 차단 방지, 판단은 사용자)
+async function findSimilarFoodMaster(name){
+  name=(name||'').trim();
+  if(name.length<2)return [];
+  if(!sbClient||!currentUser)return [];
+  // 앞부분 토큰: 첫 단어, 너무 길면 앞 4글자로 넓힘
+  let q=(name.split(/\s+/)[0]||name);
+  if(q.length>4)q=q.slice(0,4);
+  if(q.length<2)q=name.slice(0,4);
+  try{
+    const {data,error}=await sbClient.from('foods_master').select('id,name,type').ilike('name','%'+q+'%').limit(8);
+    if(error){console.warn('foods_master 유사검색 오류:',error);return [];}
+    return (data||[]).map(r=>({id:r.id,name:r.name,type:r.type}));
+  }catch(e){console.warn('foods_master 유사검색 오류:',e);return [];}
+}
 // id 우선 매칭 헬퍼 (하위호환: masterId 있으면 우선, 매칭 없으면 name fallback)
 function favIndexOf(name, masterId){
   if(masterId){
@@ -9336,6 +9351,32 @@ function toggleFavFood(name, el, kcalPer100g, type) {
     showFoodNamePrompt(newName=>_addFavFood(name,newName,kcalPer100g,type));
     return;
   }
+  // 정상 이름: 유사 사료가 있을 때만 확인, 없으면 매끄럽게 바로 등록
+  _checkSimilarThenAdd(name,kcalPer100g,type);
+}
+
+// 유사 사료 존재 시에만 확인 다이얼로그, 아니면 바로 _addFavFood
+async function _checkSimilarThenAdd(name, kcalPer100g, type){
+  let candidates=[];
+  try{candidates=await findSimilarFoodMaster(name);}catch(e){candidates=[];}
+  // 완전 동일 이름이 이미 있으면 자동으로 그 id 사용 (중복 100% 방지, 모달 없음)
+  const _nl=String(name).trim().toLowerCase();
+  const exact=candidates.find(c=>String(c.name||'').trim().toLowerCase()===_nl);
+  if(exact){
+    _selectedMaster={id:exact.id,name:exact.name};
+    _addFavFood(name,exact.name,kcalPer100g,type);
+    return;
+  }
+  // 유사 후보가 있으면 사용자 확인 (자동 병합 금지)
+  if(candidates.length){
+    showFoodMatchPrompt(name,candidates,chosen=>{
+      if(chosen){_selectedMaster={id:chosen.id,name:chosen.name};_addFavFood(name,chosen.name,kcalPer100g,type);}
+      else{_selectedMaster=null;_addFavFood(name,name,kcalPer100g,type);}
+    });
+    return;
+  }
+  // 유사 후보 0개 → 바로 등록 (기존 UX 유지)
+  _selectedMaster=null;
   _addFavFood(name,name,kcalPer100g,type);
 }
 
@@ -9457,6 +9498,44 @@ function showFoodNamePrompt(onConfirm){
   box.appendChild(title);box.appendChild(desc);box.appendChild(inWrap);box.appendChild(warn);box.appendChild(okBtn);box.appendChild(cancelBtn);
   modal.appendChild(box);document.body.appendChild(modal);
   setTimeout(()=>{try{input.focus();}catch(e){}},50);
+}
+
+// 유사 사료 확인 모달 (cm 톤) — 후보 선택 시 onChoice(master), 새 사료면 onChoice(null), 취소 시 호출 안 함
+function showFoodMatchPrompt(name, candidates, onChoice){
+  const ex=document.getElementById('foodMatchPrompt');if(ex)ex.remove();
+  const modal=document.createElement('div');
+  modal.id='foodMatchPrompt';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(42,37,29,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem';
+  const box=document.createElement('div');
+  box.style.cssText='background:var(--cm-bg);border-radius:20px;padding:1.5rem 1.25rem;max-width:340px;width:100%;text-align:center;font-family:Pretendard,-apple-system,system-ui,sans-serif';
+  const title=document.createElement('div');
+  title.style.cssText='font-size:16px;font-weight:800;color:var(--cm-ink);margin-bottom:.4rem;letter-spacing:-0.01em';
+  title.textContent='비슷한 사료가 이미 있어요';
+  const desc=document.createElement('div');
+  desc.style.cssText='font-size:13px;color:var(--cm-faint);line-height:1.6;margin-bottom:1rem';
+  desc.innerHTML='같은 사료면 선택해주세요<br><span style="color:var(--cm-ink);font-weight:700">입력한 이름: '+String(name).replace(/</g,'&lt;')+'</span>';
+  const listWrap=document.createElement('div');
+  listWrap.style.cssText='max-height:220px;overflow-y:auto;-webkit-overflow-scrolling:touch;margin-bottom:.6rem;text-align:left';
+  const close=()=>modal.remove();
+  candidates.slice(0,5).forEach(c=>{
+    const b=document.createElement('button');b.type='button';
+    b.style.cssText='width:100%;padding:11px 13px;margin-bottom:6px;border:1px solid var(--cm-green-edge);border-radius:10px;background:var(--cm-green-tint);color:var(--cm-ink);font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:8px';
+    const tlbl=c.type==='wet'?'습식':c.type==='dry'?'건식':'';
+    b.innerHTML='<span style="flex:1;text-align:left">'+String(c.name||'').replace(/</g,'&lt;')+'</span>'+(tlbl?'<span style="font-size:10px;color:var(--cm-faint)">'+tlbl+'</span>':'')+'<span style="font-size:11px;color:var(--cm-green-700);font-weight:700">이 사료예요</span>';
+    b.onclick=()=>{close();onChoice(c);};
+    listWrap.appendChild(b);
+  });
+  const newBtn=document.createElement('button');
+  newBtn.type='button';newBtn.textContent='아니요, 새 사료예요';
+  newBtn.style.cssText='width:100%;padding:13px;background:var(--cm-green-700);color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:.5rem';
+  newBtn.onclick=()=>{close();onChoice(null);};
+  const cancelBtn=document.createElement('button');
+  cancelBtn.type='button';cancelBtn.textContent='취소';
+  cancelBtn.style.cssText='width:100%;padding:10px;background:none;color:var(--cm-faint);border:none;font-size:13px;cursor:pointer;font-family:inherit';
+  cancelBtn.onclick=close;
+  modal.addEventListener('click',e=>{if(e.target===modal)close();});
+  box.appendChild(title);box.appendChild(desc);box.appendChild(listWrap);box.appendChild(newBtn);box.appendChild(cancelBtn);
+  modal.appendChild(box);document.body.appendChild(modal);
 }
 
 
