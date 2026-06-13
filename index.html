@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.50</span>
+      <span class="cm-beta">v0.6.51</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -5291,7 +5291,7 @@ setupDrop('fdDrop','fdFile',async file=>{
     parsed.type=inferFoodType(parsed.moisture,parsed.type);
     parsed.name=sanitizeFoodName(parsed.name);
     fdData.unshift({ts:Date.now(),data:parsed,name:parsed.name||fdNm});
-    if(fdData.length>20)fdData=fdData.slice(0,20);saveFD();contributeFoodMaster(parsed,'ai');
+    if(fdData.length>20)fdData=fdData.slice(0,20);saveFD();/* 적립은 즐겨찾기(⭐) 시점으로 이동 (v0.6.51) */
     _fdViewData=fdData[0];hideStat('fdStatus');renderFdHistory();renderFdResult(parsed);
   }catch(e){
     console.error('FD error:',e);
@@ -6011,7 +6011,7 @@ function saveFdFields(){
   });
   if(!changed){toast('변경사항이 없어요');return;}
   d.type=inferFoodType(d.moisture,d.type);
-  saveFD();contributeFoodMaster(Object.assign({},_fdViewData.data,{name:_fdViewData.data.name||_fdViewData.name}),'user_edit');
+  saveFD();/* 적립은 즐겨찾기(⭐) 시점으로 이동 (v0.6.51) */
   // moisture/type/name 변경 시 favFoods 동기화 (수정 전 이름으로 매칭)
   const _fi=favFoods.findIndex(f=>(f.name||f)===_oldName);
   if(_fi>-1){
@@ -9299,15 +9299,95 @@ const saveFavFoods=()=>{
 
 function toggleFavFood(name, el, kcalPer100g, type) {
   const idx=favFoods.findIndex(f=>(f.name||f)===name);
-  if(idx>-1){favFoods.splice(idx,1);el.innerHTML=_starEmpty;}
-  else{
-    const _fd=fdData.find(h=>(h.data?.name||h.name)===name);
-    const _moisture=(_fd?.data?.moisture!=null)?_fd.data.moisture:null;
-    favFoods.push({name,kcalPer100g:kcalPer100g||null,type:type||null,moisture:_moisture});
-    el.innerHTML=_starFilled;
+  if(idx>-1){
+    // ⭐ 해제: 적립 안 함 (그대로 유지)
+    favFoods.splice(idx,1);
+    if(el)el.innerHTML=_starEmpty;
+    saveFavFoods();
+    toast(`${name} 즐겨찾기 해제`);
+    return;
   }
+  // ⭐ 추가: 이름 필수 게이트
+  if(isGenericFoodName(name)){
+    showFoodNamePrompt(newName=>_addFavFood(name,newName,kcalPer100g,type));
+    return;
+  }
+  _addFavFood(name,name,kcalPer100g,type);
+}
+
+// 즐겨찾기 추가 + foods_master 적립 (origName: 이력 매칭용 기존 이름, finalName: 확정 이름)
+function _addFavFood(origName, finalName, kcalPer100g, type){
+  finalName=sanitizeFoodName(finalName);
+  if(!finalName){toast('정확한 사료명을 입력해주세요','#D85A30');return;}
+  // 이력에서 원본 항목 찾기 (확정 전 이름으로)
+  const _fd=fdData.find(h=>(h.data?.name||h.name)===origName);
+  // 이름 확정을 fdData/이력에도 반영
+  if(_fd){
+    _fd.name=finalName;
+    if(_fd.data)_fd.data.name=finalName;
+    saveFD();
+  }
+  const _moisture=(_fd?.data?.moisture!=null)?_fd.data.moisture:null;
+  // 이미 같은 이름으로 즐겨찾기 돼 있으면 중복 추가 방지
+  if(favFoods.findIndex(f=>(f.name||f)===finalName)>-1){
+    toast(`${finalName}은 이미 즐겨찾기에 있어요`);
+    try{renderFdHistory();}catch(e){}
+    return;
+  }
+  favFoods.push({name:finalName,kcalPer100g:kcalPer100g||null,type:(type||_fd?.data?.type)||null,moisture:_moisture});
   saveFavFoods();
-  toast(idx>-1?`${name} 즐겨찾기 해제`:`${name} 즐겨찾기 추가!`);
+  // foods_master 적립 (source='favorite')
+  let payload;
+  if(_fd&&_fd.data){
+    payload=Object.assign({},_fd.data,{name:finalName});
+  }else{
+    payload={name:finalName,type:type||null,moisture:_moisture,kcal_per_100g:(kcalPer100g!=null?kcalPer100g:null)};
+  }
+  contributeFoodMaster(payload,'favorite');
+  toast(`${finalName} 즐겨찾기 추가!`);
+  try{renderFdHistory();}catch(e){}
+}
+
+// 사료 이름 입력 모달 (cm 톤) — 유효한 이름 입력 시 onConfirm(name) 호출
+function showFoodNamePrompt(onConfirm){
+  const ex=document.getElementById('foodNamePrompt');if(ex)ex.remove();
+  const modal=document.createElement('div');
+  modal.id='foodNamePrompt';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(42,37,29,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem';
+  const box=document.createElement('div');
+  box.style.cssText='background:var(--cm-bg);border-radius:20px;padding:1.5rem 1.25rem;max-width:340px;width:100%;text-align:center;font-family:Pretendard,-apple-system,system-ui,sans-serif';
+  const title=document.createElement('div');
+  title.style.cssText='font-size:16px;font-weight:800;color:var(--cm-ink);margin-bottom:.4rem;letter-spacing:-0.01em';
+  title.textContent='이 사료의 정확한 제품명을 입력해주세요';
+  const desc=document.createElement('div');
+  desc.style.cssText='font-size:13px;color:var(--cm-faint);line-height:1.65;margin-bottom:1.1rem';
+  desc.innerHTML='즐겨찾기에는 정확한 제품명이 필요해요<br>(예: 로얄캐닌 레날 / 힐스 k/d)';
+  const input=document.createElement('input');
+  input.type='text';input.placeholder='예: 로얄캐닌 레날';input.maxLength=40;
+  input.style.cssText='width:100%;padding:11px 13px;border:1.5px solid var(--cm-green-700);border-radius:10px;font-size:15px;background:var(--cm-surface);color:var(--cm-ink);font-family:inherit;box-sizing:border-box;margin-bottom:.4rem;text-align:center';
+  const warn=document.createElement('div');
+  warn.style.cssText='font-size:12px;color:var(--cm-amber);min-height:16px;margin-bottom:.6rem;display:none;line-height:1.5';
+  const okBtn=document.createElement('button');
+  okBtn.type='button';okBtn.textContent='즐겨찾기 추가';
+  okBtn.style.cssText='width:100%;padding:13px;background:var(--cm-green-700);color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:.5rem';
+  const cancelBtn=document.createElement('button');
+  cancelBtn.type='button';cancelBtn.textContent='취소';
+  cancelBtn.style.cssText='width:100%;padding:10px;background:none;color:var(--cm-faint);border:none;font-size:13px;cursor:pointer;font-family:inherit';
+  const close=()=>modal.remove();
+  const submit=()=>{
+    const v=sanitizeFoodName(input.value);
+    if(!v){
+      warn.textContent='일반명("습식 사료" 등)이나 너무 짧은 이름은 안 돼요. 정확한 제품명을 입력해주세요.';
+      warn.style.display='block';input.focus();return;
+    }
+    close();onConfirm(v);
+  };
+  okBtn.onclick=submit;cancelBtn.onclick=close;
+  input.addEventListener('keydown',e=>{if(e.key==='Enter')submit();});
+  modal.addEventListener('click',e=>{if(e.target===modal)close();});
+  box.appendChild(title);box.appendChild(desc);box.appendChild(input);box.appendChild(warn);box.appendChild(okBtn);box.appendChild(cancelBtn);
+  modal.appendChild(box);document.body.appendChild(modal);
+  setTimeout(()=>{try{input.focus();}catch(e){}},50);
 }
 
 
