@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.57</span>
+      <span class="cm-beta">v0.6.58</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -4450,9 +4450,9 @@ function renderRoutineSchedule(date) {
     const allItems = routineItems.filter(i=>i.cat===c.key);
     if(!allItems.length) return;
 
-    const filtered = routineSchedFilter === 'remaining' ? allItems.filter(i=>!doneItems.has(i.name))
+    const filtered = _routineSortByTime(routineSchedFilter === 'remaining' ? allItems.filter(i=>!doneItems.has(i.name))
                    : routineSchedFilter === 'done'      ? allItems.filter(i=>doneItems.has(i.name))
-                   : allItems;
+                   : allItems);
     if(!filtered.length) return;
 
     const catDone = allItems.filter(i=>doneItems.has(i.name)).length;
@@ -4531,6 +4531,9 @@ function renderRoutineSchedule(date) {
           + 'display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">'
           + item.name + '</span>'
           + '</div>';
+        if(item.times && item.times.length) {
+          html += '<div style="font-size:10px;color:'+(done?'rgba(255,255,255,.7)':'var(--cm-faint)')+';padding-left:25px">예정 '+item.times.join(' · ')+'</div>';
+        }
         if(done && doneRec?.time) {
           html += '<div style="font-size:10px;color:rgba(255,255,255,.65);text-align:right;padding-right:2px">'+doneRec.time+'</div>';
         }
@@ -6208,7 +6211,7 @@ function renderRoutineChecklist(){
   const cats2 = ['med','food','other'];
   let html = '';
   cats2.forEach(cat=>{
-    const items = routineItems.filter(i=>i.cat===cat);
+    const items = _routineSortByTime(routineItems.filter(i=>i.cat===cat));
     if(!items.length) return;
     html += '<div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:.4rem;margin-top:.5rem">'+catLabel2[cat]+'</div>';
     html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:.25rem">';
@@ -6222,7 +6225,8 @@ function renderRoutineChecklist(){
       const txtWeight = done ? '600' : '400';
       html += '<div onclick="toggleRoutineCheck(\'' + item.name + '\')" style="display:flex;align-items:center;gap:7px;padding:8px 10px;border-radius:10px;cursor:pointer;background:'+bg+';border:'+border+'">';
       html += '<div style="width:18px;height:18px;border-radius:50%;flex-shrink:0;background:'+circBg+';border:2px solid '+circBorder+';display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff">'+(done?'✓':'')+'</div>';
-      html += '<span style="font-size:12px;color:'+txtColor+';font-weight:'+txtWeight+'">'+item.name+'</span>';
+      const _tline=(item.times&&item.times.length)?'<span style="display:block;font-size:10px;color:var(--cm-faint);font-weight:400;margin-top:1px">'+item.times.join(' · ')+'</span>':'';
+      html += '<span style="font-size:12px;color:'+txtColor+';font-weight:'+txtWeight+';min-width:0">'+item.name+_tline+'</span>';
       html += '</div>';
     });
     html += '</div>';
@@ -6348,6 +6352,42 @@ function toggleRT(el,v){
   else{routineSelected.add(v);el.classList.add('selected')}
 }
 
+// 루틴 항목의 가장 이른 "예정 시간"(정렬용) — times 없으면 큰 값으로 뒤로
+function _routineFirstTime(item){
+  const ts=(item&&item.times)||[];
+  if(!ts.length)return '99:99';
+  return ts.slice().sort()[0];
+}
+// 카테고리 내 시간순 정렬(예정 시간 이른 순, 없는 항목은 뒤) — 새 배열 반환
+function _routineSortByTime(items){
+  return items.slice().sort((a,b)=>{const ta=_routineFirstTime(a),tb=_routineFirstTime(b);return ta<tb?-1:ta>tb?1:0;});
+}
+// 예정 시간 추가 (설정 편집목록) — itemIdx는 routineItems 인덱스
+function addRoutineTime(itemIdx){
+  const item=routineItems[itemIdx];
+  if(!item)return;
+  const el=document.getElementById('rtTime_'+itemIdx);
+  const v=(el&&el.value)?el.value:'';
+  if(!v){toast('시간을 선택해주세요','#BA7517');return;}
+  if(!Array.isArray(item.times))item.times=[];
+  if(item.times.includes(v)){toast('이미 있는 시간이에요','#BA7517');return;}
+  item.times.push(v);item.times.sort();
+  saveRT(currentProfileCat||state.activeCat);
+  renderRoutineEditList();
+  try{renderRoutineChecklist();}catch(e){}
+  try{renderRoutineSchedule();}catch(e){}
+}
+// 예정 시간 삭제
+function removeRoutineTime(itemIdx, t){
+  const item=routineItems[itemIdx];
+  if(!item||!Array.isArray(item.times))return;
+  item.times=item.times.filter(x=>x!==t);
+  saveRT(currentProfileCat||state.activeCat);
+  renderRoutineEditList();
+  try{renderRoutineChecklist();}catch(e){}
+  try{renderRoutineSchedule();}catch(e){}
+}
+
 function renderRoutineEditList(){
   const list=document.getElementById('routineItemList');
   if(!list)return;
@@ -6355,17 +6395,27 @@ function renderRoutineEditList(){
   const catLabel2={med:'약·보조제',food:'간식',fluid:'피하수액',other:'기타루틴'};
   let html='';
   catOrder.forEach(cat=>{
-    const items=routineItems.filter((item,i)=>item.cat===cat);
+    const items=_routineSortByTime(routineItems.filter((item)=>item.cat===cat));
     if(!items.length)return;
     html+=`<div style="font-size:12px;font-weight:700;color:var(--cm-faint);margin:14px 0 8px">${catLabel2[cat]}</div>`;
     items.forEach(item=>{
       const i=routineItems.indexOf(item);
-      html+=`<div style="background:var(--cm-surface);border:1px solid var(--cm-line);border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between">
-        <span style="font-size:14px;color:var(--cm-ink)">${item.name}</span>
-        <button type="button" onclick="deleteRoutineItem(${i})"
-          style="background:none;border:none;cursor:pointer;padding:4px;color:var(--cm-faint);display:flex;align-items:center">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4.5 6.5h15M9 6.5V4.5h6v2M6.5 6.5 7.5 20h9l1-13.5"/></svg>
-        </button>
+      const _times=(item.times||[]);
+      const _chips=_times.map(t=>`<span style="display:inline-flex;align-items:center;gap:2px;background:var(--cm-green-tint);color:var(--cm-green-700);border-radius:7px;padding:2px 4px 2px 8px;font-size:12px;font-weight:600">${t}<button type="button" onclick="removeRoutineTime(${i},'${t}')" style="background:none;border:none;cursor:pointer;color:var(--cm-green-700);padding:0 2px;font-size:14px;line-height:1">×</button></span>`).join('');
+      html+=`<div style="background:var(--cm-surface);border:1px solid var(--cm-line);border-radius:12px;padding:12px 14px;margin-bottom:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <span style="font-size:14px;color:var(--cm-ink)">${item.name}</span>
+          <button type="button" onclick="deleteRoutineItem(${i})"
+            style="background:none;border:none;cursor:pointer;padding:4px;color:var(--cm-faint);display:flex;align-items:center">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4.5 6.5h15M9 6.5V4.5h6v2M6.5 6.5 7.5 20h9l1-13.5"/></svg>
+          </button>
+        </div>
+        <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-top:9px">
+          <span style="font-size:11px;color:var(--cm-faint);flex-shrink:0">예정 시간</span>
+          ${_chips}
+          <input type="time" id="rtTime_${i}" style="padding:4px 6px;border:1px solid var(--cm-line);border-radius:7px;font-size:12px;background:var(--cm-bg);color:var(--cm-ink);font-family:inherit">
+          <button type="button" onclick="addRoutineTime(${i})" style="padding:4px 10px;border:0.5px solid var(--cm-green-edge);border-radius:7px;background:var(--cm-green-tint);color:var(--cm-green-700);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap">+추가</button>
+        </div>
       </div>`;
     });
   });
