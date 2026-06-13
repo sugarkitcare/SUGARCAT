@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.51</span>
+      <span class="cm-beta">v0.6.52</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -5988,7 +5988,7 @@ function applyDigitFix(field,value){
   if(!_fdViewData){toast('분석 후 수정하세요','#D85A30');return;}
   _fdViewData.data[field]=value;
   saveFD();
-  if(field==='moisture'){const _fi=favFoods.findIndex(f=>(f.name||f)===_fdViewData.name);if(_fi>-1){favFoods[_fi].moisture=value;saveFavFoods();}}
+  if(field==='moisture'){const _fi=favIndexOf(_fdViewData.name,_fdViewData.masterId);if(_fi>-1){favFoods[_fi].moisture=value;saveFavFoods();}}
   renderFdResult(_fdViewData.data);
   toast(`${({protein_af:'단백질',fat_af:'지방',moisture:'수분',fiber_af:'조섬유'})[field]||field} ${value}%로 수정됐어요 ✓`);
 }
@@ -6038,7 +6038,7 @@ function renderFdHistory(){
     const lv=getLv(cdm??999);const lc=lvColor(lv);
     const dt=new Date(h.ts).toLocaleDateString('ko-KR',{month:'short',day:'numeric'});
     const item=document.createElement('div');item.className='h-item';
-    const isFav=favFoods.some(f=>(f.name||f)===h.name);
+    const isFav=favIndexOf(h.name,h.masterId)>-1;
     item.innerHTML='<div class="h-dot" style="background:'+lc+'"></div>'
       +'<div class="h-name">'+h.name+' <span style="font-size:10px;color:var(--text3)">'+(d.type==='wet'?'습식':'건식')+'</span></div>'
       +'<div style="display:flex;align-items:center;gap:6px">'
@@ -9259,12 +9259,12 @@ function saveCatProfile() {
 }
 
 /* ── foods_master 백그라운드 적립 ── */
-function contributeFoodMaster(parsed,source){
-  if(!currentUser||!sbClient)return;
+async function contributeFoodMaster(parsed,source){
+  if(!currentUser||!sbClient)return null;
   // 이름 없음/일반명이면 검색 DB 오염 방지를 위해 적립 스킵
-  if(isGenericFoodName(parsed&&parsed.name))return;
+  if(isGenericFoodName(parsed&&parsed.name))return null;
   try{
-    sbClient.from('foods_master').insert({
+    const {data,error}=await sbClient.from('foods_master').insert({
       name:parsed.name||null,
       name_input:parsed.foodNameInput||null,
       type:parsed.type||null,
@@ -9284,8 +9284,10 @@ function contributeFoodMaster(parsed,source){
       special_notes:parsed.special_notes||null,
       source:source,
       contributed_by:currentUser.id
-    }).then(({error})=>{if(error)console.warn('foods_master 적립 오류:',error);}).catch(e=>console.warn('foods_master 적립 오류:',e));
-  }catch(e){console.warn('foods_master 적립 오류:',e);}
+    }).select('id').single();
+    if(error){console.warn('foods_master 적립 오류:',error);return null;}
+    return (data&&data.id)||null;
+  }catch(e){console.warn('foods_master 적립 오류:',e);return null;}
 }
 
 /* ── 11번: 사료 즐겨찾기 ── */
@@ -9297,8 +9299,30 @@ const saveFavFoods=()=>{
   }
 };
 
+// foods_master 이름 검색 (자동완성용) — [{id,name,type}] 반환, 실패/조건미달 시 []
+async function searchFoodMaster(q){
+  q=(q||'').trim();
+  if(q.length<2)return [];
+  if(!sbClient||!currentUser)return [];
+  try{
+    const {data,error}=await sbClient.from('foods_master').select('id,name,type').ilike('name','%'+q+'%').limit(8);
+    if(error){console.warn('foods_master 검색 오류:',error);return [];}
+    return (data||[]).map(r=>({id:r.id,name:r.name,type:r.type}));
+  }catch(e){console.warn('foods_master 검색 오류:',e);return [];}
+}
+// id 우선 매칭 헬퍼 (하위호환: masterId 있으면 우선, 매칭 없으면 name fallback)
+function favIndexOf(name, masterId){
+  if(masterId){
+    const i=favFoods.findIndex(f=>f&&f.masterId===masterId);
+    if(i>-1)return i;
+  }
+  return favFoods.findIndex(f=>(f.name||f)===name);
+}
+let _selectedMaster=null; // 자동완성에서 고른 master {id,name} 임시 보관
+
 function toggleFavFood(name, el, kcalPer100g, type) {
-  const idx=favFoods.findIndex(f=>(f.name||f)===name);
+  _selectedMaster=null;
+  const idx=favIndexOf(name,null);
   if(idx>-1){
     // ⭐ 해제: 적립 안 함 (그대로 유지)
     favFoods.splice(idx,1);
@@ -9328,22 +9352,33 @@ function _addFavFood(origName, finalName, kcalPer100g, type){
     saveFD();
   }
   const _moisture=(_fd?.data?.moisture!=null)?_fd.data.moisture:null;
-  // 이미 같은 이름으로 즐겨찾기 돼 있으면 중복 추가 방지
-  if(favFoods.findIndex(f=>(f.name||f)===finalName)>-1){
+  // 자동완성에서 고른 master (소비 후 초기화)
+  const _sel=_selectedMaster;_selectedMaster=null;
+  // 이미 즐겨찾기 돼 있으면 중복 추가 방지 (id 우선)
+  if(favIndexOf(finalName,_sel&&_sel.id)>-1){
     toast(`${finalName}은 이미 즐겨찾기에 있어요`);
     try{renderFdHistory();}catch(e){}
     return;
   }
-  favFoods.push({name:finalName,kcalPer100g:kcalPer100g||null,type:(type||_fd?.data?.type)||null,moisture:_moisture});
+  const _entry={name:finalName,kcalPer100g:kcalPer100g||null,type:(type||_fd?.data?.type)||null,moisture:_moisture,masterId:(_sel?_sel.id:null)};
+  favFoods.push(_entry);
   saveFavFoods();
-  // foods_master 적립 (source='favorite')
+  if(_sel&&_sel.id){
+    // 자동완성으로 고름 = 이미 DB에 있음 → 적립 스킵
+    toast(`${finalName} 즐겨찾기 추가!`);
+    try{renderFdHistory();}catch(e){}
+    return;
+  }
+  // 직접입력 → foods_master 적립(source='favorite') 후 새 id를 masterId에 저장
   let payload;
   if(_fd&&_fd.data){
     payload=Object.assign({},_fd.data,{name:finalName});
   }else{
     payload={name:finalName,type:type||null,moisture:_moisture,kcal_per_100g:(kcalPer100g!=null?kcalPer100g:null)};
   }
-  contributeFoodMaster(payload,'favorite');
+  contributeFoodMaster(payload,'favorite').then(newId=>{
+    if(newId){_entry.masterId=newId;saveFavFoods();}
+  }).catch(e=>{});
   toast(`${finalName} 즐겨찾기 추가!`);
   try{renderFdHistory();}catch(e){}
 }
@@ -9362,9 +9397,15 @@ function showFoodNamePrompt(onConfirm){
   const desc=document.createElement('div');
   desc.style.cssText='font-size:13px;color:var(--cm-faint);line-height:1.65;margin-bottom:1.1rem';
   desc.innerHTML='즐겨찾기에는 정확한 제품명이 필요해요<br>(예: 로얄캐닌 레날 / 힐스 k/d)';
+  // 입력칸 + 자동완성 드롭다운
+  const inWrap=document.createElement('div');
+  inWrap.style.cssText='text-align:left;margin-bottom:.4rem';
   const input=document.createElement('input');
   input.type='text';input.placeholder='예: 로얄캐닌 레날';input.maxLength=40;
-  input.style.cssText='width:100%;padding:11px 13px;border:1.5px solid var(--cm-green-700);border-radius:10px;font-size:15px;background:var(--cm-surface);color:var(--cm-ink);font-family:inherit;box-sizing:border-box;margin-bottom:.4rem;text-align:center';
+  input.style.cssText='width:100%;padding:11px 13px;border:1.5px solid var(--cm-green-700);border-radius:10px;font-size:15px;background:var(--cm-surface);color:var(--cm-ink);font-family:inherit;box-sizing:border-box;text-align:center';
+  const drop=document.createElement('div');
+  drop.style.cssText='display:none;margin-top:4px;max-height:180px;overflow-y:auto;-webkit-overflow-scrolling:touch;border:0.5px solid var(--cm-line);border-radius:10px;background:var(--cm-surface)';
+  inWrap.appendChild(input);inWrap.appendChild(drop);
   const warn=document.createElement('div');
   warn.style.cssText='font-size:12px;color:var(--cm-amber);min-height:16px;margin-bottom:.6rem;display:none;line-height:1.5';
   const okBtn=document.createElement('button');
@@ -9374,6 +9415,34 @@ function showFoodNamePrompt(onConfirm){
   cancelBtn.type='button';cancelBtn.textContent='취소';
   cancelBtn.style.cssText='width:100%;padding:10px;background:none;color:var(--cm-faint);border:none;font-size:13px;cursor:pointer;font-family:inherit';
   const close=()=>modal.remove();
+  // 자동완성 렌더
+  const renderDrop=(rows)=>{
+    if(!rows.length){drop.style.display='none';drop.innerHTML='';return;}
+    drop.innerHTML='';
+    rows.forEach(r=>{
+      const row=document.createElement('div');
+      row.style.cssText='padding:9px 12px;border-bottom:0.5px solid var(--cm-line);cursor:pointer;display:flex;align-items:center;gap:6px;font-size:13px;color:var(--cm-ink)';
+      const tlbl=r.type==='wet'?'습식':r.type==='dry'?'건식':'';
+      row.innerHTML='<span style="flex:1">'+String(r.name||'').replace(/</g,'&lt;')+'</span><span style="font-size:10px;color:var(--cm-faint)">'+tlbl+'</span>';
+      row.onclick=()=>{input.value=r.name||'';_selectedMaster={id:r.id,name:r.name};drop.style.display='none';warn.style.display='none';};
+      drop.appendChild(row);
+    });
+    drop.style.display='block';
+  };
+  // oninput 디바운스 300ms 검색
+  let _debTimer=null;
+  input.addEventListener('input',()=>{
+    // 자동완성 선택 후 직접 수정하면 무효화
+    if(_selectedMaster&&input.value!==_selectedMaster.name)_selectedMaster=null;
+    const q=input.value.trim();
+    if(_debTimer)clearTimeout(_debTimer);
+    if(q.length<2){drop.style.display='none';return;}
+    _debTimer=setTimeout(async()=>{
+      const rows=await searchFoodMaster(q);
+      if(input.value.trim()!==q)return; // 입력이 그새 바뀌면 무시
+      renderDrop(rows);
+    },300);
+  });
   const submit=()=>{
     const v=sanitizeFoodName(input.value);
     if(!v){
@@ -9385,7 +9454,7 @@ function showFoodNamePrompt(onConfirm){
   okBtn.onclick=submit;cancelBtn.onclick=close;
   input.addEventListener('keydown',e=>{if(e.key==='Enter')submit();});
   modal.addEventListener('click',e=>{if(e.target===modal)close();});
-  box.appendChild(title);box.appendChild(desc);box.appendChild(input);box.appendChild(warn);box.appendChild(okBtn);box.appendChild(cancelBtn);
+  box.appendChild(title);box.appendChild(desc);box.appendChild(inWrap);box.appendChild(warn);box.appendChild(okBtn);box.appendChild(cancelBtn);
   modal.appendChild(box);document.body.appendChild(modal);
   setTimeout(()=>{try{input.focus();}catch(e){}},50);
 }
