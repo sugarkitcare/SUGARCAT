@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.54</span>
+      <span class="cm-beta">v0.6.55</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -5793,23 +5793,10 @@ function renderFdResult(d){
     const hcmCkdDiv = document.createElement('div');
     renderHcmCkdResult(d, hcmCkdDiv);
     area.appendChild(hcmCkdDiv);
-    // 포장 단위 계산기도 추가
     // kcal 입력 행 (최상단)
     const kcalRowHcm = document.createElement('div');
     kcalRowHcm.innerHTML = buildKcalRow(kcal, d.type==='wet');
     area.appendChild(kcalRowHcm);
-    const calcDiv3 = document.createElement('div');
-    calcDiv3.style.cssText='background:var(--bg2);border-radius:10px;padding:.75rem 1rem;margin-top:.5rem';
-    calcDiv3.innerHTML='<div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:.4rem">📦 포장 단위로 급여량 계산</div>'
-      +'<div style="font-size:11px;color:var(--text3);margin-bottom:.5rem">위 칼로리 입력 후 포장 용량을 입력하면 하루 급여량을 계산해줘요.</div>'
-      +'<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:.5rem">'
-      +'<input type="number" id="fdPackSize" placeholder="포장 용량(g)" style="width:110px;padding:6px 8px;border:0.5px solid var(--bd);border-radius:8px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit" oninput="calcFdPortion()">'
-      +'<span style="font-size:11px;color:var(--text2)">g /</span>'
-      +'<input type="number" id="fdPackKcal" placeholder="포장 칼로리(kcal)" style="width:130px;padding:6px 8px;border:0.5px solid var(--bd);border-radius:8px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit" oninput="calcFdPortion()">'
-      +'<span style="font-size:11px;color:var(--text2)">kcal</span>'
-      +'</div>'
-      +'<div id="fdPortionResult" style="font-size:12px;color:var(--teal);font-weight:500;line-height:1.6"></div>';
-    area.appendChild(calcDiv3);
     return;
   }
   // HCM 전용 모드
@@ -5846,18 +5833,6 @@ function renderFdResult(d){
     ckdDiv.style.marginTop = '.5rem';
     renderCkdResult(d, ckdDiv);
     area.appendChild(ckdDiv);
-    const calcDiv2 = document.createElement('div');
-    calcDiv2.style.cssText='background:var(--bg2);border-radius:10px;padding:.75rem 1rem;margin-top:.5rem';
-    calcDiv2.innerHTML='<div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:.4rem">📦 포장 단위로 급여량 계산</div>'
-      +'<div style="font-size:11px;color:var(--text3);margin-bottom:.5rem">위 칼로리 입력 후 포장 용량을 입력하면 하루 급여량을 계산해줘요.</div>'
-      +'<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:.5rem">'
-      +'<input type="number" id="fdPackSize" placeholder="포장 용량(g)" style="width:110px;padding:6px 8px;border:0.5px solid var(--bd);border-radius:8px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit" oninput="calcFdPortion()">'
-      +'<span style="font-size:11px;color:var(--text2)">g /</span>'
-      +'<input type="number" id="fdPackKcal" placeholder="포장 칼로리(kcal)" style="width:130px;padding:6px 8px;border:0.5px solid var(--bd);border-radius:8px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit" oninput="calcFdPortion()">'
-      +'<span style="font-size:11px;color:var(--text2)">kcal</span>'
-      +'</div>'
-      +'<div id="fdPortionResult" style="font-size:12px;color:var(--teal);font-weight:500;line-height:1.6"></div>';
-    area.appendChild(calcDiv2);
     return;
   }
   area.innerHTML=warnHtml+`
@@ -5887,19 +5862,6 @@ ${(isEstC||d.moisture==null)?`
 
   // 수치 수정 섹션
   const _editDiv=document.createElement('div');_editDiv.innerHTML=_buildFdEditHtml(d);area.appendChild(_editDiv);
-  // 포장 단위 계산기
-  const calcDiv=document.createElement('div');
-  calcDiv.style.cssText='background:var(--bg2);border-radius:10px;padding:.75rem 1rem;margin-top:.5rem';
-  calcDiv.innerHTML='<div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:.4rem">📦 포장 단위로 급여량 계산</div>'
-    +'<div style="font-size:11px;color:var(--text3);margin-bottom:.5rem">위 칼로리 입력 후 포장 용량을 입력하면 하루 급여량을 계산해줘요.</div>'
-    +'<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:.5rem">'
-    +'<input type="number" id="fdPackSize" placeholder="포장 용량(g)" style="width:110px;padding:6px 8px;border:0.5px solid var(--bd);border-radius:8px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit" oninput="calcFdPortion()">'
-    +'<span style="font-size:11px;color:var(--text2)">g /</span>'
-    +'<input type="number" id="fdPackKcal" placeholder="포장 칼로리(kcal)" style="width:130px;padding:6px 8px;border:0.5px solid var(--bd);border-radius:8px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit" oninput="calcFdPortion()">'
-    +'<span style="font-size:11px;color:var(--text2)">kcal</span>'
-    +'</div>'
-    +'<div id="fdPortionResult" style="font-size:12px;color:var(--teal);font-weight:500;line-height:1.6"></div>';
-  area.appendChild(calcDiv);
 
   // CKD 또는 복합 모드일 때 CKD 결과 추가
   if(fdMode === 'ckd' || fdMode === 'both') {
@@ -5910,22 +5872,6 @@ ${(isEstC||d.moisture==null)?`
   }
 }
 
-function calcFdPortion(){
-  const kcalPer100=parseFloat(document.getElementById('fdKcalInput')?.value)||0;
-  const size=parseFloat(document.getElementById('fdPackSize')?.value);
-  const packKcal=parseFloat(document.getElementById('fdPackKcal')?.value);
-  const result=document.getElementById('fdPortionResult');
-  if(!result)return;
-  let actualKcalPer100=kcalPer100;
-  if(!isNaN(size)&&!isNaN(packKcal)&&size>0){
-    actualKcalPer100=packKcal/size*100;
-  }else if(!(kcalPer100>0)||!(size>0)){result.textContent='';return;}
-  const mer=currentMer||200;
-  const totalG=Math.round(mer/actualKcalPer100*100);
-  const perMeal=Math.round(totalG/2);
-  const packs=!isNaN(size)&&size>0?(totalG/size).toFixed(1):'?';
-  result.innerHTML='→ 하루 <b>'+totalG+'g</b> (1회 <b>'+perMeal+'g</b> × 2끼) / 포장 <b>'+packs+'개</b> 분량 <span style="font-size:10px;color:var(--text3)">(칼로리 계산기 기준 '+mer+'kcal/일)</span>';
-}
 function convWetKcal(){
   const total=parseFloat(document.getElementById('fdKcalTotal')?.value)||0;
   const g=parseFloat(document.getElementById('fdKcalCanG')?.value)||0;
