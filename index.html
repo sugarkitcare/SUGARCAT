@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.48</span>
+      <span class="cm-beta">v0.6.49</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -5230,6 +5230,18 @@ function inferFoodType(moisture,aiType){
   if(moisture!=null&&!isNaN(moisture))return moisture>=60?'wet':'dry';
   return aiType||null;
 }
+// 일반명(이름 미추출 시 AI가 지어내는 값) 정화 — 완전일치 일반명 또는 2글자 이하만 거름
+const _GENERIC_FOOD_NAMES=['습식 사료','건식 사료','습식','건식','사료'];
+function sanitizeFoodName(name){
+  if(name==null)return '';
+  const n=String(name).trim();
+  if(n.length<=2)return '';
+  if(_GENERIC_FOOD_NAMES.includes(n))return '';
+  return n;
+}
+function isGenericFoodName(name){
+  return sanitizeFoodName(name)==='';
+}
 const getLv=cdm=>cdm<=5?'best':cdm<=10?'good':cdm<=15?'caution':'bad';
 const lvColor=lv=>({best:'#1D9E75',good:'#3B6D11',caution:'#BA7517',bad:'#D85A30'})[lv];
 
@@ -5256,7 +5268,9 @@ setupDrop('fdDrop','fdFile',async file=>{
 7. kcal_per_100g: 반드시 100g 기준 값으로 환산. 캔 전체 칼로리(예: 1캔 73kcal/85g)는 73÷85×100≈86으로 환산. 절대로 캔/봉지 단위 총 칼로리를 그대로 입력하지 말 것.
 8. 소수점 자릿수 주의: 성분표의 "6.0%"는 6.0이지 60이 아님. 소수점(.) 위치를 정확히 확인하고 자릿수 오류 없이 입력하세요.
 9. 교차검증: 입력 전 (protein_af + fat_af + fiber_af + ash_af + moisture)의 합이 100%에 근사하는지 확인하세요. 습식은 moisture 70~85%, 건식은 5~14% 범위를 벗어나면 수치를 재확인하세요.`;
-  let mc=file.type.startsWith('image/')?[{type:'image',source:{type:'base64',media_type:file.type,data:b64}},{type:'text',text:`${isWet?'습식':'건식'} 사료. 사료명: ${fdNm}`}]:[{type:'document',source:{type:'base64',media_type:'application/pdf',data:b64}},{type:'text',text:`${isWet?'습식':'건식'} 사료. 사료명: ${fdNm}`}];
+  const _typeHint=isWet?'습식':'건식';
+  const _userText=fdNm?`사료명: ${fdNm}. (사용자가 ${_typeHint}으로 표시함, 참고용)`:`사료명은 이미지에서 추출할 것. 이미지에 사료명이 없으면 name을 빈 문자열("")로 둘 것. 절대 "습식 사료"/"건식 사료" 같은 일반명을 지어내지 말 것. (사용자가 ${_typeHint}으로 표시함, 참고용)`;
+  let mc=file.type.startsWith('image/')?[{type:'image',source:{type:'base64',media_type:file.type,data:b64}},{type:'text',text:_userText}]:[{type:'document',source:{type:'base64',media_type:'application/pdf',data:b64}},{type:'text',text:_userText}];
   try{
     const resp=await fetch('/api/proxy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1200,system:sys,messages:[{role:'user',content:mc}]})});
     const data=await resp.json();
@@ -5273,6 +5287,7 @@ setupDrop('fdDrop','fdFile',async file=>{
     const parsed=JSON.parse(jsonMatch2[0]);
     parsed.foodNameInput=fdNm;
     parsed.type=inferFoodType(parsed.moisture,parsed.type);
+    parsed.name=sanitizeFoodName(parsed.name);
     fdData.unshift({ts:Date.now(),data:parsed,name:parsed.name||fdNm});
     if(fdData.length>20)fdData=fdData.slice(0,20);saveFD();contributeFoodMaster(parsed,'ai');
     _fdViewData=fdData[0];hideStat('fdStatus');renderFdHistory();renderFdResult(parsed);
@@ -5962,8 +5977,10 @@ function saveFdKcal(){
 }
 function _buildFdEditHtml(d){
   const _f=(id,lbl,v,step,isMoist)=>`<div><div style="font-size:10px;color:var(--text3)">${lbl}</div><input type="number" id="${id}" value="${v!=null?v:''}" step="${step}" style="width:100%;padding:4px 6px;border:${isMoist?'1.5px solid var(--teal)':'0.5px solid var(--bd)'};border-radius:6px;font-size:13px;font-weight:700;background:var(--bg);color:var(--text);font-family:inherit;text-align:center"></div>`;
-  const _nmPh=d.name&&d.name.length>=5?'사료명 수정':'사료명을 입력하세요 (예: 몬지 레날)';
-  return `<div style="background:var(--bg2);border-radius:9px;padding:.5rem .75rem;margin-top:.5rem"><div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:.4rem">✏️ 수치 직접 수정 — 저장 시 DM 재계산</div><div style="margin-bottom:.5rem"><div style="font-size:10px;color:var(--text3);margin-bottom:2px">사료명</div><input type="text" id="fdEdit_name" value="${d.name||''}" placeholder="${_nmPh}" style="width:100%;padding:4px 6px;border:0.5px solid var(--bd);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit"></div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:.5rem">${_f('fdEdit_moisture','수분%',d.moisture,0.1,true)}${_f('fdEdit_protein_af','단백질%',d.protein_af,0.1,false)}${_f('fdEdit_fat_af','지방%',d.fat_af,0.1,false)}${_f('fdEdit_fiber_af','조섬유%',d.fiber_af,0.1,false)}${_f('fdEdit_ash_af','조회분%',d.ash_af,0.1,false)}${_f('fdEdit_phosphorus_af','인(P)%',d.phosphorus_af,0.01,false)}</div><button type="button" onclick="saveFdFields()" style="padding:5px 14px;background:#1a6b43;color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">저장 (DM 재계산)</button></div>`;
+  const _nmGeneric=isGenericFoodName(d.name);
+  const _nmVal=_nmGeneric?'':(d.name||'');
+  const _nmPh=(!_nmGeneric&&d.name&&d.name.length>=5)?'사료명 수정':'사료명을 입력하세요 (예: 몬지 레날)';
+  return `<div style="background:var(--bg2);border-radius:9px;padding:.5rem .75rem;margin-top:.5rem"><div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:.4rem">✏️ 수치 직접 수정 — 저장 시 DM 재계산</div><div style="margin-bottom:.5rem"><div style="font-size:10px;color:var(--text3);margin-bottom:2px">사료명</div><input type="text" id="fdEdit_name" value="${_nmVal}" placeholder="${_nmPh}" style="width:100%;padding:4px 6px;border:0.5px solid var(--bd);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit"></div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:.5rem">${_f('fdEdit_moisture','수분%',d.moisture,0.1,true)}${_f('fdEdit_protein_af','단백질%',d.protein_af,0.1,false)}${_f('fdEdit_fat_af','지방%',d.fat_af,0.1,false)}${_f('fdEdit_fiber_af','조섬유%',d.fiber_af,0.1,false)}${_f('fdEdit_ash_af','조회분%',d.ash_af,0.1,false)}${_f('fdEdit_phosphorus_af','인(P)%',d.phosphorus_af,0.01,false)}</div><button type="button" onclick="saveFdFields()" style="padding:5px 14px;background:#1a6b43;color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">저장 (DM 재계산)</button></div>`;
 }
 function applyDigitFix(field,value){
   if(!_fdViewData){toast('분석 후 수정하세요','#D85A30');return;}
@@ -9242,6 +9259,8 @@ function saveCatProfile() {
 /* ── foods_master 백그라운드 적립 ── */
 function contributeFoodMaster(parsed,source){
   if(!currentUser||!sbClient)return;
+  // 이름 없음/일반명이면 검색 DB 오염 방지를 위해 적립 스킵
+  if(isGenericFoodName(parsed&&parsed.name))return;
   try{
     sbClient.from('foods_master').insert({
       name:parsed.name||null,
