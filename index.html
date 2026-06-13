@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.56</span>
+      <span class="cm-beta">v0.6.57</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -7132,17 +7132,18 @@ function calcTubeSlurry(){
     out.innerHTML='<div style="font-size:12px;color:var(--cm-faint);padding:.2rem 0">재료 g수와 물을 입력하면 계산돼요</div>';
     return;
   }
+  // ml 계산은 레시피 저장 호환 위해 유지하되 화면 표시에선 제외
   const perFeed=Math.round(totalMl/cnt);
   let totalKcal=0;
   _tubeItems.forEach(item=>{totalKcal+=(parseFloat(item.grams)||0)*(parseFloat(item.kcalPer100g)||0)/100;});
+  const totalKcalR=Math.round(totalKcal);
   const perKcal=Math.round(totalKcal/cnt);
-  const perKcalLbl=perKcal>0?' <span style="font-size:12px;font-weight:600;color:var(--cm-faint)">· 1회 약 '+perKcal+'kcal</span>':'';
   out.innerHTML='<div style="background:var(--cm-surface-2);border-radius:10px;padding:.6rem .85rem">'
-    +'<div style="display:flex;align-items:baseline;gap:6px"><span style="font-size:12px;color:var(--cm-faint);width:84px;flex-shrink:0">총 완성량</span><span style="font-size:15px;font-weight:700;color:var(--cm-ink)">'+totalMl+' ml</span></div>'
-    +'<div style="font-size:10px;color:var(--cm-faint);margin:1px 0 .45rem 90px">사료 고형분 부피는 포함되지 않은 근사치예요</div>'
-    +'<div style="display:flex;align-items:baseline;gap:6px;margin-bottom:.3rem"><span style="font-size:12px;color:var(--cm-faint);width:84px;flex-shrink:0">1회 급여량</span><span style="font-size:15px;font-weight:700;color:var(--cm-green-700)">'+perFeed+' ml × '+cnt+'회'+perKcalLbl+'</span></div>'
-    +'<div style="display:flex;align-items:baseline;gap:6px"><span style="font-size:12px;color:var(--cm-faint);width:84px;flex-shrink:0">총 수분</span><span style="font-size:13px;color:var(--cm-ink)">'+totalMl+' ml <span style="font-size:11px;color:var(--cm-faint)">(사료 '+Math.round(foodWater)+' + 물 '+Math.round(water)+')</span></span></div>'
-    +'<div style="font-size:11px;color:var(--cm-faint);line-height:1.6;margin-top:.55rem;padding-top:.5rem;border-top:0.5px solid var(--cm-line)">한 번에 밀어 넣지 말고, 삼키는 걸 확인하며 조금씩 나눠 급여하세요. 급하게 먹이면 오연(사레) 위험이 있어요.</div>'
+    +'<div style="display:flex;align-items:baseline;gap:6px"><span style="font-size:12px;color:var(--cm-faint);width:96px;flex-shrink:0">하루 총</span><span style="font-size:15px;font-weight:700;color:var(--cm-ink)">'+totalKcalR+' kcal</span></div>'
+    +'<div style="display:flex;align-items:baseline;gap:6px;margin-top:.3rem"><span style="font-size:12px;color:var(--cm-faint);width:96px;flex-shrink:0">나눠 먹이기</span><span style="font-size:15px;font-weight:700;color:var(--cm-green-700)">하루 '+cnt+'회</span></div>'
+    +'<div style="display:flex;align-items:baseline;gap:6px;margin-top:.3rem"><span style="font-size:12px;color:var(--cm-faint);width:96px;flex-shrink:0">한 번에 약</span><span style="font-size:15px;font-weight:700;color:var(--cm-green-700)">'+perKcal+' kcal</span></div>'
+    +'<div style="font-size:11px;color:var(--cm-faint);line-height:1.6;margin-top:.5rem">다 갈아서 완성된 양을 보고 '+cnt+'등분 하세요. 한 번에 먹이는 양(ml)은 만든 후 주사기로 확인하세요.</div>'
+    +'<div style="font-size:11px;color:var(--cm-faint);line-height:1.6;margin-top:.5rem;padding-top:.5rem;border-top:0.5px solid var(--cm-line)">한 번에 밀어 넣지 말고, 삼키는 걸 확인하며 조금씩 나눠 급여하세요. 급하게 먹이면 오연(사레) 위험이 있어요.</div>'
     +'</div>';
 }
 
@@ -7195,7 +7196,8 @@ function renderTubeRecipeList(){
     // 2단계 필드 있는 슬러리 레시피는 1회분 모드(핵심 답·회차 표시), 그 외엔 기존 통째
     const hasMl=r.method!=='ball'&&r.totalMl!=null&&r.totalMl>0&&!isNaN(fc)&&fc>0;
     const perMl=hasMl?((r.mlPerFeeding!=null&&r.mlPerFeeding>0)?r.mlPerFeeding:Math.round(r.totalMl/fc)):0;
-    const meta=(r.totalKcal||0)+'kcal · '+(hasMl?('총 '+r.totalMl+'ml · 1회 '+perMl+'ml×'+fc+'회'):mLbl);
+    const perKcal=hasMl?Math.round((r.totalKcal||0)/fc):0;
+    const meta=(r.totalKcal||0)+'kcal · '+(hasMl?('1회 약 '+perKcal+'kcal × '+fc+'회'):mLbl);
     const bL=_bL.replace(/IDX/g,i),bD=_bD.replace(/IDX/g,i);
     if(hasMl){
       const cnt=_tubeTodayCount(r.id);
