@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.60</span>
+      <span class="cm-beta">v0.6.61</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -5241,7 +5241,7 @@ function renderBTGraphs(){
 
 
 /* 사료 분석 */
-const cDM=(v,m)=>v===null?null:parseFloat((v/(100-m)*100).toFixed(1));
+const cDM=(v,m)=>v==null?null:parseFloat((v/(100-m)*100).toFixed(1));
 // 숨은 탄수 추정: 100 - 단백 - 지방 - 조섬유 - 조회분 - 수분
 // ash(조회분) null이면 건식 7%, 습식 2% 기본값 사용
 const estCarb=(p,f,fi,a,m)=>{
@@ -5279,6 +5279,7 @@ setupDrop('fdDrop','fdFile',async file=>{
   const sys=`사료 성분표를 분석하여 아래 JSON만 출력하세요.
 {"name":"사료명","type":"${isWet?'wet':'dry'}","moisture":수분%,"protein_af":단백질%,"fat_af":지방%,"fiber_af":조섬유%,"ash_af":조회분%,"carb_af":탄수화물%or null,"kcal_per_100g":칼로리or null,"phosphorus_af":인%or null,"sodium_af":나트륨%or null,"potassium_af":칼륨%or null,"ingredients_top5":["원료1","원료2","원료3","원료4","원료5"],"grain_free":true/false,"main_protein_source":"주단백질원","special_notes":"특이사항or 빈문자열"}
 수치 추출 규칙:
+0. 표기되지 않은 수치는 추측하지 말고 null로 두세요. 성분표/보장성분표에 명시된 값만 입력합니다.
 1. "8%↑" "5%↓" 같은 최저/최고 보증값은 숫자만 추출 (8, 5으로)
 2. carb_af 추출 규칙 (매우 중요):
    - 성분표에 탄수화물/전분/NFE/가용무질소물 중 하나라도 있으면 반드시 숫자로 입력하세요.
@@ -5291,7 +5292,8 @@ setupDrop('fdDrop','fdFile',async file=>{
 6. fiber_af: 조섬유(crude fiber) 값 입력. 식이섬유(dietary fiber)와 혼동 금지.
 7. kcal_per_100g: 반드시 100g 기준 값으로 환산. 캔 전체 칼로리(예: 1캔 73kcal/85g)는 73÷85×100≈86으로 환산. 절대로 캔/봉지 단위 총 칼로리를 그대로 입력하지 말 것.
 8. 소수점 자릿수 주의: 성분표의 "6.0%"는 6.0이지 60이 아님. 소수점(.) 위치를 정확히 확인하고 자릿수 오류 없이 입력하세요.
-9. 교차검증: 입력 전 (protein_af + fat_af + fiber_af + ash_af + moisture)의 합이 100%에 근사하는지 확인하세요. 습식은 moisture 70~85%, 건식은 5~14% 범위를 벗어나면 수치를 재확인하세요.`;
+9. 교차검증: 입력 전 (protein_af + fat_af + fiber_af + ash_af + moisture)의 합이 100%에 근사하는지 확인하세요. 습식은 moisture 70~85%, 건식은 5~14% 범위를 벗어나면 수치를 재확인하세요.
+10. phosphorus_af/sodium_af/potassium_af (인·나트륨·칼륨): 성분표/보장성분표에 명시된 값만 입력하세요. 수치가 전혀 없을 때만 null. 절대 추측하거나 0으로 채우지 마세요. 모르면 null.`;
   const _typeHint=isWet?'습식':'건식';
   const _userText=fdNm?`사료명: ${fdNm}. (사용자가 ${_typeHint}으로 표시함, 참고용)`:`사료명은 이미지에서 추출할 것. 이미지에 사료명이 없으면 name을 빈 문자열("")로 둘 것. 절대 "습식 사료"/"건식 사료" 같은 일반명을 지어내지 말 것. (사용자가 ${_typeHint}으로 표시함, 참고용)`;
   let mc=file.type.startsWith('image/')?[{type:'image',source:{type:'base64',media_type:file.type,data:b64}},{type:'text',text:_userText}]:[{type:'document',source:{type:'base64',media_type:'application/pdf',data:b64}},{type:'text',text:_userText}];
@@ -5847,7 +5849,7 @@ function renderFdResult(d){
       + '<div class="n-card"><div class="n-val">'+f.toFixed(1)+'%</div><div class="n-lbl">지방 as-fed</div><div class="n-dm">DM '+fdm?.toFixed(1)+'%</div></div>'
       + '<div class="n-card"><div class="n-val">'+m.toFixed(1)+'%</div><div class="n-lbl">수분</div><div class="n-dm">'+typeDisp+'</div></div>'
       + (d.phosphorus_af!==null?'<div class="n-card '+(d.phosphorus_af>0.5?'wn':'hl')+'"><div class="n-val">'+d.phosphorus_af+'%</div><div class="n-lbl">인(P) as-fed</div><div class="n-dm">DM '+cDM(d.phosphorus_af,m)+'%</div></div>':'')
-      + (d.sodium_af?'<div class="n-card"><div class="n-val">'+d.sodium_af+'%</div><div class="n-lbl">나트륨 as-fed</div></div>':'')
+      + (d.sodium_af!==null&&d.sodium_af!==undefined?'<div class="n-card"><div class="n-val">'+d.sodium_af+'%</div><div class="n-lbl">나트륨 as-fed</div></div>':'')
       + '</div>';
     area.appendChild(basicDiv);
     const _editDivCkd=document.createElement('div');_editDivCkd.innerHTML=_buildFdEditHtml(d);area.appendChild(_editDivCkd);
