@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.62</span>
+      <span class="cm-beta">v0.6.63</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -1772,6 +1772,9 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
       </div>
       <button type="button" id="tubeMatchRecommendedBtn" onclick="matchTubeToRecommended()" style="display:none;margin-top:.6rem;padding:5px 14px;border:0.5px solid var(--cm-green-edge);border-radius:8px;background:var(--cm-green-tint);color:var(--cm-green-700);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">전체 비율 유지하며 맞추기</button>
     </div>
+
+    <!-- 질환별 영양 지표 (참고용) -->
+    <div class="cm-card cm-card--flat" id="tubeNutritionCard" style="margin-bottom:.75rem;display:none"></div>
 
     <!-- 슬러리 계산 (슬러리 방식일 때만 표시) -->
     <div class="cm-card cm-card--flat" id="tubeSlurryCard" style="margin-bottom:.75rem">
@@ -7255,6 +7258,7 @@ function calcTubeTotal(){
     }
   }
   try{calcTubeSlurry();}catch(e){}
+  try{renderTubeNutrition();}catch(e){}
 }
 
 /* 작업대 기준 사료 수분(ml) — moisture 미입력 항목은 0 처리 */
@@ -7297,6 +7301,115 @@ function calcTubeSlurry(){
     +'<div style="font-size:11px;color:var(--cm-faint);line-height:1.6;margin-top:.5rem">다 갈아서 완성된 양을 보고 '+cnt+'등분 하세요. 한 번에 먹이는 양(ml)은 만든 후 주사기로 확인하세요.</div>'
     +'<div style="font-size:11px;color:var(--cm-faint);line-height:1.6;margin-top:.5rem;padding-top:.5rem;border-top:0.5px solid var(--cm-line)">한 번에 밀어 넣지 말고, 삼키는 걸 확인하며 조금씩 나눠 급여하세요. 급하게 먹이면 오연(사레) 위험이 있어요.</div>'
     +'</div>';
+}
+
+/* ── 배합 영양 합산 (g가중, 명시값만·null 구분) ──
+   각 지표는 값이 있는(!=null) 사료만 g가중 평균. 정보 없는 사료는 제외하고 목록으로 반환.
+   moisture도 g가중(있는 사료만), DM 환산은 cDM(재사용). 나트륨은 null이 절반 이상이면 정보부족. */
+function _tubeNutrition(){
+  const items=_tubeItems||[];
+  let totalFoods=0;            // g>0 사료 수
+  let mNum=0,mDen=0;           // moisture g가중
+  const acc={protein:{num:0,den:0,missing:[]},phos:{num:0,den:0,missing:[]},sodium:{num:0,den:0,missing:[]}};
+  items.forEach(it=>{
+    const g=parseFloat(it.grams)||0;
+    if(g<=0)return;            // g 없는 사료는 합산 제외
+    totalFoods++;
+    const moi=(it.moisture!=null)?parseFloat(it.moisture):null;
+    if(moi!=null){mNum+=g*moi;mDen+=g;}
+    [['protein','protein_af'],['phos','phosphorus_af'],['sodium','sodium_af']].forEach(([k,fk])=>{
+      const v=it[fk];
+      if(v!=null){acc[k].num+=g*(parseFloat(v)/100);acc[k].den+=g;}
+      else acc[k].missing.push(it.foodName||'사료');
+    });
+  });
+  // moisture 가중평균 (없으면 슬러리 맥락상 75% 가정)
+  const wMoist=(mDen>0)?(mNum/mDen):75;
+  const _metric=(k)=>{
+    if(acc[k].den<=0)return {available:false,asfed:null,dm:null,missing:acc[k].missing};
+    const asfed=parseFloat((acc[k].num/acc[k].den*100).toFixed(2));
+    return {available:true,asfed:asfed,dm:cDM(asfed,wMoist),missing:acc[k].missing};
+  };
+  const sodium=_metric('sodium');
+  // 나트륨: 값 없는 사료가 절반 이상이면 정보 부족 처리
+  sodium.infoSufficient=sodium.available && (sodium.missing.length*2 < totalFoods);
+  return {
+    hasData:totalFoods>0,
+    totalFoods:totalFoods,
+    weightedMoisture:wMoist,
+    protein:_metric('protein'),
+    phos:_metric('phos'),
+    sodium:sodium
+  };
+}
+
+/* ── 질환별 영양 지표 표시 (참고용·처방 아님) ── */
+function renderTubeNutrition(){
+  const box=document.getElementById('tubeNutritionCard');
+  if(!box)return;
+  const N=_tubeNutrition();
+  if(!N.hasData){box.style.display='none';box.innerHTML='';return;}
+  const cat=state.activeCat||'';
+  const diseases=(state.catProfiles&&state.catProfiles[cat]&&state.catProfiles[cat].diseases)||[];
+  const hasCKD=diseases.some(d=>d.includes('CKD')||d.includes('PKD'));
+  const hasDM=diseases.some(d=>d.includes('DM'));
+  const c=CKD_CRITERIA[1];   // 강급 기준은 보수적 IRIS Stage 1 (인 0.6%·단백 28~40% DM)
+
+  const _fmt=v=>(v==null?'—':v+'%');
+  // 한 줄 지표 행
+  const _row=(label,m,judge,crit)=>{
+    if(!m.available)return '<div style="display:flex;justify-content:space-between;align-items:baseline;padding:.3rem 0"><span style="font-size:12px;color:var(--cm-faint)">'+label+'</span><span style="font-size:12px;color:var(--cm-faint)">정보 없음</span></div>';
+    const clr=judge==='ok'?'var(--cm-green-700)':judge==='warn'?'#D85A30':judge==='mid'?'#BA7517':'var(--cm-ink)';
+    return '<div style="display:flex;justify-content:space-between;align-items:baseline;padding:.3rem 0">'
+      +'<span style="font-size:12px;color:var(--cm-ink-soft)">'+label+'</span>'
+      +'<span style="font-size:13px;font-weight:700;color:'+clr+'">'+_fmt(m.dm)+' <span style="font-size:10px;font-weight:500;color:var(--cm-faint)">DM</span>'
+      +(crit?'<span style="font-size:10px;font-weight:500;color:var(--cm-faint)"> · '+crit+'</span>':'')+'</span>'
+      +'</div>';
+  };
+
+  let html='<div style="font-size:12px;font-weight:700;color:var(--cm-ink-soft);margin-bottom:.5rem">영양 지표 <span style="font-size:10px;font-weight:500;color:var(--cm-faint)">참고용</span></div>';
+
+  if(hasCKD){
+    // 인 DM
+    const phJ=(N.phos.dm==null)?'':(N.phos.dm<=c.p?'ok':'warn');
+    html+=_row('인 (P)',N.phos,phJ,'기준 '+c.p+'% 이하'+(N.phos.dm!=null?(N.phos.dm<=c.p?' ✅':' ⚠️'):''));
+    // 단백질 DM (범위)
+    let prJ='',prCrit='기준 '+c.protein[0]+'~'+c.protein[1]+'%';
+    if(N.protein.dm!=null){
+      if(N.protein.dm<c.protein[0]){prJ='mid';prCrit+=' (낮음)';}
+      else if(N.protein.dm>c.protein[1]){prJ='mid';prCrit+=' (높음)';}
+      else{prJ='ok';prCrit+=' ✅';}
+    }
+    html+=_row('단백질',N.protein,prJ,prCrit);
+    // 나트륨 — 정보 충분할 때만
+    if(N.sodium.infoSufficient){
+      const naJ=(N.sodium.dm==null)?'':(N.sodium.dm<=c.na?'ok':'warn');
+      html+=_row('나트륨',N.sodium,naJ,'기준 '+c.na+'% 이하'+(N.sodium.dm!=null?(N.sodium.dm<=c.na?' ✅':' ⚠️'):''));
+    }
+  }else{
+    // 질환 미설정/기타: 판정 없이 인·단백질만 중립 표시
+    html+=_row('인 (P)',N.phos,'','');
+    html+=_row('단백질',N.protein,'','');
+  }
+
+  // 정보 없는 사료 안내 (지표별)
+  const _miss=[];
+  if(N.phos.missing.length)_miss.push(N.phos.missing.join(', ')+'는 인 정보가 없어 제외하고 계산했어요');
+  if(N.protein.missing.length)_miss.push(N.protein.missing.join(', ')+'는 단백질 정보가 없어 제외했어요');
+  if(hasCKD && !N.sodium.infoSufficient)_miss.push('나트륨은 정보가 부족해 표시하지 않았어요');
+  if(_miss.length){
+    html+='<div style="font-size:10.5px;color:var(--cm-faint);line-height:1.6;margin-top:.4rem">'+_miss.map(x=>'· '+x).join('<br>')+'</div>';
+  }
+
+  // 복합질환 상충 안내 (CKD 단백제한 vs DM 고단백)
+  if(hasCKD && hasDM){
+    html+='<div style="font-size:11px;color:#BA7517;line-height:1.6;margin-top:.5rem;padding-top:.5rem;border-top:0.5px solid var(--cm-line)">⚠️ 당뇨(고단백 선호)와 신장(단백 제한) 기준이 상충할 수 있어요. 단백질 목표는 수의사와 상담해 정하세요.</div>';
+  }
+
+  html+='<div style="font-size:10.5px;color:var(--cm-faint);line-height:1.6;margin-top:.5rem">이 지표는 참고용이에요. 정확한 식이는 수의사와 상담하세요.</div>';
+
+  box.innerHTML=html;
+  box.style.display='block';
 }
 
 function renderTubeItemList(){
@@ -7405,6 +7518,7 @@ function addFoodToTubeRecipe(name,kcalPer100g,moisture,masterId){
         item.sodium_af=data.sodium_af??null;
         // moisture는 검증된 favFoods 값 우선, 없을 때만 master 값으로 보강
         if(item.moisture==null&&data.moisture!=null)item.moisture=data.moisture;
+        try{renderTubeNutrition();}catch(e){}   // 데이터 도착 시 지표 갱신(grams 입력 영향 없음)
         console.log('[tube] 영양 로드:',item.foodName,{protein_af:item.protein_af,fat_af:item.fat_af,phosphorus_af:item.phosphorus_af,sodium_af:item.sodium_af,moisture:item.moisture});
       })
       .catch(e=>{console.warn('foods_master 영양 조회 오류:',e);});
