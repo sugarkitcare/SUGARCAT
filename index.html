@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.59</span>
+      <span class="cm-beta">v0.6.60</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -1765,7 +1765,12 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
         <span style="font-size:14px;color:var(--cm-faint)">kcal</span>
       </div>
       <div id="tubeKcalCompare" style="font-size:12px;color:var(--cm-faint);display:none"></div>
-      <button type="button" id="tubeMatchRecommendedBtn" onclick="matchTubeToRecommended()" style="display:none;margin-top:.6rem;padding:5px 14px;border:0.5px solid var(--cm-green-edge);border-radius:8px;background:var(--cm-green-tint);color:var(--cm-green-700);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">권장 칼로리에 맞추기</button>
+      <div id="tubeShortfall" style="font-size:13px;font-weight:600;margin-top:.4rem;display:none"></div>
+      <div id="tubeFillButtons" style="display:none;margin-top:.5rem">
+        <div style="font-size:11px;color:var(--cm-faint);margin-bottom:.4rem">어느 사료로 채울지 선택하세요</div>
+        <div id="tubeFillButtonList" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+      </div>
+      <button type="button" id="tubeMatchRecommendedBtn" onclick="matchTubeToRecommended()" style="display:none;margin-top:.6rem;padding:5px 14px;border:0.5px solid var(--cm-green-edge);border-radius:8px;background:var(--cm-green-tint);color:var(--cm-green-700);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">전체 비율 유지하며 맞추기</button>
     </div>
 
     <!-- 슬러리 계산 (슬러리 방식일 때만 표시) -->
@@ -7189,6 +7194,49 @@ function calcTubeTotal(){
       cEl.style.display='none';
     }
   }
+  // ── 부족분 안내 + 사료별 "채우기" 버튼 ──
+  const sfEl=document.getElementById('tubeShortfall');
+  const fillBox=document.getElementById('tubeFillButtons');
+  const fillList=document.getElementById('tubeFillButtonList');
+  const shortfall=(rec&&rec>0)?(rec-rounded):0;   // 양수=부족
+  if(sfEl){
+    if(rec&&rec>0&&rounded>0){
+      const tol=Math.max(1,Math.round(rec*0.03));
+      if(shortfall>tol){
+        sfEl.textContent='목표까지 약 '+shortfall+'kcal 부족해요';
+        sfEl.style.color='var(--cm-clay-ink)';
+        sfEl.style.display='block';
+      }else if(shortfall<-tol){
+        sfEl.textContent='목표보다 '+Math.abs(shortfall)+'kcal 많아요';
+        sfEl.style.color='var(--cm-faint)';
+        sfEl.style.display='block';
+      }else{
+        sfEl.textContent='목표 칼로리에 맞아요 👍';
+        sfEl.style.color='var(--cm-green-700)';
+        sfEl.style.display='block';
+      }
+    }else{
+      sfEl.style.display='none';
+    }
+  }
+  if(fillBox&&fillList){
+    const tol2=(rec&&rec>0)?Math.max(1,Math.round(rec*0.03)):0;
+    if(rec&&rec>0&&rounded>0&&shortfall>tol2){
+      let html='';
+      _tubeItems.forEach((item,i)=>{
+        const k=parseFloat(item.kcalPer100g)||0;
+        if(k<=0)return;   // 칼로리 미입력 사료는 채울 수 없음
+        const addG=Math.round(shortfall*100/k);
+        if(addG<=0)return;
+        const safe=(item.foodName||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+        html+='<button type="button" onclick="fillTubeWithFood('+i+')" style="padding:5px 12px;border:0.5px solid var(--cm-green-edge);border-radius:8px;background:var(--cm-green-tint);color:var(--cm-green-700);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">'+safe+'으로 채우기 (+'+addG+'g)</button>';
+      });
+      if(html){fillList.innerHTML=html;fillBox.style.display='block';}
+      else{fillBox.style.display='none';}
+    }else{
+      fillBox.style.display='none';
+    }
+  }
   const btnEl=document.getElementById('tubeMatchRecommendedBtn');
   if(btnEl){
     if(rec&&rec>0&&rounded>0){
@@ -7471,6 +7519,25 @@ function matchTubeToRecommended(){
   const ratio=target/totalKcal;
   _tubeItems=_tubeItems.map(item=>({...item,grams:Math.round((parseFloat(item.grams)||0)*ratio)}));
   renderTubeItemList();
+}
+
+/* 특정 사료 하나를 늘려 목표 칼로리 부족분을 채움 (보호자가 사료 선택, 계산은 앱) */
+function fillTubeWithFood(idx){
+  if(idx<0||idx>=_tubeItems.length)return;
+  const target=(state.catProfiles||{})[state.activeCat||'']?.recommendedKcal;
+  if(!target||target<=0){toast('고양이 프로필에 권장 칼로리를 먼저 설정해주세요','#BA7517');return;}
+  const item=_tubeItems[idx];
+  const k=parseFloat(item.kcalPer100g)||0;
+  if(k<=0){toast('이 사료는 칼로리가 입력되지 않아 채울 수 없어요','#BA7517');return;}
+  let totalKcal=0;
+  _tubeItems.forEach(it=>{totalKcal+=(parseFloat(it.grams)||0)*(parseFloat(it.kcalPer100g)||0)/100;});
+  const shortfall=target-totalKcal;   // 양수=부족
+  if(shortfall<=0){toast('이미 목표 칼로리를 채웠어요','#1D9E75');return;}
+  const addG=Math.round(shortfall*100/k);
+  if(addG<=0)return;
+  _tubeItems[idx].grams=(parseFloat(item.grams)||0)+addG;
+  renderTubeItemList();   // → calcTubeTotal → calcTubeSlurry 재계산 연쇄
+  toast((item.foodName||'사료')+' '+addG+'g 추가 — 목표 칼로리에 맞췄어요','#1D9E75');
 }
 
 
