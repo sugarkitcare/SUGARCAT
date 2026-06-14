@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.64</span>
+      <span class="cm-beta">v0.6.65</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -8456,6 +8456,7 @@ function editLogItem(type, ts, date) {
   else if(type==='wt')  { item=(rec.weights||[]).find(r=>r.ts===ts); label='체중'; }
   else if(type==='meal'){ item=rec.meals.find(r=>r.ts===ts); label='식사'; }
   else if(type==='rr')  { item=(rec.rr||[]).find(r=>r.ts===ts); label='호흡수'; }
+  else if(type==='routine'){ item=(rec.routines||[]).find(r=>r.ts===ts); label='투약·루틴'; }
   if(!item) return;
 
   // 해당 항목의 log-item 찾기
@@ -8503,6 +8504,14 @@ function editLogItem(type, ts, date) {
       <input type="number" id="ei_rr" value="${item.rr||''}" style="width:65px;padding:5px 8px;border:1px solid var(--teal);border-radius:7px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit">
       <label style="font-size:11px;color:var(--text3)">시간</label>
       <input type="time" id="ei_time" value="${item.time||''}" style="padding:5px 8px;border:1px solid var(--teal);border-radius:7px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit">`;
+  } else if(type==='routine') {
+    // 투약·루틴은 실제 시각(time)과 메모만 수정 — 약이름/예정시간(slot)/ml은 편집 대상 아님
+    const _rNm=(item.items||[]).join(', ')+(item.slot?` (예정 ${item.slot})`:'');
+    fields = `<span style="font-size:11px;color:var(--text3)">${_rNm}</span>
+      <label style="font-size:11px;color:var(--text3)">시간</label>
+      <input type="time" id="ei_time" value="${item.time||''}" style="padding:5px 8px;border:1px solid var(--teal);border-radius:7px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit">
+      <label style="font-size:11px;color:var(--text3)">메모</label>
+      <input type="text" id="ei_memo" value="${(item.memo||'').replace(/"/g,'&quot;')}" placeholder="(선택)" style="width:110px;padding:5px 8px;border:1px solid var(--teal);border-radius:7px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit">`;
   }
 
   targetEl.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;width:100%;padding:4px 0">
@@ -8547,6 +8556,11 @@ function saveEditLog(type, ts, date) {
     const rr = document.getElementById('ei_rr')?.value;
     if(rr) item.rr = parseInt(rr);
     if(time) item.time = time;
+  } else if(type==='routine') {
+    const item = (rec.routines||[]).find(r=>r.ts===ts); if(!item) return;
+    const memo = document.getElementById('ei_memo')?.value;
+    if(time) item.time = time;          // 실제 시각만 수정 (slot=예정시간은 불변)
+    if(memo !== undefined) item.memo = memo;
   }
   saveS(date);
   renderHistory();
