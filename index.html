@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.65</span>
+      <span class="cm-beta">v0.6.66</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -6221,6 +6221,18 @@ async function loadRoutineForCat(catName) {
     if(routineItems.length !== before) saveRT(cat);
     try{localStorage.setItem(stoolCleanupKey,'1');}catch(e){}
   }
+  // 예정 시간(times)은 med·fluid만 허용 - food·other 잔여 times 제거, 최초 1회만
+  const rtTimeCleanupKey = 'routinetime_cleanup_' + cat;
+  if(!localStorage.getItem(rtTimeCleanupKey)) {
+    let changed = false;
+    routineItems.forEach(i=>{
+      if(i.cat!=='med' && i.cat!=='fluid' && Array.isArray(i.times) && i.times.length){
+        delete i.times; changed = true;
+      }
+    });
+    if(changed) saveRT(cat);
+    try{localStorage.setItem(rtTimeCleanupKey,'1');}catch(e){}
+  }
 
   renderRoutineChecklist();
   try{renderRoutineEditList();}catch(e){}
@@ -6390,20 +6402,23 @@ function toggleRT(el,v){
   else{routineSelected.add(v);el.classList.add('selected')}
 }
 
+// 예정 시간은 med·fluid(정시 투약)만 의미 있음 — food·other는 이벤트성이라 무시
+function _routineUsesTimes(item){
+  return !!(item && (item.cat==='med' || item.cat==='fluid') && item.times && item.times.length);
+}
 // 루틴 항목의 가장 이른 "예정 시간"(정렬용) — times 없으면 큰 값으로 뒤로
 function _routineFirstTime(item){
-  const ts=(item&&item.times)||[];
-  if(!ts.length)return '99:99';
-  return ts.slice().sort()[0];
+  if(!_routineUsesTimes(item))return '99:99';
+  return item.times.slice().sort()[0];
 }
 // 카테고리 내 시간순 정렬(예정 시간 이른 순, 없는 항목은 뒤) — 새 배열 반환
 function _routineSortByTime(items){
   return items.slice().sort((a,b)=>{const ta=_routineFirstTime(a),tb=_routineFirstTime(b);return ta<tb?-1:ta>tb?1:0;});
 }
 // ── 슬롯(약+시간) 단위 체크 헬퍼 ──
-// 항목의 체크 슬롯 목록: times 있으면 각 시간, 없으면 [undefined](이름 단위)
+// 항목의 체크 슬롯 목록: med·fluid는 times 각 시간, 그 외는 [undefined](이름 단위)
 function _itemSlots(item){
-  return (item && item.times && item.times.length) ? item.times.slice() : [undefined];
+  return _routineUsesTimes(item) ? item.times.slice() : [undefined];
 }
 // 슬롯 키: slot 있으면 name@HH:MM, 없으면 name
 function _slotKey(name, slot){ return slot ? name+'@'+slot : name; }
@@ -6480,12 +6495,12 @@ function renderRoutineEditList(){
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4.5 6.5h15M9 6.5V4.5h6v2M6.5 6.5 7.5 20h9l1-13.5"/></svg>
           </button>
         </div>
-        <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-top:9px">
+        ${(cat==='med'||cat==='fluid')?`<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-top:9px">
           <span style="font-size:11px;color:var(--cm-faint);flex-shrink:0">예정 시간</span>
           ${_chips}
           <input type="time" id="rtTime_${i}" style="padding:4px 6px;border:1px solid var(--cm-line);border-radius:7px;font-size:12px;background:var(--cm-bg);color:var(--cm-ink);font-family:inherit">
           <button type="button" onclick="addRoutineTime(${i})" style="padding:4px 10px;border:0.5px solid var(--cm-green-edge);border-radius:7px;background:var(--cm-green-tint);color:var(--cm-green-700);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap">+추가</button>
-        </div>
+        </div>`:''}
       </div>`;
     });
   });
