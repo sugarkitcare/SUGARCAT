@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.61</span>
+      <span class="cm-beta">v0.6.62</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -2728,12 +2728,14 @@ function _renderFavFoodPickerList(listId, onSelect) {
       var nm = typeof f === 'string' ? f : f.name;
       var kp = typeof f === 'string' ? null : f.kcalPer100g;
       var moi = (typeof f !== 'string' && f.moisture != null) ? f.moisture : null;
+      var mid = (typeof f !== 'string' && f.masterId != null) ? f.masterId : null;
       var tp = typeof f === 'string' ? null : f.type;
       var per = tp === 'dry' ? 100 : 85;
       var kLbl = kp ? kp + 'kcal/100g' : '칼로리 미입력 (사료 분석탭에서 입력)';
       var safe = nm.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      var midArg = (mid != null) ? ("'" + String(mid).replace(/'/g, "\\'") + "'") : "null";
       var addCb = _isTube
-        ? 'addFoodToTubeRecipe(\u0027' + safe + '\u0027,' + (kp||0) + ',' + (moi != null ? moi : 'null') + ')'
+        ? 'addFoodToTubeRecipe(\u0027' + safe + '\u0027,' + (kp||0) + ',' + (moi != null ? moi : 'null') + ',' + midArg + ')'
         : 'addFavFoodToCalc(\u0027' + safe + '\u0027,' + (kp||0) + ',' + per + ')';
       return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--bg);border-radius:8px;margin-bottom:5px">'
         + '<div style="flex:1"><div style="font-size:13px;color:var(--text)">' + nm + '</div>'
@@ -7379,11 +7381,34 @@ function renderTubeRecipeList(){
   }).join('');
 }
 
-function addFoodToTubeRecipe(name,kcalPer100g,moisture){
-  _tubeItems.push({foodName:name,grams:0,kcalPer100g:kcalPer100g||0,moisture:moisture??null});
+function addFoodToTubeRecipe(name,kcalPer100g,moisture,masterId){
+  // 영양 필드는 일단 null로 두고(명시값만, 없으면 null) masterId 있으면 비동기로 채움
+  const item={foodName:name,grams:0,kcalPer100g:kcalPer100g||0,moisture:moisture??null,masterId:masterId??null,
+    protein_af:null,fat_af:null,fiber_af:null,ash_af:null,carb_af:null,phosphorus_af:null,sodium_af:null};
+  _tubeItems.push(item);
   renderTubeItemList();
   const p=document.getElementById('tubeFavPicker');
   if(p)p.style.display='none';
+  // masterId 있으면 foods_master에서 영양 필드 1회 조회 → 같은 객체에 채움(흐름 안 막음)
+  if(masterId&&sbClient){
+    sbClient.from('foods_master')
+      .select('protein_af,fat_af,fiber_af,ash_af,carb_af,phosphorus_af,sodium_af,moisture')
+      .eq('id',masterId).maybeSingle()
+      .then(({data,error})=>{
+        if(error||!data)return;   // 실패/미존재 시 null 유지 — 칼로리·수분 기본 동작 그대로
+        item.protein_af=data.protein_af??null;
+        item.fat_af=data.fat_af??null;
+        item.fiber_af=data.fiber_af??null;
+        item.ash_af=data.ash_af??null;
+        item.carb_af=data.carb_af??null;
+        item.phosphorus_af=data.phosphorus_af??null;
+        item.sodium_af=data.sodium_af??null;
+        // moisture는 검증된 favFoods 값 우선, 없을 때만 master 값으로 보강
+        if(item.moisture==null&&data.moisture!=null)item.moisture=data.moisture;
+        console.log('[tube] 영양 로드:',item.foodName,{protein_af:item.protein_af,fat_af:item.fat_af,phosphorus_af:item.phosphorus_af,sodium_af:item.sodium_af,moisture:item.moisture});
+      })
+      .catch(e=>{console.warn('foods_master 영양 조회 오류:',e);});
+  }
 }
 
 function removeTubeItem(idx){
