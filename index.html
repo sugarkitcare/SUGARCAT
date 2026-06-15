@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.71</span>
+      <span class="cm-beta">v0.6.72</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -7504,15 +7504,19 @@ function renderTubeRecipeList(){
         +'<div style="font-size:11px;color:var(--cm-faint)">'+meta+'</div>'
         +'</div>'+bL+bD
         +'</div>'
+        // 강급: 하루치를 회차로 나눈 1회분(총÷회차) 기본값 + 회차 표시
         +'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'
-        +'<span style="font-size:11px;font-weight:700;color:'+cntClr+';white-space:nowrap">오늘 '+cnt+'/'+fc+'회</span>'
-        +'<input type="number" id="tubePerG_'+i+'" value="'+perG+'" min="0" step="1" style="width:62px;padding:4px 6px;border:0.5px solid var(--cm-green-edge);border-radius:7px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit;text-align:center">'
+        +'<span style="font-size:11px;font-weight:700;color:'+cntClr+';white-space:nowrap;min-width:60px">강급 '+cnt+'/'+fc+'회</span>'
+        +'<input type="number" id="tubePerG_'+i+'" value="'+perG+'" min="0" step="1" style="width:58px;padding:4px 6px;border:0.5px solid var(--cm-green-edge);border-radius:7px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit;text-align:center">'
         +'<span style="font-size:11px;color:var(--cm-faint)">g</span>'
         +'<button type="button" onclick="feedTubeRecipe('+i+",document.getElementById('tubePerG_"+i+"').value)\" style=\"flex:1;min-width:96px;padding:5px 10px;border:none;border-radius:7px;background:var(--cm-green-700);color:#fff;font-size:12px;cursor:pointer;font-family:inherit;font-weight:600;white-space:nowrap\">1회분 먹였어요</button>"
         +'</div>'
-        // [임시·3-B에서 정식 강급/혼합 토글로 교체] 혼합급여 로직 검증용 — 위 g 입력칸 값으로 일반 식사 기록
-        +'<div style="display:flex;align-items:center;gap:6px;margin-top:5px">'
-        +'<button type="button" onclick="feedTubeRecipeMix('+i+",document.getElementById('tubePerG_"+i+"').value)\" style=\"flex:1;padding:5px 10px;border:0.5px solid var(--cm-green-edge);border-radius:7px;background:var(--cm-green-tint);color:var(--cm-green-700);font-size:12px;cursor:pointer;font-family:inherit;font-weight:600;white-space:nowrap\">혼합급여로 기록 (임시)</button>"
+        // 혼합급여(그릇 급여): 회차 개념 없음 — 그때그때 먹인 양 직접 입력(기본값 빈칸)
+        +'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:5px">'
+        +'<span style="font-size:11px;font-weight:700;color:var(--cm-faint);white-space:nowrap;min-width:60px">혼합급여</span>'
+        +'<input type="number" id="tubeMixG_'+i+'" value="" min="0" step="1" placeholder="먹인 양" style="width:58px;padding:4px 6px;border:0.5px solid var(--cm-green-edge);border-radius:7px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit;text-align:center">'
+        +'<span style="font-size:11px;color:var(--cm-faint)">g</span>'
+        +'<button type="button" onclick="feedTubeRecipeMix('+i+",document.getElementById('tubeMixG_"+i+"').value)\" style=\"flex:1;min-width:96px;padding:5px 10px;border:0.5px solid var(--cm-green-edge);border-radius:7px;background:var(--cm-green-tint);color:var(--cm-green-700);font-size:12px;cursor:pointer;font-family:inherit;font-weight:600;white-space:nowrap\">혼합급여 기록</button>"
         +'</div>'
         +'</div>';
     }
