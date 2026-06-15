@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.67</span>
+      <span class="cm-beta">v0.6.68</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -1776,11 +1776,11 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
     <!-- 질환별 영양 지표 (참고용) -->
     <div class="cm-card cm-card--flat" id="tubeNutritionCard" style="margin-bottom:.75rem;display:none"></div>
 
-    <!-- 슬러리 계산 (슬러리 방식일 때만 표시) -->
+    <!-- 강급 계산 (슬러리·사료환 공통: 총g·회차·1회분g) -->
     <div class="cm-card cm-card--flat" id="tubeSlurryCard" style="margin-bottom:.75rem">
-      <div style="margin-bottom:.6rem"><span style="font-size:12px;font-weight:600;color:var(--cm-ink-soft)">슬러리 계산</span><span style="font-size:10.5px;color:var(--cm-faint);margin-left:6px">지금 조합 중인 재료 기준이에요</span></div>
+      <div style="margin-bottom:.6rem"><span id="tubeCalcTitle" style="font-size:12px;font-weight:600;color:var(--cm-ink-soft)">슬러리 계산</span><span style="font-size:10.5px;color:var(--cm-faint);margin-left:6px">지금 조합 중인 재료 기준이에요</span></div>
       <div style="display:flex;gap:8px;margin-bottom:.6rem">
-        <div style="flex:1;min-width:0">
+        <div id="tubeWaterRow" style="flex:1;min-width:0">
           <div style="font-size:11px;color:var(--cm-faint);margin-bottom:3px">추가한 물 (ml)</div>
           <input type="number" id="tubeWaterMl" min="0" step="1" placeholder="0" oninput="calcTubeSlurry()"
             style="width:100%;box-sizing:border-box;padding:7px 10px;border:0.5px solid var(--cm-line);border-radius:9px;font-size:13px;background:var(--cm-surface-2);color:var(--cm-ink);font-family:inherit">
@@ -1791,7 +1791,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
             style="width:100%;box-sizing:border-box;padding:7px 10px;border:0.5px solid var(--cm-line);border-radius:9px;font-size:13px;background:var(--cm-surface-2);color:var(--cm-ink);font-family:inherit">
         </div>
       </div>
-      <div style="margin-bottom:.6rem">
+      <div id="tubeToolRow" style="margin-bottom:.6rem">
         <div style="font-size:11px;color:var(--cm-faint);margin-bottom:3px">급여 도구</div>
         <select id="tubeTool" onchange="calcTubeSlurry()"
           style="width:100%;box-sizing:border-box;padding:7px 10px;border:0.5px solid var(--cm-line);border-radius:9px;font-size:13px;background:var(--cm-surface-2);color:var(--cm-ink);font-family:inherit">
@@ -7198,8 +7198,16 @@ function setTubeMethod(m){
     const el=document.getElementById('tubeMethod'+s[0].toUpperCase()+s.slice(1));
     if(el)el.dataset.on=s===m?'1':'0';
   });
+  // 계산 카드는 슬러리·사료환 모두 표시(총g·회차·1회분g 공통). 물·도구 행은 슬러리 전용.
   const sc=document.getElementById('tubeSlurryCard');
-  if(sc)sc.style.display=m==='slurry'?'block':'none';
+  if(sc)sc.style.display='block';
+  const isSlurry=m==='slurry';
+  const wr=document.getElementById('tubeWaterRow');
+  if(wr)wr.style.display=isSlurry?'block':'none';
+  const tr=document.getElementById('tubeToolRow');
+  if(tr)tr.style.display=isSlurry?'block':'none';
+  const ti=document.getElementById('tubeCalcTitle');
+  if(ti)ti.textContent=isSlurry?'슬러리 계산':'사료환 계산';
   try{calcTubeSlurry();}catch(e){}
 }
 
@@ -7284,26 +7292,16 @@ function calcTubeTotal(){
   try{renderTubeNutrition();}catch(e){}
 }
 
-/* 작업대 기준 사료 수분(ml) — moisture 미입력 항목은 0 처리 */
-function _tubeFoodWaterMl(items){
-  let w=0;
-  (items||[]).forEach(item=>{
-    const g=parseFloat(item.grams)||0;
-    const moi=parseFloat(item.moisture);
-    if(g>0&&!isNaN(moi)&&moi>0)w+=g*moi/100;
-  });
-  return w;
-}
-
 function calcTubeSlurry(){
   const out=document.getElementById('tubeSlurryResult');
-  if(!out||_tubeMethod!=='slurry')return;
+  if(!out)return;  // 슬러리·사료환 공통 — method 게이트 없음
   // 재료 없이 물만 넣은 무의미한 계산 방지
   if(!_tubeItems.length){
     out.innerHTML='<div style="font-size:12px;color:var(--cm-faint);padding:.2rem 0">재료를 먼저 추가해주세요</div>';
     return;
   }
-  const water=parseFloat(document.getElementById('tubeWaterMl')?.value)||0;
+  // 사료환은 물 0 기준(입력칸 숨김). 슬러리만 추가 물 반영.
+  const water=_tubeMethod==='slurry'?(parseFloat(document.getElementById('tubeWaterMl')?.value)||0):0;
   const cnt=Math.max(1,parseInt(document.getElementById('tubeFeedCount')?.value)||4);
   const foodG=_tubeItems.reduce((a,it)=>a+(parseFloat(it.grams)||0),0);  // 총 사료 g(수분 아님)
   const totalG=Math.round(foodG+water);  // 총 슬러리 g = 사료g + 물ml(1ml=1g)
@@ -7320,7 +7318,7 @@ function calcTubeSlurry(){
     +'<div style="display:flex;align-items:baseline;gap:6px"><span style="font-size:12px;color:var(--cm-faint);width:96px;flex-shrink:0">하루 총</span><span style="font-size:15px;font-weight:700;color:var(--cm-ink)">'+totalKcalR+' kcal · '+totalG+' g</span></div>'
     +'<div style="display:flex;align-items:baseline;gap:6px;margin-top:.3rem"><span style="font-size:12px;color:var(--cm-faint);width:96px;flex-shrink:0">나눠 먹이기</span><span style="font-size:15px;font-weight:700;color:var(--cm-green-700)">하루 '+cnt+'회</span></div>'
     +'<div style="display:flex;align-items:baseline;gap:6px;margin-top:.3rem"><span style="font-size:12px;color:var(--cm-faint);width:96px;flex-shrink:0">한 번에 약</span><span style="font-size:15px;font-weight:700;color:var(--cm-green-700)">'+perKcal+' kcal · '+perFeedG+' g</span></div>'
-    +'<div style="font-size:11px;color:var(--cm-faint);line-height:1.6;margin-top:.5rem">다 갈아서 완성된 양을 보고 '+cnt+'등분 하세요. 1회 약 '+perFeedG+'g이에요. 주사기 ml은 만든 후 직접 확인하세요.</div>'
+    +'<div style="font-size:11px;color:var(--cm-faint);line-height:1.6;margin-top:.5rem">'+(_tubeMethod==='slurry'?('다 갈아서 완성된 양을 보고 '+cnt+'등분 하세요. 1회 약 '+perFeedG+'g이에요. 주사기 ml은 만든 후 직접 확인하세요.'):('전체를 '+cnt+'등분해 사료환으로 만드세요. 1회 약 '+perFeedG+'g이에요.'))+'</div>'
     +'<div style="font-size:11px;color:var(--cm-faint);line-height:1.6;margin-top:.5rem;padding-top:.5rem;border-top:0.5px solid var(--cm-line)">한 번에 밀어 넣지 말고, 삼키는 걸 확인하며 조금씩 나눠 급여하세요. 급하게 먹이면 오연(사레) 위험이 있어요.</div>'
     +'</div>';
 }
@@ -7490,7 +7488,7 @@ function renderTubeRecipeList(){
     const fc=parseInt(r.feedingCount);
     // 2단계 필드 있는 슬러리 레시피는 1회분 모드(핵심 답·회차 표시), 그 외엔 기존 통째
     const _totalG=_tubeRecipeTotalG(r);  // 구버전 ml 레시피는 grams로 재계산
-    const hasG=r.method!=='ball'&&_totalG>0&&!isNaN(fc)&&fc>0;
+    const hasG=_totalG>0&&!isNaN(fc)&&fc>0;  // 슬러리·사료환 공통 g 회차 분할
     const perG=hasG?((r.gPerFeeding!=null&&r.gPerFeeding>0)?r.gPerFeeding:Math.round(_totalG/fc)):0;
     const perKcal=hasG?Math.round((r.totalKcal||0)/fc):0;
     const meta=(r.totalKcal||0)+'kcal · '+(hasG?('1회 약 '+perKcal+'kcal · '+perG+'g × '+fc+'회'):mLbl);
@@ -7625,7 +7623,7 @@ function deleteTubeRecipe(idx){
 }
 
 /* "1회분 먹였어요" — 누를 때마다 1회분(1/feedingCount × ratio)만 오늘 식사 기록에 누적.
-   강급 meal엔 tube/recipeId/feedTs 부여(회차 카운트용). 구버전/사료환(feedingCount 없음)은 하루치 통째 폴백.
+   강급 meal엔 tube/recipeId/feedTs 부여(회차 카운트용). 슬러리·사료환 공통 g 분할. 구버전(feedingCount 없음)만 통째 폴백.
    추가 물은 moisture:100 meal로 넣어 기존 습식수분 경로로 게이지 합산 — rec.water(자발음수)에는 절대 안 넣음 */
 function feedTubeRecipe(idx, gOverride){
   if(idx<0||idx>=tubeRecipes.length)return;
@@ -7638,8 +7636,8 @@ function feedTubeRecipe(idx, gOverride){
   const base=Date.now();
   const feedTs=base; // 이번 회차 전체 meal에 동일 부여 → distinct feedTs로 회차 카운트
   const fc=parseInt(r.feedingCount);
-  // 1회분 모드: 슬러리 + feedingCount>0. 그 외(구버전/사료환)는 통째 폴백
-  const perFeed=(r.method!=='ball'&&!isNaN(fc)&&fc>0);
+  // 1회분 모드: 슬러리·사료환 모두 feedingCount>0이면 g 회차 분할. 구버전(횟수 없음)만 통째 폴백
+  const perFeed=(!isNaN(fc)&&fc>0);
   let factor=1;
   if(perFeed){
     const totalG=_tubeRecipeTotalG(r);  // 구버전 ml 레시피는 grams로 재계산
