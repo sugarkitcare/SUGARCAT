@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.70</span>
+      <span class="cm-beta">v0.6.71</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -3863,7 +3863,7 @@ function renderDailySummary() {
         const _r = getRec(cat, day);
         const _ms = _r.meals || [];
         if(!_ms.length) return null;
-        const _tot = _ms.reduce((a,b) => a+(b.kcal||0), 0);
+        const _tot = Math.round(_ms.reduce((a,b) => a+(b.kcal||0), 0));
         return _tot > 0 ? _tot : null;
       });
       let _mealFbAdded = false;
@@ -4160,7 +4160,7 @@ function renderDailySummary() {
     const mealsHero = rec.meals || [];
     const mealKcalEl = document.getElementById('heroMealKcal');
     if(mealKcalEl) {
-      const totalKcalHero = mealsHero.reduce((a,b) => a + (b.kcal||0), 0);
+      const totalKcalHero = Math.round(mealsHero.reduce((a,b) => a + (b.kcal||0), 0));
       const recKcalHero = ((state.catProfiles||{})[cat]||{}).recommendedKcal || 0;
       if(!mealsHero.length) {
         mealKcalEl.innerHTML = '<span style="color:var(--cm-faint)">기록 없음</span>';
@@ -4254,7 +4254,7 @@ function renderDailySummary() {
     var twg=document.getElementById('tileWeightStatus');
     if(twg){var tlwt=(tRec.weights||[]).slice(-1)[0];if(tlwt){twg.textContent=tlwt.weight+' kg';twg.dataset.tone='good';_tit('weight','good');}else{twg.textContent='기록 전';twg.dataset.tone='muted';_tit('weight','muted');}}
     var tml=document.getElementById('tileMealStatus');
-    if(tml){var tms=tRec.meals||[];if(tms.length){var ttkc=tms.reduce(function(a,b){return a+(b.kcal||0);},0);tml.textContent=tms.length+'회'+(ttkc?' · '+ttkc+'kcal':'');tml.dataset.tone='good';_tit('meal','good');}else{tml.textContent='급여 전';tml.dataset.tone='muted';_tit('meal','muted');}}
+    if(tml){var tms=tRec.meals||[];if(tms.length){var ttkc=Math.round(tms.reduce(function(a,b){return a+(b.kcal||0);},0));tml.textContent=tms.length+'회'+(ttkc?' · '+ttkc+'kcal':'');tml.dataset.tone='good';_tit('meal','good');}else{tml.textContent='급여 전';tml.dataset.tone='muted';_tit('meal','muted');}}
     var tgl=document.getElementById('tileGlucoseStatus');
     if(tgl){var tlbg=(tRec.bg||[]).filter(function(x){return x.bg!=='';}).slice(-1)[0];if(tlbg){var tbgv=parseFloat(tlbg.bg);var _tglT=tbgv<=80?'alert':tbgv>=300?'warn':'good';tgl.textContent=tbgv+' mg/dL';tgl.dataset.tone=_tglT;_tit('glucose',_tglT);}else{tgl.textContent='기록 전';tgl.dataset.tone='muted';_tit('glucose','muted');}}
     var tins2=document.getElementById('tileInsulinStatus');
@@ -6040,7 +6040,7 @@ function buildCtx(){
   const lb=rec.bg.length?rec.bg[rec.bg.length-1]:null;
   const li=rec.ins.length?rec.ins[rec.ins.length-1]:null;
   const lw=rec.weights.length?rec.weights[rec.weights.length-1]:null;
-  const kcal=rec.meals.reduce((a,m)=>a+m.kcal,0);
+  const kcal=Math.round(rec.meals.reduce((a,m)=>a+(m.kcal||0),0));
   const rr=rec.rr?.length?rec.rr[rec.rr.length-1]:null;
   let ctx=`[고양이 정보]\n이름: ${state.activeCat}\n`;
   if(prof.breed)ctx+=`품종: ${prof.breed}\n`;
