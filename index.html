@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.68</span>
+      <span class="cm-beta">v0.6.69</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -7473,6 +7473,28 @@ function _tubeRecipeTotalG(r){
   const foodG=(r.items||[]).reduce((a,it)=>a+(parseFloat(it.grams)||0),0);
   return Math.round(foodG+(parseFloat(r.addedWaterMl)||0));
 }
+
+/* 혼합급여 환산 — 레시피 r를 'eatenG g 먹였다'로 환산.
+   kcalPerG = totalKcal ÷ Σ사료grams(사료 기준, 물 제외) → kcal = eatenG × kcalPerG
+   moisture = Σ(grams×moisture)/Σgrams (moisture 값 있는 사료만 가중; 없으면 null → 수분 게이지 미반영)
+   ※ 탄 물(addedWaterMl)은 혼합급여에 안 넣음 — 음수로 따로 기록(이중계산 방지) */
+function _tubeRecipeBlend(r, eatenG){
+  const items=(r&&r.items)||[];
+  let foodG=0,kNum=0,mNum=0,mDen=0;
+  items.forEach(it=>{
+    const g=parseFloat(it.grams)||0;
+    if(g<=0)return;
+    foodG+=g;
+    kNum+=g*(parseFloat(it.kcalPer100g)||0)/100;
+    const moi=parseFloat(it.moisture);
+    if(!isNaN(moi)){mNum+=g*moi;mDen+=g;}
+  });
+  const totalKcal=(r&&r.totalKcal!=null&&r.totalKcal>0)?r.totalKcal:kNum;  // 저장값 우선, 없으면 items 합산
+  const kcalPerG=foodG>0?totalKcal/foodG:0;
+  const moisture=mDen>0?(mNum/mDen):null;  // 값 있는 사료만 가중, 없으면 null(건식 가정 안 함)
+  const eg=parseFloat(eatenG)||0;
+  return {kcal:Math.round(eg*kcalPerG*10)/10, moisture:moisture, kcalPerG:kcalPerG, foodG:foodG};
+}
 function renderTubeRecipeList(){
   const list=document.getElementById('tubeRecipeList');
   if(!list)return;
@@ -7508,6 +7530,10 @@ function renderTubeRecipeList(){
         +'<input type="number" id="tubePerG_'+i+'" value="'+perG+'" min="0" step="1" style="width:62px;padding:4px 6px;border:0.5px solid var(--cm-green-edge);border-radius:7px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit;text-align:center">'
         +'<span style="font-size:11px;color:var(--cm-faint)">g</span>'
         +'<button type="button" onclick="feedTubeRecipe('+i+",document.getElementById('tubePerG_"+i+"').value)\" style=\"flex:1;min-width:96px;padding:5px 10px;border:none;border-radius:7px;background:var(--cm-green-700);color:#fff;font-size:12px;cursor:pointer;font-family:inherit;font-weight:600;white-space:nowrap\">1회분 먹였어요</button>"
+        +'</div>'
+        // [임시·3-B에서 정식 강급/혼합 토글로 교체] 혼합급여 로직 검증용 — 위 g 입력칸 값으로 일반 식사 기록
+        +'<div style="display:flex;align-items:center;gap:6px;margin-top:5px">'
+        +'<button type="button" onclick="feedTubeRecipeMix('+i+",document.getElementById('tubePerG_"+i+"').value)\" style=\"flex:1;padding:5px 10px;border:0.5px solid var(--cm-green-edge);border-radius:7px;background:var(--cm-green-tint);color:var(--cm-green-700);font-size:12px;cursor:pointer;font-family:inherit;font-weight:600;white-space:nowrap\">혼합급여로 기록 (임시)</button>"
         +'</div>'
         +'</div>';
     }
@@ -7671,6 +7697,28 @@ function feedTubeRecipe(idx, gOverride){
   }else{
     toast('오늘 기록에 추가했어요 · '+Math.round(kcalSum)+'kcal · 수분 '+Math.round(waterSum)+'ml');
   }
+}
+
+/* 혼합급여 "N g 먹였어요" — 레시피를 일반 식사로 기록(강급 아님).
+   ⚠️ tube/recipeId/feedTs 안 붙임 → 회차(_tubeTodayCount) 미카운트, 오늘탭 식사 요약·칼로리엔 포함.
+   수분은 blend.moisture(가중평균) 1건으로 기록 → moisture>=60이면 기존 습식수분 게이지에 합산. */
+function feedTubeRecipeMix(idx, gOverride){
+  if(idx<0||idx>=tubeRecipes.length)return;
+  const r=tubeRecipes[idx];
+  const items=r.items||[];
+  if(!items.length){toast('레시피에 재료가 없어요','#BA7517');return;}
+  const eg=parseFloat(gOverride)||0;
+  if(eg<=0){toast('먹은 양(g)을 입력해주세요','#BA7517');return;}
+  const b=_tubeRecipeBlend(r,eg);
+  const d=today();
+  const recd=getRec(state.activeCat,d);
+  recd.meals.push({name:r.name||'혼합급여',amt:Math.round(eg*10)/10,kcal:b.kcal,time:nowTime(),ts:Date.now(),moisture:(b.moisture!=null)?Math.round(b.moisture*10)/10:null});
+  saveS(d);
+  try{updateMetrics();}catch(e){}
+  try{renderDailySummary();}catch(e){}
+  try{renderTubeRecipeList();}catch(e){}
+  const wMl=(b.moisture!=null&&b.moisture>=60)?Math.round(eg*b.moisture/100):0;
+  toast('혼합급여 기록 · '+eg+'g · '+Math.round(b.kcal)+'kcal'+(wMl>0?' · 수분 '+wMl+'ml':''));
 }
 
 function openTubeFavPicker(){
