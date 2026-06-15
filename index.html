@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.66</span>
+      <span class="cm-beta">v0.6.67</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -7305,23 +7305,22 @@ function calcTubeSlurry(){
   }
   const water=parseFloat(document.getElementById('tubeWaterMl')?.value)||0;
   const cnt=Math.max(1,parseInt(document.getElementById('tubeFeedCount')?.value)||4);
-  const foodWater=_tubeFoodWaterMl(_tubeItems);
-  const totalMl=Math.round(foodWater+water);
-  if(!totalMl){
+  const foodG=_tubeItems.reduce((a,it)=>a+(parseFloat(it.grams)||0),0);  // 총 사료 g(수분 아님)
+  const totalG=Math.round(foodG+water);  // 총 슬러리 g = 사료g + 물ml(1ml=1g)
+  if(!totalG){
     out.innerHTML='<div style="font-size:12px;color:var(--cm-faint);padding:.2rem 0">재료 g수와 물을 입력하면 계산돼요</div>';
     return;
   }
-  // ml 계산은 레시피 저장 호환 위해 유지하되 화면 표시에선 제외
-  const perFeed=Math.round(totalMl/cnt);
+  const perFeedG=Math.round(totalG/cnt);  // 1회분 g
   let totalKcal=0;
   _tubeItems.forEach(item=>{totalKcal+=(parseFloat(item.grams)||0)*(parseFloat(item.kcalPer100g)||0)/100;});
   const totalKcalR=Math.round(totalKcal);
   const perKcal=Math.round(totalKcal/cnt);
   out.innerHTML='<div style="background:var(--cm-surface-2);border-radius:10px;padding:.6rem .85rem">'
-    +'<div style="display:flex;align-items:baseline;gap:6px"><span style="font-size:12px;color:var(--cm-faint);width:96px;flex-shrink:0">하루 총</span><span style="font-size:15px;font-weight:700;color:var(--cm-ink)">'+totalKcalR+' kcal</span></div>'
+    +'<div style="display:flex;align-items:baseline;gap:6px"><span style="font-size:12px;color:var(--cm-faint);width:96px;flex-shrink:0">하루 총</span><span style="font-size:15px;font-weight:700;color:var(--cm-ink)">'+totalKcalR+' kcal · '+totalG+' g</span></div>'
     +'<div style="display:flex;align-items:baseline;gap:6px;margin-top:.3rem"><span style="font-size:12px;color:var(--cm-faint);width:96px;flex-shrink:0">나눠 먹이기</span><span style="font-size:15px;font-weight:700;color:var(--cm-green-700)">하루 '+cnt+'회</span></div>'
-    +'<div style="display:flex;align-items:baseline;gap:6px;margin-top:.3rem"><span style="font-size:12px;color:var(--cm-faint);width:96px;flex-shrink:0">한 번에 약</span><span style="font-size:15px;font-weight:700;color:var(--cm-green-700)">'+perKcal+' kcal</span></div>'
-    +'<div style="font-size:11px;color:var(--cm-faint);line-height:1.6;margin-top:.5rem">다 갈아서 완성된 양을 보고 '+cnt+'등분 하세요. 한 번에 먹이는 양(ml)은 만든 후 주사기로 확인하세요.</div>'
+    +'<div style="display:flex;align-items:baseline;gap:6px;margin-top:.3rem"><span style="font-size:12px;color:var(--cm-faint);width:96px;flex-shrink:0">한 번에 약</span><span style="font-size:15px;font-weight:700;color:var(--cm-green-700)">'+perKcal+' kcal · '+perFeedG+' g</span></div>'
+    +'<div style="font-size:11px;color:var(--cm-faint);line-height:1.6;margin-top:.5rem">다 갈아서 완성된 양을 보고 '+cnt+'등분 하세요. 1회 약 '+perFeedG+'g이에요. 주사기 ml은 만든 후 직접 확인하세요.</div>'
     +'<div style="font-size:11px;color:var(--cm-faint);line-height:1.6;margin-top:.5rem;padding-top:.5rem;border-top:0.5px solid var(--cm-line)">한 번에 밀어 넣지 말고, 삼키는 걸 확인하며 조금씩 나눠 급여하세요. 급하게 먹이면 오연(사레) 위험이 있어요.</div>'
     +'</div>';
 }
@@ -7468,6 +7467,14 @@ function _tubeTodayCount(recipeId){
   }catch(e){return 0;}
 }
 
+/* 레시피 총 g — 신버전은 r.totalG, 구버전(ml만 저장)은 사료 grams 합 + 추가물(addedWaterMl)로 재계산.
+   ⚠️ 구버전 r.totalMl은 "수분 g"만이라 총 무게와 다름 → 절대 totalG로 쓰지 않음 */
+function _tubeRecipeTotalG(r){
+  if(!r)return 0;
+  if(r.totalG!=null&&r.totalG>0)return r.totalG;
+  const foodG=(r.items||[]).reduce((a,it)=>a+(parseFloat(it.grams)||0),0);
+  return Math.round(foodG+(parseFloat(r.addedWaterMl)||0));
+}
 function renderTubeRecipeList(){
   const list=document.getElementById('tubeRecipeList');
   if(!list)return;
@@ -7482,12 +7489,13 @@ function renderTubeRecipeList(){
     const safe=r.name.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
     const fc=parseInt(r.feedingCount);
     // 2단계 필드 있는 슬러리 레시피는 1회분 모드(핵심 답·회차 표시), 그 외엔 기존 통째
-    const hasMl=r.method!=='ball'&&r.totalMl!=null&&r.totalMl>0&&!isNaN(fc)&&fc>0;
-    const perMl=hasMl?((r.mlPerFeeding!=null&&r.mlPerFeeding>0)?r.mlPerFeeding:Math.round(r.totalMl/fc)):0;
-    const perKcal=hasMl?Math.round((r.totalKcal||0)/fc):0;
-    const meta=(r.totalKcal||0)+'kcal · '+(hasMl?('1회 약 '+perKcal+'kcal × '+fc+'회'):mLbl);
+    const _totalG=_tubeRecipeTotalG(r);  // 구버전 ml 레시피는 grams로 재계산
+    const hasG=r.method!=='ball'&&_totalG>0&&!isNaN(fc)&&fc>0;
+    const perG=hasG?((r.gPerFeeding!=null&&r.gPerFeeding>0)?r.gPerFeeding:Math.round(_totalG/fc)):0;
+    const perKcal=hasG?Math.round((r.totalKcal||0)/fc):0;
+    const meta=(r.totalKcal||0)+'kcal · '+(hasG?('1회 약 '+perKcal+'kcal · '+perG+'g × '+fc+'회'):mLbl);
     const bL=_bL.replace(/IDX/g,i),bD=_bD.replace(/IDX/g,i);
-    if(hasMl){
+    if(hasG){
       const cnt=_tubeTodayCount(r.id);
       const cntClr=cnt>=fc?'var(--cm-green-700)':'var(--cm-faint)';
       return '<div style="padding:.6rem .75rem;background:var(--cm-surface-2);border-radius:9px;margin-bottom:5px">'
@@ -7499,9 +7507,9 @@ function renderTubeRecipeList(){
         +'</div>'
         +'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'
         +'<span style="font-size:11px;font-weight:700;color:'+cntClr+';white-space:nowrap">오늘 '+cnt+'/'+fc+'회</span>'
-        +'<input type="number" id="tubePerMl_'+i+'" value="'+perMl+'" min="0" step="1" style="width:62px;padding:4px 6px;border:0.5px solid var(--cm-green-edge);border-radius:7px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit;text-align:center">'
-        +'<span style="font-size:11px;color:var(--cm-faint)">ml</span>'
-        +'<button type="button" onclick="feedTubeRecipe('+i+",document.getElementById('tubePerMl_"+i+"').value)\" style=\"flex:1;min-width:96px;padding:5px 10px;border:none;border-radius:7px;background:var(--cm-green-700);color:#fff;font-size:12px;cursor:pointer;font-family:inherit;font-weight:600;white-space:nowrap\">1회분 먹였어요</button>"
+        +'<input type="number" id="tubePerG_'+i+'" value="'+perG+'" min="0" step="1" style="width:62px;padding:4px 6px;border:0.5px solid var(--cm-green-edge);border-radius:7px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit;text-align:center">'
+        +'<span style="font-size:11px;color:var(--cm-faint)">g</span>'
+        +'<button type="button" onclick="feedTubeRecipe('+i+",document.getElementById('tubePerG_"+i+"').value)\" style=\"flex:1;min-width:96px;padding:5px 10px;border:none;border-radius:7px;background:var(--cm-green-700);color:#fff;font-size:12px;cursor:pointer;font-family:inherit;font-weight:600;white-space:nowrap\">1회분 먹였어요</button>"
         +'</div>'
         +'</div>';
     }
@@ -7565,7 +7573,8 @@ function saveTubeRecipeEntry(){
   const _water=_tubeMethod==='slurry'?(parseFloat(document.getElementById('tubeWaterMl')?.value)||0):0;
   const _cnt=Math.max(1,parseInt(document.getElementById('tubeFeedCount')?.value)||4);
   const _tool=document.getElementById('tubeTool')?.value||'syringe';
-  const _totalMl=Math.round(_tubeFoodWaterMl(_tubeItems)+_water);
+  const _foodG=_tubeItems.reduce((a,it)=>a+(parseFloat(it.grams)||0),0);  // 총 사료 g(수분 아님)
+  const _totalG=Math.round(_foodG+_water);  // 총 슬러리 g = 사료g + 물ml(1ml=1g)
   const entry={
     id:String(Date.now()),
     name:name,
@@ -7575,9 +7584,8 @@ function saveTubeRecipeEntry(){
     addedWaterMl:_water,
     feedingCount:_cnt,
     tool:_tool,
-    totalMl:_totalMl,
-    mlPerFeeding:Math.round(_totalMl/_cnt),
-    totalWaterMl:_totalMl,
+    totalG:_totalG,
+    gPerFeeding:Math.round(_totalG/_cnt),
     createdAt:new Date().toISOString()
   };
   tubeRecipes.unshift(entry);
@@ -7619,7 +7627,7 @@ function deleteTubeRecipe(idx){
 /* "1회분 먹였어요" — 누를 때마다 1회분(1/feedingCount × ratio)만 오늘 식사 기록에 누적.
    강급 meal엔 tube/recipeId/feedTs 부여(회차 카운트용). 구버전/사료환(feedingCount 없음)은 하루치 통째 폴백.
    추가 물은 moisture:100 meal로 넣어 기존 습식수분 경로로 게이지 합산 — rec.water(자발음수)에는 절대 안 넣음 */
-function feedTubeRecipe(idx, mlOverride){
+function feedTubeRecipe(idx, gOverride){
   if(idx<0||idx>=tubeRecipes.length)return;
   const r=tubeRecipes[idx];
   const items=r.items||[];
@@ -7634,9 +7642,10 @@ function feedTubeRecipe(idx, mlOverride){
   const perFeed=(r.method!=='ball'&&!isNaN(fc)&&fc>0);
   let factor=1;
   if(perFeed){
-    const baseMl=(r.mlPerFeeding!=null&&r.mlPerFeeding>0)?r.mlPerFeeding:((r.totalMl>0)?Math.round(r.totalMl/fc):0);
-    const useMl=parseFloat(mlOverride);
-    const ratio=(baseMl>0&&!isNaN(useMl)&&useMl>0)?(useMl/baseMl):1;
+    const totalG=_tubeRecipeTotalG(r);  // 구버전 ml 레시피는 grams로 재계산
+    const baseG=(r.gPerFeeding!=null&&r.gPerFeeding>0)?r.gPerFeeding:((totalG>0)?Math.round(totalG/fc):0);
+    const useG=parseFloat(gOverride);
+    const ratio=(baseG>0&&!isNaN(useG)&&useG>0)?(useG/baseG):1;
     factor=(1/fc)*ratio;
   }
   let kcalSum=0,waterSum=0,n=0;
