@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.75</span>
+      <span class="cm-beta">v0.6.76</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -6036,6 +6036,65 @@ function deleteFdItem(ts){
 renderFdHistory();
 
 /* AI */
+// 혈검 값 정상범위 판정 (기존 패턴 재사용: refHigh/refLow 기준)
+function _btStatus(v, lo, hi){
+  if(v===null||v===undefined)return 'na';
+  if(hi!==null&&hi!==undefined&&v>hi)return 'high';
+  if(lo!==null&&lo!==undefined&&v<lo)return 'low';
+  return 'normal';
+}
+// 최근 2회 혈검 변화 요약 (abbr로 매칭, 상태전이·이상변화 우선 최대 8개)
+function buildBTChangeCtx(cat){
+  const catBTs=(btData||[]).filter(r=>r.cat===cat&&r.items&&r.items.length)
+    .slice().sort((a,b)=>a.date>b.date?-1:a.date<b.date?1:0);
+  if(!catBTs.length)return '';
+  const recent=catBTs[0], prev=catBTs[1];
+  const isToday=recent.date===today();
+  // 검사 1회뿐 — 현재 이상수치만, 비교 없음
+  if(!prev){
+    const abn=(recent.items||[]).filter(i=>{const s=_btStatus(i.value,i.refLow,i.refHigh);return s==='high'||s==='low';});
+    if(!abn.length)return `\n[혈검 ${isToday?'오늘':recent.date} · 이전 비교 없음] 주요 수치 정상 범위\n`;
+    const lines=abn.slice(0,8).map(i=>`${i.name||i.abbr} ${i.value}${i.unit||''}(${_btStatus(i.value,i.refLow,i.refHigh)==='high'?'↑높음':'↓낮음'})`);
+    return `\n[혈검 ${isToday?'오늘':recent.date} · 이전 비교 없음]\n${lines.join(', ')}\n`;
+  }
+  // 2회 이상 — prev→recent 비교
+  const prevMap={};
+  (prev.items||[]).forEach(i=>{const k=i.abbr||i.name;if(k)prevMap[k]=i;});
+  const changes=[];
+  (recent.items||[]).forEach(cur=>{
+    const k=cur.abbr||cur.name;
+    if(!k||cur.value===null||cur.value===undefined)return;
+    const nm=cur.name||cur.abbr, unit=cur.unit||'';
+    const curSt=_btStatus(cur.value,cur.refLow,cur.refHigh);
+    const curAbn=(curSt==='high'||curSt==='low');
+    const old=prevMap[k];
+    if(!old||old.value===null||old.value===undefined){
+      if(curAbn)changes.push({pri:4,text:`${nm} ${cur.value}${unit}(${curSt==='high'?'↑높음':'↓낮음'}, 신규)`});
+      return;
+    }
+    const oldSt=_btStatus(old.value,old.refLow,old.refHigh);
+    const oldAbn=(oldSt==='high'||oldSt==='low');
+    const delta=cur.value-old.value;
+    const arrow=`${old.value}→${cur.value}`;
+    if(oldAbn&&!curAbn){
+      changes.push({pri:1,text:`${nm} ${arrow}(정상화)`});
+    }else if(!oldAbn&&curAbn){
+      changes.push({pri:1,text:`${nm} ${arrow}(악화·${curSt==='high'?'↑':'↓'})`});
+    }else if(oldAbn&&curAbn){
+      let tag='유지';
+      if(curSt==='high')tag=delta<0?'개선':delta>0?'악화':'유지';
+      else if(curSt==='low')tag=delta>0?'개선':delta<0?'악화':'유지';
+      changes.push({pri:2,text:`${nm} ${arrow}(${tag})`});
+    }else{
+      const base=Math.abs(old.value)||1;
+      if(Math.abs(delta)/base>=0.3&&delta!==0)changes.push({pri:3,text:`${nm} ${arrow}(정상범위내 변동)`});
+    }
+  });
+  const lbl=isToday?`오늘 vs ${prev.date}`:`${recent.date} vs ${prev.date}`;
+  if(!changes.length)return `\n[혈검 변화: ${lbl}] 주요 수치 큰 변화 없음\n`;
+  changes.sort((a,b)=>a.pri-b.pri);
+  return `\n[혈검 변화: ${lbl}]\n${changes.slice(0,8).map(c=>c.text).join(', ')}\n`;
+}
 function buildCtx(){
   const rec=getRec(state.activeCat,today());
   const prof=(state.catProfiles||{})[state.activeCat]||{};
@@ -6056,7 +6115,10 @@ function buildCtx(){
   if(lw)ctx+=`오늘 체중: ${lw.weight}kg\n`;
   if(rr)ctx+=`최근 호흡수: ${rr.rr}회/분 (${rr.stateLabel||''} ${rr.time})\n`;
   if(kcal)ctx+=`오늘 총 칼로리: ${kcal}kcal\n`;
-  if(!lb&&!li&&!lw&&!rr&&!kcal)ctx+=`오늘 아직 기록 없음\n`;
+  const _hasTodayBT=(btData||[]).some(r=>r.cat===state.activeCat&&r.date===today()&&r.items&&r.items.length);
+  if(!lb&&!li&&!lw&&!rr&&!kcal&&!_hasTodayBT)ctx+=`오늘 아직 기록 없음\n`;
+  const _btCtx=buildBTChangeCtx(state.activeCat);
+  if(_btCtx)ctx+=_btCtx;
   if(fdData.length){const last=fdData[0].data;const m=last.moisture??(last.type==='wet'?75:10);const carb=(last.carb_af!=null&&last.carb_af>0)?last.carb_af:estCarb(last.protein_af??0,last.fat_af??0,last.fiber_af??0,last.ash_af??(last.type==='wet'?2:7),m);ctx+=`최근 분석 사료: ${fdData[0].name} (탄수 DM ${cDM(carb,m)}%)\n`;}
   return ctx;
 }
