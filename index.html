@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.76</span>
+      <span class="cm-beta">v0.6.77</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -6119,7 +6119,26 @@ function buildCtx(){
   if(!lb&&!li&&!lw&&!rr&&!kcal&&!_hasTodayBT)ctx+=`오늘 아직 기록 없음\n`;
   const _btCtx=buildBTChangeCtx(state.activeCat);
   if(_btCtx)ctx+=_btCtx;
-  if(fdData.length){const last=fdData[0].data;const m=last.moisture??(last.type==='wet'?75:10);const carb=(last.carb_af!=null&&last.carb_af>0)?last.carb_af:estCarb(last.protein_af??0,last.fat_af??0,last.fiber_af??0,last.ash_af??(last.type==='wet'?2:7),m);ctx+=`최근 분석 사료: ${fdData[0].name} (탄수 DM ${cDM(carb,m)}%)\n`;}
+  if(fdData.length){
+    const last=fdData[0].data;
+    const m=last.moisture??(last.type==='wet'?75:10);
+    const carb=(last.carb_af!=null&&last.carb_af>0)?last.carb_af:estCarb(last.protein_af??0,last.fat_af??0,last.fiber_af??0,last.ash_af??(last.type==='wet'?2:7),m);
+    // 질환별 사료 지표 선택 (강급 2차 원칙: 확실히 아는 것만 — null은 생략, 0으로 출력 금지)
+    const _dz=prof.diseases||[];
+    const _hasDM=_dz.some(d=>d.includes('DM'));
+    const _hasCKD=_dz.some(d=>d.includes('CKD')||d.includes('PKD'));
+    const _hasHCM=_dz.some(d=>d.includes('HCM'));
+    const _hasPanc=_dz.includes('췌장염');
+    const _met=new Map(); // 라벨→DM값 (중복 제거)
+    const _add=(label,dm)=>{if(dm!=null&&!_met.has(label))_met.set(label,dm);};
+    if(_hasDM)_add('탄수',cDM(carb,m));
+    if(_hasCKD){_add('인',cDM(last.phosphorus_af,m));_add('단백질',cDM(last.protein_af,m));_add('나트륨',cDM(last.sodium_af,m));}
+    if(_hasHCM)_add('나트륨',cDM(last.sodium_af,m));
+    if(_hasPanc)_add('지방',cDM(last.fat_af,m));
+    if(!_hasDM&&!_hasCKD&&!_hasHCM&&!_hasPanc){_add('탄수',cDM(carb,m));_add('단백질',cDM(last.protein_af,m));}
+    const _parts=[..._met.entries()].map(([k,v])=>`${k} ${v}%(DM)`);
+    ctx+=`최근 분석 사료: ${fdData[0].name}`+(_parts.length?` (${_parts.join(', ')})\n`:`\n`);
+  }
   return ctx;
 }
 function renderAIChips() {
