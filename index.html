@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.78</span>
+      <span class="cm-beta">v0.6.79</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -883,7 +883,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
           <div style="display:flex;align-items:center;justify-content:space-between">
             <div>
               <div style="font-size:12px;color:var(--text)">소리 피드백</div>
-              <div style="font-size:10px;color:var(--text3)">소리 모드일 때 켜세요 · iOS·안드로이드 모두 지원</div>
+              <div style="font-size:10px;color:var(--text3)">iOS·안드로이드 모두 지원 · 무음 모드에서도 소리가 날 수 있어요</div>
             </div>
             <button type="button" id="rrSoundToggle" onclick="toggleRRFeedback('sound')"
               style="position:relative;width:42px;height:24px;border-radius:12px;border:none;cursor:pointer;padding:0;flex-shrink:0">
@@ -894,7 +894,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
           <div style="display:flex;align-items:center;justify-content:space-between">
             <div>
               <div style="font-size:12px;color:var(--text)">진동 피드백</div>
-              <div style="font-size:10px;color:var(--text3)">무음·진동 모드일 때 켜세요 · 안드로이드만 지원</div>
+              <div style="font-size:10px;color:var(--text3)">안드로이드 진동 모드에서 작동 · 완전 무음(Mute)에선 기기가 막을 수 있어요</div>
             </div>
             <button type="button" id="rrVibToggle" onclick="toggleRRFeedback('vibrate')"
               style="position:relative;width:42px;height:24px;border-radius:12px;border:none;cursor:pointer;padding:0;flex-shrink:0">
@@ -2161,7 +2161,7 @@ function rrTap() {
   document.getElementById('rrCount').textContent = rrCount2;
   // 카운팅 피드백 (설정에 따라)
   const _fb = getRRFeedback();
-  if(_fb.vibrate) { try { if(navigator.vibrate) navigator.vibrate(40); } catch(e) {} }
+  if(_fb.vibrate) { try { if(navigator.vibrate) navigator.vibrate(60); } catch(e) {} }
   if(_fb.sound) {
     try {
       const _ctx = rrAudioCtx || new (window.AudioContext||window.webkitAudioContext)();
