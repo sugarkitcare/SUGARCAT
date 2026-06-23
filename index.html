@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.82</span>
+      <span class="cm-beta">v0.6.83</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -1746,14 +1746,40 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <!-- ── 강급 레시피 ── -->
   <div id="foodSegTube" style="display:none">
 
-    <div style="font-size:11.5px;color:var(--cm-faint);line-height:1.6;margin-bottom:.75rem">스스로 먹지 못하는 아이를 위한 급여 레시피예요 · 슬러리와 사료환 모두 지원해요</div>
+    <div style="font-size:11.5px;color:var(--cm-faint);line-height:1.6;margin-bottom:.75rem">스스로 먹지 못하는 아이를 위한 급여 레시피입니다</div>
 
-    <!-- 급여 방식 -->
-    <div class="cm-card cm-card--flat" style="margin-bottom:.75rem">
-      <div style="font-size:12px;font-weight:600;color:var(--cm-ink-soft);margin-bottom:.6rem">급여 방식</div>
-      <div class="f-seg">
-        <button id="tubeMethodSlurry" type="button" data-on="1" onclick="setTubeMethod('slurry')" style="padding:8px 6px;font-size:13px">슬러리</button>
-        <button id="tubeMethodBall"   type="button" data-on="0" onclick="setTubeMethod('ball')"   style="padding:8px 6px;font-size:13px">사료환</button>
+    <!-- 처음 강급하는 보호자를 위한 안내 (아코디언, 기본 접힘) -->
+    <div class="cm-card cm-card--flat" style="margin-bottom:.75rem;padding:0;overflow:hidden">
+      <div onclick="toggleTubeGuide()" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:.85rem .9rem;cursor:pointer">
+        <span style="font-size:13px;font-weight:700;color:var(--cm-green-700)">처음 강급하는 보호자를 위한 안내</span>
+        <span id="tubeGuideArrow" style="font-size:11px;color:var(--cm-green-700);transition:transform .2s">▼</span>
+      </div>
+      <div id="tubeGuideBody" style="display:none;padding:0 .9rem .9rem;font-size:12.5px;line-height:1.75;color:var(--cm-ink)">
+        <div style="font-weight:700;color:var(--cm-green-700);margin-bottom:.2rem">강급이란?</div>
+        <div>스스로 밥을 못 먹거나 안 먹는 아이에게 보호자가 직접 음식을 떠먹이거나 주사기로 넣어주는 것입니다. 식욕부진, 자발식 거부, 간수치 악화, 체력 저하, 아픈 후 회복기에 필요합니다. <b>특히 당뇨묘가 식사를 거부할 때는 저혈당 위험이 있어 더 적극적으로</b> 강급해야 합니다.</div>
+
+        <div style="font-weight:700;color:var(--cm-green-700);margin-top:.7rem;margin-bottom:.2rem">도구는 정답이 없습니다</div>
+        <div>고양이마다 잘 받아주는 방법이 다릅니다. 주사기, 소스통, 사료환(손으로 빚기), 손가락, 숟가락 — 여러 방법을 시도해보고 우리 아이와 보호자 모두 편한 방법을 찾는 것이 좋습니다.</div>
+
+        <div style="font-weight:700;color:var(--cm-green-700);margin-top:.7rem;margin-bottom:.2rem">점도는 너무 묽지 않게</div>
+        <div>주사기나 소스통으로 짜준다면 꿀처럼 걸쭉하게, 사료환으로 빚는다면 손으로 모양이 잡힐 만큼 되직하게 — 도구에 맞게 조절해 주세요. 너무 묽으면 음식이 폐로 넘어가 흡인성 폐렴이 생길 수 있으니 주의가 필요합니다.</div>
+
+        <div style="font-weight:700;color:var(--cm-green-700);margin-top:.7rem;margin-bottom:.2rem">먹이는 자세와 방법</div>
+        <div>머리를 너무 위로 젖히거나 배를 보이게 눕히지 마세요. 앉은 자세나 서 있는 자세가 좋습니다.</div>
+        <div style="margin-top:.35rem">입은 어금니 쪽으로 손가락을 넣거나, 송곳니와 어금니 사이에 주사기 입구를 살짝 찔러넣으면 자연스럽게 벌어집니다. (어떤 도구든 입을 벌리는 방법은 같습니다.)</div>
+        <div style="margin-top:.35rem">아주 소량 먹이고 → 삼킬 틈을 주고 → 삼킨 것을 확인하고 → 잠깐 쉬고 → 다시. 천천히 반복해 주세요.</div>
+
+        <div style="font-weight:700;color:var(--cm-green-700);margin-top:.7rem;margin-bottom:.2rem">양과 횟수는 적게 자주</div>
+        <div>한 번에 받아주는 양은 아이마다 다릅니다. 조금씩 먹이면서 늘려가세요. <b>하루 권장 칼로리의 최소 70%는 채우는 것이 좋습니다.</b> 적게 먹는 날이 길어지면 지방간(간 리피도시스) 위험이 올라갈 수 있습니다.</div>
+        <div style="margin-top:.35rem"><b>토할 때는</b> 강급을 잠시 멈추고 무리하지 마세요. 몇 시간 지난 뒤 아주 적은 양부터 다시 시도합니다. 계속 토한다면 속이 메스꺼운 것일 수 있으니 수의사와 상담하세요. 구토억제제 등이 도움이 될 수 있습니다.</div>
+
+        <div style="font-weight:700;color:var(--cm-green-700);margin-top:.7rem;margin-bottom:.2rem">이런 신호는 주의하세요</div>
+        <div>먹이는 중에 <b>기침하거나 캑캑거리면</b> 음식이 기도로 넘어갔을 수 있습니다. 즉시 멈추고, 삼킬 수 있는 속도로 천천히 주세요.</div>
+        <div style="margin-top:.35rem">다음과 같은 경우에는 <b>바로 병원에 가야 합니다.</b></div>
+        <div style="margin-top:.2rem">· 기침, 쌕쌕거림, 호흡이 힘들어 보임</div>
+        <div>· 입술을 들썩이며 숨쉬거나 잇몸·혀가 푸르스름함</div>
+        <div>· 강급 후 축 처지고 잘 먹지 않음</div>
+        <div style="margin-top:.35rem">흡인성 폐렴은 한번 생기면 위험하기 때문에 예방이 가장 중요합니다. 천천히, 너무 묽지 않은 점도, 무리하지 않기를 꼭 지켜 주세요.</div>
       </div>
     </div>
 
@@ -1788,9 +1814,9 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
     <!-- 질환별 영양 지표 (참고용) -->
     <div class="cm-card cm-card--flat" id="tubeNutritionCard" style="margin-bottom:.75rem;display:none"></div>
 
-    <!-- 강급 계산 (슬러리·사료환 공통: 총g·회차·1회분g) -->
+    <!-- 강급 계산 (총g·회차·1회분g) -->
     <div class="cm-card cm-card--flat" id="tubeSlurryCard" style="margin-bottom:.75rem">
-      <div style="margin-bottom:.6rem"><span id="tubeCalcTitle" style="font-size:12px;font-weight:600;color:var(--cm-ink-soft)">슬러리 계산</span><span style="font-size:10.5px;color:var(--cm-faint);margin-left:6px">지금 조합 중인 재료 기준이에요</span></div>
+      <div style="margin-bottom:.6rem"><span id="tubeCalcTitle" style="font-size:12px;font-weight:600;color:var(--cm-ink-soft)">급여량 계산</span><span style="font-size:10.5px;color:var(--cm-faint);margin-left:6px">지금 조합 중인 재료 기준이에요</span></div>
       <div style="display:flex;gap:8px;margin-bottom:.6rem">
         <div id="tubeWaterRow" style="flex:1;min-width:0">
           <div style="font-size:11px;color:var(--cm-faint);margin-bottom:3px">추가한 물 (ml)</div>
@@ -1802,15 +1828,6 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
           <input type="number" id="tubeFeedCount" min="1" step="1" value="4" oninput="calcTubeSlurry()"
             style="width:100%;box-sizing:border-box;padding:7px 10px;border:0.5px solid var(--cm-line);border-radius:9px;font-size:13px;background:var(--cm-surface-2);color:var(--cm-ink);font-family:inherit">
         </div>
-      </div>
-      <div id="tubeToolRow" style="margin-bottom:.6rem">
-        <div style="font-size:11px;color:var(--cm-faint);margin-bottom:3px">급여 도구</div>
-        <select id="tubeTool" onchange="calcTubeSlurry()"
-          style="width:100%;box-sizing:border-box;padding:7px 10px;border:0.5px solid var(--cm-line);border-radius:9px;font-size:13px;background:var(--cm-surface-2);color:var(--cm-ink);font-family:inherit">
-          <option value="syringe" selected>주사기</option>
-          <option value="sauce">소스통</option>
-          <option value="spoon">스푼</option>
-        </select>
       </div>
       <div id="tubeSlurryResult"></div>
     </div>
@@ -7343,8 +7360,7 @@ renderManualFoodList();
 let tubeRecipes=[];
 let _tubeItems=[];
 let _tubeItemsByCat={};   // 고양이별 작업대 임시 보관 (세션 메모리만, 저장 안 함)
-let _tubeSlurryByCat={};  // 고양이별 슬러리 입력(물/횟수/도구) 임시 보관 (세션 메모리만)
-let _tubeMethod='slurry';
+let _tubeSlurryByCat={};  // 고양이별 슬러리 입력(물/횟수) 임시 보관 (세션 메모리만)
 let _tubeRecipesPending=false;
 
 const saveTubeRecipes=()=>{
@@ -7356,23 +7372,14 @@ const saveTubeRecipes=()=>{
   }
 };
 
-function setTubeMethod(m){
-  _tubeMethod=m;
-  ['slurry','ball'].forEach(s=>{
-    const el=document.getElementById('tubeMethod'+s[0].toUpperCase()+s.slice(1));
-    if(el)el.dataset.on=s===m?'1':'0';
-  });
-  // 계산 카드는 슬러리·사료환 모두 표시(총g·회차·1회분g 공통). 물·도구 행은 슬러리 전용.
-  const sc=document.getElementById('tubeSlurryCard');
-  if(sc)sc.style.display='block';
-  const isSlurry=m==='slurry';
-  const wr=document.getElementById('tubeWaterRow');
-  if(wr)wr.style.display=isSlurry?'block':'none';
-  const tr=document.getElementById('tubeToolRow');
-  if(tr)tr.style.display=isSlurry?'block':'none';
-  const ti=document.getElementById('tubeCalcTitle');
-  if(ti)ti.textContent=isSlurry?'슬러리 계산':'사료환 계산';
-  try{calcTubeSlurry();}catch(e){}
+// 처음 강급하는 보호자를 위한 안내 아코디언 (기본 접힘)
+function toggleTubeGuide(){
+  const body=document.getElementById('tubeGuideBody');
+  const arr=document.getElementById('tubeGuideArrow');
+  if(!body)return;
+  const open=body.style.display!=='none' && body.style.display!=='';
+  body.style.display=open?'none':'block';
+  if(arr)arr.style.transform=open?'rotate(0deg)':'rotate(180deg)';
 }
 
 function calcTubeTotal(){
@@ -7465,7 +7472,7 @@ function calcTubeSlurry(){
     return;
   }
   // 사료환은 물 0 기준(입력칸 숨김). 슬러리만 추가 물 반영.
-  const water=_tubeMethod==='slurry'?(parseFloat(document.getElementById('tubeWaterMl')?.value)||0):0;
+  const water=parseFloat(document.getElementById('tubeWaterMl')?.value)||0;
   const cnt=Math.max(1,parseInt(document.getElementById('tubeFeedCount')?.value)||4);
   const foodG=_tubeItems.reduce((a,it)=>a+(parseFloat(it.grams)||0),0);  // 총 사료 g(수분 아님)
   const totalG=Math.round(foodG+water);  // 총 슬러리 g = 사료g + 물ml(1ml=1g)
@@ -7482,7 +7489,7 @@ function calcTubeSlurry(){
     +'<div style="display:flex;align-items:baseline;gap:6px"><span style="font-size:12px;color:var(--cm-faint);width:96px;flex-shrink:0">하루 총</span><span style="font-size:15px;font-weight:700;color:var(--cm-ink)">'+totalKcalR+' kcal · '+totalG+' g</span></div>'
     +'<div style="display:flex;align-items:baseline;gap:6px;margin-top:.3rem"><span style="font-size:12px;color:var(--cm-faint);width:96px;flex-shrink:0">나눠 먹이기</span><span style="font-size:15px;font-weight:700;color:var(--cm-green-700)">하루 '+cnt+'회</span></div>'
     +'<div style="display:flex;align-items:baseline;gap:6px;margin-top:.3rem"><span style="font-size:12px;color:var(--cm-faint);width:96px;flex-shrink:0">한 번에 약</span><span style="font-size:15px;font-weight:700;color:var(--cm-green-700)">'+perKcal+' kcal · '+perFeedG+' g</span></div>'
-    +'<div style="font-size:11px;color:var(--cm-faint);line-height:1.6;margin-top:.5rem">'+(_tubeMethod==='slurry'?('다 갈아서 완성된 양을 보고 '+cnt+'등분 하세요. 1회 약 '+perFeedG+'g이에요. 주사기 ml은 만든 후 직접 확인하세요.'):('전체를 '+cnt+'등분해 사료환으로 만드세요. 1회 약 '+perFeedG+'g이에요.'))+'</div>'
+    +'<div style="font-size:11px;color:var(--cm-faint);line-height:1.6;margin-top:.5rem">완성된 양을 '+cnt+'등분 하세요. 1회 약 '+perFeedG+'g이에요. 도구에 맞는 점도로 조절하고, 주사기 ml은 만든 후 직접 확인하세요.</div>'
     +'<div style="font-size:11px;color:var(--cm-faint);line-height:1.6;margin-top:.5rem;padding-top:.5rem;border-top:0.5px solid var(--cm-line)">한 번에 밀어 넣지 말고, 삼키는 걸 확인하며 조금씩 나눠 급여하세요. 급하게 먹이면 오연(사레) 위험이 있어요.</div>'
     +'</div>';
 }
@@ -7648,7 +7655,6 @@ function renderTubeRecipeList(){
   const _bL='<button type="button" onclick="loadTubeRecipe(IDX)" style="padding:4px 10px;border:0.5px solid var(--cm-green-edge);border-radius:7px;background:var(--cm-green-tint);color:var(--cm-green-700);font-size:11px;cursor:pointer;font-family:inherit;font-weight:500">불러오기</button>';
   const _bD='<button type="button" onclick="deleteTubeRecipe(IDX)" style="padding:4px 8px;border:none;background:var(--cm-clay-tint);color:var(--cm-clay-ink);border-radius:7px;font-size:11px;cursor:pointer;font-family:inherit">삭제</button>';
   list.innerHTML=tubeRecipes.map((r,i)=>{
-    const mLbl=r.method==='ball'?'사료환':'슬러리';
     const safe=r.name.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
     const fc=parseInt(r.feedingCount);
     // 하루 N회·1회 약 Mg 가이드 — 잊었을 때 불러오기로 확인용
@@ -7656,7 +7662,7 @@ function renderTubeRecipeList(){
     const hasG=_totalG>0&&!isNaN(fc)&&fc>0;  // 슬러리·사료환 공통 g 회차 분할
     const perG=hasG?((r.gPerFeeding!=null&&r.gPerFeeding>0)?r.gPerFeeding:Math.round(_totalG/fc)):0;
     const perKcal=hasG?Math.round((r.totalKcal||0)/fc):0;
-    const meta=(r.totalKcal||0)+'kcal · '+(hasG?('1회 약 '+perKcal+'kcal · '+perG+'g × '+fc+'회'):mLbl);
+    const meta=(r.totalKcal||0)+'kcal'+(hasG?(' · 1회 약 '+perKcal+'kcal · '+perG+'g × '+fc+'회'):'');
     const bL=_bL.replace(/IDX/g,i),bD=_bD.replace(/IDX/g,i);
     // 레시피 = 설계+확인 전용. 급여 기록은 오늘탭(식사 카드)으로 일원화 — 카드에 먹였어요 버튼 없음.
     return '<div style="display:flex;align-items:center;gap:6px;padding:.6rem .75rem;background:var(--cm-surface-2);border-radius:9px;margin-bottom:5px">'
@@ -7714,7 +7720,7 @@ function saveTubeRecipeEntry(){
   let total=0;
   _tubeItems.forEach(item=>{total+=(parseFloat(item.grams)||0)*(parseFloat(item.kcalPer100g)||0)/100;});
   // 슬러리 계산 필드 (사료환이면 물 0으로 저장)
-  const _water=_tubeMethod==='slurry'?(parseFloat(document.getElementById('tubeWaterMl')?.value)||0):0;
+  const _water=parseFloat(document.getElementById('tubeWaterMl')?.value)||0;
   const _cnt=Math.max(1,parseInt(document.getElementById('tubeFeedCount')?.value)||4);
   const _tool=document.getElementById('tubeTool')?.value||'syringe';
   const _foodG=_tubeItems.reduce((a,it)=>a+(parseFloat(it.grams)||0),0);  // 총 사료 g(수분 아님)
@@ -7722,7 +7728,6 @@ function saveTubeRecipeEntry(){
   const entry={
     id:String(Date.now()),
     name:name,
-    method:_tubeMethod,
     items:_tubeItems.map(x=>({...x})),
     totalKcal:Math.round(total),
     addedWaterMl:_water,
@@ -7754,7 +7759,6 @@ function loadTubeRecipe(idx){
     const _t=/^syr/.test(r.tool)?'syringe':r.tool;
     tEl.value=['syringe','sauce','spoon'].includes(_t)?_t:'syringe';
   }
-  setTubeMethod(r.method||'slurry');
   renderTubeItemList();
   toast(r.name+' 불러왔어요');
 }
