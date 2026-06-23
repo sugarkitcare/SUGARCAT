@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.81</span>
+      <span class="cm-beta">v0.6.82</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -7651,46 +7651,19 @@ function renderTubeRecipeList(){
     const mLbl=r.method==='ball'?'사료환':'슬러리';
     const safe=r.name.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
     const fc=parseInt(r.feedingCount);
-    // 2단계 필드 있는 슬러리 레시피는 1회분 모드(핵심 답·회차 표시), 그 외엔 기존 통째
+    // 하루 N회·1회 약 Mg 가이드 — 잊었을 때 불러오기로 확인용
     const _totalG=_tubeRecipeTotalG(r);  // 구버전 ml 레시피는 grams로 재계산
     const hasG=_totalG>0&&!isNaN(fc)&&fc>0;  // 슬러리·사료환 공통 g 회차 분할
     const perG=hasG?((r.gPerFeeding!=null&&r.gPerFeeding>0)?r.gPerFeeding:Math.round(_totalG/fc)):0;
     const perKcal=hasG?Math.round((r.totalKcal||0)/fc):0;
     const meta=(r.totalKcal||0)+'kcal · '+(hasG?('1회 약 '+perKcal+'kcal · '+perG+'g × '+fc+'회'):mLbl);
     const bL=_bL.replace(/IDX/g,i),bD=_bD.replace(/IDX/g,i);
-    if(hasG){
-      const cnt=_tubeTodayCount(r.id);
-      const cntClr=cnt>=fc?'var(--cm-green-700)':'var(--cm-faint)';
-      return '<div style="padding:.6rem .75rem;background:var(--cm-surface-2);border-radius:9px;margin-bottom:5px">'
-        +'<div style="display:flex;align-items:center;gap:6px;margin-bottom:.45rem">'
-        +'<div style="flex:1;min-width:0">'
-        +'<div style="font-size:13px;font-weight:600;color:var(--cm-ink)">'+safe+'</div>'
-        +'<div style="font-size:11px;color:var(--cm-faint)">'+meta+'</div>'
-        +'</div>'+bL+bD
-        +'</div>'
-        // 강급: 하루치를 회차로 나눈 1회분(총÷회차) 기본값 + 회차 표시
-        +'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'
-        +'<span style="font-size:11px;font-weight:700;color:'+cntClr+';white-space:nowrap;min-width:60px">강급 '+cnt+'/'+fc+'회</span>'
-        +'<input type="number" id="tubePerG_'+i+'" value="'+perG+'" min="0" step="1" style="width:58px;padding:4px 6px;border:0.5px solid var(--cm-green-edge);border-radius:7px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit;text-align:center">'
-        +'<span style="font-size:11px;color:var(--cm-faint)">g</span>'
-        +'<button type="button" onclick="feedTubeRecipe('+i+",document.getElementById('tubePerG_"+i+"').value)\" style=\"flex:1;min-width:96px;padding:5px 10px;border:none;border-radius:7px;background:var(--cm-green-700);color:#fff;font-size:12px;cursor:pointer;font-family:inherit;font-weight:600;white-space:nowrap\">1회분 먹였어요</button>"
-        +'</div>'
-        // 혼합급여(그릇 급여): 회차 개념 없음 — 그때그때 먹인 양 직접 입력(기본값 빈칸)
-        +'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:5px">'
-        +'<span style="font-size:11px;font-weight:700;color:var(--cm-faint);white-space:nowrap;min-width:60px">혼합급여</span>'
-        +'<input type="number" id="tubeMixG_'+i+'" value="" min="0" step="1" placeholder="먹인 양" style="width:58px;padding:4px 6px;border:0.5px solid var(--cm-green-edge);border-radius:7px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit;text-align:center">'
-        +'<span style="font-size:11px;color:var(--cm-faint)">g</span>'
-        +'<button type="button" onclick="feedTubeRecipeMix('+i+",document.getElementById('tubeMixG_"+i+"').value)\" style=\"flex:1;min-width:96px;padding:5px 10px;border:0.5px solid var(--cm-green-edge);border-radius:7px;background:var(--cm-green-tint);color:var(--cm-green-700);font-size:12px;cursor:pointer;font-family:inherit;font-weight:600;white-space:nowrap\">혼합급여 기록</button>"
-        +'</div>'
-        +'</div>';
-    }
-    // 사료환/구버전(횟수 정보 없음): 기존 통째 "먹였어요" 유지
+    // 레시피 = 설계+확인 전용. 급여 기록은 오늘탭(식사 카드)으로 일원화 — 카드에 먹였어요 버튼 없음.
     return '<div style="display:flex;align-items:center;gap:6px;padding:.6rem .75rem;background:var(--cm-surface-2);border-radius:9px;margin-bottom:5px">'
       +'<div style="flex:1;min-width:0">'
       +'<div style="font-size:13px;font-weight:600;color:var(--cm-ink)">'+safe+'</div>'
       +'<div style="font-size:11px;color:var(--cm-faint)">'+meta+'</div>'
       +'</div>'
-      +'<button type="button" onclick="feedTubeRecipe('+i+')" style="padding:4px 10px;border:none;border-radius:7px;background:var(--cm-green-700);color:#fff;font-size:11px;cursor:pointer;font-family:inherit;font-weight:600;white-space:nowrap">먹였어요</button>'
       +bL+bD
       +'</div>';
   }).join('');
