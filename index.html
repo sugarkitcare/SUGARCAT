@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.80</span>
+      <span class="cm-beta">v0.6.81</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -968,6 +968,18 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
       <div id="favFoodPickerDaily" style="display:none;background:var(--bg2);border-radius:10px;padding:.75rem;margin-top:.5rem">
         <div style="font-size:11px;font-weight:500;color:var(--text2);margin-bottom:.5rem">즐겨찾기 사료 선택</div>
         <div id="favFoodPickerDailyList"></div>
+        <!-- 혼합 레시피 선택 시 g 입력 미니 UI -->
+        <div id="tubeMixDailyBox" style="display:none;background:var(--cm-green-tint);border:0.5px solid var(--cm-green-edge);border-radius:9px;padding:.6rem .7rem;margin-top:.5rem">
+          <div style="font-size:11px;color:var(--cm-faint);margin-bottom:.3rem">혼합 레시피 기록</div>
+          <div id="tubeMixDailyName" style="font-size:13px;font-weight:600;color:var(--cm-ink);margin-bottom:.45rem"></div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <input type="number" id="tubeMixDailyG" min="0" step="1" placeholder="먹인 양"
+              style="width:84px;padding:6px 8px;border:0.5px solid var(--cm-line);border-radius:8px;font-size:13px;background:var(--cm-surface-2);color:var(--cm-ink);font-family:inherit">
+            <span style="font-size:12px;color:var(--cm-faint)">g</span>
+            <button type="button" onclick="recordTubeMixDaily()"
+              style="flex:1;padding:6px 12px;border:none;border-radius:8px;background:var(--cm-green-700);color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap">먹였어요</button>
+          </div>
+        </div>
         <button onclick="document.getElementById('favFoodPickerDaily').style.display='none'"
           style="margin-top:.5rem;font-size:11px;color:var(--text3);background:none;border:none;cursor:pointer;font-family:inherit">닫기</button>
       </div>
@@ -1859,6 +1871,7 @@ let btEditMode=false,btEditOriginals={};
 let favFoods=[];
 let _favKcalPer100=null; // 즐겨찾기 선택 시 세팅, 수동 입력 시 null로 초기화
 let _favMoisture=null;   // 즐겨찾기 선택 시 moisture% 세팅, 수동 입력 시 null
+let _tubeMixDailyIdx=null; // 오늘탭 식사 피커에서 고른 혼합 레시피 인덱스 (tubeRecipes)
 try{const _ffd=localStorage.getItem('favFoods_v1');if(_ffd){const _r=JSON.parse(_ffd);favFoods=_r.map(x=>typeof x==='string'?{name:x,kcalPer100g:null,type:null}:x);}}catch(e){}
 try{const d=localStorage.getItem(SK);if(d)state=JSON.parse(d)}catch(e){}
 try{const d=localStorage.getItem(SK_BT);if(d){const raw=JSON.parse(d);btData=raw.map(r=>({...r,items:normalizeBTItems(r.items||[])}));}}catch(e){}
@@ -2673,10 +2686,42 @@ function openFavFoodPickerDaily() {
   const picker = document.getElementById('favFoodPickerDaily');
   const list = document.getElementById('favFoodPickerDailyList');
   if(!picker || !list) return;
+  // 다시 열 때 이전 혼합 레시피 선택 미니 UI 초기화
+  _tubeMixDailyIdx = null;
+  const _box = document.getElementById('tubeMixDailyBox');
+  if(_box) _box.style.display = 'none';
   picker.style.display = picker.style.display === 'none' ? 'block' : 'none';
   if(picker.style.display === 'none') return;
   try{const d=localStorage.getItem('favFoods_v1_'+state.activeCat);if(d)favFoods=JSON.parse(d);}catch(e){}
+  try{const d=localStorage.getItem('tubeRecipes_v1_'+state.activeCat);if(d)tubeRecipes=JSON.parse(d);}catch(e){}
   _renderFavFoodPickerList('favFoodPickerDailyList');
+}
+/* 오늘탭 식사 피커: 혼합 레시피 고르면 g 입력 미니 UI 표시 (단일 사료 경로와 별개) */
+function selectTubeRecipeDaily(idx) {
+  const r = tubeRecipes[idx];
+  if(!r) return;
+  _tubeMixDailyIdx = idx;
+  const nm = document.getElementById('tubeMixDailyName');
+  const gi = document.getElementById('tubeMixDailyG');
+  const box = document.getElementById('tubeMixDailyBox');
+  if(nm) nm.textContent = r.name || '혼합 레시피';
+  if(gi) gi.value = '';
+  if(box) box.style.display = 'block';
+  if(gi) try{ gi.focus(); }catch(e){}
+}
+/* "먹였어요" → 기존 feedTubeRecipeMix 재사용(재료별 push·칼로리·수분 자체 처리). today 고정 */
+function recordTubeMixDaily() {
+  if(_tubeMixDailyIdx == null) return;
+  const gi = document.getElementById('tubeMixDailyG');
+  const g = parseFloat(gi ? gi.value : '') || 0;
+  if(g <= 0) { toast('먹은 양(g)을 입력해주세요', '#BA7517'); return; }
+  feedTubeRecipeMix(_tubeMixDailyIdx, g);   // meals 갱신·식사요약·칼로리·수분 게이지 모두 이 안에서 처리
+  const box = document.getElementById('tubeMixDailyBox');
+  if(box) box.style.display = 'none';
+  if(gi) gi.value = '';
+  _tubeMixDailyIdx = null;
+  const picker = document.getElementById('favFoodPickerDaily');
+  if(picker) picker.style.display = 'none';
 }
 function selectFavFoodDaily(idx) {
   const fav = favFoods[idx];
@@ -2712,12 +2757,17 @@ function openFavFoodPicker() {
 function _renderFavFoodPickerList(listId, onSelect) {
   const _list = document.getElementById(listId);
   if(!_list) return;
-  if(!favFoods.length) {
+  var _isDaily = listId === 'favFoodPickerDailyList';
+  // 일일 피커는 혼합 레시피 섹션이 있을 수 있어 favFoods 비어도 막지 않음
+  if(!favFoods.length && !_isDaily) {
     _list.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:.5rem">즐겨찾기된 사료가 없어요.<br>사료 분석 후 ⭐️을 눌러 추가해주세요.</div>';
     return;
   }
-  if(listId === 'favFoodPickerDailyList') {
-    _list.innerHTML = favFoods.map(function(f, i) {
+  if(_isDaily) {
+    var html = '';
+    html += '<div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:.35rem">사료</div>';
+    if(!favFoods.length) html += '<div style="font-size:11px;color:var(--text3);padding:.25rem 0 .35rem">즐겨찾기된 사료가 없어요</div>';
+    html += favFoods.map(function(f, i) {
       var nm = typeof f === 'string' ? f : f.name;
       var kp = typeof f === 'string' ? null : f.kcalPer100g;
       var kpStr = kp ? ' <span style="color:var(--text3)">('+ kp +'kcal/100g)</span>' : '';
@@ -2727,6 +2777,20 @@ function _renderFavFoodPickerList(listId, onSelect) {
         + '<button type="button" onclick="deleteFavFood(' + i + ',\u0027favFoodPickerDailyList\u0027)" style="background:none;border:none;color:var(--cm-faint);cursor:pointer;padding:2px 6px;font-size:15px;line-height:1">×</button>'
         + '</div>';
     }).join('');
+    // ── 혼합 레시피 섹션 (있을 때만) ──
+    if(typeof tubeRecipes !== 'undefined' && tubeRecipes && tubeRecipes.length) {
+      html += '<div style="font-size:11px;font-weight:600;color:var(--text2);margin:.7rem 0 .35rem;padding-top:.5rem;border-top:0.5px solid var(--bd)">혼합 레시피</div>';
+      html += tubeRecipes.map(function(r, i) {
+        var rnm = (r.name || '혼합 레시피');
+        var nFood = (r.items || []).length;
+        var meta = (r.totalKcal != null ? r.totalKcal + 'kcal' : '') + (nFood ? ' · 재료 ' + nFood + '종' : '');
+        return '<div style="display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:0.5px solid var(--bd)">'
+          + '<span style="flex:1;font-size:12px;color:var(--text)">' + rnm + (meta ? ' <span style="color:var(--text3)">(' + meta + ')</span>' : '') + '</span>'
+          + '<button type="button" onclick="selectTubeRecipeDaily(' + i + ')" style="padding:4px 10px;background:var(--cm-green-700);color:#fff;border:none;border-radius:7px;font-size:11px;cursor:pointer;font-family:inherit">선택</button>'
+          + '</div>';
+      }).join('');
+    }
+    _list.innerHTML = html;
   } else {
     var _isTube = listId === 'tubeFavPickerList';
     _list.innerHTML = favFoods.map(function(f, i) {
