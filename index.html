@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.84</span>
+      <span class="cm-beta">v0.6.85</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -1615,28 +1615,20 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:.75rem">
         <div class="cm-ic cm-ic--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 1.929 5.928H20l-4.929 3.437 1.929 5.929L12 15.056l-4.929 3.438 1.929-5.929L4 9.928h6.071L12 3Z"/></svg></div>
         <span style="font-size:14px;font-weight:700;color:var(--cm-ink)">분석 모드</span>
-        <span style="font-size:11px;color:var(--cm-faint);font-weight:400">질환 설정 시 자동 선택</span>
+        <span style="font-size:11px;color:var(--cm-faint);font-weight:400">질환 설정 시 자동 반영 · 여러 개 선택 가능</span>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <button type="button" id="modeDM" onclick="setFdMode('dm')"
-          style="padding:5px 12px;border-radius:16px;border:1.5px solid var(--teal);background:var(--teal);color:#fff;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit">
+        <button type="button" id="modeDM" onclick="toggleFdDisease('dm')"
+          style="padding:5px 12px;border-radius:16px;border:1.5px solid var(--cm-green-700);background:var(--cm-green-700);color:#fff;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit">
           당뇨(DM)
         </button>
-        <button type="button" id="modeCKD" onclick="setFdMode('ckd')"
+        <button type="button" id="modeCKD" onclick="toggleFdDisease('ckd')"
           style="padding:5px 12px;border-radius:16px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit">
           신부전(CKD·PKD)
         </button>
-        <button type="button" id="modeBOTH" onclick="setFdMode('both')"
-          style="padding:5px 12px;border-radius:16px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit">
-          당뇨+신부전
-        </button>
-        <button type="button" id="modeHCM" onclick="setFdMode('hcm')"
+        <button type="button" id="modeHCM" onclick="toggleFdDisease('hcm')"
           style="padding:5px 12px;border-radius:16px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit">
           심비대증(HCM)
-        </button>
-        <button type="button" id="modeHCMCKD" onclick="setFdMode('hcmckd')"
-          style="padding:5px 12px;border-radius:16px;border:1.5px solid var(--bd);background:transparent;color:var(--text2);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit">
-          HCM+신부전
         </button>
       </div>
     </div>
@@ -2691,14 +2683,13 @@ function resetCardOrder(cat) {
 
 function autoSetFdMode(cat) {
   const diseases = (state.catProfiles?.[cat||state.activeCat]?.diseases) || [];
-  const hasDM = diseases.includes('당뇨(DM)');
-  const hasCKD = diseases.includes('신부전(CKD)') || diseases.includes('PKD(다낭신)');
-  const hasHCM = diseases.includes('심비대증(HCM)');
-  if(hasDM && hasCKD) setFdMode('both');
-  else if(hasDM && hasHCM) setFdMode('hcm');
-  else if(hasCKD) setFdMode('ckd');
-  else if(hasHCM) setFdMode('hcm');
-  else setFdMode('dm');
+  // 프로필 질환을 다중 플래그로 합집합 반영 (.includes 부분일치로 통일)
+  const hasDM = diseases.some(d => d.includes('DM'));
+  const hasCKD = diseases.some(d => d.includes('CKD') || d.includes('PKD'));
+  const hasHCM = diseases.some(d => d.includes('HCM'));
+  // 질환이 하나도 없으면 기본 당뇨(DM) 보기
+  fdSel = (hasDM || hasCKD || hasHCM) ? {dm:hasDM, ckd:hasCKD, hcm:hasHCM} : {dm:true, ckd:false, hcm:false};
+  applyFdSel();
 }
 
 
@@ -5421,7 +5412,7 @@ setupDrop('fdDrop','fdFile',async file=>{
 
 
 /* ── CKD 사료 분석 ── */
-let fdMode = 'dm'; // dm | ckd | both
+let fdSel = {dm:true, ckd:false, hcm:false}; // 다중 선택 플래그 (DM·CKD·HCM)
 let ckdStage = 1;
 
 // IRIS 스테이지별 기준 (2023 IRIS 가이드라인 기반)
@@ -5485,27 +5476,39 @@ function updateCalcCondSummary(wt, age, neuter, activity, bcs) {
   const neuterStr = neuter === 'yes' ? '중성화' : '미중성화';
   el.textContent = `${wt||'?'}kg · ${ageMap[age]||''} · ${neuterStr} · ${actMap[activity]||''} · ${bcsMap[bcs]||''}`;
 }
-function setFdMode(mode) {
-  fdMode = mode;
-  const modeColors = {dm:'var(--cm-green-700)', ckd:'var(--cm-green-700)', both:'var(--cm-green-700)', hcm:'var(--cm-green-700)', hcmckd:'var(--cm-green-700)'};
-  ['dm','ckd','both','hcm','hcmckd'].forEach(m => {
-    const btn = document.getElementById('mode'+m.toUpperCase());
+// 분석 모드 버튼 on/off 스타일
+function applyFdModeButtons() {
+  [['dm','modeDM'],['ckd','modeCKD'],['hcm','modeHCM']].forEach(([k,id]) => {
+    const btn = document.getElementById(id);
     if(!btn) return;
-    const isActive = m === mode;
-    const color = modeColors[m];
-    btn.style.background = isActive ? color : 'transparent';
-    btn.style.color = isActive ? '#fff' : 'var(--text2)';
-    btn.style.borderColor = isActive ? color : 'var(--bd)';
+    const on = !!fdSel[k];
+    const color = 'var(--cm-green-700)';
+    btn.style.background = on ? color : 'transparent';
+    btn.style.color = on ? '#fff' : 'var(--text2)';
+    btn.style.borderColor = on ? color : 'var(--bd)';
   });
+}
+// 세부 스테이지 UI: CKD·HCM은 각자 선택 시 동시 표시 (복합 전용 hcmCkdWrap은 폐기)
+function applyFdStageWraps() {
   const ckdWrap = document.getElementById('ckdStageWrap');
-  if(ckdWrap) ckdWrap.style.display = (mode === 'ckd' || mode === 'both') ? 'block' : 'none';
+  if(ckdWrap) ckdWrap.style.display = fdSel.ckd ? 'block' : 'none';
   const hcmWrap = document.getElementById('hcmStageWrap');
-  if(hcmWrap) hcmWrap.style.display = mode === 'hcm' ? 'block' : 'none';
+  if(hcmWrap) hcmWrap.style.display = fdSel.hcm ? 'block' : 'none';
   const hcmCkdWrap = document.getElementById('hcmCkdWrap');
-  if(hcmCkdWrap) hcmCkdWrap.style.display = mode === 'hcmckd' ? 'block' : 'none';
+  if(hcmCkdWrap) hcmCkdWrap.style.display = 'none';
   updateCkdDesc();
   updateHcmDesc();
-  updateHcmCkdDesc();
+}
+// 버튼·세부UI 갱신 + 분석 결과가 있으면 합집합 재렌더
+function applyFdSel() {
+  applyFdModeButtons();
+  applyFdStageWraps();
+  try { if(_fdViewData) renderFdResult(_fdViewData.data); } catch(e) {}
+}
+function toggleFdDisease(key) {
+  if(!(key in fdSel)) return;
+  fdSel[key] = !fdSel[key];
+  applyFdSel();
 }
 
 let hcmStage = 'B1';
@@ -5577,7 +5580,7 @@ function setHcmStage(stage, el) {
 
 function updateHcmDesc() {
   const desc = document.getElementById('hcmStageDesc');
-  if(!desc || fdMode !== 'hcm') return;
+  if(!desc || !fdSel.hcm) return;
   const c = HCM_CRITERIA[hcmStage];
   desc.innerHTML =
     '<div style="background:var(--cm-green-tint);border:1px solid var(--cm-green-edge);border-radius:10px;padding:.65rem .85rem">'
@@ -5614,7 +5617,7 @@ function setHcmCkdStage(type, val, el) {
 
 function updateHcmCkdDesc() {
   const desc = document.getElementById('hcmCkdDesc');
-  if(!desc || fdMode !== 'hcmckd') return;
+  if(!desc) return;
   const ckd = CKD_CRITERIA[hcmCkdCkdStage];
   const hcm = HCM_CRITERIA[hcmCkdHcmStage];
   desc.innerHTML =
@@ -5760,7 +5763,7 @@ function setCkdStage(stage, el) {
 function updateCkdDesc() {
   const desc = document.getElementById('ckdStageDesc');
   if(!desc) return;
-  if(fdMode === 'dm') { desc.innerHTML = ''; return; }
+  if(!fdSel.ckd) { desc.innerHTML = ''; return; }
   const c = CKD_CRITERIA[ckdStage];
   desc.innerHTML =
     '<div style="background:var(--cm-green-tint);border:1px solid var(--cm-green-edge);border-radius:10px;padding:.65rem .85rem">'
@@ -5907,70 +5910,36 @@ function renderFdResult(d){
   const cs=cdm!==null?Math.max(0,Math.round((1-cdm/30)*100)):50;
   const tags=(d.ingredients_top5||[]).map((ing,i)=>{const lw=ing.toLowerCase();const cls=i===0?'p':lw.includes('쌀')||lw.includes('옥수수')||lw.includes('밀')||lw.includes('전분')||lw.includes('rice')||lw.includes('corn')?'c':'';return`<span class="tag ${cls}">${ing}</span>`}).join('');
   const area=document.getElementById('fdResult');
-  // HCM+CKD 복합 모드
-  if(fdMode === 'hcmckd') {
-    area.innerHTML = '';
-    const hcmCkdDiv = document.createElement('div');
-    renderHcmCkdResult(d, hcmCkdDiv);
-    area.appendChild(hcmCkdDiv);
-    // kcal 입력 행 (최상단)
-    const kcalRowHcm = document.createElement('div');
-    kcalRowHcm.innerHTML = buildKcalRow(kcal, d.type==='wet');
-    area.appendChild(kcalRowHcm);
-    return;
-  }
-  // HCM 전용 모드
-  if(fdMode === 'hcm') {
-    area.innerHTML = '';
-    const kcalRowHcm2 = document.createElement('div');
-    kcalRowHcm2.innerHTML = buildKcalRow(kcal, d.type==='wet');
-    area.appendChild(kcalRowHcm2);
-    const hcmDiv = document.createElement('div');
-    renderHcmResult(hcmDiv);
-    area.appendChild(hcmDiv);
-    return;
-  }
-  // CKD 전용 모드일 때 당뇨 verdict 숨기기
-  if(fdMode === 'ckd') {
-    area.innerHTML = '';
-    if(warnHtml){const _wDiv=document.createElement('div');_wDiv.innerHTML=warnHtml;area.appendChild(_wDiv);}
-    // kcal 입력 행 (최상단)
-    const kcalRowCkd = document.createElement('div');
-    kcalRowCkd.innerHTML = buildKcalRow(kcal, d.type==='wet');
-    area.appendChild(kcalRowCkd);
-    // 기본 수치 카드
-    const basicDiv = document.createElement('div');
-    basicDiv.innerHTML = '<div class="n-grid">'
-      + '<div class="n-card '+(pdm>=35?'hl':'')+'"><div class="n-val">'+p.toFixed(1)+'%</div><div class="n-lbl">단백질 as-fed</div><div class="n-dm">DM '+pdm?.toFixed(1)+'%</div></div>'
-      + '<div class="n-card"><div class="n-val">'+f.toFixed(1)+'%</div><div class="n-lbl">지방 as-fed</div><div class="n-dm">DM '+fdm?.toFixed(1)+'%</div></div>'
-      + '<div class="n-card"><div class="n-val">'+m.toFixed(1)+'%</div><div class="n-lbl">수분</div><div class="n-dm">'+typeDisp+'</div></div>'
-      + (d.phosphorus_af!==null?'<div class="n-card '+(d.phosphorus_af>0.5?'wn':'hl')+'"><div class="n-val">'+d.phosphorus_af+'%</div><div class="n-lbl">인(P) as-fed</div><div class="n-dm">DM '+cDM(d.phosphorus_af,m)+'%</div></div>':'')
-      + (d.sodium_af!==null&&d.sodium_af!==undefined?'<div class="n-card"><div class="n-val">'+d.sodium_af+'%</div><div class="n-lbl">나트륨 as-fed</div></div>':'')
-      + '</div>';
-    area.appendChild(basicDiv);
-    const _editDivCkd=document.createElement('div');_editDivCkd.innerHTML=_buildFdEditHtml(d);area.appendChild(_editDivCkd);
-    const ckdDiv = document.createElement('div');
-    ckdDiv.style.marginTop = '.5rem';
-    renderCkdResult(d, ckdDiv);
-    area.appendChild(ckdDiv);
-    return;
-  }
-  area.innerHTML=warnHtml+`
+  // ── 다중 질환 합집합 렌더 (선택 질환별 카드 위→아래 쌓기) ──
+  const hasDM=fdSel.dm, hasCKD=fdSel.ckd, hasHCM=fdSel.hcm;
+  const anySel=hasDM||hasCKD||hasHCM;
+  const showDM=hasDM||!anySel;   // 아무것도 선택 안 하면 기본 당뇨 보기
+  area.innerHTML='';
+  const _ap=html=>{const _d=document.createElement('div');_d.innerHTML=html;area.appendChild(_d);};
+  // 경고
+  if(warnHtml)_ap(warnHtml);
+  // kcal 입력 행 (최상단)
+  _ap(buildKcalRow(kcal, d.type==='wet'));
+  // 당뇨 verdict + 점수바 (DM 선택 시)
+  if(showDM){
+    _ap(`
 <div class="verdict ${lv}"><div class="vi" style="background:${lc}22">${vi.ic}</div><div><div class="vt">${vi.t}</div><div class="vs">${vi.s}${d.grain_free?' · 그레인프리':''}</div></div></div>
 <div class="card" style="padding:.8rem 1rem">
   <div class="sb-row"><span class="sb-lbl">단백질 점수</span><div class="sb-bg"><div class="sb-fill" style="width:${ps}%;background:#1D9E75"></div></div><span class="sb-val">${ps}점</span></div>
   <div class="sb-row"><span class="sb-lbl">저탄수 점수</span><div class="sb-bg"><div class="sb-fill" style="width:${cs}%;background:${cs>=70?'#1D9E75':cs>=40?'#BA7517':'#D85A30'}"></div></div><span class="sb-val">${cs}점</span></div>
-</div>
-${buildKcalRow(kcal, d.type==='wet')}
-<div class="n-grid">
+</div>`);
+  }
+  // 영양 수치 그리드 (항상 1회 · 나트륨은 CKD/HCM 선택 시만 노출)
+  _ap(`<div class="n-grid">
   <div class="n-card ${pdm>=35?'hl':''}"><div class="n-val">${p.toFixed(1)}%</div><div class="n-lbl">단백질 as-fed</div><div class="n-dm">DM ${pdm?.toFixed(1)}%</div></div>
   <div class="n-card"><div class="n-val">${f.toFixed(1)}%</div><div class="n-lbl">지방 as-fed</div><div class="n-dm">DM ${fdm?.toFixed(1)}%</div></div>
   <div class="n-card ${cdm<=5?'hl':cdm<=10?'':cdm<=15?'wn':'dg'}"><div class="n-val">${carb.toFixed(1)}%${isEstC?' *':''}</div><div class="n-lbl">탄수화물${isEstC?' (추정)':''}</div><div class="n-dm">DM ${cdm?.toFixed(1)}%</div></div>
   <div class="n-card"><div class="n-val">${m.toFixed(1)}%${d.moisture==null?' *':''}</div><div class="n-lbl">수분${d.moisture==null?' (기본값)':''}</div><div class="n-dm">${typeDisp}</div></div>
   ${d.phosphorus_af!==null&&d.phosphorus_af!==undefined?`<div class="n-card ${d.phosphorus_af>0.5?'wn':'hl'}"><div class="n-val">${d.phosphorus_af}%</div><div class="n-lbl">인 (P)</div><div class="n-dm">>0.5% 신장 주의</div></div>`:''}
+  ${(hasCKD||hasHCM)&&d.sodium_af!==null&&d.sodium_af!==undefined?`<div class="n-card"><div class="n-val">${d.sodium_af}%</div><div class="n-lbl">나트륨 as-fed</div></div>`:''}
 </div>
-${tags?`<div class="tags">${tags}</div><div style="font-size:10px;color:var(--text3);margin-bottom:.5rem">초록: 단백질원 · 주황: 탄수화물원</div>`:''}
-${d.special_notes?`<div style="font-size:12px;color:var(--text2);line-height:1.6">${d.special_notes}</div>`:''}
+${showDM&&tags?`<div class="tags">${tags}</div><div style="font-size:10px;color:var(--text3);margin-bottom:.5rem">초록: 단백질원 · 주황: 탄수화물원</div>`:''}
+${showDM&&d.special_notes?`<div style="font-size:12px;color:var(--text2);line-height:1.6">${d.special_notes}</div>`:''}
 ${(isEstC||d.moisture==null)?`
 <div style="background:var(--bg2);border-radius:8px;padding:.5rem .75rem;margin-top:.5rem;font-size:11px;color:var(--text2);line-height:1.6">
   <span style="font-weight:600">⚠️ 추정값 안내</span><br>
@@ -5978,18 +5947,13 @@ ${(isEstC||d.moisture==null)?`
   ${isEstC?"· <b>탄수화물</b>: 단백질·지방·조섬유·조회분·수분을 뺀 나머지로 계산. NFE(가용무질소물) 표기 사료는 식이섬유 포함으로 실제보다 높게 나올 수 있어요.<br>":""}
   ${d.moisture==null?"· <b>수분</b>: 성분표 미표기로 "+( d.type==='wet'?"습식 기본값(75%)":"건식 기본값(10%)")+" 적용<br>":""}
   실제 영양 분석값은 제조사 홈페이지에서 확인하세요.
-</div>`:''}` ;
-
-  // 수치 수정 섹션
+</div>`:''}`);
+  // 수치 수정 섹션 (1회)
   const _editDiv=document.createElement('div');_editDiv.innerHTML=_buildFdEditHtml(d);area.appendChild(_editDiv);
-
-  // CKD 또는 복합 모드일 때 CKD 결과 추가
-  if(fdMode === 'ckd' || fdMode === 'both') {
-    const ckdDiv = document.createElement('div');
-    ckdDiv.style.marginTop = '.5rem';
-    renderCkdResult(d, ckdDiv);
-    area.appendChild(ckdDiv);
-  }
+  // CKD 카드
+  if(hasCKD){const ckdDiv=document.createElement('div');ckdDiv.style.marginTop='.5rem';renderCkdResult(d,ckdDiv);area.appendChild(ckdDiv);}
+  // HCM 카드
+  if(hasHCM){const hcmDiv=document.createElement('div');hcmDiv.style.marginTop='.5rem';renderHcmResult(hcmDiv);area.appendChild(hcmDiv);}
 }
 
 function convWetKcal(){
