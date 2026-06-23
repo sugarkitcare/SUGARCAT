@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.86</span>
+      <span class="cm-beta">v0.6.87</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -3100,7 +3100,7 @@ const BT_NORM_MAP = {
   'BUN':       ['BUN','BUN_f','Blood Urea Nitrogen','BUN(혈청)','요소질소','Urea Nitrogen'],
   'CREA':      ['CREA','CRE','CRE_f','Creatinine','sCr','creatinine','Crea','CREAT','CR','Cr','S-Cr','Creatinine(serum)','CRE(혈청)'],
   'PHOS':      ['PHOS','IP_f','Phosphorus','Phosphorus-Inorganic','Phosphate','IP','무기인','인(P)','P'],
-  'SDMA':      ['SDMA'],
+  'SDMA':      ['SDMA','SDMA_f','Symmetric Dimethylarginine','sdma'],
   'BUN/CREA':  ['BUN/CREA','BUN/CRE','BUN/Creatinine','BUN : Creatinine Ratio','혈B/C'],
   'MUREA':     ['MUREA'],
   // 간
@@ -3118,10 +3118,10 @@ const BT_NORM_MAP = {
   'ALB/GLOB':  ['ALB/GLOB','ALB/GLOB_f','Albumin : Globulin Ratio','Albumin/Globulin','혈A/G'],
   // 혈당/췌장
   'GLU':       ['GLU','GLU_f','Glucose','Blood Glucose','BG','Glu','혈당','Glucose(혈청)'],
-  'FRU':       ['FRU','Fructosamine'],
+  'FRU':       ['FRU','FRU_f','Fructosamine','fructosamine','과당아민'],
   'LIPA':      ['LIPA','LIP_f','LPL','Lipase','Pancreatic Lipase','DGGR Lipase','fPL','Lip','Lipase(DGGR)'],
   'AMYL':      ['AMYL','AMY','AMY_f','Amylase','amylase'],
-  'Ketone':    ['Ketone','Ketones'],
+  'Ketone':    ['Ketone','Ketones','KET','BHB','케톤','Beta-Hydroxybutyrate'],
   // 전해질
   'Na':        ['Na','Na_f','Na+','cNa+','Sodium','Na(mmol/L)','나트륨'],
   'K':         ['K','K_f','K+','cK+','Potassium','K(mmol/L)','칼륨'],
@@ -3135,11 +3135,11 @@ const BT_NORM_MAP = {
   'RBC':       ['RBC','Red Blood Cell','Red Blood Cells'],
   'WBC':       ['WBC','White Blood Cell','White Blood Cells','WBC count','백혈구'],
   'PLT':       ['PLT','Platelet','Platelets','Blood Platelet','혈소판'],
-  'MCH':       ['MCH'],
-  'MCHC':      ['MCHC'],
-  'MCV':       ['MCV'],
-  'RDW-CV':    ['RDW-CV','RDW'],
-  'MPV':       ['MPV'],
+  'MCH':       ['MCH','Mean Corpuscular Hemoglobin'],
+  'MCHC':      ['MCHC','Mean Corpuscular Hemoglobin Concentration'],
+  'MCV':       ['MCV','Mean Corpuscular Volume'],
+  'RDW-CV':    ['RDW-CV','RDW','RDW_CV','RDWc'],
+  'MPV':       ['MPV','Mean Platelet Volume'],
   'PCT':       ['PCT'],
   'PDW-SD':    ['PDW-SD','PDW'],
   'IRF':       ['IRF'],
@@ -3175,11 +3175,12 @@ const BT_NORM_MAP = {
   'proBNP':    ['proBNP','SNAP feline proBNP','NT-proBNP'],
   // 갑상선
   'T4':        ['T4','TT4','V-T4','Thyroxine','Total T4','T4(Total)'],
+  'fT4':       ['fT4','FT4','Free T4','Free Thyroxine','fT4ED','유리T4'],
   // 지질
   'CHOL':      ['CHOL','Cholesterol','Cholesterol-Total','T-Chol_f','TCHO','Total Cholesterol','콜레스테롤','T.Cholesterol'],
   'TG':        ['TG','TG_f','Triglyceride'],
   // 뇨검
-  'USG':       ['USG'],
+  'USG':       ['USG','Urine Specific Gravity','Sp.Gr','SpGr','요비중'],
   'UPC':       ['UPC','UPRO/UCREA','UP/C'],
   'UAC':       ['UAC','UAlb/Cr','Urine Albumin/Creatinine'],
   'Blood':     ['Blood'],
@@ -3222,7 +3223,7 @@ const BT_ABBR_CAT = {
   // 심장
   'proBNP':'심장',
   // 갑상선
-  'T4':'갑상선',
+  'T4':'갑상선','fT4':'갑상선',
   // 지질
   'CHOL':'지질','TG':'지질',
   // 뇨검
@@ -3242,11 +3243,11 @@ const BT_ABBR_NAME = {
   'HCT':'적혈구용적률','HGB':'헤모글로빈','RBC':'적혈구수','WBC':'백혈구수','PLT':'혈소판수',
   'MCH':'평균적혈구혈색소량','MCHC':'평균적혈구혈색소농도','MCV':'평균적혈구용적','RDW-CV':'적혈구분포폭','MPV':'평균혈소판용적',
   'PCT':'혈소판용적률','IRF':'미성숙망상적혈구','RETIC':'망상적혈구','MRV':'망상적혈구평균용적','RPI':'망상적혈구생성지수','PDW-SD':'혈소판분포폭',
-  'NEU':'호중구','LYM':'림프구','MONO':'단핵구','EOS':'호산구','BASO':'호염기구',
-  '%NEU':'호중구%','%LYM':'림프구%','%MONO':'단핵구%','%EOS':'호산구%','%BASO':'호염기구%',
+  'NEU':'호중구','LYM':'림프구','MONO':'단핵구','EOS':'호산구','BASO':'호염기구','WBC-O':'기타백혈구',
+  '%NEU':'호중구%','%LYM':'림프구%','%MONO':'단핵구%','%EOS':'호산구%','%BASO':'호염기구%','%RETIC':'망상적혈구%','RETIC-HGB':'망상적혈구혈색소',
   'pH':'pH','pCO2':'이산화탄소분압','pO2':'산소분압','HCO3':'중탄산염','sO2':'산소포화도',
   'BE':'염기과잉','tCO2':'총이산화탄소','cH+':'수소이온농도','Lac':'젖산','tO2':'총산소',
-  'proBNP':'proBNP','T4':'갑상선호르몬',
+  'proBNP':'proBNP','T4':'갑상선호르몬','fT4':'유리갑상선호르몬',
   'CHOL':'총콜레스테롤','TG':'중성지방',
   'USG':'뇨비중','UPC':'단백/크레아티닌 비율','UAC':'알부민/크레아티닌 비율','Blood':'소변잠혈','NIT':'아질산염',
   'NH3':'암모니아','CK':'크레아틴키나아제','temperature':'체온',
@@ -10530,7 +10531,7 @@ async function saveBloodTestToDB(btItem) {
       cat_id: profile.dbId,
       user_id: currentUser.id,
       test_date: btItem.date,
-      items: btItem.items
+      items: normalizeBTItems(btItem.items)
     }, { onConflict: 'cat_id,test_date' });
     if(error) console.error('blood_tests upsert 오류:', error);
   } catch(e) {
@@ -10555,7 +10556,7 @@ async function migrateBloodTestsToDB() {
         cat_id: profile.dbId,
         user_id: currentUser.id,
         test_date: bt.date,
-        items: bt.items
+        items: normalizeBTItems(bt.items)
       }, { onConflict: 'cat_id,test_date' });
       if(!error) count++;
     } catch(e) {}
