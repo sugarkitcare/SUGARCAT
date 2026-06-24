@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.87</span>
+      <span class="cm-beta">v0.6.88</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -9433,7 +9433,7 @@ function updateCatMedBadge(){
   badge.style.display=cnt?'inline':'none';
 }
 
-function openCatProfile(cat) {
+function openCatProfile(cat, initialTab) {
   currentProfileCat=cat;
   if(!state.catProfiles)state.catProfiles={};
   const profile=state.catProfiles[cat]||{};
@@ -9494,8 +9494,14 @@ function openCatProfile(cat) {
   // 해당 고양이 루틴 불러오기
   try{ loadRoutineForCat(cat); }catch(e){}
   try{ renderCardOrderUI(cat); }catch(e){}
-  const _firstCatTab=document.querySelector('#catProfilePage .cm-tab');
-  if(_firstCatTab)catSegment('info',_firstCatTab);
+  const _tabName = initialTab || 'info';
+  let _tabBtn = null;
+  document.querySelectorAll('#catProfilePage .cm-tab').forEach(t=>{
+    const oc = t.getAttribute('onclick')||'';
+    if(oc.includes("catSegment('"+_tabName+"'")) _tabBtn = t;
+  });
+  if(!_tabBtn) _tabBtn = document.querySelector('#catProfilePage .cm-tab');
+  if(_tabBtn) catSegment(_tabName, _tabBtn);
   updateCatMedBadge();
 }
 
@@ -10852,6 +10858,12 @@ window.openDailySheet = function(type) {
     sheetBody.innerHTML = '';
     sheetBody.appendChild(formEl);
     if(sheetFoot) sheetFoot.innerHTML = '';
+    if(type === 'med' && sheetFoot){
+      sheetFoot.innerHTML =
+        '<button class="cm-btn cm-btn--block" type="button" '+
+        'onclick="closeDailySheet();openCatProfile(state.activeCat,\'med\')">'+
+        '＋ 투약·루틴 추가·관리</button>';
+    }
   }
   sheetHead.innerHTML =
     '<div class="tx"><b>'+cfg.title+'</b><span>'+cfg.sub+'</span></div>'+
