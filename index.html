@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.92</span>
+      <span class="cm-beta">v0.6.93</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -5049,6 +5049,29 @@ function renderGraphs(){
 
 /* 혈액검사 */
 let btEx=null;
+// 잘린 JSON 복구 — 문자열/이스케이프는 무시하고 괄호 스택을 세어, 마지막 완전 항목까지 자른 뒤
+// 남은 열린 괄호를 역순으로 닫음(혈검은 results[]→items[] 2중 중첩이라 ]}]} 식 닫기 필요). 구조 무관 동작.
+function repairTruncatedJSON(str){
+  let inStr=false, esc=false;
+  const stack=[];
+  let cut=-1, cutStack=null;
+  for(let i=0;i<str.length;i++){
+    const c=str[i];
+    if(inStr){
+      if(esc)esc=false;
+      else if(c==='\\')esc=true;
+      else if(c==='"')inStr=false;
+      continue;
+    }
+    if(c==='"')inStr=true;
+    else if(c==='{'||c==='[')stack.push(c);
+    else if(c==='}'||c===']'){stack.pop();cut=i+1;cutStack=stack.slice();}
+  }
+  if(cut<0||!cutStack)return null;
+  let s=str.slice(0,cut);
+  for(let j=cutStack.length-1;j>=0;j--)s+=(cutStack[j]==='[')?']':'}';
+  return s;
+}
 function setupDrop(dropId,fileId,fn){
   const drop=document.getElementById(dropId),file=document.getElementById(fileId);
   drop.ondragover=e=>{e.preventDefault();drop.classList.add('drag')};
@@ -5085,7 +5108,7 @@ setupDrop('btDrop','btFile',async file=>{
 '기타: NH3, CK, temperature, 나머지';
   let mc=file.type.startsWith('image/')?[{type:'image',source:{type:'base64',media_type:file.type,data:b64}},{type:'text',text:'모든 항목을 추출해주세요.'}]:[{type:'document',source:{type:'base64',media_type:'application/pdf',data:b64}},{type:'text',text:'모든 항목을 추출해주세요.'}];
   try{
-    const resp=await fetch('/api/proxy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:AI_MODEL,max_tokens:4000,system:sys,messages:[{role:'user',content:mc}]})});
+    const resp=await fetch('/api/proxy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:AI_MODEL,max_tokens:16000,system:sys,messages:[{role:'user',content:mc}]})});
     const data=await resp.json();
     if(resp.status===429){throw new Error(data.message||'요청이 너무 많아요. 잠시 후 다시 시도해주세요.');}
     if(data.error){throw new Error(data.error.message||JSON.stringify(data.error));}
@@ -5104,18 +5127,12 @@ setupDrop('btDrop','btFile',async file=>{
     const jsonMatch=cleaned.match(/\{[\s\S]*/);
     if(!jsonMatch)throw new Error('JSON 파싱 실패');
     let jsonStr=jsonMatch[0];
-    // JSON이 잘린 경우 복구 시도
+    // JSON이 잘린 경우 복구 시도 — 괄호 스택 기반(중첩 구조 대응). 정상 응답은 첫 parse 통과라 영향 없음
     try{
       JSON.parse(jsonStr);
     }catch(e){
-      // items 배열이 잘린 경우 마지막 불완전 항목 제거 후 닫기
-      const lastComplete=jsonStr.lastIndexOf('}');
-      if(lastComplete>0){
-        jsonStr=jsonStr.slice(0,lastComplete+1);
-        // items 배열 닫기
-        if(!jsonStr.includes(']}'))jsonStr=jsonStr+']}';
-        if(!jsonStr.endsWith('}'))jsonStr=jsonStr+'}';
-      }
+      const fixed=repairTruncatedJSON(jsonStr);
+      if(fixed)jsonStr=fixed;
     }
     let parsed;
     try{parsed=JSON.parse(jsonStr);}
@@ -5126,6 +5143,10 @@ setupDrop('btDrop','btFile',async file=>{
         try{parsed={items:JSON.parse(itemsMatch[1])};}
         catch(e2){throw new Error('JSON 파싱 실패: '+e.message);}
       }else{throw new Error('JSON 파싱 실패: '+e.message);}
+    }
+    // 응답 잘림 감지 — 항목 많은 검사지가 max_tokens(16000) 초과 시 안내
+    if(data.stop_reason==='max_tokens'){
+      toast('항목이 많아 일부만 읽혔을 수 있어요 — 결과 확인 후 저장하거나 나눠 촬영해 주세요','#BA7517');
     }
     // 날짜별 결과 처리
     const btCatVal=document.getElementById('btCat').value||state.activeCat;
