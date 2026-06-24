@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.90</span>
+      <span class="cm-beta">v0.6.91</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -4665,13 +4665,13 @@ function renderHistory(){
     el.style.cssText='display:flex;align-items:center;gap:6px;position:relative';
     const dotEl=document.createElement('div');dotEl.className='log-dot '+dot;
     const txtEl=document.createElement('div');txtEl.className='log-text';txtEl.style.flex='1';txtEl.textContent=txt;
-    // 수분항목은 수분밸런스탭에서 인라인 수정 가능 — 기록조회에선 삭제만
+    // 9종 전 타입 타임라인 인라인 수정 가능 (editLogItem). 음수·소변·대변 삭제만 idx 기반
     const isWater=item.type==='water'||item.type==='urine'||item.type==='poop';
     el.appendChild(dotEl);el.appendChild(txtEl);
     // 수정·삭제 액션 (아이콘+글자 라벨, 둘 사이 간격 벌려 오터치 방지)
     const actEl=document.createElement('div');
     actEl.style.cssText='display:inline-flex;align-items:center;gap:12px;flex-shrink:0;margin-left:6px';
-    if(!isWater){
+    {
       const editEl=document.createElement('button');editEl.type='button';
       editEl.style.cssText='display:inline-flex;align-items:center;gap:3px;background:var(--cm-surface-2);border:1px solid var(--cm-line);color:var(--teal);cursor:pointer;padding:5px 9px;border-radius:8px;font-size:11px;font-weight:600;line-height:1;white-space:nowrap;font-family:inherit';
       editEl.innerHTML='<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>수정';
@@ -8434,9 +8434,12 @@ function editLogItem(type, ts, date) {
   else if(type==='meal'){ item=rec.meals.find(r=>r.ts===ts); label='식사'; }
   else if(type==='rr')  { item=(rec.rr||[]).find(r=>r.ts===ts); label='호흡수'; }
   else if(type==='routine'){ item=(rec.routines||[]).find(r=>r.ts===ts); label='투약·루틴'; }
+  else if(type==='water'){ item=(rec.water||[]).find(r=>r.ts===ts); label='음수'; }
+  else if(type==='urine'){ item=(rec.urine||[]).find(r=>r.ts===ts); label='소변'; }
+  else if(type==='poop') { item=(rec.poop||[]).find(r=>r.ts===ts); label='대변'; }
   if(!item) return;
 
-  // 해당 항목의 log-item 찾기
+  // 해당 항목의 log-item 찾기 — ⚠️ renderHistory의 all[] 구성/정렬과 정확히 일치해야 함
   const logList = document.getElementById('logList');
   const all = [];
   rec.bg.forEach(r=>all.push({ts:r.ts,type:'bg'}));
@@ -8445,6 +8448,9 @@ function editLogItem(type, ts, date) {
   (rec.weights||[]).forEach(r=>all.push({ts:r.ts,type:'wt'}));
   (rec.routines||[]).forEach(r=>all.push({ts:r.ts,type:'routine'}));
   (rec.rr||[]).forEach(r=>all.push({ts:r.ts,type:'rr'}));
+  (rec.water||[]).forEach(r=>all.push({ts:r.ts,type:'water'}));
+  (rec.urine||[]).forEach(r=>all.push({ts:r.ts,type:'urine'}));
+  (rec.poop||[]).forEach(r=>all.push({ts:r.ts,type:'poop'}));
   all.sort((a,b)=>b.ts-a.ts);
   const idx = all.findIndex(x=>x.ts===ts&&x.type===type);
   const logItems = logList.querySelectorAll('.log-item');
@@ -8489,6 +8495,23 @@ function editLogItem(type, ts, date) {
       <input type="time" id="ei_time" value="${item.time||''}" style="padding:5px 8px;border:1px solid var(--teal);border-radius:7px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit">
       <label style="font-size:11px;color:var(--text3)">메모</label>
       <input type="text" id="ei_memo" value="${(item.memo||'').replace(/"/g,'&quot;')}" placeholder="(선택)" style="width:110px;padding:5px 8px;border:1px solid var(--teal);border-radius:7px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit">`;
+  } else if(type==='water') {
+    fields = `<label style="font-size:11px;color:var(--text3)">음수량(ml)</label>
+      <input type="number" id="ei_ml" value="${item.ml||''}" min="1" style="width:65px;padding:5px 8px;border:1px solid var(--teal);border-radius:7px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit">
+      <label style="font-size:11px;color:var(--text3)">시간</label>
+      <input type="time" id="ei_time" value="${item.time||''}" style="padding:5px 8px;border:1px solid var(--teal);border-radius:7px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit">`;
+  } else if(type==='urine') {
+    const _uopts = ['소량','정상','다량','혈뇨','핍뇨','단백뇨','뇨당'].map(a=>`<option value="${a}"${a===item.amount?' selected':''}>${a}</option>`).join('');
+    fields = `<label style="font-size:11px;color:var(--text3)">소변</label>
+      <select id="ei_amount" style="padding:5px 8px;border:1px solid var(--teal);border-radius:7px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit">${_uopts}</select>
+      <label style="font-size:11px;color:var(--text3)">시간</label>
+      <input type="time" id="ei_time" value="${item.time||''}" style="padding:5px 8px;border:1px solid var(--teal);border-radius:7px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit">`;
+  } else if(type==='poop') {
+    const _popts = ['정상','약간무름','끝만무름','무름','설사','혈변','토끼똥/변비','무변'].map(a=>`<option value="${a}"${a===item.type?' selected':''}>${a}</option>`).join('');
+    fields = `<label style="font-size:11px;color:var(--text3)">대변</label>
+      <select id="ei_ptype" style="padding:5px 8px;border:1px solid var(--teal);border-radius:7px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit">${_popts}</select>
+      <label style="font-size:11px;color:var(--text3)">시간</label>
+      <input type="time" id="ei_time" value="${item.time||''}" style="padding:5px 8px;border:1px solid var(--teal);border-radius:7px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit">`;
   }
 
   targetEl.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;width:100%;padding:4px 0">
@@ -8538,9 +8561,26 @@ function saveEditLog(type, ts, date) {
     const memo = document.getElementById('ei_memo')?.value;
     if(time) item.time = time;          // 실제 시각만 수정 (slot=예정시간은 불변)
     if(memo !== undefined) item.memo = memo;
+  } else if(type==='water') {
+    const item = (rec.water||[]).find(r=>r.ts===ts); if(!item) return;
+    const ml = document.getElementById('ei_ml')?.value;
+    if(ml) item.ml = parseInt(ml);
+    if(time) item.time = time;
+  } else if(type==='urine') {
+    const item = (rec.urine||[]).find(r=>r.ts===ts); if(!item) return;
+    const amount = document.getElementById('ei_amount')?.value;
+    if(amount) item.amount = amount;
+    if(time) item.time = time;
+  } else if(type==='poop') {
+    const item = (rec.poop||[]).find(r=>r.ts===ts); if(!item) return;
+    const ptype = document.getElementById('ei_ptype')?.value;
+    if(ptype) item.type = ptype;
+    if(time) item.time = time;
   }
   saveS(date);
   renderHistory();
+  // 수분탭(음수·소변·대변 카드)이 떠 있으면 같은 기록 반영
+  try{ if(document.getElementById('waterLog')) renderWaterLog(); }catch(e){}
   toast('수정됐어요 ✅', '#1D9E75');
 }
 
