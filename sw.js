@@ -1,4 +1,4 @@
-const CACHE_NAME = 'caremaster-v0.6.88';
+const CACHE_NAME = 'caremaster-v0.6.89';
 
 self.addEventListener('install', e => {
   self.skipWaiting();

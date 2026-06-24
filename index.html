@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.88</span>
+      <span class="cm-beta">v0.6.89</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -10858,15 +10858,15 @@ window.openDailySheet = function(type) {
     sheetBody.innerHTML = '';
     sheetBody.appendChild(formEl);
     if(sheetFoot) sheetFoot.innerHTML = '';
-    if(type === 'med' && sheetFoot){
-      sheetFoot.innerHTML =
-        '<button class="cm-btn cm-btn--block" type="button" '+
-        'onclick="closeDailySheet();openCatProfile(state.activeCat,\'med\')">'+
-        '＋ 투약·루틴 추가·관리</button>';
-    }
   }
+  var _medManageBtn = (type === 'med')
+    ? '<button type="button" onclick="closeDailySheet();openCatProfile(state.activeCat,\'med\')" '+
+      'style="flex:0 0 auto;height:34px;padding:0 12px;border-radius:11px;background:var(--cm-surface-2);'+
+      'border:1px solid var(--cm-line);color:var(--cm-ink-soft);font-size:13px;font-weight:700;font-family:inherit;cursor:pointer">관리</button>'
+    : '';
   sheetHead.innerHTML =
     '<div class="tx"><b>'+cfg.title+'</b><span>'+cfg.sub+'</span></div>'+
+    _medManageBtn+
     '<button class="sheet__close" onclick="closeDailySheet()" type="button" style="font-size:18px;line-height:1;padding:4px 8px">×</button>';
   var back = document.getElementById('dailySheetBack');
   var sheet = document.getElementById('dailySheet');
