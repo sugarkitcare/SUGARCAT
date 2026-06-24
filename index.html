@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.89</span>
+      <span class="cm-beta">v0.6.90</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -4667,16 +4667,20 @@ function renderHistory(){
     const txtEl=document.createElement('div');txtEl.className='log-text';txtEl.style.flex='1';txtEl.textContent=txt;
     // 수분항목은 수분밸런스탭에서 인라인 수정 가능 — 기록조회에선 삭제만
     const isWater=item.type==='water'||item.type==='urine'||item.type==='poop';
+    el.appendChild(dotEl);el.appendChild(txtEl);
+    // 수정·삭제 액션 (아이콘+글자 라벨, 둘 사이 간격 벌려 오터치 방지)
+    const actEl=document.createElement('div');
+    actEl.style.cssText='display:inline-flex;align-items:center;gap:12px;flex-shrink:0;margin-left:6px';
     if(!isWater){
-      const editEl=document.createElement('button');editEl.type='button';editEl.textContent='✎';
-      editEl.style.cssText='background:none;border:none;color:var(--teal);cursor:pointer;padding:2px 6px;font-size:13px;flex-shrink:0;opacity:0.8';
+      const editEl=document.createElement('button');editEl.type='button';
+      editEl.style.cssText='display:inline-flex;align-items:center;gap:3px;background:var(--cm-surface-2);border:1px solid var(--cm-line);color:var(--teal);cursor:pointer;padding:5px 9px;border-radius:8px;font-size:11px;font-weight:600;line-height:1;white-space:nowrap;font-family:inherit';
+      editEl.innerHTML='<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>수정';
       editEl.addEventListener('click',(e)=>{e.stopPropagation();editLogItem(item.type,item.ts,histDate);});
-      el.appendChild(dotEl);el.appendChild(txtEl);el.appendChild(editEl);
-    } else {
-      el.appendChild(dotEl);el.appendChild(txtEl);
+      actEl.appendChild(editEl);
     }
-    const delEl=document.createElement('button');delEl.type='button';delEl.textContent='🗑️';
-    delEl.style.cssText='background:none;border:none;color:var(--text3);cursor:pointer;padding:2px 6px;font-size:13px;flex-shrink:0;opacity:0.6';
+    const delEl=document.createElement('button');delEl.type='button';
+    delEl.style.cssText='display:inline-flex;align-items:center;gap:3px;background:none;border:none;color:var(--text3);cursor:pointer;padding:5px 6px;border-radius:8px;font-size:10px;line-height:1;white-space:nowrap;opacity:0.7;font-family:inherit';
+    delEl.innerHTML='<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>삭제';
     delEl.addEventListener('click',(e)=>{
       e.stopPropagation();
       if(item.type==='water') deleteWater(item.idx,histDate);
@@ -4684,7 +4688,8 @@ function renderHistory(){
       else if(item.type==='poop') deletePoop(item.idx,histDate);
       else deleteLogItem(item.type,item.ts);
     });
-    el.appendChild(delEl);
+    actEl.appendChild(delEl);
+    el.appendChild(actEl);
     list.appendChild(el);
   });
 }
