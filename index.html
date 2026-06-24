@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.91</span>
+      <span class="cm-beta">v0.6.92</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -4683,10 +4683,11 @@ function renderHistory(){
     delEl.innerHTML='<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>삭제';
     delEl.addEventListener('click',(e)=>{
       e.stopPropagation();
-      if(item.type==='water') deleteWater(item.idx,histDate);
-      else if(item.type==='urine') deleteUrine(item.idx,histDate);
-      else if(item.type==='poop') deletePoop(item.idx,histDate);
-      else deleteLogItem(item.type,item.ts);
+      // 음수·소변·대변 삭제함수는 renderWaterLog만 호출 → 타임라인 갱신 위해 renderHistory 추가
+      if(item.type==='water'){ deleteWater(item.idx,histDate); renderHistory(); }
+      else if(item.type==='urine'){ deleteUrine(item.idx,histDate); renderHistory(); }
+      else if(item.type==='poop'){ deletePoop(item.idx,histDate); renderHistory(); }
+      else deleteLogItem(item.type,item.ts);  // 자체적으로 renderHistory 호출
     });
     actEl.appendChild(delEl);
     el.appendChild(actEl);
