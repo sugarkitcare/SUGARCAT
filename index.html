@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.98</span>
+      <span class="cm-beta">v0.6.99</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -1853,6 +1853,10 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
 .cmfd-kcal--none{color:var(--cm-faint);font-weight:500}
 .cmfd-aux{font-size:10px;color:var(--cm-faint);margin-top:2px;line-height:1.4}
 .cmfd-row:hover .cmfd-aux,.cmfd-row.cmfd-active .cmfd-aux{color:#dfeee6}
+.cmfd-rec{margin-top:6px;font-size:11px;color:var(--cm-ink-soft);line-height:1.6;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.cmfd-rec-name{color:var(--cm-ink);font-weight:600}
+.cmfd-rec-btn{padding:2px 9px;border:1px solid var(--cm-green-edge);border-radius:7px;background:var(--cm-green-tint);color:var(--cm-green-700);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit}
+.cmfd-note{margin-top:5px;font-size:10px;color:var(--cm-faint);line-height:1.5}
 </style>
 <script src="cm_fooddb.js"></script>
 <script>
@@ -5415,6 +5419,10 @@ setupDrop('fdDrop','fdFile',async file=>{
     parsed.foodNameInput=fdNm;
     parsed.type=inferFoodType(parsed.moisture,parsed.type);
     parsed.name=sanitizeFoodName(parsed.name);
+    // AI 추출 이름은 버리지 않고 stash(추천 버튼용). entry name(매칭·영양용)은 기존대로 유지.
+    parsed.aiName=parsed.name||'';
+    // nameConfirmed: AI 이름이면 미확정(능동 확인 강제). 업로드 시 사용자가 직접 친 이름(fdNm)만 확정.
+    parsed.nameConfirmed=(!parsed.name && !!sanitizeFoodName(fdNm));
     fdData.unshift({ts:Date.now(),data:parsed,name:parsed.name||fdNm});
     if(fdData.length>20)fdData=fdData.slice(0,20);saveFD();/* 적립은 즐겨찾기(⭐) 시점으로 이동 (v0.6.51) */
     _fdViewData=fdData[0];hideStat('fdStatus');renderFdHistory();renderFdResult(parsed);
@@ -5984,13 +5992,37 @@ function cmFdRender2(local,master,masterLoading){
   drop.innerHTML=html;
   drop.style.display='block';
 }
-// 행 선택: 이름 채움(기존 saveFdFields 흐름 유지) + 칼로리는 비어있을 때만 DB값 보조
+// 이름 확정 커밋: _fdViewData.name·data.name 갱신 + nameConfirmed=true + favFoods 이름 동기화
+// rerender=true면 결과 화면 재렌더(추천 버튼용). cmFdPick은 kcal 채움 보존 위해 false로 호출.
+function cmFdCommitName(name,rerender){
+  if(!_fdViewData||!_fdViewData.data)return;
+  name=(name||'').trim();
+  if(!name)return;
+  const _old=_fdViewData.name;
+  _fdViewData.name=name;
+  _fdViewData.data.name=name;
+  _fdViewData.data.nameConfirmed=true;
+  saveFD();
+  const _fi=favFoods.findIndex(f=>(f.name||f)===_old);   // 수정 전 이름으로 매칭(기존 정책)
+  if(_fi>-1){favFoods[_fi].name=name;saveFavFoods();}
+  try{renderFdHistory();}catch(e){}
+  if(rerender){cmFdHideDrop();try{renderFdResult(_fdViewData.data);}catch(e){}}
+}
+// 추천 줄 [이 이름 쓰기]: 칸 채움 + 확정 커밋(재렌더로 추천줄 정리·칸 반영)
+function cmFdUseAiName(){
+  if(!_fdViewData||!_fdViewData.data)return;
+  const ai=(_fdViewData.data.aiName||'').trim();
+  if(!ai)return;
+  const el=document.getElementById('fdEdit_name');
+  if(el)el.value=ai;
+  cmFdCommitName(ai,true);
+}
+// 드롭다운 행 선택: 이름 확정 커밋 + 칼로리는 비어있을 때만 DB값 보조
 function cmFdPick(idx){
   const item=_cmFdResults[idx];
   if(!item)return;
-  // 1) 이름칸 (확정은 기존 "저장" 버튼에서 saveFdFields가 처리)
-  const nmEl=document.getElementById('fdEdit_name');
-  if(nmEl)nmEl.value=item.name;
+  // 1) 이름 확정 커밋(재렌더) — 박스·history·추천줄 정리. 이후 DOM은 새로 그려진 요소 기준.
+  cmFdCommitName(item.name,true);
   // 2) 칼로리: _fdViewData.data.kcal_per_100g가 null/'' 일 때만 (0은 입력값으로 간주, 분석값 우선)
   //    master 행인데 kcal 없으면(item.kcal===null) 이 가드에서 자동 스킵 → 이름만 채움
   const cur=(_fdViewData&&_fdViewData.data)?_fdViewData.data.kcal_per_100g:undefined;
@@ -6029,10 +6061,17 @@ document.addEventListener('click',function(e){
 });
 function _buildFdEditHtml(d){
   const _f=(id,lbl,v,step,isMoist)=>`<div><div style="font-size:10px;color:var(--text3)">${lbl}</div><input type="number" id="${id}" value="${v!=null?v:''}" step="${step}" style="width:100%;padding:4px 6px;border:${isMoist?'1.5px solid var(--teal)':'0.5px solid var(--bd)'};border-radius:6px;font-size:13px;font-weight:700;background:var(--bg);color:var(--text);font-family:inherit;text-align:center"></div>`;
-  const _nmGeneric=isGenericFoodName(d.name);
-  const _nmVal=_nmGeneric?'':(d.name||'');
-  const _nmPh=(!_nmGeneric&&d.name&&d.name.length>=5)?'사료명 수정':'사료명을 입력하세요 (예: 몬지 레날)';
-  return `<div style="background:var(--bg2);border-radius:9px;padding:.5rem .75rem;margin-top:.5rem"><div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:.4rem">✏️ 수치 직접 수정 — 저장 시 DM 재계산</div><div style="margin-bottom:.5rem"><div style="font-size:10px;color:var(--text3);margin-bottom:2px">사료명</div><div class="cmfd-wrap"><input type="text" id="fdEdit_name" value="${_nmVal}" placeholder="${_nmPh}" autocomplete="off" oninput="cmFdNameInput(this)" style="width:100%;padding:4px 6px;border:0.5px solid var(--bd);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit"><div id="cmfdDrop" class="cmfd-drop" style="display:none"></div></div></div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:.5rem">${_f('fdEdit_moisture','수분%',d.moisture,0.1,true)}${_f('fdEdit_protein_af','단백질%',d.protein_af,0.1,false)}${_f('fdEdit_fat_af','지방%',d.fat_af,0.1,false)}${_f('fdEdit_fiber_af','조섬유%',d.fiber_af,0.1,false)}${_f('fdEdit_ash_af','조회분%',d.ash_af,0.1,false)}${_f('fdEdit_phosphorus_af','인(P)%',d.phosphorus_af,0.01,false)}</div><button type="button" onclick="saveFdFields()" style="padding:5px 14px;background:#1a6b43;color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">저장 (DM 재계산)</button></div>`;
+  // 이름칸 prefill: 사용자가 확정한 이름만 채움. AI 추출(미확정)이면 빈칸 → 능동 입력 유도.
+  const _confirmed=!!d.nameConfirmed;
+  const _nmVal=_confirmed?(d.name||''):'';
+  const _nmPh='사료명 입력';
+  // 추천 줄: AI 이름 있고 미확정이면 표시 ([이 이름 쓰기] → 확정 커밋)
+  const _ai=(d.aiName||'').trim();
+  const _recHtml=(!_confirmed && _ai && !isGenericFoodName(_ai))
+    ? '<div class="cmfd-rec">분석에서 읽은 이름: "<span class="cmfd-rec-name">'+_ai.replace(/</g,'&lt;').replace(/"/g,'&quot;')+'</span>" <button type="button" class="cmfd-rec-btn" onclick="cmFdUseAiName()">이 이름 쓰기</button></div>'
+    : '';
+  const _noteHtml='<div class="cmfd-note">정확한 이름을 적어주시면 같은 사료 먹는 다른 아이들에게도 도움이 돼요</div>';
+  return `<div style="background:var(--bg2);border-radius:9px;padding:.5rem .75rem;margin-top:.5rem"><div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:.4rem">✏️ 수치 직접 수정 — 저장 시 DM 재계산</div><div style="margin-bottom:.5rem"><div style="font-size:10px;color:var(--text3);margin-bottom:2px">사료명</div><div class="cmfd-wrap"><input type="text" id="fdEdit_name" value="${_nmVal}" placeholder="${_nmPh}" autocomplete="off" oninput="cmFdNameInput(this)" style="width:100%;padding:4px 6px;border:0.5px solid var(--bd);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit"><div id="cmfdDrop" class="cmfd-drop" style="display:none"></div></div>${_recHtml}${_noteHtml}</div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:.5rem">${_f('fdEdit_moisture','수분%',d.moisture,0.1,true)}${_f('fdEdit_protein_af','단백질%',d.protein_af,0.1,false)}${_f('fdEdit_fat_af','지방%',d.fat_af,0.1,false)}${_f('fdEdit_fiber_af','조섬유%',d.fiber_af,0.1,false)}${_f('fdEdit_ash_af','조회분%',d.ash_af,0.1,false)}${_f('fdEdit_phosphorus_af','인(P)%',d.phosphorus_af,0.01,false)}</div><button type="button" onclick="saveFdFields()" style="padding:5px 14px;background:#1a6b43;color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">저장 (DM 재계산)</button></div>`;
 }
 function applyDigitFix(field,value){
   if(!_fdViewData){toast('분석 후 수정하세요','#D85A30');return;}
@@ -6050,7 +6089,13 @@ function saveFdFields(){
   let nameChanged=false;
   // 사료명 수정
   const _nmEl=document.getElementById('fdEdit_name');
-  if(_nmEl){const _newName=_nmEl.value.trim();if(_newName&&_newName!==_oldName){d.name=_newName;_fdViewData.name=_newName;nameChanged=true;changed=true;}}
+  if(_nmEl){
+    const _newName=_nmEl.value.trim();
+    if(_newName){
+      if(_newName!==_oldName){d.name=_newName;_fdViewData.name=_newName;nameChanged=true;changed=true;}
+      if(!d.nameConfirmed){d.nameConfirmed=true;changed=true;}  // 사용자가 이름칸에 값 넣고 저장 = 확정
+    }
+  }
   // 수치 필드
   [['moisture'],['protein_af'],['fat_af'],['fiber_af'],['ash_af'],['phosphorus_af']].forEach(([fk])=>{
     const el=document.getElementById('fdEdit_'+fk);if(!el)return;
@@ -9884,12 +9929,15 @@ function toggleFavFood(name, el, kcalPer100g, type) {
     toast(`${name} 즐겨찾기 해제`);
     return;
   }
-  // ⭐ 추가: 이름 필수 게이트
-  if(isGenericFoodName(name)){
+  // ⭐ 추가: 이름 필수 게이트 — generic이거나 "미확정(AI 추출 그대로)"이면 능동 입력 강제(showFoodNamePrompt)
+  // 이력 항목의 nameConfirmed로 판정. 이력에 없으면(외부 호출) 기존 동작 유지(확정 취급).
+  const _h=fdData.find(h=>h.name===name);
+  const _confirmed=_h?!!(_h.data&&_h.data.nameConfirmed):true;
+  if(isGenericFoodName(name)||!_confirmed){
     showFoodNamePrompt(newName=>_addFavFood(name,newName,kcalPer100g,type));
     return;
   }
-  // 정상 이름: 유사 사료가 있을 때만 확인, 없으면 매끄럽게 바로 등록
+  // 확정된 정상 이름: 유사 사료가 있을 때만 확인, 없으면 매끄럽게 바로 등록
   _checkSimilarThenAdd(name,kcalPer100g,type);
 }
 
@@ -9927,7 +9975,7 @@ function _addFavFood(origName, finalName, kcalPer100g, type){
   // 이름 확정을 fdData/이력에도 반영
   if(_fd){
     _fd.name=finalName;
-    if(_fd.data)_fd.data.name=finalName;
+    if(_fd.data){_fd.data.name=finalName;_fd.data.nameConfirmed=true;}  // 능동 입력으로 이름 확정됨
     saveFD();
   }
   const _moisture=(_fd?.data?.moisture!=null)?_fd.data.moisture:null;
