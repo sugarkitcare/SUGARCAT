@@ -1,3 +1,9 @@
 design-reference/
 
 .vercel
+
+# Capacitor (android/ 는 커밋 — native 설정 버전관리)
+node_modules/
+www/
+*.keystore
+*.jks
