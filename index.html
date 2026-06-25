@@ -5958,19 +5958,20 @@ function cmFdPick(idx){
     const isWet=(_fdViewData&&_fdViewData.data&&_fdViewData.data.type==='wet');
     // #fdKcalInput을 직접 세팅(=source of truth). convWetKcal은 호출하지 않음(미완성 환산칸이면 값 비움).
     kInput.value=item.k;
-    let hintTxt='참고 칼로리 (국내 사료 DB · 리뉴얼로 실제와 다를 수 있어요)';
+    let hintTxt='이 사료의 칼로리를 불러왔어요. 제품 표기와 다르면 수정해 주세요';
     if(isWet){
       const canGEl=document.getElementById('fdKcalCanG');
       const canG=parseFloat(canGEl&&canGEl.value)||0;
+      const prevEl=document.getElementById('fdKcalPreview');
       if(canG>0){
         // 용량 있으면 총kcal 역산해 화면 환산칸도 일관되게 채움 (k는 kcal/100g 기준)
         const totalEl=document.getElementById('fdKcalTotal');
-        const prevEl=document.getElementById('fdKcalPreview');
         if(totalEl)totalEl.value=Math.round(item.k*canG/100);
         if(prevEl)prevEl.textContent='→ 100g당 약 '+item.k+'kcal로 저장돼요';
       }else{
-        // 용량 없으면 환산 불가 → 기준값만 적용 + 다음 액션 안내(값을 힌트로 가시화)
-        hintTxt='참고 칼로리 (국내 사료 DB) · 100g당 '+item.k+' kcal 기준 · 용량(g) 입력하면 총 kcal 자동계산';
+        // 용량 없으면 환산 불가 → 기준값만 적용. 적용값(item.k)은 프리뷰로 노출(화면-내부 불일치 방지)
+        if(prevEl)prevEl.textContent='100g당 '+item.k+'kcal 적용됨';
+        hintTxt='이 사료의 칼로리를 불러왔어요. 용량(g)을 입력하면 총 kcal가 자동계산돼요';
       }
     }
     saveFdKcal();   // #fdKcalInput(=item.k)을 읽어 kcal_per_100g + favFoods.kcalPer100g 반영
