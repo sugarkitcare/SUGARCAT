@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.95</span>
+      <span class="cm-beta">v0.6.96</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -1389,7 +1389,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
 <!-- ══ 혈액검사 ══ -->
 <div class="sec" id="tab-bloodtest" style="display:none">
   <!-- 업로드 버튼 (카드 없음) -->
-  <div id="btDrop" style="display:flex;flex-direction:column;gap:8px">
+  <div id="btDrop" style="display:flex;flex-direction:column;gap:8px;margin-bottom:.75rem">
     <div onclick="document.getElementById('btFile').click()" class="bl-addbar">
       <div class="cm-ic cm-ic--sm cm-ic--ghost">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -1407,7 +1407,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
     <input type="file" id="btFile" accept="image/*,application/pdf" style="display:none">
   </div>
   <!-- 직접 입력 폼 -->
-  <div id="btManualEntry" style="display:none;border:1px solid var(--cm-line);border-radius:12px;padding:.85rem;background:var(--cm-surface)">
+  <div id="btManualEntry" style="display:none;border:1px solid var(--cm-line);border-radius:12px;padding:.85rem;background:var(--cm-surface);margin-bottom:.75rem">
     <div style="font-size:13px;font-weight:700;color:var(--cm-ink);margin-bottom:.65rem">혈액검사 직접 입력</div>
     <div class="row2" style="margin-bottom:.6rem">
       <div class="ig"><label>검사 날짜</label><input type="date" id="btManualDate"></div>
