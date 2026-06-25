@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.99</span>
+      <span class="cm-beta">v0.7.00</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -1856,7 +1856,8 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
 .cmfd-rec{margin-top:6px;font-size:11px;color:var(--cm-ink-soft);line-height:1.6;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .cmfd-rec-name{color:var(--cm-ink);font-weight:600}
 .cmfd-rec-btn{padding:2px 9px;border:1px solid var(--cm-green-edge);border-radius:7px;background:var(--cm-green-tint);color:var(--cm-green-700);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit}
-.cmfd-note{margin-top:5px;font-size:10px;color:var(--cm-faint);line-height:1.5}
+.cmfd-note{margin-top:6px;font-size:11px;color:#235B43;font-weight:600;line-height:1.5}
+.cmfd-unconf{font-size:10px;color:var(--cm-amber);font-weight:600}
 </style>
 <script src="cm_fooddb.js"></script>
 <script>
@@ -6134,8 +6135,11 @@ function renderFdHistory(){
     const dt=new Date(h.ts).toLocaleDateString('ko-KR',{month:'short',day:'numeric'});
     const item=document.createElement('div');item.className='h-item';
     const isFav=favIndexOf(h.name,h.masterId)>-1;
+    // 미확정(AI 추출) 이름은 확정처럼 표시하지 않음 — entry name(매칭·영양용)은 유지, 표시만 변경
+    const _conf=!!d.nameConfirmed;
+    const _dispName=_conf?h.name:((h.name&&!isGenericFoodName(h.name))?(h.name+' <span class="cmfd-unconf">(미확인)</span>'):'분석 사료');
     item.innerHTML='<div class="h-dot" style="background:'+lc+'"></div>'
-      +'<div class="h-name">'+h.name+' <span style="font-size:10px;color:var(--text3)">'+(d.type==='wet'?'습식':'건식')+'</span></div>'
+      +'<div class="h-name">'+_dispName+' <span style="font-size:10px;color:var(--text3)">'+(d.type==='wet'?'습식':'건식')+'</span></div>'
       +'<div style="display:flex;align-items:center;gap:6px">'
       +'<div class="h-meta">탄수 DM '+(cdm?.toFixed(1)||'?')+'%<br>'+(kcal!==null?kcal+'kcal':'칼로리 미입력')+' · '+dt+'</div>'
       +'<span onclick="event.stopPropagation();toggleFavFood(this.dataset.name,this,'+(kcal!==null?kcal:'null')+',\''+(d.type||'dry')+'\')" data-name="'+h.name.replace(/"/g,'&quot;')+'"'
