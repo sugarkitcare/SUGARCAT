@@ -12,6 +12,7 @@ const WWW = join(ROOT, 'www');
 // 앱 번들에 들어갈 자산 (CDN 의존: Chart.js·supabase-js·폰트는 네트워크 로드)
 const ASSETS = [
   'index.html',
+  'cm_fooddb.js',
   'cm.css',
   'manifest.json',
   'icon_180.png',

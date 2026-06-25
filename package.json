@@ -1,6 +1,6 @@
 {
   "name": "caremasters",
-  "version": "0.6.95",
+  "version": "0.6.97",
   "private": true,
   "description": "케어마스터즈 — Capacitor 안드로이드 래퍼 (웹은 루트 index.html로 Vercel 정적 배포)",
   "scripts": {

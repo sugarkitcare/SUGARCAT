@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.6.96</span>
+      <span class="cm-beta">v0.6.97</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -1833,6 +1833,23 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
 </div></div><!-- /app -->
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<!-- 국내 사료 DB(395종, kcal 포함) — 성분분석 결과 화면 칼로리 자동완성용. 메인 스크립트보다 먼저 로드 -->
+<style>
+/* cm.css 톤 · cmfd- 전용 스코프 (전역/cm.css 미수정) */
+.cmfd-wrap{position:relative}
+.cmfd-drop{position:absolute;left:0;right:0;top:calc(100% + 2px);z-index:60;max-height:200px;overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--cm-surface);border:0.5px solid var(--cm-line);border-radius:10px;box-shadow:0 8px 24px rgba(42,37,29,0.14)}
+.cmfd-row{display:flex;align-items:center;gap:8px;padding:9px 11px;cursor:pointer;border-bottom:0.5px solid var(--cm-line)}
+.cmfd-row:last-child{border-bottom:none}
+.cmfd-row:hover,.cmfd-row.cmfd-active{background:#235B43;color:#fff}
+.cmfd-row:hover .cmfd-kcal,.cmfd-row.cmfd-active .cmfd-kcal{color:#dfeee6}
+.cmfd-name{flex:1;font-size:13px;line-height:1.35;min-width:0;word-break:break-all}
+.cmfd-kcal{flex-shrink:0;font-size:11px;font-weight:700;color:var(--cm-faint)}
+.cmfd-badge{flex-shrink:0;font-size:10px;font-weight:700;padding:1px 7px;border-radius:12px;line-height:1.5}
+.cmfd-badge--dry{background:var(--cm-green-tint);color:var(--cm-green-700);border:1px solid var(--cm-green-edge)}
+.cmfd-badge--wet{background:#E7F0F4;color:#2F6E8A;border:1px solid #BcD8E3}
+.cmfd-hint{font-size:10px;color:var(--cm-faint);line-height:1.5;margin-top:.3rem}
+</style>
+<script src="cm_fooddb.js"></script>
 <script>
 
 const SK='dangmyo_v2',SK_BT='bt_v2',SK_FD='fd_v2',SK_CONFIG='cm_sb_cfg';
@@ -5841,6 +5858,7 @@ function buildKcalRow(kcal,isWet){
       +'<div id="fdKcalPreview" style="font-size:11px;color:var(--teal);margin-bottom:.4rem;min-height:1.2em"></div>'
       +'<input type="hidden" id="fdKcalInput" value="'+(kcal!==null?kcal:'')+'">'
       +'<button type="button" onclick="saveFdKcal()" style="padding:5px 14px;background:#1a6b43;color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">저장</button>'
+      +'<div id="cmfdKcalHint" class="cmfd-hint" style="display:none"></div>'
       +'</div>';
   }
   return '<div style="background:var(--bg2);border-radius:9px;padding:.5rem .75rem;margin-bottom:.5rem">'
@@ -5851,6 +5869,7 @@ function buildKcalRow(kcal,isWet){
     +'<span style="font-size:12px;color:var(--text2)">kcal/100g</span>'
     +'<button type="button" onclick="saveFdKcal()" style="padding:5px 14px;background:#1a6b43;color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0">저장</button>'
     +'</div>'
+    +'<div id="cmfdKcalHint" class="cmfd-hint" style="display:none"></div>'
     +'</div>';
 }
 function saveFdKcal(){
@@ -5864,12 +5883,112 @@ function saveFdKcal(){
   try{calcCalorie();}catch(e){}
   toast(v+'kcal/100g로 저장했어요 ✓');
 }
+
+/* ───────── 국내 사료 DB(cm_fooddb.js) 칼로리 자동완성 — 성분분석 결과(#fdResult) 전용 ─────────
+   showFoodNamePrompt의 Supabase foods_master 자동완성과는 완전 별개. */
+function cmNormalizeFood(s){
+  return s.toLowerCase().replace(/\d+(\.\d+)?\s*(kg|g)\b/g,'').replace(/[^\w가-힣]/g,'');
+}
+function cmSearchFood(query, limit=8){
+  const q = cmNormalizeFood(query);
+  if(!q) return [];
+  const DB = window.CM_FOOD_DB || [];
+  const qTokens = q.match(/[가-힣]+|[a-z]+/g) || [];
+  const out = [];
+  for(const x of DB){
+    const n = x._norm || (x._norm = cmNormalizeFood(x.n));
+    let score;
+    if(q===n) score=100;
+    else if(n.includes(q)||q.includes(n)) score=80-Math.abs(n.length-q.length)*0.1;
+    else{
+      const nTokens = n.match(/[가-힣]+|[a-z]+/g) || [];
+      const overlap = qTokens.filter(t=>nTokens.some(w=>w.includes(t)||t.includes(w))).length;
+      if(overlap===0) continue;
+      score = 40*overlap/Math.max(qTokens.length,1);
+    }
+    out.push({score, item:x});
+  }
+  out.sort((a,b)=>b.score-a.score);
+  return out.slice(0,limit).filter(r=>r.score>=20).map(r=>r.item);
+}
+
+let _cmFdResults=[];      // 현재 드롭다운에 표시 중인 후보 (행 클릭 매핑용)
+let _cmFdDebTimer=null;
+// 사료명 input oninput — 160ms 디바운스 → cmSearchFood → 드롭다운 렌더
+function cmFdNameInput(el){
+  if(_cmFdDebTimer)clearTimeout(_cmFdDebTimer);
+  const q=el.value;
+  _cmFdDebTimer=setTimeout(()=>{
+    if(el.value!==q)return;               // 그새 바뀌면 무시
+    cmFdRenderDrop(cmSearchFood(q));
+  },160);
+}
+function cmFdHideDrop(){
+  const drop=document.getElementById('cmfdDrop');
+  if(drop){drop.style.display='none';drop.innerHTML='';}
+  _cmFdResults=[];
+}
+function cmFdRenderDrop(rows){
+  const drop=document.getElementById('cmfdDrop');
+  if(!drop)return;
+  if(!rows||!rows.length){cmFdHideDrop();return;}   // 0건이면 숨김(기존 직접 입력 유지)
+  _cmFdResults=rows;
+  drop.innerHTML=rows.map((x,i)=>{
+    const isWet=x.t==='wet';
+    const badge='<span class="cmfd-badge '+(isWet?'cmfd-badge--wet':'cmfd-badge--dry')+'">'+(isWet?'습식':'건식')+'</span>';
+    const nm=String(x.n||'').replace(/</g,'&lt;');
+    const k=(x.k!=null)?('<span class="cmfd-kcal">'+x.k+' kcal/100g</span>'):'';
+    return '<div class="cmfd-row" onclick="cmFdPick('+i+')">'+badge+'<span class="cmfd-name">'+nm+'</span>'+k+'</div>';
+  }).join('');
+  drop.style.display='block';
+}
+// 행 선택: 이름 채움(기존 saveFdFields 흐름 유지) + 칼로리는 비어있을 때만 DB값 보조
+function cmFdPick(idx){
+  const item=_cmFdResults[idx];
+  if(!item)return;
+  // 1) 이름칸 (확정은 기존 "저장" 버튼에서 saveFdFields가 처리)
+  const nmEl=document.getElementById('fdEdit_name');
+  if(nmEl)nmEl.value=item.n;
+  // 2) 칼로리: _fdViewData.data.kcal_per_100g가 null/'' 일 때만 (0은 입력값으로 간주, 분석값 우선)
+  const cur=(_fdViewData&&_fdViewData.data)?_fdViewData.data.kcal_per_100g:undefined;
+  const isEmpty=(cur===null||cur===undefined||cur==='');
+  const kInput=document.getElementById('fdKcalInput');
+  const hint=document.getElementById('cmfdKcalHint');
+  if(isEmpty && item.k!=null && kInput){
+    const isWet=(_fdViewData&&_fdViewData.data&&_fdViewData.data.type==='wet');
+    // #fdKcalInput을 직접 세팅(=source of truth). convWetKcal은 호출하지 않음(미완성 환산칸이면 값 비움).
+    kInput.value=item.k;
+    let hintTxt='참고 칼로리 (국내 사료 DB · 리뉴얼로 실제와 다를 수 있어요)';
+    if(isWet){
+      const canGEl=document.getElementById('fdKcalCanG');
+      const canG=parseFloat(canGEl&&canGEl.value)||0;
+      if(canG>0){
+        // 용량 있으면 총kcal 역산해 화면 환산칸도 일관되게 채움 (k는 kcal/100g 기준)
+        const totalEl=document.getElementById('fdKcalTotal');
+        const prevEl=document.getElementById('fdKcalPreview');
+        if(totalEl)totalEl.value=Math.round(item.k*canG/100);
+        if(prevEl)prevEl.textContent='→ 100g당 약 '+item.k+'kcal로 저장돼요';
+      }else{
+        // 용량 없으면 환산 불가 → 기준값만 적용 + 다음 액션 안내(값을 힌트로 가시화)
+        hintTxt='참고 칼로리 (국내 사료 DB) · 100g당 '+item.k+' kcal 기준 · 용량(g) 입력하면 총 kcal 자동계산';
+      }
+    }
+    saveFdKcal();   // #fdKcalInput(=item.k)을 읽어 kcal_per_100g + favFoods.kcalPer100g 반영
+    if(hint){hint.textContent=hintTxt;hint.style.display='block';}
+  }
+  cmFdHideDrop();
+}
+// 드롭다운 바깥 클릭 시 닫힘 — 스크립트 init에서 1회만 등록(renderFdResult 반복 호출과 무관)
+document.addEventListener('click',function(e){
+  const wrap=e.target.closest&&e.target.closest('.cmfd-wrap');
+  if(!wrap)cmFdHideDrop();
+});
 function _buildFdEditHtml(d){
   const _f=(id,lbl,v,step,isMoist)=>`<div><div style="font-size:10px;color:var(--text3)">${lbl}</div><input type="number" id="${id}" value="${v!=null?v:''}" step="${step}" style="width:100%;padding:4px 6px;border:${isMoist?'1.5px solid var(--teal)':'0.5px solid var(--bd)'};border-radius:6px;font-size:13px;font-weight:700;background:var(--bg);color:var(--text);font-family:inherit;text-align:center"></div>`;
   const _nmGeneric=isGenericFoodName(d.name);
   const _nmVal=_nmGeneric?'':(d.name||'');
   const _nmPh=(!_nmGeneric&&d.name&&d.name.length>=5)?'사료명 수정':'사료명을 입력하세요 (예: 몬지 레날)';
-  return `<div style="background:var(--bg2);border-radius:9px;padding:.5rem .75rem;margin-top:.5rem"><div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:.4rem">✏️ 수치 직접 수정 — 저장 시 DM 재계산</div><div style="margin-bottom:.5rem"><div style="font-size:10px;color:var(--text3);margin-bottom:2px">사료명</div><input type="text" id="fdEdit_name" value="${_nmVal}" placeholder="${_nmPh}" style="width:100%;padding:4px 6px;border:0.5px solid var(--bd);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit"></div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:.5rem">${_f('fdEdit_moisture','수분%',d.moisture,0.1,true)}${_f('fdEdit_protein_af','단백질%',d.protein_af,0.1,false)}${_f('fdEdit_fat_af','지방%',d.fat_af,0.1,false)}${_f('fdEdit_fiber_af','조섬유%',d.fiber_af,0.1,false)}${_f('fdEdit_ash_af','조회분%',d.ash_af,0.1,false)}${_f('fdEdit_phosphorus_af','인(P)%',d.phosphorus_af,0.01,false)}</div><button type="button" onclick="saveFdFields()" style="padding:5px 14px;background:#1a6b43;color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">저장 (DM 재계산)</button></div>`;
+  return `<div style="background:var(--bg2);border-radius:9px;padding:.5rem .75rem;margin-top:.5rem"><div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:.4rem">✏️ 수치 직접 수정 — 저장 시 DM 재계산</div><div style="margin-bottom:.5rem"><div style="font-size:10px;color:var(--text3);margin-bottom:2px">사료명</div><div class="cmfd-wrap"><input type="text" id="fdEdit_name" value="${_nmVal}" placeholder="${_nmPh}" autocomplete="off" oninput="cmFdNameInput(this)" style="width:100%;padding:4px 6px;border:0.5px solid var(--bd);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit"><div id="cmfdDrop" class="cmfd-drop" style="display:none"></div></div></div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:.5rem">${_f('fdEdit_moisture','수분%',d.moisture,0.1,true)}${_f('fdEdit_protein_af','단백질%',d.protein_af,0.1,false)}${_f('fdEdit_fat_af','지방%',d.fat_af,0.1,false)}${_f('fdEdit_fiber_af','조섬유%',d.fiber_af,0.1,false)}${_f('fdEdit_ash_af','조회분%',d.ash_af,0.1,false)}${_f('fdEdit_phosphorus_af','인(P)%',d.phosphorus_af,0.01,false)}</div><button type="button" onclick="saveFdFields()" style="padding:5px 14px;background:#1a6b43;color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">저장 (DM 재계산)</button></div>`;
 }
 function applyDigitFix(field,value){
   if(!_fdViewData){toast('분석 후 수정하세요','#D85A30');return;}
