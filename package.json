@@ -5,5 +5,12 @@
   "description": "케어마스터즈 — Capacitor 안드로이드 래퍼 (웹은 루트 index.html로 Vercel 정적 배포)",
   "scripts": {
     "sync:www": "node scripts/sync-www.mjs"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.4.1"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.4.1",
+    "@capacitor/core": "^8.4.1"
   }
 }
