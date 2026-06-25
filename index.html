@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.00</span>
+      <span class="cm-beta">v0.7.01</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -6003,6 +6003,7 @@ function cmFdCommitName(name,rerender){
   _fdViewData.name=name;
   _fdViewData.data.name=name;
   _fdViewData.data.nameConfirmed=true;
+  if(name!==_old)_fdViewData.data.masterPromoted=false;   // 이름 바뀌면 재승격 대상으로
   saveFD();
   const _fi=favFoods.findIndex(f=>(f.name||f)===_old);   // 수정 전 이름으로 매칭(기존 정책)
   if(_fi>-1){favFoods[_fi].name=name;saveFavFoods();}
@@ -6017,6 +6018,7 @@ function cmFdUseAiName(){
   const el=document.getElementById('fdEdit_name');
   if(el)el.value=ai;
   cmFdCommitName(ai,true);
+  autoPromoteFood(_fdViewData);   // 이름 확정 → 공유 풀 자동 승격(게이트 통과 시)
 }
 // 드롭다운 행 선택: 이름 확정 커밋 + 칼로리는 비어있을 때만 DB값 보조
 function cmFdPick(idx){
@@ -6054,6 +6056,8 @@ function cmFdPick(idx){
     if(hint){hint.textContent=hintTxt;hint.style.display='block';}
   }
   cmFdHideDrop();
+  // 이름 확정(드롭다운 선택) → 자동 승격. 칼로리 토스트와 겹치지 않게 무음.
+  autoPromoteFood(_fdViewData,{silent:true});
 }
 // 드롭다운 바깥 클릭 시 닫힘 — 스크립트 init에서 1회만 등록(renderFdResult 반복 호출과 무관)
 document.addEventListener('click',function(e){
@@ -6093,7 +6097,7 @@ function saveFdFields(){
   if(_nmEl){
     const _newName=_nmEl.value.trim();
     if(_newName){
-      if(_newName!==_oldName){d.name=_newName;_fdViewData.name=_newName;nameChanged=true;changed=true;}
+      if(_newName!==_oldName){d.name=_newName;_fdViewData.name=_newName;nameChanged=true;changed=true;d.masterPromoted=false;}  // 이름 바뀌면 재승격 대상
       if(!d.nameConfirmed){d.nameConfirmed=true;changed=true;}  // 사용자가 이름칸에 값 넣고 저장 = 확정
     }
   }
@@ -6119,6 +6123,7 @@ function saveFdFields(){
   if(nameChanged)try{renderFdHistory();}catch(e){}
   renderFdResult(d);
   toast('수치 저장 완료 · DM 재계산됐어요 ✓');
+  autoPromoteFood(_fdViewData);   // 이름 확정 상태면 공유 풀 자동 승격(게이트 통과 시)
 }
 
 const _starFilled='<svg viewBox="0 0 24 24" width="18" height="18" fill="var(--cm-amber)" stroke="var(--cm-amber)" stroke-width="1.5"><path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2Z"/></svg>';
@@ -9880,6 +9885,38 @@ async function contributeFoodMaster(parsed,source){
   }catch(e){console.warn('foods_master 적립 오류:',e);return null;}
 }
 
+/* ── 이름 확정 분석의 foods_master 자동 승격 (길 A) ──
+   즐겨찾기(⭐) 없이도 "이름 확정 + 비일반명"이면 공유 풀에 자동 INSERT.
+   게이트: nameConfirmed + 비generic + 로그인. dedup: 완전일치/유사후보면 보수적 스킵(⭐ 수동 병합에 위임).
+   가드: data.masterPromoted(영속) + entry._promoting(in-flight). opts.silent면 토스트 생략. */
+async function autoPromoteFood(entry, opts){
+  opts=opts||{};
+  if(!entry||!entry.data)return;
+  const d=entry.data;
+  if(d.nameConfirmed!==true)return;            // B 게이트 존중(미확정 차단)
+  if(isGenericFoodName(d.name))return;          // 빈/일반명 차단
+  if(d.masterPromoted)return;                   // 이미 처리됨(영속)
+  if(entry._promoting)return;                   // 진행 중(연타 race 방지)
+  if(!sbClient||!currentUser)return;            // 비로그인 → 개인 데이터만 유지
+  entry._promoting=true;
+  try{
+    const name=d.name;
+    let candidates=[];
+    try{candidates=await findSimilarFoodMaster(name);}catch(e){candidates=[];}
+    const _nl=String(name).trim().toLowerCase();
+    const exact=candidates.find(c=>String(c.name||'').trim().toLowerCase()===_nl);
+    if(exact){ d.masterPromoted=true;saveFD();return; }          // 완전일치: 이미 있음 → 스킵
+    if(candidates.length){ d.masterPromoted=true;saveFD();return; } // 유사후보만: 보수적 스킵(⭐ 수동 병합)
+    // 후보 0건 → 새 행 INSERT(영양 포함). 성공 시에만 promoted 마킹(실패 시 다음 확정 때 재시도).
+    const newId=await contributeFoodMaster(d,'analysis');
+    if(newId){
+      d.masterPromoted=true;saveFD();
+      if(!opts.silent){try{toast('같은 사료 먹는 다른 아이들에게 도움이 될 거예요');}catch(e){}}
+    }
+  }catch(e){console.warn('자동 승격 오류:',e);}
+  finally{entry._promoting=false;}
+}
+
 /* ── 11번: 사료 즐겨찾기 ── */
 const saveFavFoods=()=>{
   const _cat=state.activeCat||'_global';
@@ -10009,6 +10046,7 @@ function _addFavFood(origName, finalName, kcalPer100g, type){
   }
   contributeFoodMaster(payload,'favorite').then(newId=>{
     if(newId){_entry.masterId=newId;saveFavFoods();}
+    if(_fd&&_fd.data){_fd.data.masterPromoted=true;try{saveFD();}catch(e){}}  // 자동 승격 경로의 중복 INSERT 방지
   }).catch(e=>{});
   toast(`${finalName} 즐겨찾기 추가!`);
   try{renderFdHistory();}catch(e){}
