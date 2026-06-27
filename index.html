@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.03</span>
+      <span class="cm-beta">v0.7.04</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -5933,7 +5933,7 @@ let _cmFdDebTimer=null;
 let _cmFdSeq=0;           // 비동기 foods_master 응답 stale 가드용
 // cm_fooddb / foods_master 항목을 공통 형태로 정규화 {name,type,kcal,src,moisture?,phosphorus?}
 function _cmFdNormLocal(x){ return {name:x.n,type:x.t,kcal:(x.k!=null?x.k:null),src:'local'}; }
-function _cmFdNormMaster(r){ return {name:r.name,type:r.type||null,kcal:(r.kcal_per_100g!=null?r.kcal_per_100g:null),src:'master',moisture:(r.moisture!=null?r.moisture:null),phosphorus:(r.phosphorus_af!=null?r.phosphorus_af:null)}; }
+function _cmFdNormMaster(r){ return {id:(r.id!=null?r.id:null),name:r.name,type:r.type||null,kcal:(r.kcal_per_100g!=null?r.kcal_per_100g:null),src:'master',moisture:(r.moisture!=null?r.moisture:null),phosphorus:(r.phosphorus_af!=null?r.phosphorus_af:null)}; }
 // 사료명 input oninput — 160ms 디바운스 → 로컬 즉시 + foods_master 비동기 2섹션 렌더
 function cmFdNameInput(el){
   if(_cmFdDebTimer)clearTimeout(_cmFdDebTimer);
@@ -6005,7 +6005,7 @@ function cmFdCommitName(name,rerender){
   _fdViewData.name=name;
   _fdViewData.data.name=name;
   _fdViewData.data.nameConfirmed=true;
-  if(name!==_old)_fdViewData.data.masterPromoted=false;   // 이름 바뀌면 재승격 대상으로
+  if(name!==_old){_fdViewData.data.masterPromoted=false;_fdViewData.masterId=null;}   // 이름 바뀌면 재승격 대상 + stale master 링크 차단(A-2)
   saveFD();
   const _fi=favFoods.findIndex(f=>(f.name||f)===_old);   // 수정 전 이름으로 매칭(기존 정책)
   if(_fi>-1){favFoods[_fi].name=name;saveFavFoods();}
@@ -6076,6 +6076,9 @@ function cmFdPick(idx){
     saveFdKcal();   // #fdKcalInput(=item.k)을 읽어 kcal_per_100g + favFoods.kcalPer100g 반영
     if(hint){hint.textContent=hintTxt;hint.style.display='block';}
   }
+  // A-2 표기통일(1단계): 사용자가 명시적으로 고른 foods_master 행(src='master')만 분석에 링크.
+  // cm 표준목록(src='local')은 id 없음 → 링크 안 함(정상). 자동추정 매칭은 안 함(보수적).
+  if(item.src==='master' && item.id && _fdViewData){ _fdViewData.masterId=item.id; saveFD(); }
   cmFdHideDrop();
   // 이름 확정(드롭다운 선택) → 자동 승격. 칼로리 토스트와 겹치지 않게 무음.
   autoPromoteFood(_fdViewData,{silent:true});
@@ -6118,7 +6121,7 @@ function saveFdFields(){
   if(_nmEl){
     const _newName=_nmEl.value.trim();
     if(_newName){
-      if(_newName!==_oldName){d.name=_newName;_fdViewData.name=_newName;nameChanged=true;changed=true;d.masterPromoted=false;}  // 이름 바뀌면 재승격 대상
+      if(_newName!==_oldName){d.name=_newName;_fdViewData.name=_newName;nameChanged=true;changed=true;d.masterPromoted=false;_fdViewData.masterId=null;}  // 이름 바뀌면 재승격 대상 + stale master 링크 차단(A-2)
       if(!d.nameConfirmed){d.nameConfirmed=true;changed=true;}  // 사용자가 이름칸에 값 넣고 저장 = 확정
     }
   }
@@ -9999,6 +10002,9 @@ function toggleFavFood(name, el, kcalPer100g, type) {
     showFoodNamePrompt(newName=>_addFavFood(name,newName,kcalPer100g,type));
     return;
   }
+  // A-2 표기통일(1단계): 이 분석이 이미 foods_master 행에 링크돼 있으면(드롭다운에서 명시 선택)
+  // 재검색·중복 INSERT 없이 그 id로 즐겨찾기 연계. _addFavFood가 _selectedMaster.id 있으면 적립 스킵.
+  if(_h && _h.masterId){ _selectedMaster={id:_h.masterId,name}; _addFavFood(name,name,kcalPer100g,type); return; }
   // 확정된 정상 이름: 유사 사료가 있을 때만 확인, 없으면 매끄럽게 바로 등록
   _checkSimilarThenAdd(name,kcalPer100g,type);
 }
