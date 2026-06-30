@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.07</span>
+      <span class="cm-beta">v0.7.08</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -5949,11 +5949,13 @@ function cmSearchFood(query, limit=8){
 let _cmFdResults=[];      // 현재 드롭다운에 표시 중인 후보(정규화) — 행 클릭 매핑용
 let _cmFdDebTimer=null;
 let _cmFdSeq=0;           // 비동기 foods_master 응답 stale 가드용
+let _cmFdPendingPick=null;  // 방향A: 드롭다운에서 고른 행(채움만, 미확정). 확정 시 masterId·kcal 적용용.
 // cm_fooddb / foods_master 항목을 공통 형태로 정규화 {name,type,kcal,src,moisture?,phosphorus?}
 function _cmFdNormLocal(x){ return {name:x.n,type:x.t,kcal:(x.k!=null?x.k:null),src:'local'}; }
 function _cmFdNormMaster(r){ return {id:(r.id!=null?r.id:null),name:r.name,type:r.type||null,kcal:(r.kcal_per_100g!=null?r.kcal_per_100g:null),src:'master',moisture:(r.moisture!=null?r.moisture:null),phosphorus:(r.phosphorus_af!=null?r.phosphorus_af:null)}; }
 // 사료명 input oninput — 160ms 디바운스 → 로컬 즉시 + foods_master 비동기 2섹션 렌더
 function cmFdNameInput(el){
+  _cmFdPendingPick=null;   // 방향A: 사용자가 직접 타이핑하면 이전 행선택 무효(stale 링크 차단)
   if(_cmFdDebTimer)clearTimeout(_cmFdDebTimer);
   const q=el.value;
   _cmFdDebTimer=setTimeout(()=>{
@@ -6014,7 +6016,7 @@ function cmFdRender2(local,master,masterLoading){
   drop.style.display='block';
 }
 // 이름 확정 커밋: _fdViewData.name·data.name 갱신 + nameConfirmed=true + favFoods 이름 동기화
-// rerender=true면 결과 화면 재렌더(추천 버튼용). cmFdPick은 kcal 채움 보존 위해 false로 호출.
+// rerender=true면 결과 화면 재렌더. 확정 진입점은 cmFdConfirmName(확정버튼/Enter)·cmFdUseAiName.
 function cmFdCommitName(name,rerender){
   if(!_fdViewData||!_fdViewData.data)return;
   name=(name||'').trim();
@@ -6036,7 +6038,9 @@ function cmFdConfirmName(){
   const el=document.getElementById('fdEdit_name');
   const v=(el?el.value:'').trim();
   if(!v){toast('이름을 입력해주세요','#D85A30');return;}
-  cmFdCommitName(v,true);
+  cmFdCommitName(v,true);     // 확정 + 재렌더(DOM 새로 그림)
+  _cmFdApplyPicked();         // 방향A: 재렌더된 DOM에 펜딩(masterId·kcal) 적용 — 이름 일치 시만
+  _cmFdPendingPick=null;      // 1회성 — 적용 후 클리어
   autoPromoteFood(_fdViewData,{silent:true});
 }
 // 이름칸 Enter 처리: 드롭다운 열렸을 땐 무시(탭으로만 선택), 닫혔을 때만 입력값 확정
@@ -6056,50 +6060,55 @@ function cmFdUseAiName(){
   if(!ai)return;
   const el=document.getElementById('fdEdit_name');
   if(el)el.value=ai;
+  _cmFdPendingPick=null;   // 방향A: AI 이름 확정이면 직전 행선택 무효화
   cmFdCommitName(ai,true);
   autoPromoteFood(_fdViewData,{silent:true});   // 이름 확정 → 자동 승격. 토스트는 cmFdCommitName 하나로 통일
 }
-// 드롭다운 행 선택: 이름 확정 커밋 + 칼로리는 비어있을 때만 DB값 보조
+// 방향A — 드롭다운 행 선택: "이름칸 채우기"만. 확정(masterId·kcal·승격)은 cmFdConfirmName으로 이동.
+// ⚠️ cmFdCommitName 호출 안 함 → 직전 확정 이름 오염 방지(버그 수정).
 function cmFdPick(idx){
   const item=_cmFdResults[idx];
   if(!item)return;
-  // 1) 이름 확정 커밋(재렌더) — 박스·history·추천줄 정리. 이후 DOM은 새로 그려진 요소 기준.
-  cmFdCommitName(item.name,true);
-  // 2) 칼로리: _fdViewData.data.kcal_per_100g가 null/'' 일 때만 (0은 입력값으로 간주, 분석값 우선)
-  //    master 행인데 kcal 없으면(item.kcal===null) 이 가드에서 자동 스킵 → 이름만 채움
-  const cur=(_fdViewData&&_fdViewData.data)?_fdViewData.data.kcal_per_100g:undefined;
+  const el=document.getElementById('fdEdit_name');
+  if(el)el.value=item.name;
+  // 고른 행 정보 stash — 확정 시 이름 일치하면 masterId 링크 + kcal 보조에 사용
+  _cmFdPendingPick={id:(item.id!=null?item.id:null),kcal:(item.kcal!=null?item.kcal:null),
+                    name:(item.name||'').trim(),src:item.src};
+  cmFdHideDrop();      // 드롭다운만 닫음 — _fdViewData·data.name·nameConfirmed 미변경
+  if(el)el.focus();    // 포커스 유지 → 바로 인라인 [확정]/Enter (키보드 위 노출)
+}
+// 확정 시 펜딩(고른 행) 적용: 확정이름==고른이름일 때만 masterId 링크 + kcal 보조(빈칸일 때만).
+// cmFdConfirmName에서 cmFdCommitName(재렌더) 직후 호출 → 새 DOM(#fdKcalInput 등) 기준 동작.
+function _cmFdApplyPicked(){
+  const p=_cmFdPendingPick;
+  if(!p||!_fdViewData||!_fdViewData.data)return;
+  if(p.name!==(_fdViewData.data.name||'').trim())return;   // 사용자가 수정했으면 적용 안 함
+  // 칼로리: kcal_per_100g가 null/'' 일 때만 (0은 입력값으로 간주, 분석값 우선). master에 kcal 없으면 자동 스킵.
+  const cur=_fdViewData.data.kcal_per_100g;
   const isEmpty=(cur===null||cur===undefined||cur==='');
   const kInput=document.getElementById('fdKcalInput');
   const hint=document.getElementById('cmfdKcalHint');
-  if(isEmpty && item.kcal!=null && kInput){
-    const isWet=(_fdViewData&&_fdViewData.data&&_fdViewData.data.type==='wet');
-    // #fdKcalInput을 직접 세팅(=source of truth). convWetKcal은 호출하지 않음(미완성 환산칸이면 값 비움).
-    kInput.value=item.kcal;
+  if(isEmpty && p.kcal!=null && kInput){
+    const isWet=(_fdViewData.data.type==='wet');
+    kInput.value=p.kcal;   // #fdKcalInput=source of truth. convWetKcal 미호출.
     let hintTxt='이 사료의 칼로리를 불러왔어요. 제품 표기와 다르면 수정해 주세요';
     if(isWet){
-      const canGEl=document.getElementById('fdKcalCanG');
-      const canG=parseFloat(canGEl&&canGEl.value)||0;
+      const canG=parseFloat((document.getElementById('fdKcalCanG')||{}).value)||0;
       const prevEl=document.getElementById('fdKcalPreview');
       if(canG>0){
-        // 용량 있으면 총kcal 역산해 화면 환산칸도 일관되게 채움 (kcal는 kcal/100g 기준)
         const totalEl=document.getElementById('fdKcalTotal');
-        if(totalEl)totalEl.value=Math.round(item.kcal*canG/100);
-        if(prevEl)prevEl.textContent='→ 100g당 약 '+item.kcal+'kcal로 저장돼요';
+        if(totalEl)totalEl.value=Math.round(p.kcal*canG/100);
+        if(prevEl)prevEl.textContent='→ 100g당 약 '+p.kcal+'kcal로 저장돼요';
       }else{
-        // 용량 없으면 환산 불가 → 기준값만 적용. 적용값(item.kcal)은 프리뷰로 노출(화면-내부 불일치 방지)
-        if(prevEl)prevEl.textContent='100g당 '+item.kcal+'kcal 적용됨';
+        if(prevEl)prevEl.textContent='100g당 '+p.kcal+'kcal 적용됨';
         hintTxt='이 사료의 칼로리를 불러왔어요. 용량(g)을 입력하면 총 kcal가 자동계산돼요';
       }
     }
-    saveFdKcal();   // #fdKcalInput(=item.k)을 읽어 kcal_per_100g + favFoods.kcalPer100g 반영
+    saveFdKcal();
     if(hint){hint.textContent=hintTxt;hint.style.display='block';}
   }
-  // A-2 표기통일(1단계): 사용자가 명시적으로 고른 foods_master 행(src='master')만 분석에 링크.
-  // cm 표준목록(src='local')은 id 없음 → 링크 안 함(정상). 자동추정 매칭은 안 함(보수적).
-  if(item.src==='master' && item.id && _fdViewData){ _fdViewData.masterId=item.id; saveFD(); }
-  cmFdHideDrop();
-  // 이름 확정(드롭다운 선택) → 자동 승격. 칼로리 토스트와 겹치지 않게 무음.
-  autoPromoteFood(_fdViewData,{silent:true});
+  // A-2 표기통일: 명시적으로 고른 foods_master 행(src='master')만 링크. local은 id 없음 → 스킵.
+  if(p.src==='master' && p.id && _fdViewData){ _fdViewData.masterId=p.id; saveFD(); }
 }
 // 드롭다운 바깥 클릭 시 닫힘 — 스크립트 init에서 1회만 등록(renderFdResult 반복 호출과 무관)
 document.addEventListener('click',function(e){
