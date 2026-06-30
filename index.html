@@ -482,7 +482,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
         <div style="width:30px;height:30px;flex:0 0 auto;background:var(--cm-green-tint);border:1px solid var(--cm-green-edge);border-radius:9px;display:flex;align-items:center;justify-content:center">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--cm-green-700)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg>
         </div>
-        <div style="flex:1;min-width:0;font-size:12.5px;font-weight:500;color:var(--cm-ink);line-height:1.55;padding-top:2px"><span style="color:var(--cm-green-700);font-weight:700">IRIS · ACVIM</span> 등 수의학 가이드라인 기반 분석</div>
+        <div style="flex:1;min-width:0;font-size:12.5px;font-weight:500;color:var(--cm-ink);line-height:1.55;padding-top:2px"><span style="color:var(--cm-green-700);font-weight:700">IRIS · ISFM · ACVIM</span> 등 수의학 가이드라인 기반 분석</div>
       </div>
     </div>
 
@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.11</span>
+      <span class="cm-beta">v0.7.12</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -5458,36 +5458,36 @@ setupDrop('fdDrop','fdFile',async file=>{
 let fdSel = {dm:true, ckd:false, hcm:false}; // 다중 선택 플래그 (DM·CKD·HCM)
 let ckdStage = 1;
 
-// IRIS 스테이지별 기준 (2023 IRIS 가이드라인 기반)
-// 참고: iris-kidney.com, AAHA 2023 Senior Care Guidelines, Royal Canin Academy
+// IRIS 스테이징 + ISFM 2016 영양 기준 + 처방식 평균 (혼합 출처)
+// 참고: iris-kidney.com(혈액 스테이징), ISFM 2016 CKD Consensus(사료 영양), AAHA 2023 Senior Care, Royal Canin Academy
 const CKD_CRITERIA = {
   1: {
     p: 0.6,
     protein: [28, 40],
     na: 0.4,
     wetRequired: false,
-    desc: 'Stage 1 — 신장 손상 초기 (Creatinine <140 μmol/L). 인 제한 시작 권고, 수분 섭취 중요. 단백질은 고품질 유지.'
+    desc: '[스테이징] Creatinine <140 μmol/L — 신장 손상 초기 (IRIS 혈액 기준). [사료 참고] 인 제한 시작 권고·충분한 수분·고품질 단백질 유지 (ISFM 영양 기준).'
   },
   2: {
     p: 0.5,
     protein: [28, 35],
     na: 0.4,
     wetRequired: false,
-    desc: 'Stage 2 — 경도 신부전 (Creatinine 140~249 μmol/L). 인 0.5% DM 이하, 단백질 제한 시작 권고 (Stage 2부터 신장 처방식 고려). 습식 권장.'
+    desc: '[스테이징] Creatinine 140~249 μmol/L — 경도 신부전 (IRIS 혈액 기준). [사료 참고] 인 0.5% DM 이하·단백질 제한 시작, Stage 2부터 신장 처방식 고려·습식 권장 (ISFM 영양 기준).'
   },
   3: {
     p: 0.4,
     protein: [24, 32],
     na: 0.3,
     wetRequired: true,
-    desc: 'Stage 3 — 중등도 신부전 (Creatinine 250~439 μmol/L). 인 0.4% DM 이하, 단백질 24~32% DM, 습식 필수. 나트륨 제한.'
+    desc: '[스테이징] Creatinine 250~439 μmol/L — 중등도 신부전 (IRIS 혈액 기준). [사료 참고] 인 0.4% DM 이하·단백질 24~32% DM·습식 필수·나트륨 제한 (ISFM 영양 기준).'
   },
   4: {
     p: 0.3,
     protein: [20, 28],
     na: 0.3,
     wetRequired: true,
-    desc: 'Stage 4 — 중증 신부전 (Creatinine ≥440 μmol/L). 인 0.3% DM 이하, 단백질 20~28% DM, 습식 필수. 인산결합제 병용 필요할 수 있음.'
+    desc: '[스테이징] Creatinine ≥440 μmol/L — 중증 신부전 (IRIS 혈액 기준). [사료 참고] 인 0.3% DM 이하·단백질 20~28% DM·습식 필수, 인산결합제 병용 필요할 수 있음 (ISFM 영양 기준).'
   }
 };
 
@@ -5673,13 +5673,26 @@ function updateCkdDesc() {
   if(!desc) return;
   if(!fdSel.ckd) { desc.innerHTML = ''; return; }
   const c = CKD_CRITERIA[ckdStage];
+  if(ckdStage === 1) {
+    // Stage 1은 식이 제한보다 모니터링이 우선 — % 기준은 참고용으로 약하게
+    desc.innerHTML =
+      '<div style="background:var(--cm-green-tint);border:1px solid var(--cm-green-edge);border-radius:10px;padding:.65rem .85rem">'
+      +'<div style="font-size:11px;font-weight:700;color:var(--cm-green-700);margin-bottom:.3rem">Stage 1 — 신장 손상 초기</div>'
+      +'<div style="font-size:11px;color:var(--cm-ink-soft);line-height:1.7">'
+      +'이 단계는 식이 제한보다 <b>인 수치 정기 모니터링(3~6개월)</b>과 충분한 수분이 우선이에요. 신장 처방식 전환은 보통 Stage 2부터 고려합니다.'
+      +'</div>'
+      +'<div style="font-size:10.5px;color:var(--cm-faint);font-style:italic;margin-top:.3rem">참고 사료 기준: 인 '+c.p+'% 이하 · 단백질 '+c.protein[0]+'~'+c.protein[1]+'% · 습식 권장</div>'
+      +'</div>';
+    return;
+  }
   desc.innerHTML =
     '<div style="background:var(--cm-green-tint);border:1px solid var(--cm-green-edge);border-radius:10px;padding:.65rem .85rem">'
-    +'<div style="font-size:11px;font-weight:700;color:var(--cm-green-700);margin-bottom:.3rem">Stage '+ckdStage+' 기준 (2023 IRIS 가이드라인)</div>'
+    +'<div style="font-size:11px;font-weight:700;color:var(--cm-green-700);margin-bottom:.3rem">Stage '+ckdStage+' 기준 (IRIS 스테이징 · ISFM 영양 기준)</div>'
     +'<div style="font-size:11px;color:var(--cm-ink-soft);line-height:1.7">'
-    +'인(P) DM <b>'+c.p+'% 이하</b> · 단백질 DM <b>'+c.protein[0]+'~'+c.protein[1]+'%</b> · 나트륨 <b>'+c.na+'% 이하</b>'
+    +'인(P) DM <b>'+c.p+'% 이하</b> · 단백질 DM <b>'+c.protein[0]+'~'+c.protein[1]+'%</b>'
     +(c.wetRequired?' · <b style="color:#D85A30">습식 필수</b>':' · 습식 권장')
     +'</div>'
+    +'<div style="font-size:10.5px;color:var(--cm-faint);margin-top:.25rem">신장 처방식은 대체로 나트륨이 제한돼요 (참고).</div>'
     +'<div style="font-size:11px;color:var(--cm-ink-soft);margin-top:.3rem">'+c.desc+'</div>'
     +'</div>';
 }
@@ -5732,7 +5745,7 @@ function renderCkdResult(d, area) {
 
   let html = '<div style="background:'+lc+'15;border:1.5px solid '+lc+';border-radius:12px;padding:.85rem 1rem;margin-bottom:.75rem">'
     + '<div style="font-size:14px;font-weight:700;color:'+lc+';margin-bottom:.4rem">🫘 '+labels[judge.score]+'</div>'
-    + '<div style="font-size:12px;color:var(--text2)">IRIS CKD Stage '+ckdStage+' 기준 · 인 '+c.p+'% 이하 · 단백질 '+c.protein[0]+'~'+c.protein[1]+'%</div>'
+    + '<div style="font-size:12px;color:var(--text2)">CKD Stage '+ckdStage+' 기준 (IRIS·ISFM) · 인 '+c.p+'% 이하 · 단백질 '+c.protein[0]+'~'+c.protein[1]+'%</div>'
     + '</div>';
 
   // 수치 카드들
@@ -7808,7 +7821,7 @@ function renderTubeNutrition(){
   const diseases=(state.catProfiles&&state.catProfiles[cat]&&state.catProfiles[cat].diseases)||[];
   const hasCKD=diseases.some(d=>d.includes('CKD')||d.includes('PKD'));
   const hasDM=diseases.some(d=>d.includes('DM'));
-  const c=CKD_CRITERIA[1];   // 강급 기준은 보수적 IRIS Stage 1 (인 0.6%·단백 28~40% DM)
+  const c=CKD_CRITERIA[1];   // 강급 기준은 보수적 Stage 1 (IRIS 스테이징·ISFM 영양, 인 0.6%·단백 28~40% DM)
 
   const _fmt=v=>(v==null?'—':v+'%');
   // 한 줄 지표 행
