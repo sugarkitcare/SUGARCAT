@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.05</span>
+      <span class="cm-beta">v0.7.06</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -1669,23 +1669,17 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
       </div>
     </div>
 
-    <!-- ── 이름으로 찾기 (완성 사료 AI 0회 조회) ── -->
+    <!-- ── 이름으로 찾기 (완성 사료 AI 0회 조회) — 뱃지가 의미 전달, 범례·안내 생략 ── -->
     <div class="cm-card cm-card--flat" style="margin-bottom:.75rem">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:.6rem">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:.5rem">
         <div class="cm-ic cm-ic--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
         <span style="font-size:14px;font-weight:700;color:var(--cm-ink)">이름으로 찾기</span>
-        <span style="font-size:11px;color:var(--cm-faint);font-weight:400">먼저 검색해 보세요</span>
-      </div>
-      <div style="background:var(--cm-green-tint);border:1px solid var(--cm-green-edge);border-radius:10px;padding:.6rem .85rem;margin-bottom:.6rem;display:flex;align-items:flex-start;gap:8px">
-        <span style="font-size:15px;flex-shrink:0;line-height:1.6">⚡</span>
-        <span style="font-size:12px;color:var(--cm-green-ink);line-height:1.6">이미 등록된 사료는 <b>사진 없이 바로 분석</b>돼요. 검색 결과가 없거나 정보가 부족하면 아래에서 <b>사진으로 분석</b>하세요.</span>
       </div>
       <div class="fm-wrap">
         <input type="text" id="fmSearchInput" placeholder="사료명 검색 (예: 로얄캐닌 레날)" autocomplete="off" oninput="fmSearchInput(this)" onkeydown="fmSearchKey(event)"
           style="width:100%;padding:9px 11px;border:1.5px solid var(--cm-green-edge);border-radius:9px;font-size:14px;background:var(--bg);color:var(--text);font-family:inherit">
         <div id="fmSearchDrop" class="cmfd-drop" style="display:none"></div>
       </div>
-      <div style="font-size:10px;color:var(--cm-faint);margin-top:.4rem;line-height:1.5">🟢 바로 조회(AI 사용 안 함) · ⚪ 사진분석 필요</div>
     </div>
 
     <!-- 사진 분석 -->
