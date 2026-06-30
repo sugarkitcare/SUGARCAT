@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.10</span>
+      <span class="cm-beta">v0.7.11</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -6279,7 +6279,7 @@ function fmGuideToPhoto(item){
   const drop=document.getElementById('fdDrop');
   if(drop){try{drop.scrollIntoView({behavior:'smooth',block:'center'});}catch(e){}}
   const nm=(item&&item.name)?'"'+item.name+'"은 ':'';
-  try{toast(nm+'성분 정보가 부족해 사진분석이 필요해요','#BA7517',4000);}catch(e){}   // 이 호출만 4초(전역 기본 2200 유지)
+  try{toast(nm+'성분 정보가 부족해 사진분석이 필요해요','#BA7517',3000);}catch(e){}   // 이 호출만 3초(전역 기본 2200 유지)
 }
 // 검색박스 바깥 클릭 시 닫힘 (fmSearch 전용 — cmFd 핸들러와 독립)
 document.addEventListener('click',function(e){
