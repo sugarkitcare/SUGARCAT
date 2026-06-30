@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.06</span>
+      <span class="cm-beta">v0.7.07</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -6188,7 +6188,17 @@ function fmRender(local,master,masterLoading){
   const drop=document.getElementById('fmSearchDrop');
   if(!drop)return;
   const localArr=local||[], masterArr=master||[];
-  if(!masterLoading && !masterArr.length && !localArr.length){fmSearchHideDrop();return;}
+  if(!masterLoading && !masterArr.length && !localArr.length){
+    // 0건: 검색어 2자 이상이면 "사진분석" 안내 행 표시, 아니면 숨김
+    const q=((document.getElementById('fmSearchInput')||{}).value||'').trim();
+    if(q.length>=2){
+      _fmResults=[];
+      drop.innerHTML='<div class="cmfd-loading" style="cursor:pointer;color:#235B43;font-weight:600" onclick="fmGuideToPhoto()">검색 결과가 없어요 · 사진으로 분석하기 →</div>';
+      drop.style.display='block';
+      return;
+    }
+    fmSearchHideDrop();return;
+  }
   _fmResults=masterArr.concat(localArr);          // master 먼저(위)
   let html='';
   if(masterLoading){
@@ -6204,8 +6214,7 @@ function fmRender(local,master,masterLoading){
   drop.innerHTML=html;
   drop.style.display='block';
 }
-// 행 선택 라우팅: 완성(master+3종) → 조회 / 그 외(빈약·local·kcal만) → 사진분석 안내
-// ⚠️ 실제 d빌드·renderFdResult·사진안내는 (d)단계에서 구현. 여기선 라우팅 + 임시 스텁.
+// 행 선택 라우팅: 완성(master+3종) → 조회(AI 0회) / 그 외(빈약·local·kcal만) → 사진분석 안내
 function fmPick(idx){
   const item=_fmResults[idx];
   if(!item)return;
@@ -6213,9 +6222,53 @@ function fmPick(idx){
   if(_fmIsComplete(item)) fmOpenFromMaster(item);
   else fmGuideToPhoto(item);
 }
-// ── (d)단계 전 임시 스텁 — (d)에서 실제 구현으로 교체 ──
-function fmOpenFromMaster(item){ try{toast('"'+item.name+'" 조회 — (d)단계에서 결과 렌더 예정');}catch(e){} }
-function fmGuideToPhoto(item){ try{toast('"'+item.name+'"은 정보가 부족해 사진분석이 필요해요 — (d)단계 예정','#BA7517');}catch(e){} }
+// foods_master 정규화 행(_fmNormMaster) → 분석 d 객체. 표준 parsed(AI) shape와 동일 + 링크 4필드.
+// 🔴 필수: type·name·nameConfirmed:true·masterPromoted:true. + 즐겨찾기/강급 연결 위해 성분 빠짐없이.
+function buildFdDataFromMaster(item){
+  return {
+    name: item.name,
+    type: item.type,
+    moisture: (item.moisture!=null?item.moisture:null),
+    protein_af: (item.protein_af!=null?item.protein_af:null),
+    fat_af: (item.fat_af!=null?item.fat_af:null),
+    fiber_af: (item.fiber_af!=null?item.fiber_af:null),
+    ash_af: (item.ash_af!=null?item.ash_af:null),
+    carb_af: (item.carb_af!=null?item.carb_af:null),
+    kcal_per_100g: (item.kcal!=null?item.kcal:null),
+    phosphorus_af: (item.phosphorus_af!=null?item.phosphorus_af:null),
+    sodium_af: (item.sodium_af!=null?item.sodium_af:null),
+    ingredients_top5: (item.ingredients_top5||[]),
+    grain_free: (item.grain_free!=null?item.grain_free:false),
+    special_notes: (item.special_notes!=null?item.special_notes:''),
+    main_protein_source: '',
+    foodNameInput: item.name,
+    aiName: '',                 // 검색진입은 AI 이름 없음(추천줄 안뜸)
+    nameConfirmed: true,        // 🔴 정식 이름 확정 취급(재프롬프트 차단)
+    masterPromoted: true,       // 🔴 이미 master 존재 → autoPromote 재INSERT 차단
+  };
+}
+// 완성행 선택 → d빌드 후 기존 분석 레일에 그대로 진입(사진분석과 동일 렌더). AI 호출 0회.
+function fmOpenFromMaster(item){
+  const d=buildFdDataFromMaster(item);
+  const entry={ts:Date.now(), data:d, name:d.name, masterId:(item.id!=null?item.id:null)};
+  fdData.unshift(entry);
+  if(fdData.length>20)fdData=fdData.slice(0,20);
+  _fdViewData=entry;
+  saveFD();
+  try{renderFdHistory();}catch(e){}
+  renderFdResult(d);            // 당뇨/CKD/HCM 카드까지 로컬 계산 렌더(fdSel 반영)
+  const inp=document.getElementById('fmSearchInput'); if(inp)inp.value='';
+  try{const r=document.getElementById('fdResult'); if(r)r.scrollIntoView({behavior:'smooth',block:'start'});}catch(e){}
+  try{toast('"'+d.name+'" 조회 완료 — 사진 없이 분석했어요 ✓');}catch(e){}
+}
+// 빈약(master 3종 미충족)·local(cm_fooddb)·0건 → 사진분석 카드로 유도
+function fmGuideToPhoto(item){
+  fmSearchHideDrop();
+  const drop=document.getElementById('fdDrop');
+  if(drop){try{drop.scrollIntoView({behavior:'smooth',block:'center'});}catch(e){}}
+  const nm=(item&&item.name)?'"'+item.name+'"은 ':'';
+  try{toast(nm+'성분 정보가 부족해 사진분석이 필요해요','#BA7517');}catch(e){}
+}
 // 검색박스 바깥 클릭 시 닫힘 (fmSearch 전용 — cmFd 핸들러와 독립)
 document.addEventListener('click',function(e){
   const wrap=e.target.closest&&e.target.closest('.fm-wrap');
