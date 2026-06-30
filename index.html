@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.08</span>
+      <span class="cm-beta">v0.7.09</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -6273,6 +6273,24 @@ function fmOpenFromMaster(item){
 // 빈약(master 3종 미충족)·local(cm_fooddb)·0건 → 사진분석 카드로 유도
 function fmGuideToPhoto(item){
   fmSearchHideDrop();
+  // 화면-안내 일치(방향1): 직전 완성결과를 비우고 "방금 누른 사료" 기준 사진안내로 교체.
+  // ⚠️ _fdViewData·fdData·이름확정 일절 미변경 — 순수 #fdResult DOM 교체만. (직전 결과는 history에 보존)
+  const area=document.getElementById('fdResult');
+  if(area){
+    const nm=(item&&item.name)?String(item.name).replace(/</g,'&lt;'):'이 사료';
+    area.innerHTML =
+      '<div class="cm-card cm-card--flat" style="margin-bottom:.75rem">'
+      + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:.5rem">'
+      +   '<span style="font-size:18px">📷</span>'
+      +   '<span style="font-size:14px;font-weight:700;color:var(--cm-ink)">사진 분석이 필요한 사료예요</span>'
+      + '</div>'
+      + '<div style="font-size:12px;color:var(--cm-ink-soft);line-height:1.6">'
+      +   '<b>"'+nm+'"</b>은 칼로리 정보만 있어 성분 분석을 할 수 없어요. 아래에서 <b>성분표 사진</b>을 올리면 분석이 완성돼요.'
+      + '</div>'
+      + '<button type="button" onclick="document.getElementById(\'fdDrop\').scrollIntoView({behavior:\'smooth\',block:\'center\'})" '
+      +   'style="margin-top:.6rem;padding:6px 14px;background:#1a6b43;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">성분표 사진 올리기 →</button>'
+      + '</div>';
+  }
   const drop=document.getElementById('fdDrop');
   if(drop){try{drop.scrollIntoView({behavior:'smooth',block:'center'});}catch(e){}}
   const nm=(item&&item.name)?'"'+item.name+'"은 ':'';
