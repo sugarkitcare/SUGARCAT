@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.12</span>
+      <span class="cm-beta">v0.7.13</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -2097,6 +2097,8 @@ function renderCatBar(){
       saveS();
       // DB에 새 고양이 등록
       upsertCatToDB(n);
+      // 신규 고양이: emerg 상태 프리셋(migrated) → grandfather 동결 건너뛰고 HCM이면 자동추가 적용
+      try{setEmergState(n,{migrated:true,deleted:false});}catch(e){}
     }
     renderCatBar();
   };
@@ -6553,7 +6555,7 @@ const defaultItems=[
   {name:'유산균',cat:'med'},{name:'사메탑',cat:'med'},{name:'항생제',cat:'med'},
   {name:'세레니아',cat:'med'},{name:'미르타자핀',cat:'med'},
   {name:'피하수액',cat:'fluid',hasValue:true,unit:'ml',defaultVal:120,hasType:true,typeOptions:['하트만','0.9% NS','0.45% NS','플라즈마솔루션','기타']},
-  {name:'비상이뇨제',cat:'med',diuretic:'emergency'},
+  // 비상이뇨제는 HCM 전용 기능 → 기본 항목에서 제외. loadRoutineForCat에서 HCM 고양이만 자동 추가
   {name:'간식',cat:'food'},{name:'황금푸딩',cat:'food'},
   {name:'병원 방문',cat:'other'},{name:'구토',cat:'other'}
 ];
@@ -6578,6 +6580,39 @@ const saveRT=(catName)=>{
     });
   }
 };
+// 비상이뇨제 상태 — DB(user_settings) 진실원천 + localStorage 캐시
+//   값: {migrated:true, deleted:bool}  / null = 미마이그레이션(기존 고양이)
+//   deleted=true → 자동 추가 안 함(보호자 삭제 의사 영속). localStorage-only 가드의 다기기/ITP 증발 문제 해결.
+async function getEmergState(cat){
+  const lsKey = 'emerg_state_' + cat;
+  if(sbClient && currentUser){
+    try{
+      const {data} = await sbClient.from('user_settings')
+        .select('value').eq('user_id', currentUser.id).eq('key', 'emerg_state_' + cat).maybeSingle();
+      if(data && data.value && typeof data.value === 'object'){
+        try{localStorage.setItem(lsKey, JSON.stringify(data.value));}catch(e){}
+        return data.value;
+      }
+      return null; // DB에 행 없음 → 미마이그레이션
+    }catch(e){
+      // DB 오류 → localStorage 폴백
+      try{const l=localStorage.getItem(lsKey); return l?JSON.parse(l):null;}catch(e2){return null;}
+    }
+  }
+  // 비로그인: localStorage만
+  try{const l=localStorage.getItem(lsKey); return l?JSON.parse(l):null;}catch(e){return null;}
+}
+function setEmergState(cat, st){
+  if(!cat) return;
+  try{localStorage.setItem('emerg_state_' + cat, JSON.stringify(st));}catch(e){}
+  if(sbClient && currentUser){
+    sbClient.from('user_settings').upsert({
+      user_id: currentUser.id, key: 'emerg_state_' + cat, value: st, updated_at: new Date().toISOString()
+    }, {onConflict: 'user_id,key'}).then(({error})=>{
+      if(error) console.warn('비상이뇨제 상태 DB 저장 오류:', error);
+    });
+  }
+}
 // 고양이별 루틴 불러오기
 async function loadRoutineForCat(catName) {
   const cat = catName || state.activeCat;
@@ -6613,19 +6648,32 @@ async function loadRoutineForCat(catName) {
       routineItems = local ? JSON.parse(local) : [...defaultItems];
     } catch(e) { routineItems = [...defaultItems]; }
   }
-  // 비상이뇨제 자동 병합 - 최초 1회만 (삭제 후 재추가 방지)
-  const emergInitKey = 'emerg_init_' + cat;
-  const alreadyInited = localStorage.getItem(emergInitKey);
-  if(!alreadyInited) {
-    // 한번도 초기화 안 된 고양이 → 비상이뇨제 없으면 추가
-    const hasEmergency = routineItems.some(i => i.diuretic === 'emergency');
-    if(!hasEmergency) {
+  // 비상이뇨제 — HCM 전용 자동추가 + DB 영속 삭제 가드
+  try {
+    const _emDiseases = (state.catProfiles && state.catProfiles[cat] && state.catProfiles[cat].diseases) || [];
+    const _emIsHCM = _emDiseases.some(d => typeof d === 'string' && d.includes('HCM'));
+    let _emState = await getEmergState(cat);
+    if (!_emState || !_emState.migrated) {
+      // 기존 고양이 1회 동결(grandfather): 비-HCM에 버그로 자동추가된 항목 제거 + 현 상태 동결
+      //   manual 추가분은 diuretic 플래그가 없어 제거되지 않음(자동추가분만 정리)
+      let _emChanged = false;
+      if (!_emIsHCM) {
+        const _emBefore = routineItems.length;
+        routineItems = routineItems.filter(i => i.diuretic !== 'emergency');
+        if (routineItems.length !== _emBefore) _emChanged = true;
+      }
+      const _emPresent = routineItems.some(i => i.diuretic === 'emergency');
+      _emState = { migrated: true, deleted: !_emPresent }; // 지금 없으면 "삭제됨"으로 동결 → 다시 자동추가 안 함
+      setEmergState(cat, _emState);
+      if (_emChanged) saveRT(cat);
+    }
+    // 동결 이후 정상 자동추가: HCM + 삭제이력 없음 + 루틴에 없음
+    if (_emIsHCM && !_emState.deleted && !routineItems.some(i => i.diuretic === 'emergency')) {
       routineItems.push({name:'비상이뇨제', cat:'med', diuretic:'emergency'});
+      setEmergState(cat, { migrated: true, deleted: false });
       saveRT(cat);
     }
-    // 초기화 완료 표시 (이후엔 자동 추가 안 함)
-    try{localStorage.setItem(emergInitKey, '1');}catch(e){}
-  }
+  } catch(e) { console.warn('비상이뇨제 자동처리 오류:', e); }
   // 피하수액 fluid 카테고리 업그레이드 - 최초 1회만
   const subqInitKey = 'subq_init_' + cat;
   if(!localStorage.getItem(subqInitKey)) {
@@ -7308,7 +7356,13 @@ function addRoutineItem(){
   } else {
     if(!name){toast('항목명을 입력해주세요','#D85A30');return}
     if(routineItems.find(i=>i.name===name)){toast('이미 있는 항목이에요','#BA7517');return}
-    routineItems.push({name,cat:catVal});
+    if(name==='비상이뇨제'){
+      // 수동 추가 시 배뇨추적 플래그 부여 + 삭제마커 해제(다시 쓰겠다는 의사)
+      routineItems.push({name:'비상이뇨제',cat:'med',diuretic:'emergency'});
+      try{setEmergState(currentProfileCat||state.activeCat,{migrated:true,deleted:false});}catch(e){}
+    } else {
+      routineItems.push({name,cat:catVal});
+    }
   }
   saveRT(currentProfileCat||state.activeCat);
   document.getElementById('newRoutineName').value='';
@@ -7322,6 +7376,10 @@ function deleteRoutineItem(idx){
   routineItems.splice(idx,1);
   saveRT(currentProfileCat||state.activeCat);
   routineSelected.delete(item.name);
+  // 비상이뇨제 삭제 → DB에 삭제 의사 영속 기록(다시 자동추가 안 함)
+  if(item && item.diuretic==='emergency'){
+    try{setEmergState(currentProfileCat||state.activeCat,{migrated:true,deleted:true});}catch(e){}
+  }
   renderRoutineChecklist();renderRoutineEditList();
 }
 
@@ -10687,6 +10745,8 @@ function registerFirstCat() {
   state.activeCat = name;
   saveS();
   upsertCatToDB(name);
+  // 신규 고양이: emerg 상태 프리셋(migrated) → grandfather 동결 건너뛰고 HCM이면 자동추가 적용
+  try{setEmergState(name,{migrated:true,deleted:false});}catch(e){}
   renderCatBar();
   document.getElementById('catAddPrompt')?.remove();
   toast(name + ' 등록 완료! 이제 기록을 시작해보세요');
