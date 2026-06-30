@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.04</span>
+      <span class="cm-beta">v0.7.05</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -1669,6 +1669,25 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
       </div>
     </div>
 
+    <!-- ── 이름으로 찾기 (완성 사료 AI 0회 조회) ── -->
+    <div class="cm-card cm-card--flat" style="margin-bottom:.75rem">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:.6rem">
+        <div class="cm-ic cm-ic--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+        <span style="font-size:14px;font-weight:700;color:var(--cm-ink)">이름으로 찾기</span>
+        <span style="font-size:11px;color:var(--cm-faint);font-weight:400">먼저 검색해 보세요</span>
+      </div>
+      <div style="background:var(--cm-green-tint);border:1px solid var(--cm-green-edge);border-radius:10px;padding:.6rem .85rem;margin-bottom:.6rem;display:flex;align-items:flex-start;gap:8px">
+        <span style="font-size:15px;flex-shrink:0;line-height:1.6">⚡</span>
+        <span style="font-size:12px;color:var(--cm-green-ink);line-height:1.6">이미 등록된 사료는 <b>사진 없이 바로 분석</b>돼요. 검색 결과가 없거나 정보가 부족하면 아래에서 <b>사진으로 분석</b>하세요.</span>
+      </div>
+      <div class="fm-wrap">
+        <input type="text" id="fmSearchInput" placeholder="사료명 검색 (예: 로얄캐닌 레날)" autocomplete="off" oninput="fmSearchInput(this)" onkeydown="fmSearchKey(event)"
+          style="width:100%;padding:9px 11px;border:1.5px solid var(--cm-green-edge);border-radius:9px;font-size:14px;background:var(--bg);color:var(--text);font-family:inherit">
+        <div id="fmSearchDrop" class="cmfd-drop" style="display:none"></div>
+      </div>
+      <div style="font-size:10px;color:var(--cm-faint);margin-top:.4rem;line-height:1.5">🟢 바로 조회(AI 사용 안 함) · ⚪ 사진분석 필요</div>
+    </div>
+
     <!-- 사진 분석 -->
     <div class="cm-card cm-card--flat" style="margin-bottom:.75rem">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:.75rem">
@@ -1837,6 +1856,11 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
 <style>
 /* cm.css 톤 · cmfd- 전용 스코프 (전역/cm.css 미수정) */
 .cmfd-wrap{position:relative}
+/* 이름으로 찾기(fmSearch) 전용 — cmfd 드롭다운 CSS 시각 재사용, 래퍼만 분리 */
+.fm-wrap{position:relative}
+.fm-badge--ready{flex-shrink:0;font-size:10px;font-weight:700;padding:1px 7px;border-radius:12px;line-height:1.5;background:var(--cm-green-tint);color:var(--cm-green-700);border:1px solid var(--cm-green-edge)}
+.fm-badge--photo{flex-shrink:0;font-size:10px;font-weight:600;padding:1px 7px;border-radius:12px;line-height:1.5;background:var(--cm-surface-2);color:var(--cm-faint);border:1px solid var(--cm-line)}
+.cmfd-row:hover .fm-badge--ready,.cmfd-row.cmfd-active .fm-badge--ready,.cmfd-row:hover .fm-badge--photo,.cmfd-row.cmfd-active .fm-badge--photo{background:rgba(255,255,255,0.18);color:#fff;border-color:transparent}
 .cmfd-drop{position:absolute;left:0;right:0;top:calc(100% + 2px);z-index:60;max-height:200px;overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--cm-surface);border:0.5px solid var(--cm-line);border-radius:10px;box-shadow:0 8px 24px rgba(42,37,29,0.14)}
 .cmfd-row{display:flex;align-items:center;gap:8px;padding:9px 11px;cursor:pointer;border-bottom:0.5px solid var(--cm-line)}
 .cmfd-row:last-child{border-bottom:none}
@@ -6088,6 +6112,121 @@ document.addEventListener('click',function(e){
   const wrap=e.target.closest&&e.target.closest('.cmfd-wrap');
   if(!wrap)cmFdHideDrop();
 });
+
+/* ═══════════ 이름으로 찾기 (fmSearch*) — 성분분석 진입점 전용 ═══════════
+   분석결과 내부 인라인 에디터(cmFd*)와 완전 독립. searchFoodMaster·cmSearchFood만 공유 호출.
+   완성 사료(성분 풍부)는 사진분석 없이 조회=AI 0회. 빈약/local/0건 → 사진분석 안내. */
+let _fmResults=[];        // 현재 드롭다운에 표시 중인 후보(정규화) — 행 클릭 매핑용
+let _fmDebTimer=null;
+let _fmSeq=0;             // 비동기 foods_master 응답 stale 가드 (cmFd의 _cmFdSeq 패턴 모사)
+// 완성 판정: master 행 + protein_af·fat_af·moisture 3종 모두 존재 (경계: 수분없음→빈약, 킷 확정)
+function _fmIsComplete(x){
+  return x.src==='master' && x.protein_af!=null && x.fat_af!=null && x.moisture!=null;
+}
+function _fmNormLocal(x){ return {name:x.n,type:x.t,kcal:(x.k!=null?x.k:null),src:'local'}; }
+// foods_master 행 → 검색 후보. (c)단계 SELECT 확장 전까지 성분 필드는 undefined→null로 들어옴(완성판정 빈약 처리)
+function _fmNormMaster(r){
+  return {id:(r.id!=null?r.id:null),name:r.name,type:r.type||null,
+    kcal:(r.kcal_per_100g!=null?r.kcal_per_100g:null),src:'master',
+    moisture:(r.moisture!=null?r.moisture:null),
+    protein_af:(r.protein_af!=null?r.protein_af:null),
+    fat_af:(r.fat_af!=null?r.fat_af:null),
+    fiber_af:(r.fiber_af!=null?r.fiber_af:null),
+    ash_af:(r.ash_af!=null?r.ash_af:null),
+    carb_af:(r.carb_af!=null?r.carb_af:null),
+    phosphorus_af:(r.phosphorus_af!=null?r.phosphorus_af:null),
+    sodium_af:(r.sodium_af!=null?r.sodium_af:null),
+    ingredients_top5:(r.ingredients_top5||null),
+    grain_free:(r.grain_free!=null?r.grain_free:null),
+    special_notes:(r.special_notes!=null?r.special_notes:null)};
+}
+function fmSearchHideDrop(){
+  const drop=document.getElementById('fmSearchDrop');
+  if(drop){drop.style.display='none';drop.innerHTML='';}
+  _fmResults=[];
+}
+// 입력 oninput — 160ms 디바운스 → 로컬 즉시 + foods_master 비동기 렌더 (cmFdNameInput 패턴 모사)
+function fmSearchInput(el){
+  if(_fmDebTimer)clearTimeout(_fmDebTimer);
+  const q=el.value;
+  _fmDebTimer=setTimeout(()=>{
+    if(el.value!==q)return;                     // 그새 바뀌면 무시
+    const seq=++_fmSeq;
+    const local=cmSearchFood(q).map(_fmNormLocal);
+    fmRender(local,null,true);                  // 로컬 즉시 + master 로딩표시
+    Promise.resolve(searchFoodMaster(q)).then(rows=>{
+      if(seq!==_fmSeq||el.value!==q)return;      // stale 응답 무시
+      fmRender(local,(rows||[]).map(_fmNormMaster),false);
+    }).catch(()=>{ if(seq===_fmSeq&&el.value===q)fmRender(local,[],false); });
+  },160);
+}
+// Enter: 드롭다운 첫 후보 선택(있으면). 없으면 무시.
+function fmSearchKey(e){
+  if(e.key!=='Enter')return;
+  const drop=document.getElementById('fmSearchDrop');
+  if(!drop||drop.style.display==='none'||!_fmResults.length)return;
+  e.preventDefault();
+  fmPick(0);
+}
+function _fmReadyBadge(x){
+  return _fmIsComplete(x)
+    ? '<span class="fm-badge--ready">🟢 바로 조회</span>'
+    : '<span class="fm-badge--photo">⚪ 사진분석</span>';
+}
+function _fmRow(x,i){
+  const tb=_cmFdBadge(x.type);                   // 습식/건식 뱃지 재사용(순수 함수)
+  const rb=_fmReadyBadge(x);
+  const nm=String(x.name||'').replace(/</g,'&lt;');
+  const k=(x.kcal!=null)
+    ?'<span class="cmfd-kcal">'+x.kcal+' kcal/100g</span>'
+    :'<span class="cmfd-kcal cmfd-kcal--none">칼로리 없음</span>';
+  let aux='';
+  if(x.src==='master'){
+    const parts=[];
+    if(x.moisture!=null)parts.push('수분 '+x.moisture+'%');
+    if(x.phosphorus_af!=null)parts.push('인 '+x.phosphorus_af+'%');
+    if(parts.length)aux='<div class="cmfd-aux">'+parts.join(' · ')+'</div>';
+  }
+  return '<div class="cmfd-row" onclick="fmPick('+i+')">'+tb+rb+'<div class="cmfd-name">'+nm+aux+'</div>'+k+'</div>';
+}
+// 2섹션 렌더: foods_master(보호자 등록) 위 → cm_fooddb(표준) 아래. _fmResults 인덱스=렌더 순서
+function fmRender(local,master,masterLoading){
+  const drop=document.getElementById('fmSearchDrop');
+  if(!drop)return;
+  const localArr=local||[], masterArr=master||[];
+  if(!masterLoading && !masterArr.length && !localArr.length){fmSearchHideDrop();return;}
+  _fmResults=masterArr.concat(localArr);          // master 먼저(위)
+  let html='';
+  if(masterLoading){
+    html+='<div class="cmfd-section">보호자들이 등록한 사료</div><div class="cmfd-loading">불러오는 중…</div>';
+  }else if(masterArr.length){
+    html+='<div class="cmfd-section">보호자들이 등록한 사료</div>'+masterArr.map((x,i)=>_fmRow(x,i)).join('');
+  }
+  if(localArr.length){
+    const base=masterArr.length;                  // 로딩 중엔 master 0개 → base=0
+    html+='<div class="cmfd-section">표준 사료 목록</div>'+localArr.map((x,i)=>_fmRow(x,base+i)).join('');
+  }
+  if(!html){fmSearchHideDrop();return;}
+  drop.innerHTML=html;
+  drop.style.display='block';
+}
+// 행 선택 라우팅: 완성(master+3종) → 조회 / 그 외(빈약·local·kcal만) → 사진분석 안내
+// ⚠️ 실제 d빌드·renderFdResult·사진안내는 (d)단계에서 구현. 여기선 라우팅 + 임시 스텁.
+function fmPick(idx){
+  const item=_fmResults[idx];
+  if(!item)return;
+  fmSearchHideDrop();
+  if(_fmIsComplete(item)) fmOpenFromMaster(item);
+  else fmGuideToPhoto(item);
+}
+// ── (d)단계 전 임시 스텁 — (d)에서 실제 구현으로 교체 ──
+function fmOpenFromMaster(item){ try{toast('"'+item.name+'" 조회 — (d)단계에서 결과 렌더 예정');}catch(e){} }
+function fmGuideToPhoto(item){ try{toast('"'+item.name+'"은 정보가 부족해 사진분석이 필요해요 — (d)단계 예정','#BA7517');}catch(e){} }
+// 검색박스 바깥 클릭 시 닫힘 (fmSearch 전용 — cmFd 핸들러와 독립)
+document.addEventListener('click',function(e){
+  const wrap=e.target.closest&&e.target.closest('.fm-wrap');
+  if(!wrap)fmSearchHideDrop();
+});
 function _buildFdEditHtml(d){
   const _f=(id,lbl,v,step,isMoist)=>`<div><div style="font-size:10px;color:var(--text3)">${lbl}</div><input type="number" id="${id}" value="${v!=null?v:''}" step="${step}" style="width:100%;padding:4px 6px;border:${isMoist?'1.5px solid var(--teal)':'0.5px solid var(--bd)'};border-radius:6px;font-size:13px;font-weight:700;background:var(--bg);color:var(--text);font-family:inherit;text-align:center"></div>`;
   // 이름칸 prefill: 사용자가 확정한 이름만 채움. AI 추출(미확정)이면 빈칸 → 능동 입력 유도.
@@ -9950,15 +10089,17 @@ const saveFavFoods=()=>{
   }
 };
 
-// foods_master 이름 검색 (자동완성용) — [{id,name,type}] 반환, 실패/조건미달 시 []
+// foods_master 이름 검색 (자동완성 + 이름조회 공용) — 실패/조건미달 시 []
+// SELECT 확장(v0.7.05): 인라인 자동완성(_cmFdNormMaster)은 기존 6필드만 골라 읽어 무시(회귀 없음),
+//   이름조회(_fmNormMaster)는 성분 전체를 받아 완성판정 + d빌드에 사용.
 async function searchFoodMaster(q){
   q=(q||'').trim();
   if(q.length<2)return [];
   if(!sbClient||!currentUser)return [];
   try{
-    const {data,error}=await sbClient.from('foods_master').select('id,name,type,kcal_per_100g,moisture,phosphorus_af').ilike('name','%'+q+'%').limit(8);
+    const {data,error}=await sbClient.from('foods_master').select('id,name,type,kcal_per_100g,moisture,phosphorus_af,protein_af,fat_af,fiber_af,ash_af,carb_af,sodium_af,ingredients_top5,grain_free,special_notes').ilike('name','%'+q+'%').limit(8);
     if(error){console.warn('foods_master 검색 오류:',error);return [];}
-    return (data||[]).map(r=>({id:r.id,name:r.name,type:r.type,kcal_per_100g:r.kcal_per_100g,moisture:r.moisture,phosphorus_af:r.phosphorus_af}));
+    return (data||[]).map(r=>({id:r.id,name:r.name,type:r.type,kcal_per_100g:r.kcal_per_100g,moisture:r.moisture,phosphorus_af:r.phosphorus_af,protein_af:r.protein_af,fat_af:r.fat_af,fiber_af:r.fiber_af,ash_af:r.ash_af,carb_af:r.carb_af,sodium_af:r.sodium_af,ingredients_top5:r.ingredients_top5,grain_free:r.grain_free,special_notes:r.special_notes}));
   }catch(e){console.warn('foods_master 검색 오류:',e);return [];}
 }
 // 유사 사료 후보 검색 — trigram 유사도 RPC(표기 흔들림 "카토빗"↔"카토비트" 매칭)
