@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.15</span>
+      <span class="cm-beta">v0.7.16</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -4378,13 +4378,16 @@ document.getElementById('saveBg').onclick=()=>{
   getRec(state.activeCat,bgD).bg.push({bg:isNaN(bg)?'':bg,ketone:isNaN(ket)?'':ket,time:document.getElementById('bgTime').value,type:document.getElementById('bgType').value,note:document.getElementById('bgNote').value,ts:Date.now()});
   saveS(bgD);updateMetrics();updateInsulinNext();
   checkKetoneAlert(ket, bg);
-  ['bgVal','ketVal','bgNote'].forEach(id=>document.getElementById(id).value='');toast('혈당·케톤 저장 완료!');renderDailySummary();
+  ['bgVal','ketVal','bgNote'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('bgTime').value=nowTime();   // 연속 입력 대응 (addWater 패턴)
+  toast('혈당·케톤 저장 완료!');renderDailySummary();
 };
 document.getElementById('saveWt').onclick=()=>{
   const w=parseFloat(document.getElementById('wtVal').value);if(isNaN(w)){toast('체중을 입력해주세요','#D85A30');return}
   const wtD=document.getElementById('wtDate').value||today();
   getRec(state.activeCat,wtD).weights.push({weight:w,time:document.getElementById('wtTime').value,note:document.getElementById('wtNote').value,ts:Date.now()});
   saveS(wtD);updateMetrics();updateWtDiff();['wtVal','wtNote'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('wtTime').value=nowTime();   // 연속 입력 대응 (addWater 패턴)
   updateRecommendedKcal(state.activeCat,w);
   toast(wtD!==today()?wtD+' 날짜로 저장됐어요':'체중 저장 완료!');renderDailySummary();
 };
@@ -4393,6 +4396,7 @@ document.getElementById('saveIns').onclick=()=>{
   const insD=document.getElementById('insDate').value||today();
   getRec(state.activeCat,insD).ins.push({type:document.getElementById('insType').value,dose,time:document.getElementById('insTime').value,preBg:document.getElementById('insPreBg').value,ts:Date.now()});
   saveS(insD);updateMetrics();updateInsulinNext();['insVal','insPreBg'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('insTime').value=nowTime();   // 연속 입력 대응 (addWater 패턴)
   toast(insD!==today()?insD+' 날짜로 저장됐어요':'인슐린 저장 완료!');renderDailySummary();
 };
 document.getElementById('saveMeal').onclick=()=>{
@@ -4402,6 +4406,7 @@ document.getElementById('saveMeal').onclick=()=>{
   getRec(state.activeCat,mealD).meals.push({name,amt:parseFloat(amt)||0,kcal:parseFloat(document.getElementById('foodKcal').value)||0,time:document.getElementById('foodTime').value,ts:Date.now(),moisture:_favMoisture});
   _favMoisture=null;
   saveS(mealD);['foodName','foodAmt','foodKcal'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('foodTime').value=nowTime();   // 연속 급여 대응 (addWater 패턴)
   toast(mealD!==today()?mealD+' 날짜로 저장됐어요':'식사 저장 완료!');renderDailySummary();
 };
 
@@ -9949,6 +9954,16 @@ function btEditInput(idx, inp) {
 }
 
 /* ── 5번: 카드 접기/펼치기 ── */
+/* 기록 카드 열 때 시각·날짜를 현재로 갱신 — 페이지 로드 1회 세팅(2038)만으로는
+   PWA 장시간 생존 시 시각이 고정되는 버그 방지. 물·배변 시트(openDailySheet) 패턴과 동일 */
+function _refreshCardTime(cardId) {
+  const map = {mealCard:['foodTime','foodDate'], bgCard:['bgTime','bgDate'], insCard:['insTime','insDate'], wtCard:['wtTime','wtDate']};
+  const ids = map[cardId];
+  if(!ids) return;
+  const t = document.getElementById(ids[0]); if(t) t.value = nowTime();
+  const d = document.getElementById(ids[1]); if(d) d.value = today();
+}
+
 function toggleCard(id, header) {
   const card = document.getElementById(id);
   const btn = header.querySelector('span:last-child');
@@ -9956,6 +9971,7 @@ function toggleCard(id, header) {
   if(card.style.display === 'none') {
     card.style.display = 'block';
     if(btn) btn.textContent = '▲ 접기';
+    _refreshCardTime(id);
   } else {
     card.style.display = 'none';
     if(btn) btn.textContent = '▼ 펼치기';
@@ -11585,6 +11601,7 @@ window.openDailySheet = function(type) {
     sheetBody.innerHTML = '';
     sheetBody.appendChild(formEl);
     if(sheetFoot) sheetFoot.innerHTML = '';
+    _refreshCardTime(cfg.bodyId);   // 식사·혈당·인슐린·체중 시각·날짜 현재로 (물·배변 시트와 동일 패턴)
   }
   var _medManageBtn = (type === 'med')
     ? '<button type="button" onclick="closeDailySheet();openCatProfile(state.activeCat,\'med\')" '+
