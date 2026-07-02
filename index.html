@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.19</span>
+      <span class="cm-beta">v0.7.20</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -2806,41 +2806,53 @@ function toggleMealFoodSearchDaily() {
   if(panel.style.display === 'none') return;
   const box = document.getElementById('mealFoodSearchResults');
   const _loggedIn = (typeof sbClient !== 'undefined' && sbClient) && (typeof currentUser !== 'undefined' && currentUser);
-  if(box) box.innerHTML = _loggedIn
-    ? '<div style="font-size:11px;color:var(--text3);padding:.25rem 0">사료명을 2자 이상 입력해주세요</div>'
-    : '<div style="font-size:11px;color:var(--text3);padding:.25rem 0">로그인하면 보호자들이 등록한 사료를 검색할 수 있어요</div>';
+  if(box) box.innerHTML = '<div style="font-size:11px;color:var(--text3);padding:.25rem 0">사료명을 2자 이상 입력해주세요'
+    + (_loggedIn ? '' : ' · 로그인하면 보호자 등록 사료까지 검색돼요') + '</div>';
   _mealSearchResults = [];
   const inp = document.getElementById('mealFoodSearchInput');
   if(inp) { inp.value=''; try{ inp.focus(); }catch(e){} }
 }
+/* cm_fooddb 항목(b/n/t/k 축약키) → 급여 검색 공통 형태. moisture 없음(카탈로그) → null
+   → 습식이면 선택 시 "수분정보 없음" 토스트 경로로 자연 연결 (v0.7.20) */
+function _mealNormLocal(x) {
+  return { id: null, name: x.n, type: x.t || null, kcal_per_100g: (x.k != null ? x.k : null), moisture: null };
+}
+/* 사료탭 fmSearchInput과 동일한 2소스 병합: cm_fooddb 로컬 즉시 + foods_master 비동기 (v0.7.20) */
 function mealFoodSearchInput(el) {
   if(_mealSearchDebTimer) clearTimeout(_mealSearchDebTimer);
   const q = el.value;
   _mealSearchDebTimer = setTimeout(() => {
     if(el.value !== q) return;                 // 그새 바뀌면 무시
     const seq = ++_mealSearchSeq;
-    const box = document.getElementById('mealFoodSearchResults');
-    if((q||'').trim().length < 2) { if(box) box.innerHTML=''; _mealSearchResults=[]; return; }
-    if(box) box.innerHTML = '<div style="font-size:11px;color:var(--text3);padding:.25rem 0">검색 중…</div>';
+    if((q||'').trim().length < 2) {
+      const box = document.getElementById('mealFoodSearchResults');
+      if(box) box.innerHTML=''; _mealSearchResults=[]; return;
+    }
+    const local = cmSearchFood(q).map(_mealNormLocal);
+    _renderMealFoodSearchResults(local, null, true);       // 로컬 즉시 + master 로딩표시
     Promise.resolve(searchFoodMaster(q)).then(rows => {
       if(seq !== _mealSearchSeq || el.value !== q) return;   // stale 응답 무시
-      _renderMealFoodSearchResults(rows||[]);
-    }).catch(() => { if(seq === _mealSearchSeq && el.value === q) _renderMealFoodSearchResults([]); });
+      _renderMealFoodSearchResults(local, rows||[], false);
+    }).catch(() => { if(seq === _mealSearchSeq && el.value === q) _renderMealFoodSearchResults(local, [], false); });
   }, 160);
 }
 /* 급여용 노출 기준: 성분 완성도 필터 없음 — kcal만 있어도(심지어 없어도) 전부 노출.
-   kcal 없는 사료는 즐겨찾기와 동일하게 "칼로리 미입력" 토스트로 안내됨. */
-function _renderMealFoodSearchResults(rows) {
+   kcal 없는 사료는 즐겨찾기와 동일하게 "칼로리 미입력" 토스트로 안내됨.
+   섹션 순서는 사료탭 fmRender와 동일: foods_master(보호자 등록) 위 → cm_fooddb(표준) 아래.
+   중복 제거 없음(사료탭과 동일 동작). _mealSearchResults 인덱스 = 렌더 순서. */
+function _renderMealFoodSearchResults(local, master, masterLoading) {
   const box = document.getElementById('mealFoodSearchResults');
   if(!box) return;
-  _mealSearchResults = rows;
-  if(!rows.length) {
+  const localArr = local||[], masterArr = master||[];
+  _mealSearchResults = masterArr.concat(localArr);          // master 먼저(위)
+  if(!masterLoading && !masterArr.length && !localArr.length) {
     const _loggedIn = (typeof sbClient !== 'undefined' && sbClient) && (typeof currentUser !== 'undefined' && currentUser);
     box.innerHTML = '<div style="font-size:11px;color:var(--text3);padding:.25rem 0">검색 결과가 없어요'
-      + (_loggedIn ? '' : ' · 로그인하면 등록 사료 검색이 가능해요') + '</div>';
+      + (_loggedIn ? '' : ' · 로그인하면 보호자 등록 사료까지 검색돼요') + '</div>';
     return;
   }
-  box.innerHTML = rows.map(function(r, i) {
+  const _sec = function(t) { return '<div style="font-size:10px;font-weight:700;color:var(--cm-green-700);padding:.3rem 0 .1rem">' + t + '</div>'; };
+  const _row = function(r, i) {
     var nm = String(r.name||'').replace(/</g,'&lt;');   // 사용자 등록 데이터 — 이스케이프 필수
     var badge = _cmFdBadge(r.type);                      // 습식/건식 뱃지 재사용 (순수 함수)
     var kpStr = (r.kcal_per_100g != null)
@@ -2851,7 +2863,18 @@ function _renderMealFoodSearchResults(rows) {
       + '<span style="flex:1;font-size:12px;color:var(--text)">' + nm + kpStr + '</span>'
       + '<button type="button" onclick="selectMealSearchFoodDaily(' + i + ')" style="padding:4px 10px;background:var(--teal);color:#fff;border:none;border-radius:7px;font-size:11px;cursor:pointer;font-family:inherit">선택</button>'
       + '</div>';
-  }).join('');
+  };
+  let html = '';
+  if(masterLoading) {
+    html += _sec('보호자들이 등록한 사료') + '<div style="font-size:11px;color:var(--text3);padding:.25rem 0">불러오는 중…</div>';
+  } else if(masterArr.length) {
+    html += _sec('보호자들이 등록한 사료') + masterArr.map(function(r, i){ return _row(r, i); }).join('');
+  }
+  if(localArr.length) {
+    const base = masterArr.length;                        // 로딩 중엔 master 0개 → base=0 (fmRender 패턴)
+    html += _sec('표준 사료 목록') + localArr.map(function(r, i){ return _row(r, base + i); }).join('');
+  }
+  box.innerHTML = html;
 }
 /* 검색 [선택] — 즐겨찾기와 같은 _fillMealFields 경로(moisture 일관). 습식인데 수분정보 없으면
    기본 토스트 대신 안내 토스트 1개만(겹침 방지). 성분표 업로드 유도(문구만, 버튼 없음). */
