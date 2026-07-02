@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.14</span>
+      <span class="cm-beta">v0.7.15</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -4190,30 +4190,30 @@ function renderDailySummary() {
     if(r.bg !== '') {
       const st = bgSt(r.bg, r.ketone);
       const color = st==='danger'?'var(--coral)':st==='warn'?'var(--amber)':'var(--teal)';
-      items.push({ts:r.ts, html:`<span style="color:${color};font-weight:600">${r.bg}</span> mg/dL${r.ketone?' · 케톤 '+r.ketone:''}  <span style="color:var(--text3);font-size:11px">${r.time} ${r.type}</span>`});
+      items.push({ts:r.ts, time:r.time, html:`<span style="color:${color};font-weight:600">${r.bg}</span> mg/dL${r.ketone?' · 케톤 '+r.ketone:''}  <span style="color:var(--text3);font-size:11px">${r.time} ${r.type}</span>`});
     }
   });
   rec.ins.forEach(r => {
-    items.push({ts:r.ts, html:`💉 ${r.type} <span style="font-weight:600">${r.dose}U</span>  <span style="color:var(--text3);font-size:11px">${r.time}</span>`});
+    items.push({ts:r.ts, time:r.time, html:`💉 ${r.type} <span style="font-weight:600">${r.dose}U</span>  <span style="color:var(--text3);font-size:11px">${r.time}</span>`});
   });
   rec.meals.forEach(r => {
-    items.push({ts:r.ts, html:`🍽️ ${r.name||'식사'}${r.kcal?' '+r.kcal+'kcal':''}  <span style="color:var(--text3);font-size:11px">${r.time}</span>`});
+    items.push({ts:r.ts, time:r.time, html:`🍽️ ${r.name||'식사'}${r.kcal?' '+r.kcal+'kcal':''}  <span style="color:var(--text3);font-size:11px">${r.time}</span>`});
   });
   (rec.weights||[]).forEach(r => {
-    items.push({ts:r.ts, html:`⚖️ <span style="font-weight:600">${r.weight}kg</span>  <span style="color:var(--text3);font-size:11px">${r.time}</span>`});
+    items.push({ts:r.ts, time:r.time, html:`⚖️ <span style="font-weight:600">${r.weight}kg</span>  <span style="color:var(--text3);font-size:11px">${r.time}</span>`});
   });
   if(rec.rr&&rec.rr.length) {
     const last = rec.rr[rec.rr.length-1];
     const rrColor = last.rr>=40?'var(--coral)':last.rr>=30?'var(--amber)':'var(--teal)';
     const rrSLbl = last.stateLabel?'('+last.stateLabel+')':"";
-    items.push({ts:last.ts, html:`🫁 <span style="color:${rrColor};font-weight:600">${last.rr}회/분</span> <span style="color:var(--text3);font-size:11px">${rrSLbl} ${last.time}</span>`});
+    items.push({ts:last.ts, time:last.time, html:`🫁 <span style="color:${rrColor};font-weight:600">${last.rr}회/분</span> <span style="color:var(--text3);font-size:11px">${rrSLbl} ${last.time}</span>`});
   }
   (rec.water||[]).forEach(r => {
-    items.push({ts:r.ts, html:`💧 <span style="font-weight:600">+${r.ml}ml</span> <span style="color:var(--text3);font-size:11px">${r.time}</span>`});
+    items.push({ts:r.ts, time:r.time, html:`💧 <span style="font-weight:600">+${r.ml}ml</span> <span style="color:var(--text3);font-size:11px">${r.time}</span>`});
   });
   (rec.urine||[]).forEach(r => {
     const uc = r.amount==='혈뇨'?'var(--coral)':r.amount==='핍뇨'?'var(--amber)':'var(--teal)';
-    items.push({ts:r.ts, html:`🚽 <span style="color:${uc};font-weight:600">${r.amount}</span> <span style="color:var(--text3);font-size:11px">${r.time}</span>`});
+    items.push({ts:r.ts, time:r.time, html:`🚽 <span style="color:${uc};font-weight:600">${r.amount}</span> <span style="color:var(--text3);font-size:11px">${r.time}</span>`});
   });
   const doneSet = new Set((rec.routines||[]).flatMap(r=>r.items||[]));
   if(doneSet.size) items.push({ts:Date.now(), html:`✅ ${[...doneSet].join(', ')}`});
@@ -4221,7 +4221,7 @@ function renderDailySummary() {
   if(!items.length) {
     el.innerHTML = '<div style="color:var(--text3);text-align:center;padding:.5rem;font-size:12px">아직 오늘 기록이 없어요</div>';
   } else {
-    items.sort((a,b)=>a.ts-b.ts);
+    items.sort(_recTimeCompareAsc);   // time("HH:MM") 기준 아침→저녁, 없으면 ts 폴백
     el.innerHTML = items.map(i=>`<div style="padding:2px 0;border-bottom:0.5px solid var(--bd)">${i.html}</div>`).join('');
   }
 
@@ -4401,7 +4401,7 @@ document.getElementById('saveMeal').onclick=()=>{
   const mealD=document.getElementById('foodDate').value||today();
   getRec(state.activeCat,mealD).meals.push({name,amt:parseFloat(amt)||0,kcal:parseFloat(document.getElementById('foodKcal').value)||0,time:document.getElementById('foodTime').value,ts:Date.now(),moisture:_favMoisture});
   _favMoisture=null;
-  saveS();['foodName','foodAmt','foodKcal'].forEach(id=>document.getElementById(id).value='');
+  saveS(mealD);['foodName','foodAmt','foodKcal'].forEach(id=>document.getElementById(id).value='');
   toast(mealD!==today()?mealD+' 날짜로 저장됐어요':'식사 저장 완료!');renderDailySummary();
 };
 
@@ -4683,6 +4683,19 @@ function toggleScheduleCheck(el) {
 }
 
 
+/* 기록 시간순 정렬 키 — 사용자가 적은 시각 time("HH:MM") 우선, 없으면 ts의 시각으로 폴백 */
+function _recTimeMin(o){
+  const t=o&&o.time;
+  if(t){const p=String(t).split(':');const h=parseInt(p[0],10),m=parseInt(p[1],10);if(!isNaN(h))return h*60+(isNaN(m)?0:m);}
+  if(o&&o.ts){const d=new Date(o.ts);return d.getHours()*60+d.getMinutes();}
+  return 0;
+}
+/* 하루 안 시간 오름차순(아침→저녁), 동시각은 ts 2차 정렬.
+   ⚠️ renderHistory·editLogItem 인덱스 매칭이 이 비교함수 하나를 공유해야 함 — 개별 정렬 금지 */
+function _recTimeCompareAsc(a,b){
+  return (_recTimeMin(a.d||a)-_recTimeMin(b.d||b))||((a.ts||0)-(b.ts||0));
+}
+
 function renderHistory(){
   const histDate=document.getElementById('histDatePicker')?.value||today();
   if(!document.getElementById('histDatePicker')?.value){const el=document.getElementById('histDatePicker');if(el)el.value=today();}
@@ -4697,7 +4710,7 @@ function renderHistory(){
   (rec.water||[]).forEach((r,i)=>all.push({ts:r.ts,type:'water',d:r,idx:i}));
   (rec.urine||[]).forEach((r,i)=>all.push({ts:r.ts,type:'urine',d:r,idx:i}));
   (rec.poop||[]).forEach((r,i)=>all.push({ts:r.ts,type:'poop',d:r,idx:i}));
-  all.sort((a,b)=>b.ts-a.ts);
+  all.sort(_recTimeCompareAsc);   // 시간 오름차순(아침→저녁) — editLogItem 인덱스 매칭과 동일 비교함수
   if(!all.length){list.innerHTML='<div class="empty">오늘 기록이 없어요</div>';return}
   list.innerHTML='';
   all.forEach((item,idx)=>{
@@ -9029,16 +9042,16 @@ function editLogItem(type, ts, date) {
   // 해당 항목의 log-item 찾기 — ⚠️ renderHistory의 all[] 구성/정렬과 정확히 일치해야 함
   const logList = document.getElementById('logList');
   const all = [];
-  rec.bg.forEach(r=>all.push({ts:r.ts,type:'bg'}));
-  rec.ins.forEach(r=>all.push({ts:r.ts,type:'ins'}));
-  rec.meals.forEach(r=>all.push({ts:r.ts,type:'meal'}));
-  (rec.weights||[]).forEach(r=>all.push({ts:r.ts,type:'wt'}));
-  (rec.routines||[]).forEach(r=>all.push({ts:r.ts,type:'routine'}));
-  (rec.rr||[]).forEach(r=>all.push({ts:r.ts,type:'rr'}));
-  (rec.water||[]).forEach(r=>all.push({ts:r.ts,type:'water'}));
-  (rec.urine||[]).forEach(r=>all.push({ts:r.ts,type:'urine'}));
-  (rec.poop||[]).forEach(r=>all.push({ts:r.ts,type:'poop'}));
-  all.sort((a,b)=>b.ts-a.ts);
+  rec.bg.forEach(r=>all.push({ts:r.ts,type:'bg',d:r}));
+  rec.ins.forEach(r=>all.push({ts:r.ts,type:'ins',d:r}));
+  rec.meals.forEach(r=>all.push({ts:r.ts,type:'meal',d:r}));
+  (rec.weights||[]).forEach(r=>all.push({ts:r.ts,type:'wt',d:r}));
+  (rec.routines||[]).forEach(r=>all.push({ts:r.ts,type:'routine',d:r}));
+  (rec.rr||[]).forEach(r=>all.push({ts:r.ts,type:'rr',d:r}));
+  (rec.water||[]).forEach(r=>all.push({ts:r.ts,type:'water',d:r}));
+  (rec.urine||[]).forEach(r=>all.push({ts:r.ts,type:'urine',d:r}));
+  (rec.poop||[]).forEach(r=>all.push({ts:r.ts,type:'poop',d:r}));
+  all.sort(_recTimeCompareAsc);   // ⚠️ renderHistory와 동일 비교함수 필수 — 어긋나면 수정/삭제가 엉뚱한 항목에 적용됨
   const idx = all.findIndex(x=>x.ts===ts&&x.type===type);
   const logItems = logList.querySelectorAll('.log-item');
   const targetEl = logItems[idx];
@@ -9067,6 +9080,8 @@ function editLogItem(type, ts, date) {
       <input type="text" id="ei_name" value="${item.name||''}" style="width:90px;padding:5px 8px;border:1px solid var(--teal);border-radius:7px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit">
       <label style="font-size:11px;color:var(--text3)">급여량(g)</label>
       <input type="number" id="ei_amt" value="${item.amt||''}" style="width:60px;padding:5px 8px;border:1px solid var(--teal);border-radius:7px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit">
+      <label style="font-size:11px;color:var(--text3)">칼로리(kcal)</label>
+      <input type="number" id="ei_kcal" value="${item.kcal||''}" style="width:60px;padding:5px 8px;border:1px solid var(--teal);border-radius:7px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit">
       <label style="font-size:11px;color:var(--text3)">시간</label>
       <input type="time" id="ei_time" value="${item.time||''}" style="padding:5px 8px;border:1px solid var(--teal);border-radius:7px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit">`;
   } else if(type==='rr') {
@@ -9135,8 +9150,16 @@ function saveEditLog(type, ts, date) {
     const item = rec.meals.find(r=>r.ts===ts); if(!item) return;
     const name = document.getElementById('ei_name')?.value;
     const amt = document.getElementById('ei_amt')?.value;
+    const kcalRaw = document.getElementById('ei_kcal')?.value;
+    const oldAmt = parseFloat(item.amt)||0;
+    const oldKcal = parseFloat(item.kcal)||0;
     if(name) item.name = name;
     if(amt) item.amt = parseFloat(amt);
+    // kcal: 직접 고쳤으면 그 값 우선, 아니면 급여량 변경 비율로 재계산.
+    // moisture는 수분 '비율(%)'이라 불변 — 수분량(amt×moisture/100)은 amt 변경만으로 자동 반영
+    const kcalIn = (kcalRaw===''||kcalRaw==null) ? null : parseFloat(kcalRaw);
+    if(kcalIn!=null && !isNaN(kcalIn) && kcalIn!==oldKcal) item.kcal = kcalIn;
+    else if(amt && oldAmt>0 && oldKcal>0 && parseFloat(amt)!==oldAmt) item.kcal = Math.round(oldKcal*parseFloat(amt)/oldAmt);
     if(time) item.time = time;
   } else if(type==='rr') {
     const item = (rec.rr||[]).find(r=>r.ts===ts); if(!item) return;
@@ -9166,6 +9189,9 @@ function saveEditLog(type, ts, date) {
   }
   saveS(date);
   renderHistory();
+  // 오늘 탭 지표(타일·히어로·오늘 기록)도 즉시 갱신 — deleteLogItem과 동일하게
+  try{ updateMetrics(); }catch(e){}
+  try{ renderDailySummary(); }catch(e){}
   // 수분탭(음수·소변·대변 카드)이 떠 있으면 같은 기록 반영
   try{ if(document.getElementById('waterLog')) renderWaterLog(); }catch(e){}
   toast('수정됐어요 ✅', '#1D9E75');
@@ -9181,7 +9207,7 @@ function deleteLogItem(type, ts) {
   const idx = rec[key].findIndex(r => r.ts === ts);
   if(idx > -1) {
     rec[key].splice(idx, 1);
-    saveS(); updateMetrics(); renderHistory();
+    saveS(histDate); updateMetrics(); renderHistory();
     if(key==='weights'){
       const _recs=state.records[state.activeCat]||{};
       const _dates=Object.keys(_recs).sort().reverse();
