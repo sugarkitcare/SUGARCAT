@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.16</span>
+      <span class="cm-beta">v0.7.17</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -4695,8 +4695,8 @@ function _recTimeMin(o){
   if(o&&o.ts){const d=new Date(o.ts);return d.getHours()*60+d.getMinutes();}
   return 0;
 }
-/* 하루 안 시간 오름차순(아침→저녁), 동시각은 ts 2차 정렬.
-   ⚠️ renderHistory·editLogItem 인덱스 매칭이 이 비교함수 하나를 공유해야 함 — 개별 정렬 금지 */
+/* 하루 안 시간 오름차순(아침→저녁), 동시각은 ts 2차 정렬. renderHistory·renderDailySummary 공용.
+   수정/삭제 타겟팅은 data-attribute 기반(_logItemSelector)이라 정렬 일치 불변식 불필요 (v0.7.17) */
 function _recTimeCompareAsc(a,b){
   return (_recTimeMin(a.d||a)-_recTimeMin(b.d||b))||((a.ts||0)-(b.ts||0));
 }
@@ -4715,7 +4715,7 @@ function renderHistory(){
   (rec.water||[]).forEach((r,i)=>all.push({ts:r.ts,type:'water',d:r,idx:i}));
   (rec.urine||[]).forEach((r,i)=>all.push({ts:r.ts,type:'urine',d:r,idx:i}));
   (rec.poop||[]).forEach((r,i)=>all.push({ts:r.ts,type:'poop',d:r,idx:i}));
-  all.sort(_recTimeCompareAsc);   // 시간 오름차순(아침→저녁) — editLogItem 인덱스 매칭과 동일 비교함수
+  all.sort(_recTimeCompareAsc);   // 시간 오름차순(아침→저녁)
   if(!all.length){list.innerHTML='<div class="empty">오늘 기록이 없어요</div>';return}
   list.innerHTML='';
   all.forEach((item,idx)=>{
@@ -4732,6 +4732,8 @@ function renderHistory(){
 
     const el=document.createElement('div');
     el.className='log-item';
+    el.dataset.type=item.type;   // 수정/삭제 타겟팅용 식별자 — editLogItem이 이걸로 조회 (위치 매칭 아님)
+    el.dataset.ts=item.ts;
     el.style.cssText='display:flex;align-items:center;gap:6px;position:relative';
     const dotEl=document.createElement('div');dotEl.className='log-dot '+dot;
     const txtEl=document.createElement('div');txtEl.className='log-text';txtEl.style.flex='1';txtEl.textContent=txt;
@@ -9030,6 +9032,11 @@ function renderBTTrend(){
 
 
 /* ── 기록 개별 삭제 ── */
+/* .log-item 타겟 셀렉터 — dataset 값은 문자열이므로 숫자 ts 보간을 이 한 곳에 격리 */
+function _logItemSelector(type, ts) {
+  return '.log-item[data-type="' + type + '"][data-ts="' + String(ts) + '"]';
+}
+
 function editLogItem(type, ts, date) {
   const rec = getRec(state.activeCat, date);
   let item, label;
@@ -9044,22 +9051,10 @@ function editLogItem(type, ts, date) {
   else if(type==='poop') { item=(rec.poop||[]).find(r=>r.ts===ts); label='대변'; }
   if(!item) return;
 
-  // 해당 항목의 log-item 찾기 — ⚠️ renderHistory의 all[] 구성/정렬과 정확히 일치해야 함
+  // 타겟팅: renderHistory가 각 행에 새긴 data-type/data-ts로 직접 조회 — 배열 위치 매칭 아님.
+  // 표시 순서·그룹핑이 바뀌어도 안전 (v0.7.17에서 "정렬 일치 불변식" 폐기)
   const logList = document.getElementById('logList');
-  const all = [];
-  rec.bg.forEach(r=>all.push({ts:r.ts,type:'bg',d:r}));
-  rec.ins.forEach(r=>all.push({ts:r.ts,type:'ins',d:r}));
-  rec.meals.forEach(r=>all.push({ts:r.ts,type:'meal',d:r}));
-  (rec.weights||[]).forEach(r=>all.push({ts:r.ts,type:'wt',d:r}));
-  (rec.routines||[]).forEach(r=>all.push({ts:r.ts,type:'routine',d:r}));
-  (rec.rr||[]).forEach(r=>all.push({ts:r.ts,type:'rr',d:r}));
-  (rec.water||[]).forEach(r=>all.push({ts:r.ts,type:'water',d:r}));
-  (rec.urine||[]).forEach(r=>all.push({ts:r.ts,type:'urine',d:r}));
-  (rec.poop||[]).forEach(r=>all.push({ts:r.ts,type:'poop',d:r}));
-  all.sort(_recTimeCompareAsc);   // ⚠️ renderHistory와 동일 비교함수 필수 — 어긋나면 수정/삭제가 엉뚱한 항목에 적용됨
-  const idx = all.findIndex(x=>x.ts===ts&&x.type===type);
-  const logItems = logList.querySelectorAll('.log-item');
-  const targetEl = logItems[idx];
+  const targetEl = logList ? logList.querySelector(_logItemSelector(type, ts)) : null;
   if(!targetEl) return;
 
   let fields = '';
