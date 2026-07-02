@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.18</span>
+      <span class="cm-beta">v0.7.19</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -963,8 +963,12 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
     </div>
     <div id="mealCard" style="display:none">
     <div style="margin-bottom:.5rem">
-      <button type="button" onclick="openFavFoodPickerDaily()"
-        style="padding:6px 14px;border:1px solid var(--cm-green-edge);border-radius:8px;background:var(--cm-green-tint);color:var(--cm-green-700);font-size:12px;cursor:pointer;font-family:inherit;font-weight:500">즐겨찾기에서 선택</button>
+      <div style="display:flex;gap:6px">
+        <button type="button" onclick="openFavFoodPickerDaily()"
+          style="padding:6px 14px;border:1px solid var(--cm-green-edge);border-radius:8px;background:var(--cm-green-tint);color:var(--cm-green-700);font-size:12px;cursor:pointer;font-family:inherit;font-weight:500">즐겨찾기에서 선택</button>
+        <button type="button" onclick="toggleMealFoodSearchDaily()"
+          style="padding:6px 14px;border:1px solid var(--cm-green-edge);border-radius:8px;background:var(--cm-green-tint);color:var(--cm-green-700);font-size:12px;cursor:pointer;font-family:inherit;font-weight:500">이름으로 검색</button>
+      </div>
       <div id="favFoodPickerDaily" style="display:none;background:var(--bg2);border-radius:10px;padding:.75rem;margin-top:.5rem">
         <div style="font-size:11px;font-weight:500;color:var(--text2);margin-bottom:.5rem">즐겨찾기 사료 선택</div>
         <div id="favFoodPickerDailyList"></div>
@@ -981,6 +985,15 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
           </div>
         </div>
         <button onclick="document.getElementById('favFoodPickerDaily').style.display='none'"
+          style="margin-top:.5rem;font-size:11px;color:var(--text3);background:none;border:none;cursor:pointer;font-family:inherit">닫기</button>
+      </div>
+      <!-- 사료 이름검색 패널 — 즐겨찾기 패널과 같은 자리, 상호배타 토글 (v0.7.19) -->
+      <div id="mealFoodSearchDaily" style="display:none;background:var(--bg2);border-radius:10px;padding:.75rem;margin-top:.5rem">
+        <div style="font-size:11px;font-weight:500;color:var(--text2);margin-bottom:.5rem">사료 이름으로 검색</div>
+        <input type="text" id="mealFoodSearchInput" placeholder="사료명 검색 (예: 로얄캐닌 레날)" autocomplete="off" oninput="mealFoodSearchInput(this)"
+          style="width:100%;box-sizing:border-box;padding:8px 10px;border:0.5px solid var(--bd);border-radius:9px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit">
+        <div id="mealFoodSearchResults" style="max-height:200px;overflow-y:auto;-webkit-overflow-scrolling:touch;margin-top:.4rem"></div>
+        <button onclick="document.getElementById('mealFoodSearchDaily').style.display='none'"
           style="margin-top:.5rem;font-size:11px;color:var(--text3);background:none;border:none;cursor:pointer;font-family:inherit">닫기</button>
       </div>
     </div>
@@ -2715,6 +2728,9 @@ function openFavFoodPickerDaily() {
   _tubeMixDailyIdx = null;
   const _box = document.getElementById('tubeMixDailyBox');
   if(_box) _box.style.display = 'none';
+  // 상호배타: 이름검색 패널 닫기 (동시 열림 방지)
+  const _srch = document.getElementById('mealFoodSearchDaily');
+  if(_srch) _srch.style.display = 'none';
   picker.style.display = picker.style.display === 'none' ? 'block' : 'none';
   if(picker.style.display === 'none') return;
   try{const d=localStorage.getItem('favFoods_v1_'+state.activeCat);if(d)favFoods=JSON.parse(d);}catch(e){}
@@ -2748,12 +2764,11 @@ function recordTubeMixDaily() {
   const picker = document.getElementById('favFoodPickerDaily');
   if(picker) picker.style.display = 'none';
 }
-function selectFavFoodDaily(idx) {
-  const fav = favFoods[idx];
-  if(!fav) return;
-  const name = typeof fav === 'string' ? fav : fav.name;
-  const kcalPer100 = typeof fav === 'string' ? null : fav.kcalPer100g;
-  _favMoisture = (typeof fav === 'object' && fav.moisture != null) ? fav.moisture : null;
+/* 공용 필드 채움 — 즐겨찾기·이름검색 [선택]이 공유. moisture가 즐겨찾기와 동일 경로
+   (_favMoisture → saveMeal → meals[].moisture → 음수량 집계)를 타는 것이 핵심 (v0.7.19).
+   silentToast=true면 기본 토스트 생략(호출부가 자체 안내 토스트를 띄울 때). */
+function _fillMealFields(name, kcalPer100, moisture, silentToast) {
+  _favMoisture = (moisture != null) ? moisture : null;
   document.getElementById('foodName').value = name;
   document.getElementById('foodKcal').value = '';
   if(kcalPer100) {
@@ -2761,12 +2776,93 @@ function selectFavFoodDaily(idx) {
     // 급여량이 이미 입력돼 있으면 바로 계산
     const amt = parseFloat(document.getElementById('foodAmt').value);
     if(!isNaN(amt) && amt > 0) document.getElementById('foodKcal').value = Math.round(kcalPer100 * amt / 100);
-    toast('⭐ ' + name + ' · 급여량 입력 시 칼로리 자동 계산돼요');
+    if(!silentToast) toast('⭐ ' + name + ' · 급여량 입력 시 칼로리 자동 계산돼요');
   } else {
     _favKcalPer100 = null;
-    toast('⭐ ' + name + ' · 칼로리 미입력 사료예요. 사료탭에서 입력해주세요');
+    if(!silentToast) toast('⭐ ' + name + ' · 칼로리 미입력 사료예요. 사료탭에서 입력해주세요');
   }
+}
+function selectFavFoodDaily(idx) {
+  const fav = favFoods[idx];
+  if(!fav) return;
+  const name = typeof fav === 'string' ? fav : fav.name;
+  const kcalPer100 = typeof fav === 'string' ? null : fav.kcalPer100g;
+  const moisture = (typeof fav === 'object' && fav.moisture != null) ? fav.moisture : null;
+  _fillMealFields(name, kcalPer100, moisture, false);
   document.getElementById('favFoodPickerDaily').style.display = 'none';
+}
+
+/* ── 사료 이름검색 (오늘기록탭 급여 폼) — searchFoodMaster 재사용, 즐겨찾기와 동일 필드채움 경로 (v0.7.19) ── */
+let _mealSearchResults=[];   // 현재 표시 중인 검색 결과 — [선택] 인덱스 매핑용
+let _mealSearchDebTimer=null;
+let _mealSearchSeq=0;        // 비동기 응답 stale 가드 (fmSearchInput 패턴)
+function toggleMealFoodSearchDaily() {
+  const panel = document.getElementById('mealFoodSearchDaily');
+  if(!panel) return;
+  // 상호배타: 즐겨찾기 패널 닫기 (동시 열림 방지 → 스크롤 안 늘어남)
+  const _fav = document.getElementById('favFoodPickerDaily');
+  if(_fav) _fav.style.display = 'none';
+  panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+  if(panel.style.display === 'none') return;
+  const box = document.getElementById('mealFoodSearchResults');
+  const _loggedIn = (typeof sbClient !== 'undefined' && sbClient) && (typeof currentUser !== 'undefined' && currentUser);
+  if(box) box.innerHTML = _loggedIn
+    ? '<div style="font-size:11px;color:var(--text3);padding:.25rem 0">사료명을 2자 이상 입력해주세요</div>'
+    : '<div style="font-size:11px;color:var(--text3);padding:.25rem 0">로그인하면 보호자들이 등록한 사료를 검색할 수 있어요</div>';
+  _mealSearchResults = [];
+  const inp = document.getElementById('mealFoodSearchInput');
+  if(inp) { inp.value=''; try{ inp.focus(); }catch(e){} }
+}
+function mealFoodSearchInput(el) {
+  if(_mealSearchDebTimer) clearTimeout(_mealSearchDebTimer);
+  const q = el.value;
+  _mealSearchDebTimer = setTimeout(() => {
+    if(el.value !== q) return;                 // 그새 바뀌면 무시
+    const seq = ++_mealSearchSeq;
+    const box = document.getElementById('mealFoodSearchResults');
+    if((q||'').trim().length < 2) { if(box) box.innerHTML=''; _mealSearchResults=[]; return; }
+    if(box) box.innerHTML = '<div style="font-size:11px;color:var(--text3);padding:.25rem 0">검색 중…</div>';
+    Promise.resolve(searchFoodMaster(q)).then(rows => {
+      if(seq !== _mealSearchSeq || el.value !== q) return;   // stale 응답 무시
+      _renderMealFoodSearchResults(rows||[]);
+    }).catch(() => { if(seq === _mealSearchSeq && el.value === q) _renderMealFoodSearchResults([]); });
+  }, 160);
+}
+/* 급여용 노출 기준: 성분 완성도 필터 없음 — kcal만 있어도(심지어 없어도) 전부 노출.
+   kcal 없는 사료는 즐겨찾기와 동일하게 "칼로리 미입력" 토스트로 안내됨. */
+function _renderMealFoodSearchResults(rows) {
+  const box = document.getElementById('mealFoodSearchResults');
+  if(!box) return;
+  _mealSearchResults = rows;
+  if(!rows.length) {
+    const _loggedIn = (typeof sbClient !== 'undefined' && sbClient) && (typeof currentUser !== 'undefined' && currentUser);
+    box.innerHTML = '<div style="font-size:11px;color:var(--text3);padding:.25rem 0">검색 결과가 없어요'
+      + (_loggedIn ? '' : ' · 로그인하면 등록 사료 검색이 가능해요') + '</div>';
+    return;
+  }
+  box.innerHTML = rows.map(function(r, i) {
+    var nm = String(r.name||'').replace(/</g,'&lt;');   // 사용자 등록 데이터 — 이스케이프 필수
+    var badge = _cmFdBadge(r.type);                      // 습식/건식 뱃지 재사용 (순수 함수)
+    var kpStr = (r.kcal_per_100g != null)
+      ? ' <span style="color:var(--text3)">('+ r.kcal_per_100g +'kcal/100g)</span>'
+      : ' <span style="color:var(--text3)">(칼로리 없음)</span>';
+    return '<div style="display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:0.5px solid var(--bd)">'
+      + badge
+      + '<span style="flex:1;font-size:12px;color:var(--text)">' + nm + kpStr + '</span>'
+      + '<button type="button" onclick="selectMealSearchFoodDaily(' + i + ')" style="padding:4px 10px;background:var(--teal);color:#fff;border:none;border-radius:7px;font-size:11px;cursor:pointer;font-family:inherit">선택</button>'
+      + '</div>';
+  }).join('');
+}
+/* 검색 [선택] — 즐겨찾기와 같은 _fillMealFields 경로(moisture 일관). 습식인데 수분정보 없으면
+   기본 토스트 대신 안내 토스트 1개만(겹침 방지). 성분표 업로드 유도(문구만, 버튼 없음). */
+function selectMealSearchFoodDaily(i) {
+  const item = _mealSearchResults[i];
+  if(!item) return;
+  const wetNoMoisture = item.type === 'wet' && (item.moisture == null || item.moisture === 0);
+  _fillMealFields(item.name, item.kcal_per_100g, item.moisture, wetNoMoisture);
+  if(wetNoMoisture) toast('💧 ' + item.name + ' · 수분 정보가 없어 음수량에 반영되지 않아요. 사료탭 성분분석에서 성분표를 올리면 정확해져요', '#BA7517', 3500);
+  const panel = document.getElementById('mealFoodSearchDaily');
+  if(panel) panel.style.display = 'none';
 }
 
 /* ── 즐겨찾기 사료 피커 ── */
