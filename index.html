@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.17</span>
+      <span class="cm-beta">v0.7.18</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -4196,9 +4196,21 @@ function renderDailySummary() {
   rec.ins.forEach(r => {
     items.push({ts:r.ts, time:r.time, html:`💉 ${r.type} <span style="font-weight:600">${r.dose}U</span>  <span style="color:var(--text3);font-size:11px">${r.time}</span>`});
   });
-  rec.meals.forEach(r => {
-    items.push({ts:r.ts, time:r.time, html:`🍽️ ${r.name||'식사'}${r.kcal?' '+r.kcal+'kcal':''}  <span style="color:var(--text3);font-size:11px">${r.time}</span>`});
-  });
+  // 혼합급여(mixTs)는 한 줄로 합산 표시 — 마커 없는 기록은 기존대로 (하위호환)
+  {
+    const _mg={};
+    const _pushMeal=r=>items.push({ts:r.ts, time:r.time, html:`🍽️ ${r.name||'식사'}${r.kcal?' '+r.kcal+'kcal':''}  <span style="color:var(--text3);font-size:11px">${r.time}</span>`});
+    rec.meals.forEach(r => {
+      if(r.mixTs==null){_pushMeal(r);return;}
+      (_mg[r.mixTs]=_mg[r.mixTs]||[]).push(r);
+    });
+    Object.keys(_mg).forEach(k=>{
+      const ms=_mg[k];
+      if(ms.length===1){_pushMeal(ms[0]);return;}
+      const tg=Math.round(ms.reduce((a,m)=>a+(m.amt||0),0)*10)/10, tk=Math.round(ms.reduce((a,m)=>a+(m.kcal||0),0));
+      items.push({ts:Number(k), time:ms[0].time, html:`🍽️ ${ms[0].mixName||'혼합급여'} 총 ${tg}g${tk?' · '+tk+'kcal':''}  <span style="color:var(--text3);font-size:11px">${ms[0].time}</span>`});
+    });
+  }
   (rec.weights||[]).forEach(r => {
     items.push({ts:r.ts, time:r.time, html:`⚖️ <span style="font-weight:600">${r.weight}kg</span>  <span style="color:var(--text3);font-size:11px">${r.time}</span>`});
   });
@@ -4708,7 +4720,21 @@ function renderHistory(){
   const all=[];
   rec.bg.forEach(r=>all.push({ts:r.ts,type:'bg',d:r}));
   rec.ins.forEach(r=>all.push({ts:r.ts,type:'ins',d:r}));
-  rec.meals.forEach(r=>all.push({ts:r.ts,type:'meal',d:r}));
+  // 혼합급여(mixTs 마커) 재료들은 그룹 1행으로 합성 — 마커 없는 기록은 기존대로 개별 (하위호환)
+  {
+    const mixG={};
+    rec.meals.forEach(r=>{
+      if(r.mixTs==null){all.push({ts:r.ts,type:'meal',d:r});return;}
+      (mixG[r.mixTs]=mixG[r.mixTs]||[]).push(r);
+    });
+    Object.keys(mixG).forEach(k=>{
+      const ms=mixG[k];
+      if(ms.length===1){all.push({ts:ms[0].ts,type:'meal',d:ms[0]});return;}  // 재료 1개 → 개별 행 (일반 수정 폼이 더 유용)
+      const totAmt=Math.round(ms.reduce((a,m)=>a+(m.amt||0),0)*10)/10;
+      const totKcal=Math.round(ms.reduce((a,m)=>a+(m.kcal||0),0));
+      all.push({ts:Number(k),type:'mixgroup',d:{time:ms[0].time,amt:totAmt,kcal:totKcal,mixName:ms[0].mixName||'혼합급여',members:ms}});
+    });
+  }
   (rec.weights||[]).forEach(r=>all.push({ts:r.ts,type:'wt',d:r}));
   (rec.routines||[]).forEach(r=>all.push({ts:r.ts,type:'routine',d:r}));
   (rec.rr||[]).forEach(r=>all.push({ts:r.ts,type:'rr',d:r}));
@@ -4723,6 +4749,7 @@ function renderHistory(){
     if(item.type==='bg'){const st=bgSt(d.bg,d.ketone);dot='ld-'+(st==='danger'?'d':st==='warn'?'w':'n');txt=`[혈당·케톤] ${d.time} ${d.type} | ${d.bg||'–'} mg/dL · 케톤 ${d.ketone||'–'} mmol/L${d.note?' · '+d.note:''}`;}
     else if(item.type==='ins'){dot='ld-i';txt=`[인슐린] ${d.time} | ${d.type} ${d.dose}U${d.preBg?' (투여 전 '+d.preBg+')':''}`;}
     else if(item.type==='meal'){dot='ld-m';txt=`[식사] ${d.time} | ${d.name||'–'} ${d.amt}g${d.kcal?' · '+d.kcal+'kcal':''}`;}
+    else if(item.type==='mixgroup'){dot='ld-m';txt=`[혼합] ${d.time} | ${d.mixName} · 총 ${d.amt}g${d.kcal?' · '+d.kcal+'kcal':''} · 재료 ${d.members.length}개 ▸`;}
     else if(item.type==='wt'){dot='ld-wt';txt=`[체중] ${d.time} | ${d.weight}kg${d.note?' · '+d.note:''}`;}
     else if(item.type==='routine'){dot='ld-m';const _rNm=(d.items||[]).join(', ')+(d.slot?` (예정 ${d.slot})`:'');const _rTxt=(d.ml&&d.ml>0)?`${_rNm} ${d.ml}ml${d.fluidType?' · '+d.fluidType:''}`:_rNm;txt=`[투약·루틴] ${d.time} | ${_rTxt}${d.memo?' · '+d.memo:''}`;}
     else if(item.type==='rr'){dot=d.rr>=40?'ld-d':d.rr>=30?'ld-w':'ld-n';const sLbl=d.stateLabel||'';txt=`[호흡수] ${d.time} | ${d.rr}회/분 ${sLbl?'('+sLbl+')':''}${d.rr>=40?' ⚠️위험':d.rr>=30?' △주의':''}`;}
@@ -4740,6 +4767,21 @@ function renderHistory(){
     // 9종 전 타입 타임라인 인라인 수정 가능 (editLogItem). 음수·소변·대변 삭제만 idx 기반
     const isWater=item.type==='water'||item.type==='urine'||item.type==='poop';
     el.appendChild(dotEl);el.appendChild(txtEl);
+    // 혼합 그룹: 대표줄 클릭 → 같은 .log-item 안 재료 서브행 토글 (표시 전용, 개수·식별 무영향)
+    let memEl=null;
+    if(item.type==='mixgroup'){
+      el.style.cssText='display:flex;align-items:center;gap:6px;position:relative;flex-wrap:wrap';
+      txtEl.style.cursor='pointer';
+      memEl=document.createElement('div');
+      memEl.style.cssText='flex-basis:100%;display:none;padding:0 0 4px 18px';
+      d.members.forEach(m=>{
+        const row=document.createElement('div');
+        row.style.cssText='font-size:11px;color:var(--text3);padding:1px 0';
+        row.textContent=`└ ${m.name||'–'} ${m.amt}g${m.kcal?' · '+m.kcal+'kcal':''}`;
+        memEl.appendChild(row);
+      });
+      txtEl.addEventListener('click',()=>{memEl.style.display=memEl.style.display==='none'?'block':'none';});
+    }
     // 수정·삭제 액션 (아이콘+글자 라벨, 둘 사이 간격 벌려 오터치 방지)
     const actEl=document.createElement('div');
     actEl.style.cssText='display:inline-flex;align-items:center;gap:12px;flex-shrink:0;margin-left:6px';
@@ -4747,7 +4789,7 @@ function renderHistory(){
       const editEl=document.createElement('button');editEl.type='button';
       editEl.style.cssText='display:inline-flex;align-items:center;gap:3px;background:var(--cm-surface-2);border:1px solid var(--cm-line);color:var(--teal);cursor:pointer;padding:5px 9px;border-radius:8px;font-size:11px;font-weight:600;line-height:1;white-space:nowrap;font-family:inherit';
       editEl.innerHTML='<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>수정';
-      editEl.addEventListener('click',(e)=>{e.stopPropagation();editLogItem(item.type,item.ts,histDate);});
+      editEl.addEventListener('click',(e)=>{e.stopPropagation();if(item.type==='mixgroup')editMixGroup(item.ts,histDate);else editLogItem(item.type,item.ts,histDate);});
       actEl.appendChild(editEl);
     }
     const delEl=document.createElement('button');delEl.type='button';
@@ -4759,10 +4801,12 @@ function renderHistory(){
       if(item.type==='water'){ deleteWater(item.idx,histDate); renderHistory(); }
       else if(item.type==='urine'){ deleteUrine(item.idx,histDate); renderHistory(); }
       else if(item.type==='poop'){ deletePoop(item.idx,histDate); renderHistory(); }
+      else if(item.type==='mixgroup'){ deleteMixGroup(item.ts,histDate); }  // 그룹 단위 삭제
       else deleteLogItem(item.type,item.ts);  // 자체적으로 renderHistory 호출
     });
     actEl.appendChild(delEl);
     el.appendChild(actEl);
+    if(memEl) el.appendChild(memEl);   // 재료 서브행은 마지막(flex-wrap 줄바꿈)
     list.appendChild(el);
   });
 }
@@ -8170,7 +8214,8 @@ function deleteTubeRecipe(idx){
 
 /* 혼합급여 "N g 먹였어요" — 레시피를 일반 식사로 기록.
    재료별 개별 meal push → 습식 항목(moisture≥60)이 단독으로 수분 게이지 통과.
-   ⚠️ tube/recipeId/feedTs 안 붙임 → 일반 식사로 처리. 오늘탭 식사 요약·칼로리엔 포함.
+   mixTs(=base, 그룹키)·mixName(레시피명) 마커 부여 (v0.7.18) — 소비처는 renderHistory·
+   renderDailySummary 그룹 표시와 editMixGroup/deleteMixGroup뿐, 그 외 경로엔 일반 식사.
    ⚠️ 추가물(addedWaterMl moisture:100)은 제외 — 탄 물은 음수로 따로 기록(이중계산 방지). */
 function feedTubeRecipeMix(idx, gOverride){
   if(idx<0||idx>=tubeRecipes.length)return;
@@ -8195,7 +8240,7 @@ function feedTubeRecipeMix(idx, gOverride){
     const moi=parseFloat(item.moisture);
     const kc=Math.round(g*k/100*10)/10;
     // 재료 원값 moisture 그대로(가중평균 금지) — 강급과 동일. tube 표식 없음.
-    recd.meals.push({name:item.foodName||r.name||'혼합급여',amt:Math.round(g*10)/10,kcal:kc,time:t,ts:base+(n++),moisture:!isNaN(moi)?moi:null});
+    recd.meals.push({name:item.foodName||r.name||'혼합급여',amt:Math.round(g*10)/10,kcal:kc,time:t,ts:base+(n++),moisture:!isNaN(moi)?moi:null,mixTs:base,mixName:r.name||'혼합급여'});
     kcalSum+=kc;
     if(!isNaN(moi)&&moi>=60)waterSum+=g*moi/100;
   });
@@ -9195,6 +9240,64 @@ function saveEditLog(type, ts, date) {
   // 수분탭(음수·소변·대변 카드)이 떠 있으면 같은 기록 반영
   try{ if(document.getElementById('waterLog')) renderWaterLog(); }catch(e){}
   toast('수정됐어요 ✅', '#1D9E75');
+}
+
+/* ── 혼합급여 그룹 수정/삭제 (mixTs 마커 기반) ──
+   총량(g)·시간만 받아 기록된 재료 g의 상대비율로 재분배 — tubeRecipes 참조 금지(그새 바뀌었을 수 있음) */
+function editMixGroup(mixTs, date) {
+  const rec = getRec(state.activeCat, date);
+  const members = rec.meals.filter(m=>m.mixTs===mixTs);
+  if(!members.length) return;
+  const logList = document.getElementById('logList');
+  const targetEl = logList ? logList.querySelector(_logItemSelector('mixgroup', mixTs)) : null;
+  if(!targetEl) return;
+  const totAmt = Math.round(members.reduce((a,m)=>a+(m.amt||0),0)*10)/10;
+  const _nm = String(members[0].mixName||'혼합').replace(/[<>&"]/g,'');
+  targetEl.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;width:100%;padding:4px 0">
+    <span style="font-size:11px;color:var(--teal);font-weight:600">[혼합급여 수정 · ${_nm} · 재료 ${members.length}개]</span>
+    <label style="font-size:11px;color:var(--text3)">총량(g)</label>
+    <input type="number" id="ei_mixamt" value="${totAmt}" style="width:70px;padding:5px 8px;border:1px solid var(--teal);border-radius:7px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit">
+    <label style="font-size:11px;color:var(--text3)">시간</label>
+    <input type="time" id="ei_time" value="${members[0].time||''}" style="padding:5px 8px;border:1px solid var(--teal);border-radius:7px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit">
+    <button type="button" onclick="saveEditMixGroup(${mixTs},'${date}')"
+      style="padding:5px 12px;background:var(--teal);color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">저장</button>
+    <button type="button" onclick="renderHistory()"
+      style="padding:5px 10px;background:none;border:0.5px solid var(--bd);border-radius:7px;font-size:12px;color:var(--text3);cursor:pointer;font-family:inherit">취소</button>
+  </div>`;
+}
+
+function saveEditMixGroup(mixTs, date) {
+  const rec = getRec(state.activeCat, date);
+  const members = rec.meals.filter(m=>m.mixTs===mixTs);
+  if(!members.length) return;
+  const newTot = parseFloat(document.getElementById('ei_mixamt')?.value);
+  const time = document.getElementById('ei_time')?.value;
+  const oldTot = members.reduce((a,m)=>a+(m.amt||0),0);
+  if(!isNaN(newTot) && newTot>0 && oldTot>0 && newTot!==oldTot){
+    const ratio = newTot/oldTot;
+    members.forEach(m=>{
+      m.amt = Math.round((m.amt||0)*ratio*10)/10;
+      if(m.kcal) m.kcal = Math.round(m.kcal*ratio);   // kcal 미입력(0)은 0 유지 — v0.7.15 재계산 규칙과 일관
+      // moisture는 수분 비율(%)이라 불변 — 수분량(amt×moisture/100)은 amt로 자동 반영
+    });
+  }
+  if(time) members.forEach(m=>{ m.time = time; });
+  saveS(date);
+  renderHistory();
+  try{ updateMetrics(); }catch(e){}
+  try{ renderDailySummary(); }catch(e){}
+  toast('혼합급여 수정됐어요 ✅', '#1D9E75');
+}
+
+function deleteMixGroup(mixTs, date) {
+  const rec = getRec(state.activeCat, date);
+  const members = rec.meals.filter(m=>m.mixTs===mixTs);
+  if(!members.length) return;
+  if(!confirm('혼합급여 재료 '+members.length+'개 기록을 모두 삭제할까요?')) return;
+  rec.meals = rec.meals.filter(m=>m.mixTs!==mixTs);
+  saveS(date); updateMetrics(); renderHistory();
+  try{ renderDailySummary(); }catch(e){}
+  toast('삭제됐어요');
 }
 
 function deleteLogItem(type, ts) {
