@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.20</span>
+      <span class="cm-beta">v0.7.21</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -2883,7 +2883,7 @@ function selectMealSearchFoodDaily(i) {
   if(!item) return;
   const wetNoMoisture = item.type === 'wet' && (item.moisture == null || item.moisture === 0);
   _fillMealFields(item.name, item.kcal_per_100g, item.moisture, wetNoMoisture);
-  if(wetNoMoisture) toast('💧 ' + item.name + ' · 수분 정보가 없어 음수량에 반영되지 않아요. 사료탭 성분분석에서 성분표를 올리면 정확해져요', '#BA7517', 3500);
+  if(wetNoMoisture) toast('💧 수분정보없음 (음수량 미반영) · 성분분석 필요', '#BA7517', 3500);
   const panel = document.getElementById('mealFoodSearchDaily');
   if(panel) panel.style.display = 'none';
 }
