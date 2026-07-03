@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.22</span>
+      <span class="cm-beta">v0.7.23</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -1329,7 +1329,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
       <div style="font-size:11px;color:var(--cm-faint);margin-bottom:.5rem">혈당·인슐린·식사를 시간대별로 확인해요 (당뇨묘 전용)</div>
       <div class="chart-wrap" style="height:200px"><canvas id="timelineChart"></canvas></div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:.4rem;font-size:10px;color:var(--cm-faint)">
-        <span>● 혈당 (mg/dL)</span><span>◆ 인슐린 (마커)</span><span>◆ 식사 (마커)</span>
+        <span>● 혈당 (mg/dL)</span><span>◆ 인슐린 (마커)</span><span>▲ 식사 (마커)</span>
       </div>
       <div id="timelineEmpty" style="display:none;text-align:center;padding:1rem;color:var(--cm-faint);font-size:12px">이 날의 기록이 없어요</div>
     </div>
@@ -5017,19 +5017,19 @@ function renderTimelineChart(date) {
     plugins:[targetBandPlugin],
     data:{datasets:[
       // 혈당 라인+점
-      {label:'혈당',
+      {label:'혈당', yAxisID:'yBg',
        data:bgPoints.map(p=>({x:p.x,y:p.y,_label:p._label})),
        showLine:true, tension:.35, spanGaps:true,
        borderColor:'#1D9E75', backgroundColor:'#1D9E75',
        pointRadius:5, pointHoverRadius:8, borderWidth:2, order:1},
       // 인슐린 마커 (y=15 고정, 다이아몬드)
-      {label:'인슐린',
+      {label:'인슐린', yAxisID:'yBg',
        data:insPoints.map(p=>({x:p.x,y:p.y,_label:p._label})),
        pointStyle:'rectRot', pointRadius:7, pointHoverRadius:10,
        backgroundColor:'rgba(186,117,23,0.9)', borderColor:'rgba(186,117,23,0.9)',
        borderWidth:0, showLine:false, order:2},
       // 식사 마커 (y=8 고정, 삼각형)
-      {label:'식사',
+      {label:'식사', yAxisID:'yBg',
        data:mealPoints.map(p=>({x:p.x,y:p.y,_label:p._label})),
        pointStyle:'triangle', pointRadius:7, pointHoverRadius:10,
        backgroundColor:'rgba(24,95,165,0.9)', borderColor:'rgba(24,95,165,0.9)',
