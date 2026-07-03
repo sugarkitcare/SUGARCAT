@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.26</span>
+      <span class="cm-beta">v0.7.27</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -4957,11 +4957,29 @@ function renderTimelineChart(date) {
   // CGM 데이터에서 해당 날짜+고양이 readings 추가
   const cgmForDay = (typeof cgmData !== 'undefined' ? cgmData : [])
     .filter(c=>c.date===d && (c.cat||'').trim()===(state.activeCat||'').trim());
-  const bgCGM = cgmForDay.flatMap(c=>(c.readings||[])
-    .filter(r=>r.time&&r.value)
-    .map(r=>({x:timeToMin(r.time), y:r.value,
-      _label:'혈당 '+r.value+'mg/dL (CGM)'})))
-    .filter(r=>r.x!==null);
+  // 세션별 변환 — 자정 넘김(시각 큰 역행) 이후는 다음 날 데이터라 절단(하루 축 접힘 그물 방지),
+  // 작은 역행(추출 노이즈)은 그 점만 스킵해 하루 전체가 잘리지 않게 함
+  const cgmSessions = cgmForDay.map(c=>{
+    const pts=[]; let prevX=-1;
+    for(const r of (c.readings||[])){
+      if(!r.time||!r.value) continue;
+      const x=timeToMin(r.time);
+      if(x===null) continue;
+      if(x<prevX){ if(prevX-x>720) break; continue; }
+      prevX=x;
+      pts.push({x, y:r.value, _label:'혈당 '+r.value+'mg/dL (CGM)'});
+    }
+    return pts;
+  }).filter(pts=>pts.length);
+  // 세션 간 겹침 가드 — 최신 세션(cgmData 앞쪽) 우선 채택, 시간 범위가 겹치는 이전 세션은
+  // 스킵(같은 날 재추출 중복 → 두 겹 그물 방지). 안 겹치는 세션(오전/오후 분할 촬영)은 병합 유지
+  const bgCGM=[]; const cgmRanges=[];
+  cgmSessions.forEach(pts=>{
+    const lo=pts[0].x, hi=pts[pts.length-1].x;
+    if(cgmRanges.some(rg=>lo<=rg.hi&&hi>=rg.lo)) return;
+    cgmRanges.push({lo,hi});
+    bgCGM.push(...pts);
+  });
 
   // 수동 입력 우선, CGM 중복 제거 (같은 시각 ±2분)
   const bgAll = [...bgManual];
