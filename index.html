@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.27</span>
+      <span class="cm-beta">v0.7.28</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -6132,6 +6132,16 @@ function saveFdKcal(){
   const foodName=_fdViewData.name;
   const favIdx=favFoods.findIndex(f=>(f.name||f)===foodName);
   if(favIdx>-1){favFoods[favIdx].kcalPer100g=v;saveFavFoods();}
+  // 공유 반영: master 연결(masterId) 사료면 foods_master의 kcal 빈칸을 RPC로 채움.
+  //   fill_food_kcal은 kcal_per_100g IS NULL인 행만 UPDATE(security definer, 기존 값 절대 미덮어씀).
+  //   반환 1=채움, 0=이미 값 있음/없는 id. 실패해도 개인 저장은 이미 완료 → 조용히 warn만.
+  const _mid=_fdViewData.masterId||null;
+  if(_mid&&sbClient&&currentUser){
+    sbClient.rpc('fill_food_kcal',{food_id:_mid,kcal:v}).then(({data,error})=>{
+      if(error){console.warn('fill_food_kcal 오류:',error);return;}
+      console.log('[fill_food_kcal]',_mid,'→',data);
+    }).catch(e=>console.warn('fill_food_kcal 오류:',e));
+  }
   try{calcCalorie();}catch(e){}
   toast(v+'kcal/100g로 저장했어요 ✓');
 }
@@ -10562,6 +10572,7 @@ async function autoPromoteFood(entry, opts){
     // 후보 0건 → 새 행 INSERT(영양 포함). 성공 시에만 promoted 마킹(실패 시 다음 확정 때 재시도).
     const newId=await contributeFoodMaster(d,'analysis');
     if(newId){
+      entry.masterId=newId;               // 이후 kcal 입력 시 fill_food_kcal RPC가 이 행을 채우도록 링크
       d.masterPromoted=true;saveFD();
       if(!opts.silent){try{toast('같은 사료 먹는 다른 아이들에게 도움이 될 거예요');}catch(e){}}
     }
@@ -10703,7 +10714,7 @@ function _addFavFood(origName, finalName, kcalPer100g, type){
   }
   contributeFoodMaster(payload,'favorite').then(newId=>{
     if(newId){_entry.masterId=newId;saveFavFoods();}
-    if(_fd&&_fd.data){_fd.data.masterPromoted=true;try{saveFD();}catch(e){}}  // 자동 승격 경로의 중복 INSERT 방지
+    if(_fd&&_fd.data){if(newId)_fd.masterId=newId;_fd.data.masterPromoted=true;try{saveFD();}catch(e){}}  // 자동 승격 경로의 중복 INSERT 방지 + kcal RPC용 masterId 링크
   }).catch(e=>{});
   toast(`${finalName} 즐겨찾기 추가!`);
   try{renderFdHistory();}catch(e){}
