@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.29</span>
+      <span class="cm-beta">v0.7.30</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -1913,7 +1913,25 @@ try{const _ffd=localStorage.getItem('favFoods_v1');if(_ffd){const _r=JSON.parse(
 try{const d=localStorage.getItem(SK);if(d)state=JSON.parse(d)}catch(e){}
 try{const d=localStorage.getItem(SK_BT);if(d){const raw=JSON.parse(d);btData=raw.map(r=>({...r,items:normalizeBTItems(r.items||[])}));}}catch(e){}
 try{const d=localStorage.getItem(SK_FD);if(d)fdData=JSON.parse(d)}catch(e){}
-const saveS=(date)=>{try{localStorage.setItem(SK,JSON.stringify(state))}catch(e){}; if(typeof saveToDB==='function'){saveToDB(date);}};
+/* 일일 레코드에 기록이 하나라도 있는지 (빈 값 덮어쓰기 가드 공용 헬퍼) */
+const REC_ARRAY_KEYS=['bg','ins','meals','weights','routines','water','urine','rr'];
+function recHasData(rec){
+  if(!rec)return false;
+  return REC_ARRAY_KEYS.some(k=>(rec[k]?.length||0)>0);
+}
+/* syncFromDB의 records 격리 창(state.records가 임시 객체인 구간) 동안 저장 차단 플래그.
+   이 창에서 saveS가 돌면 불완전한 records가 localStorage·DB를 덮어씀 → 저장을 미루고 동기화 후 flush */
+let _recordsSyncing=false;
+let _pendingSaveDates=new Set();
+const saveS=(date)=>{
+  if(_recordsSyncing){
+    _pendingSaveDates.add(date||null);
+    console.warn('[saveS] 동기화 중 저장 요청 → 동기화 완료 후 재시도로 연기',date||'(오늘)');
+    return;
+  }
+  try{localStorage.setItem(SK,JSON.stringify(state))}catch(e){};
+  if(typeof saveToDB==='function'){saveToDB(date);}
+};
 const saveBT=()=>{try{localStorage.setItem(SK_BT,JSON.stringify(btData))}catch(e){};if(document.getElementById('tab-graph')?.classList.contains('active'))renderBTTrend();renderBTHistoryList();};
 const saveFD=()=>{
   const _cat=state.activeCat||'_global';
@@ -11219,8 +11237,12 @@ async function handleLogout() {
 }
 
 /* ── DB 동기화 ── */
+let _syncFromDBRunning = false; // 재진입 가드: 동기화 겹침 시 격리 창 플래그가 엇갈리는 것 방지
 async function syncFromDB() {
   if(!sbClient || !currentUser) return;
+  if(_syncFromDBRunning) { console.warn('[syncFromDB] 이미 동기화 중 → 중복 호출 무시'); return; }
+  _syncFromDBRunning = true;
+  let _localRecordsBackup = null; // 격리 창 실패 시 복원용 (finally에서 참조)
   const _syncT0 = performance.now();
   console.log('[Perf] syncFromDB 시작');
   toast('☁️ 동기화 중...', '#534AB7');
@@ -11274,7 +11296,10 @@ async function syncFromDB() {
     }
 
     // 2. 병렬 페치 준비 (일일 기록은 격리 객체에 적재)
+    //    이 구간~merge 완료까지 state.records는 불완전한 임시 객체 → saveS 차단 (빈 값 덮어쓰기 방지)
+    _recordsSyncing = true;
     const localRecordsBackup = JSON.parse(JSON.stringify(state.records || {}));
+    _localRecordsBackup = localRecordsBackup;
     const dbRecords = {};
     state.records = dbRecords;
     btData = [];
@@ -11302,15 +11327,31 @@ async function syncFromDB() {
     // 4. merge: 로컬 전체 기록을 기반으로 깔고, DB 180일치를 그 위에 overlay
     //    같은 기기 = 로컬 전체 보존 + DB 최신 반영
     //    새 기기 = DB 180일 (3단계 lazy load에서 과거 추가 로딩 예정)
+    //    단, 빈 DB 행이 비지 않은 로컬 기록을 덮는 것은 차단 (다른 기기 사고가 이 기기로 전파되는 것 방지)
     const mergedRecords = {};
     Object.keys(localRecordsBackup).forEach(cat => {
       mergedRecords[cat] = { ...localRecordsBackup[cat] };
     });
     Object.keys(state.records).forEach(cat => {
       if(!mergedRecords[cat]) mergedRecords[cat] = {};
-      Object.assign(mergedRecords[cat], state.records[cat]);
+      Object.keys(state.records[cat]).forEach(date => {
+        const dbRec = state.records[cat][date];
+        const localRec = mergedRecords[cat][date];
+        if(localRec && recHasData(localRec) && !recHasData(dbRec)) {
+          console.warn(`[syncFromDB] 빈 DB 행이 로컬 기록을 덮으려 함 → 로컬 유지: ${cat} ${date}`);
+          return;
+        }
+        mergedRecords[cat][date] = dbRec;
+      });
     });
     state.records = mergedRecords;
+    // 격리 창 종료: 저장 차단 해제 + 창 동안 미뤄둔 저장 flush
+    _recordsSyncing = false;
+    if(_pendingSaveDates.size > 0) {
+      const pend = [..._pendingSaveDates];
+      _pendingSaveDates.clear();
+      pend.forEach(d => saveS(d || undefined));
+    }
 
     saveBT();
 
@@ -11340,6 +11381,19 @@ async function syncFromDB() {
   } catch(e) {
     console.error('DB 동기화 오류:', e);
     toast('⚠️ 동기화 실패: '+e.message, '#D85A30');
+  } finally {
+    _syncFromDBRunning = false;
+    // 동기화가 어디서 실패하든 저장 차단이 영구히 남지 않도록 보장
+    if(_recordsSyncing) {
+      _recordsSyncing = false;
+      // merge에 도달하지 못하고 실패 → state.records가 불완전한 격리 객체일 수 있음 → 로컬 백업 복원
+      if(_localRecordsBackup) state.records = _localRecordsBackup;
+      if(_pendingSaveDates.size > 0) {
+        const pend = [..._pendingSaveDates];
+        _pendingSaveDates.clear();
+        pend.forEach(d => saveS(d || undefined));
+      }
+    }
   }
 }
 
@@ -11429,6 +11483,13 @@ async function saveToDB(targetDate) {
     const dates = targetDate ? [targetDate] : [today()];
     for(const date of dates) {
       const rec = getRec(cat, date);
+      // 빈 데이터 가드: 모든 배열이 동시에 빈 레코드는 upsert 금지.
+      // 개별 삭제는 배열이 줄어드는 것이지 전체가 한번에 비지 않음 —
+      // 전체가 빈 경우는 레이스로 초기화된 레코드일 가능성이 높아 DB의 정상 데이터 보호가 우선.
+      if(!recHasData(rec)) {
+        console.warn(`[saveToDB] 빈 레코드 upsert 차단: ${cat} ${date}`);
+        continue;
+      }
       const { error } = await sbClient.from('daily_records').upsert({
         cat_id: profile.dbId,
         user_id: currentUser.id,
@@ -11443,9 +11504,22 @@ async function saveToDB(targetDate) {
   }
 }
 
-// 전체 로컬 기록을 DB에 일괄 업로드 (초기 마이그레이션용)
+// 로컬에만 있는 기록을 DB에 업로드 (초기 마이그레이션용, 단방향)
+// DB에 이미 행이 있는 날짜는 건드리지 않음 — 일괄 upsert로 다른 기기의 최신 데이터를 덮는 사고 방지
 async function migrateLocalToDB() {
   if(!sbClient || !currentUser) return;
+  // DB에 이미 존재하는 (cat_id, record_date) 키 조회 (data 컬럼 없이 가볍게)
+  let dbKeys = null;
+  try {
+    const { data: existing, error } = await sbClient.from('daily_records')
+      .select('cat_id, record_date').eq('user_id', currentUser.id);
+    if(error) throw error;
+    dbKeys = new Set((existing || []).map(r => r.cat_id + '|' + r.record_date));
+  } catch(e) {
+    // 키 조회 실패 시 마이그레이션 스킵 (덮어쓰기 위험을 감수하지 않음)
+    console.warn('[migrateLocalToDB] 기존 키 조회 실패 → 마이그레이션 스킵:', e);
+    return 0;
+  }
   let totalCount = 0;
   for(const cat of (state.cats || [])) {
     let profile = (state.catProfiles || {})[cat];
@@ -11458,10 +11532,8 @@ async function migrateLocalToDB() {
     const dates = Object.keys(records);
     for(const date of dates) {
       const rec = records[date];
-      if(!rec) continue;
-      const hasData = (rec.bg?.length||0)+(rec.ins?.length||0)
-        +(rec.meals?.length||0)+(rec.weights?.length||0)+(rec.routines?.length||0)+(rec.rr?.length||0) > 0;
-      if(!hasData) continue;
+      if(!recHasData(rec)) continue;
+      if(dbKeys.has(profile.dbId + '|' + date)) continue; // DB에 이미 있음 → 로컬 push 금지
       try {
         await sbClient.from('daily_records').upsert({
           cat_id: profile.dbId,
