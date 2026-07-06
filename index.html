@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.31</span>
+      <span class="cm-beta">v0.7.32</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -1453,14 +1453,14 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
           <button class="cm-btn cm-btn--soft" id="btAiComment">AI 분석</button>
         </div>
       </div>
-      <div style="overflow-x:auto"><table class="bt"><thead><tr><th>항목</th><th>수치</th><th>단위</th><th>정상범위</th><th>상태</th><th>변화</th></tr></thead><tbody id="btBody"></tbody></table></div>
+      <div style="overflow-x:auto"><table class="bt"><thead><tr><th>항목</th><th>수치</th><th>단위</th><th>참고범위</th><th>범위 대비</th><th>변화</th></tr></thead><tbody id="btBody"></tbody></table></div>
     </div>
     <div id="btAiCommentArea" style="display:none;margin-top:.75rem">
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:.65rem">
         <span style="font-size:14px;font-weight:800;color:var(--cm-ink)">AI 혈액검사 분석</span>
         <span id="btAiSpinner" style="display:none" class="spin"></span>
       </div>
-      <div style="font-size:11.5px;line-height:1.5;padding:8px 10px;margin-bottom:.65rem;border-radius:9px;background:rgba(186,117,23,0.08);color:var(--cm-faint)">⚠️ 본 앱의 AI 분석은 참고용이며 수의사 진료를 대체하지 않습니다.</div>
+      <div style="font-size:11.5px;line-height:1.5;padding:8px 10px;margin-bottom:.65rem;border-radius:9px;background:rgba(186,117,23,0.08);color:var(--cm-faint)">⚠️ 본 앱의 혈검 결과 표시는 참고용이며 진단·치료 방향은 반드시 수의사와 상담하세요.</div>
       <div id="btAiCommentBody" style="font-size:13.5px;color:var(--cm-ink-soft);line-height:1.7;background:var(--cm-surface);border-radius:14px;padding:16px"></div>
     </div>
   </div>
@@ -1924,7 +1924,20 @@ const AI_RISK_PATTERNS=[
   /(감소|증가|줄이|늘리)[^\n]{0,8}%|%[^\n]{0,8}(감소|증가|줄이|늘리)/,
   // 치료 행위 지시·평가
   /치료\s*효과/, /재평가/, /점검\s*권장/, /작용\s*시간/,
-  /소량\s*급식/, /포도당\s*투여/, /케톤\s*(즉시\s*)?측정/
+  /소량\s*급식/, /포도당\s*투여/, /케톤\s*(즉시\s*)?측정/,
+  // ── 혈검 특화 ──
+  // 임상 스테이징
+  /IRIS/i, /ACVIM/i, /스테이지/, /stage\s*[0-9BC]/i,
+  // 질환명 (진단·판정 맥락)
+  /\bCKD\b/, /\bHCM\b/, /\bPKD\b/, /\bIBD\b/, /신부전/, /심근비대증/, /췌장염/,
+  /만성\s*신장|신장\s*질환|간\s*질환/, /갑상선\s*기능/, /빈혈/, /질소혈증/,
+  /(고|저)(칼륨|칼슘|인|나트륨|알부민|단백|혈당)혈증/, /당뇨/,
+  // 병리 표현·원인 추정
+  /기능\s*(저하|이상|부전)/, /손상/, /소견/, /악화/, /호전/, /[로으]\s*인한/, /때문/, /[로으]\s*추정/,
+  // 치료·재검·응급
+  /인\s*흡착제/, /레날딜|레나메진|펫티닉|벤아제프릴|아테놀롤|아텐올롤|클로피도그렐|푸로세미드|텔미살탄|암로디핀/,
+  /전환\s*검토/, /추가\s*권장/, /조정\s*필요/, /(저인|저단백|처방)\s*사료/, /단백질\s*제한/,
+  /재검/, /추적\s*검사/, /팔로우\s*업|팔로업/, /응급/, /즉시\s*(병원|진료|방문)/
 ];
 function filterAIAnalysisText(raw){
   if(!raw)return{text:raw,removed:0,discarded:false};
@@ -6713,17 +6726,15 @@ function buildBTChangeCtx(cat){
     const delta=cur.value-old.value;
     const arrow=`${old.value}→${cur.value}`;
     if(oldAbn&&!curAbn){
-      changes.push({pri:1,text:`${nm} ${arrow}(정상화)`});
+      changes.push({pri:1,text:`${nm} ${arrow}(참고범위 내 복귀)`});
     }else if(!oldAbn&&curAbn){
-      changes.push({pri:1,text:`${nm} ${arrow}(악화·${curSt==='high'?'↑':'↓'})`});
+      changes.push({pri:1,text:`${nm} ${arrow}(참고범위 밖 ${curSt==='high'?'↑':'↓'})`});
     }else if(oldAbn&&curAbn){
-      let tag='유지';
-      if(curSt==='high')tag=delta<0?'개선':delta>0?'악화':'유지';
-      else if(curSt==='low')tag=delta>0?'개선':delta<0?'악화':'유지';
-      changes.push({pri:2,text:`${nm} ${arrow}(${tag})`});
+      const tag=delta>0?'전회 대비 상승':delta<0?'전회 대비 하락':'전회와 동일';
+      changes.push({pri:2,text:`${nm} ${arrow}(범위 밖, ${tag})`});
     }else{
       const base=Math.abs(old.value)||1;
-      if(Math.abs(delta)/base>=0.3&&delta!==0)changes.push({pri:3,text:`${nm} ${arrow}(정상범위내 변동)`});
+      if(Math.abs(delta)/base>=0.3&&delta!==0)changes.push({pri:3,text:`${nm} ${arrow}(참고범위 내 변동)`});
     }
   });
   const lbl=isToday?`오늘 vs ${prev.date}`:`${recent.date} vs ${prev.date}`;
@@ -8540,47 +8551,51 @@ document.getElementById('btAiComment').addEventListener('click', async () => {
   });
 
   const itemSummary = items.map(i=>{
-    const st=i.refHigh!==null&&i.value>i.refHigh?'↑높음':i.refLow!==null&&i.value<i.refLow?'↓낮음':'정상';
+    const st=i.refHigh!==null&&i.value>i.refHigh?'↑참고범위보다 높음':i.refLow!==null&&i.value<i.refLow?'↓참고범위보다 낮음':'범위 내';
     return `${i.name}(${i.abbr||i.name}): ${i.value}${i.unit||''} [${i.refLow??''}~${i.refHigh??''}] ${st}`;
   }).join('\n');
 
-  const sys = `당신은 고양이 혈액검사 수치의 관찰·정리 도구입니다.
-검사 항목별 수치가 참고범위 대비 어디에 있는지 사실만 정리하며, 진단·해석·행동 지시는 하지 않습니다. 그 역할은 담당 수의사에게 있습니다.
+  const sys = `당신은 반려묘 혈액검사 결과의 수치 정리 도구입니다.
+검사지에 기재된 수치와 참고범위를 그대로 정리할 뿐, 진단·해석·판정·행동 지시는 하지 않습니다. 그 역할은 담당 수의사에게 있습니다.
 
 【절대 하지 마세요 — 어떤 경우에도 금지】
-- 이 고양이의 상태·질환에 대한 진단·추정 금지 (예: "신장이 노폐물을 못 걸러내요", "빈혈이 있어요", "췌장염일 수 있어요", "간세포 손상" 등 일체)
-- 원인 추정·인과 해석 금지 ("~때문", "~가능성", "~을 시사" 등)
-- 보호자가 취할 의료적 행동 지시 금지 (투약·식이 변경·검사 지시 등 일체)
-- 특정 약물명 언급·치료 제안·치료 효과 평가 금지
-- 수치 조정 목표 제시 금지
+- IRIS, ACVIM 등 임상 스테이징 판정 금지 ("IRIS 3기", "Stage 2", "B2" 등 일체)
+- 질환명을 진단·판정 맥락으로 사용 금지 (CKD, HCM, 신부전, 빈혈, 췌장염, 당뇨, 갑상선기능저하, 고칼륨혈증 등 일체)
+- 병리 원인 추정·인과 해석 금지 ("탈수로 인한", "신장 기능 저하", "~때문", "~가능성", "~을 시사" 등)
+- 장기·기능 상태 평가 금지 ("신장이 노폐물을 못 걸러내요", "간세포 손상" 등)
+- 특정 약물명 언급·치료 방향 제안·치료 효과 평가 금지 (레날딜, 레나메진, 인 흡착제 등 일체)
+- 식이 조정 권고 금지 (저인 사료, 단백질 제한 등)
+- 재검·추적 검사 시점 권고 금지 ("2주 후 재검" 등)
+- 응급도 판정 금지 ("응급 상황", "즉시 진료 필요" 등)
+- 수치의 좋고 나쁨, 개선·악화 평가 금지
 
 【오직 다음만 하세요】
-- 항목별 수치가 참고범위보다 높은지/낮은지/범위 내인지 사실 서술
-- 각 항목이 일반적으로 무엇을 측정하는 항목인지 교과서적 한 줄 설명 (단, "이 항목은 일반적으로 ○○과 관련해 측정하는 항목입니다" 형태로만. 이 고양이의 상태 판단으로 이어가지 말 것)
-- 이탈 항목 개수 등 통계 요약
-- 담당 수의사 상담 안내
+- 검사지에서 추출된 수치를 항목별로 정리
+- 검사지에 인쇄된 참고범위를 병기하고, 수치가 참고범위보다 높은지/낮은지/범위 내인지 사실만 서술 ("참고범위 밖에 있음" 형태. 질환명·병명 사용 금지)
+- 참고범위 밖 항목 개수 등 통계 요약
+- 담당 수의사 상담 안내로 마무리
 
 【출력 형식 — 반드시 이 구조로, 500자 내외】
 
 **참고범위를 벗어난 항목**
-항목마다 1줄: "○○(항목명): 수치 X — 참고범위(A~B)보다 높음/낮음. 일반적으로 △△과 관련해 측정하는 항목입니다."
+항목마다 1줄: "○○(항목명): 수치 X (참고범위 A~B) — 참고범위보다 높음/낮음."
 
 **참고범위 내 항목**
-정상 범위인 주요 항목들 한 줄로 나열
+범위 내인 주요 항목들 한 줄로 나열
 
 **요약**
-"전체 N개 항목 중 참고범위 이탈 M개" 형태의 통계만. 상태 평가·행동 지시 없이.
-"검사 결과에 대한 해석과 필요한 조치는 담당 수의사와 상담하세요."
+"전체 N개 항목 중 참고범위 밖 M개" 형태의 통계만. 상태 평가·행동 지시 없이.
 
-**주의사항**
-"본 정보는 참고용이며 수의사의 진료를 대체하지 않습니다. 반드시 담당 수의사와 상담하세요."`;
+**안내**
+"이 결과에 대해 담당 수의사와 상담해 보시기 바랍니다."
+"본 정보는 검사 결과지의 수치 정리이며, 진단이나 치료 방향은 반드시 담당 수의사와 상담하세요. 본 앱은 수의사 진료를 대체하지 않습니다."`;
 
   const userMsg = `고양이: ${target.cat} / 검사일: ${target.date}
 
 【전체 검사 결과】
 ${itemSummary}
 
-이상 수치 ${highItems.length+lowItems.length}개, 정상 ${normalItems.length}개`;
+참고범위 밖 ${highItems.length+lowItems.length}개, 범위 내 ${normalItems.length}개`;
 
   try {
     if(!checkAILimit('bloodtest')) return;
