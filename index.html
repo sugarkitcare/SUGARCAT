@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.34</span>
+      <span class="cm-beta">v0.7.35</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -3709,12 +3709,12 @@ function getRecentDays(n) {
 }
 
 // 가장 최근 체중 가져오기
-function getLatestWeight() {
-  const cat = state.activeCat;
+function getLatestWeight(catName) {
+  const cat = catName || state.activeCat;
   const recs = state.records[cat] || {};
   const dates = Object.keys(recs).sort().reverse();
   for(const d of dates) {
-    const ws = recs[d].weights || [];
+    const ws = (recs[d]||{}).weights || [];
     if(ws.length) return ws[ws.length-1].weight;
   }
   return null;
@@ -3785,7 +3785,7 @@ function updateHeroDateLabel() {
 }
 
 
-function renderDailySummary() {
+function renderDailySummary(catName) {
   try{renderChallengeBar();}catch(e){}
   const el = document.getElementById('dailySummaryList');
   const feedbackEl = document.getElementById('dailyFeedbackList');
@@ -3795,8 +3795,9 @@ function renderDailySummary() {
   if(!el) return;
 
   const d = heroDateStr();
-  const rec = getRec(state.activeCat, d);
-  const cat = state.activeCat;
+  // 렌더 시작 시점의 고양이를 로컬로 캡처 — 함수 내내 이 값만 사용 (stale activeCat 방어, v0.7.35)
+  const cat = catName || state.activeCat;
+  const rec = getRec(cat, d);
   const prof = (state.catProfiles||{})[cat] || {};
   const diseases = prof.diseases || [];
   if(titleEl) titleEl.textContent = (cat || '고양이') + ' 오늘 상태';
@@ -4085,7 +4086,7 @@ function renderDailySummary() {
   // ════════════════════════════════
   if(hasCKD) {
     // 음수량 목표 vs 실제
-    const latestWt = getLatestWeight();
+    const latestWt = getLatestWeight(cat);
     const todayWater = (rec.water||[]).reduce((a,b)=>a+b.ml, 0);
     if(latestWt) {
       const minGoal = Math.round(latestWt * 40);
@@ -4196,7 +4197,7 @@ function renderDailySummary() {
   // ════════════════════════════════
   // 4. 음수량 목표 진행바 (체중 있을 때)
   // ════════════════════════════════
-  const latestWt2 = getLatestWeight();
+  const latestWt2 = getLatestWeight(cat);
   const todayFluidMl = (rec.routines||[]).filter(r=>r.ml&&r.ml>0).reduce((a,r)=>a+r.ml,0);
   const todayWetMl = parseFloat(((rec.meals||[]).filter(m=>m.moisture!=null&&m.moisture>=60).reduce((a,m)=>a+(m.amt||0)*m.moisture/100,0)).toFixed(1));
   const todayWaterTotal = (rec.water||[]).reduce((a,b)=>a+b.ml,0) + todayFluidMl + todayWetMl;
@@ -4447,7 +4448,7 @@ function renderDailySummary() {
   // ── 히어로 카드 업데이트 (append only) ──
   try {
     const C = 314.16;
-    const latestWtHero = latestWt2 || getLatestWeight();
+    const latestWtHero = latestWt2 || getLatestWeight(cat);
     const waterTarget = latestWtHero ? Math.round(latestWtHero * 40) : 0;
     const heroPct = waterTarget > 0 ? Math.min(100, Math.round(todayWaterTotal / waterTarget * 100)) : 0;
 
@@ -4576,7 +4577,7 @@ function renderDailySummary() {
 function updateWtDiff(){
   const cat=state.activeCat,recs=state.records[cat]||{};
   const dates=Object.keys(recs).sort().reverse();
-  let prev=null;for(const d of dates){const ws=recs[d].weights||[];if(ws.length){prev=ws[ws.length-1].weight;break;}}
+  let prev=null;for(const d of dates){const ws=(recs[d]||{}).weights||[];if(ws.length){prev=ws[ws.length-1].weight;break;}}
   document.getElementById('wtDiff').textContent=prev?`이전 체중: ${prev}kg`:'첫 번째 체중을 입력해주세요';
 }
 updateWtDiff();
@@ -4585,7 +4586,7 @@ document.getElementById('wtVal').oninput=function(){
   const v=parseFloat(this.value);if(isNaN(v))return;
   const cat=state.activeCat,recs=state.records[cat]||{};
   const dates=Object.keys(recs).sort().reverse();
-  let prev=null;for(const d of dates){const ws=recs[d].weights||[];if(ws.length){prev=ws[ws.length-1].weight;break;}}
+  let prev=null;for(const d of dates){const ws=(recs[d]||{}).weights||[];if(ws.length){prev=ws[ws.length-1].weight;break;}}
   if(prev){const diff=(v-prev).toFixed(2);const sign=diff>0?'+':'';const arr=diff>0?'▲':diff<0?'▼':'━';
     document.getElementById('wtDiff').innerHTML=`이전 ${prev}kg → ${v}kg &nbsp;<b style="color:${diff>0?'var(--coral)':diff<0?'var(--blue)':'var(--text2)'}">${arr}${sign}${diff}kg</b>`;}
 };
@@ -11358,6 +11359,19 @@ async function handleLogout() {
 
 /* ── DB 동기화 ── */
 let _syncFromDBRunning = false; // 재진입 가드: 동기화 겹침 시 격리 창 플래그가 엇갈리는 것 방지
+/* 오늘탭 전체를 현재 activeCat 기준으로 재렌더 — 호출 개별 격리 (v0.7.35)
+   syncFromDB 도중·직후 어느 한 렌더가 throw해도 나머지 카드(특히 히어로)가 반드시 갱신되도록 보장 */
+function _renderDailyTabSafe() {
+  try{renderCatBar();}catch(e){console.warn('[dailyRender] catbar:',e);}
+  try{updateMetrics();}catch(e){console.warn('[dailyRender] metrics:',e);}
+  try{updateWtDiff();}catch(e){console.warn('[dailyRender] wtDiff:',e);}
+  try{updateInsulinNext();}catch(e){console.warn('[dailyRender] insNext:',e);}
+  try{renderRoutineChecklist();}catch(e){console.warn('[dailyRender] routine:',e);}
+  try{renderDailySummary();}catch(e){console.warn('[dailyRender] summary:',e);}
+  try{renderWaterLog();}catch(e){console.warn('[dailyRender] waterLog:',e);}
+  try{renderTileGrid(state.activeCat);}catch(e){console.warn('[dailyRender] tiles:',e);}
+}
+
 async function syncFromDB() {
   if(!sbClient || !currentUser) return;
   if(_syncFromDBRunning) { console.warn('[syncFromDB] 이미 동기화 중 → 중복 호출 무시'); return; }
@@ -11375,6 +11389,7 @@ async function syncFromDB() {
 
     if(catsErr) throw catsErr;
 
+    const _prevActiveCat = state.activeCat;
     if(cats && cats.length > 0) {
       // DB 기준으로 완전 덮어씌우기 (로컬 중복 제거)
       state.cats = [...new Set(cats.map(c => c.name).filter(n => n && n.trim() !== ''))]; // 중복 제거 + 이름 없는 고양이 필터링
@@ -11390,6 +11405,9 @@ async function syncFromDB() {
         };
       });
       try{localStorage.setItem(SK, JSON.stringify(state));}catch(e){}
+      // activeCat이 DB 기준으로 바뀌었으면 오늘탭 즉시 재렌더 — 히어로 카드가 이전 고양이로 남는 stale 창 제거 (v0.7.35)
+      // 이 시점 records는 아직 로컬 원본 → 로컬 데이터로 우선 렌더하고, 동기화 완료 후 finally에서 최종 렌더
+      if(state.activeCat !== _prevActiveCat) _renderDailyTabSafe();
     } else {
       // DB에 고양이 없으면 로컬 고양이들을 DB에 등록
       if(state.cats.length > 0) {
@@ -11456,6 +11474,7 @@ async function syncFromDB() {
       if(!mergedRecords[cat]) mergedRecords[cat] = {};
       Object.keys(state.records[cat]).forEach(date => {
         const dbRec = state.records[cat][date];
+        if(dbRec == null) return; // null DB 행이 로컬을 덮거나 null이 records에 들어가는 것 차단 (v0.7.35)
         const localRec = mergedRecords[cat][date];
         if(localRec && recHasData(localRec) && !recHasData(dbRec)) {
           console.warn(`[syncFromDB] 빈 DB 행이 로컬 기록을 덮으려 함 → 로컬 유지: ${cat} ${date}`);
@@ -11475,10 +11494,6 @@ async function syncFromDB() {
 
     saveBT();
 
-    renderCatBar();
-    updateMetrics();
-    updateWtDiff();
-    updateInsulinNext();
     try{applyGraphCards();}catch(e){}
     try{renderBTHistoryList();renderBTGraphs();renderBTTrend();}catch(e){}
 
@@ -11494,9 +11509,6 @@ async function syncFromDB() {
     }
 
     toast('☁️ 동기화 완료' + (state.cats.length > 0 ? '! 고양이 '+state.cats.length+'마리' : ''));
-    try { updateMetrics(); } catch(e) {}
-    try { renderRoutineChecklist(); } catch(e) {}
-    try { renderDailySummary(); } catch(e) {}
     console.log(`[Perf] syncFromDB 총: ${(performance.now()-_syncT0).toFixed(0)}ms`);
   } catch(e) {
     console.error('DB 동기화 오류:', e);
@@ -11514,6 +11526,9 @@ async function syncFromDB() {
         pend.forEach(d => saveS(d || undefined));
       }
     }
+    // 최종 안전망: 성공·실패와 무관하게 현재 activeCat 기준으로 오늘탭 전면 재렌더 (v0.7.35)
+    // 위 try 안에서 어떤 렌더/저장이 throw했더라도 히어로 카드가 stale로 남지 않도록 보장
+    _renderDailyTabSafe();
   }
 }
 
@@ -11536,7 +11551,7 @@ async function loadDailyRecords() {
         (r.cat_id ? Object.keys(state.catProfiles).find(
           k => state.catProfiles[k]?.dbId === r.cat_id
         ) : null);
-      if(cat) {
+      if(cat && r.data) { // data가 null인 행은 스킵 — null이 records에 들어가면 이후 렌더가 throw (v0.7.35)
         if(!state.records[cat]) state.records[cat] = {};
         state.records[cat][r.record_date] = r.data;
       }
