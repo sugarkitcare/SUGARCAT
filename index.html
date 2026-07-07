@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.38</span>
+      <span class="cm-beta">v0.7.39</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -636,6 +636,12 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div id="challengeBar" style="display:none;margin-bottom:.5rem"></div>
   <!-- 오늘 상태 피드백 카드 -->
   <!-- 🐾 오늘 상태 피드백 카드 -->
+  <!-- 다음 진료 D-day 배너 (v0.7.39) — 히어로 위, 텍스트만 (이모지 금지) -->
+  <div id="vetVisitBanner" style="display:none;align-items:center;gap:8px;box-sizing:border-box;margin-bottom:.6rem;padding:10px 14px;border-radius:12px;background:var(--cm-green-tint);border:1px solid var(--cm-green-edge)">
+    <span id="vetVisitBannerText" onclick="openVetReportFromBanner()" style="flex:1;font-size:13px;font-weight:700;color:var(--cm-green-700);cursor:pointer"></span>
+    <button type="button" onclick="dismissVetBanner()" style="background:none;border:none;color:var(--cm-faint);font-size:16px;line-height:1;padding:2px 6px;cursor:pointer;font-family:inherit">×</button>
+  </div>
+
   <!-- ══ 히어로 요약 카드 ══ -->
   <div class="cmb-hero" id="dailySummaryCard" style="margin-bottom:.75rem">
     <!-- 상단 -->
@@ -1398,18 +1404,11 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
     <div class="log-list" id="logList"><div class="empty">이 날의 기록이 없어요</div></div>
   </div>
 
-  <!-- CSV 내보내기 (하단) -->
+  <!-- 병원에 공유하기 (v0.7.39) — 기존 CSV 내보내기 대체 -->
   <div class="card" style="margin-top:.5rem">
-    <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="toggleCard('csvBody',this)">
-      <div style="font-size:12px;font-weight:500;color:var(--text2)">📥 기록 내보내기</div>
-      <span style="font-size:11px;color:var(--teal)">▼ 펼치기</span>
-    </div>
-    <div id="csvBody" style="display:none;margin-top:.75rem">
-      <div style="font-size:11px;color:var(--text2);line-height:1.7;margin-bottom:.6rem">
-        혈당·케톤·체중·인슐린·식사·투약 기록을 CSV로 저장해요.<br>
-        병원 진료 시 수의사 참고 자료로 활용 가능해요.
-      </div>
-      <button onclick="exportCSV()" style="padding:8px 16px;background:var(--teal);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;width:100%">📥 CSV 파일 다운로드</button>
+    <button onclick="openVetReport()" style="padding:12px 16px;background:var(--teal);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;width:100%">병원에 공유하기</button>
+    <div style="font-size:11px;color:var(--text3);margin-top:8px;line-height:1.55;text-align:center">
+      기간별 기록을 정리한 진료용 리포트를 만들어<br>카카오톡 병원 채널로 바로 공유해요.
     </div>
   </div>
 </div>
@@ -10674,28 +10673,562 @@ function checkKetoneAlert(ket, bg) {
   }
 }
 
-/* ── 12번: CSV 내보내기 ── */
-function exportCSV() {
+/* ══════════════════════════════════════════════
+   진료용 요약 리포트 v1 — 병원에 공유하기 (v0.7.39)
+   기존 CSV 내보내기 대체. 관찰·통계만 담음 (진단·처방·치료 판정 금지, v0.7.34 원칙)
+   이미지: 외부 라이브러리 없이 Canvas 2D 직접 렌더 / 공유: Web Share API + fallback
+   ══════════════════════════════════════════════ */
+
+/* ── 다음 진료 예정일 관리 ──
+   catProfiles는 syncFromDB가 DB 기준으로 재구축(임의 필드 소실)하므로
+   원본은 localStorage(nextVisit_v1_<cat>) + user_settings(next_visit_<cat>), 프로필 필드는 미러 */
+function getNextVisit(cat){
+  try{ return localStorage.getItem('nextVisit_v1_'+cat) || null; }catch(e){ return null; }
+}
+function setNextVisit(cat, dateStr){
+  if(!cat) return;
+  try{
+    if(dateStr) localStorage.setItem('nextVisit_v1_'+cat, dateStr);
+    else localStorage.removeItem('nextVisit_v1_'+cat);
+  }catch(e){}
+  if(state.catProfiles && state.catProfiles[cat]) state.catProfiles[cat].nextVisit = dateStr || null;
+  if(sbClient && currentUser){
+    sbClient.from('user_settings').upsert({
+      user_id: currentUser.id, key: 'next_visit_'+cat,
+      value: {date: dateStr || null}, updated_at: new Date().toISOString()
+    }, {onConflict:'user_id,key'}).then(({error})=>{ if(error) console.warn('nextVisit 저장 오류:', error); })
+      .catch(e=>console.warn('nextVisit 저장 reject:', e));
+  }
+  try{ renderVetVisitBanner(); }catch(e){}
+}
+async function loadNextVisits(){
+  if(!sbClient || !currentUser || !state.cats.length) return;
+  try{
+    const keys = state.cats.map(c => 'next_visit_'+c);
+    const {data} = await sbClient.from('user_settings').select('key,value')
+      .eq('user_id', currentUser.id).in('key', keys);
+    (data||[]).forEach(row=>{
+      const cat = row.key.replace('next_visit_','');
+      const d = row.value && row.value.date;
+      try{
+        if(d) localStorage.setItem('nextVisit_v1_'+cat, d);
+        else localStorage.removeItem('nextVisit_v1_'+cat);
+      }catch(e){}
+      if(state.catProfiles && state.catProfiles[cat]) state.catProfiles[cat].nextVisit = d || null;
+    });
+  }catch(e){ console.warn('nextVisit 로드 오류:', e); }
+}
+/* 혈검 날짜 = 병원 다녀온 날 (v1 스코프). 검사 3회 미만이면 예측 안 함 */
+function predictNextVisit(cat){
+  const dates = [...new Set(btData.filter(b => b.cat === cat && b.date).map(b => b.date))].sort();
+  if(dates.length < 3) return null;
+  const recent = dates.slice(-5);
+  let gapSum = 0;
+  for(let i = 1; i < recent.length; i++) gapSum += (new Date(recent[i]) - new Date(recent[i-1])) / 86400000;
+  const avgGap = Math.round(gapSum / (recent.length - 1));
+  if(avgGap <= 0) return null;
+  const next = new Date(recent[recent.length-1] + 'T00:00:00Z');
+  next.setUTCDate(next.getUTCDate() + avgGap);
+  return next.toISOString().slice(0,10);
+}
+
+/* ── D-3 배너 (오늘탭 히어로 위) ── */
+function renderVetVisitBanner(){
+  const el = document.getElementById('vetVisitBanner');
+  if(!el) return;
   const cat = state.activeCat;
-  const recs = state.records[cat] || {};
-  const rows = [['날짜','시각','종류','혈당(mg/dL)','케톤(mmol/L)','체중(kg)','인슐린종류','인슐린용량(U)','사료명','칼로리(kcal)','메모']];
-  
-  Object.keys(recs).sort().forEach(date => {
-    const rec = recs[date];
-    rec.bg.forEach(r => rows.push([date, r.time, '혈당·케톤', r.bg||'', r.ketone||'', '', '', '', '', '', r.note||'']));
-    (rec.weights||[]).forEach(r => rows.push([date, r.time, '체중', '', '', r.weight||'', '', '', '', '', r.note||'']));
-    rec.ins.forEach(r => rows.push([date, r.time, '인슐린', r.preBg||'', '', '', r.type||'', r.dose||'', '', '', '']));
-    rec.meals.forEach(r => rows.push([date, r.time, '식사', '', '', '', '', '', r.name||'', r.kcal||'', '']));
-    (rec.routines||[]).forEach(r => {const _rNm=(r.items||[]).join('/')+(r.slot?` (예정 ${r.slot})`:'');const _rTxt=(r.ml&&r.ml>0)?`${_rNm} ${r.ml}ml${r.fluidType?' · '+r.fluidType:''}`:_rNm;rows.push([date, r.time, '투약·루틴', '', '', '', '', '', '', '', _rTxt+(r.memo?' '+r.memo:'')]);});
+  const nv = cat ? getNextVisit(cat) : null;
+  if(!nv){ el.style.display = 'none'; return; }
+  try{ if(localStorage.getItem('vetBannerDismiss_'+today()) === '1'){ el.style.display = 'none'; return; } }catch(e){}
+  const diff = Math.round((new Date(nv+'T00:00:00') - new Date(today()+'T00:00:00')) / 86400000);
+  if(diff < 0 || diff > 3){ el.style.display = 'none'; return; }
+  const txt = document.getElementById('vetVisitBannerText');
+  if(txt) txt.textContent = (diff === 0 ? '오늘 진료 예정' : '다음 진료 D-'+diff) + ' · 병원에 공유하기';
+  el.style.display = 'flex';
+}
+function dismissVetBanner(){
+  try{ localStorage.setItem('vetBannerDismiss_'+today(), '1'); }catch(e){}
+  const el = document.getElementById('vetVisitBanner');
+  if(el) el.style.display = 'none';
+}
+function openVetReportFromBanner(){
+  try{ const b = document.querySelector('.cm-tab[data-tab="history"]'); if(b) showTab('history', b); }catch(e){}
+  openVetReport();
+}
+
+/* ── 리포트 데이터 수집 (기간 통계 — 사실·수치만) ── */
+function _vrDates(fromStr, toStr){
+  const out = [];
+  const d = new Date(fromStr+'T00:00:00Z'), end = new Date(toStr+'T00:00:00Z');
+  while(d <= end){ out.push(d.toISOString().slice(0,10)); d.setUTCDate(d.getUTCDate()+1); }
+  return out;
+}
+function _vrAvg(arr){ return arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : null; }
+function _vrAge(cat){
+  const birth = state.catProfiles?.[cat]?.birth;
+  if(!birth) return null;
+  const y = Math.floor((Date.now() - new Date(birth).getTime()) / (365.25*86400000));
+  return y >= 0 ? y : null;
+}
+function collectVetReportData(cat, fromStr, toStr){
+  const prof = (state.catProfiles||{})[cat] || {};
+  const dates = _vrDates(fromStr, toStr);
+  const d = { cat, fromStr, toStr, days: dates.length, prof };
+  d.profile = {
+    breed: prof.breed || '', age: _vrAge(cat),
+    weight: getLatestWeight(cat), diseases: (prof.diseases||[]).join('·'),
+    targetWt: prof.targetWt || null, recommendedKcal: prof.recommendedKcal || null
+  };
+  const intake = [], fluid = [], urineC = [], poopC = [], kcal = [];
+  const urineAbn = {}, poopAbn = {}, fluidTypes = {}, foods = {}, medCount = {};
+  let fluidCount = 0, fluidMlSum = 0;
+  d.vomits = []; d.weights = [];
+  dates.forEach(day=>{
+    const rec = (state.records[cat]||{})[day];
+    if(!rec) return;
+    const wSum = (rec.water||[]).reduce((a,b)=>a+(b.ml||0),0);
+    const fArr = (rec.routines||[]).filter(r=>r.ml&&r.ml>0);
+    const fSum = fArr.reduce((a,r)=>a+r.ml,0);
+    if(wSum>0) intake.push(wSum);
+    if(fSum>0) fluid.push(fSum);
+    fArr.forEach(r=>{ fluidCount++; fluidMlSum+=r.ml; if(r.fluidType) fluidTypes[r.fluidType]=(fluidTypes[r.fluidType]||0)+1; });
+    const uArr = rec.urine||[];
+    if(uArr.length) urineC.push(uArr.length);
+    uArr.forEach(u=>{ if(u.amount && u.amount!=='정상' && u.amount!=='다량') urineAbn[u.amount]=(urineAbn[u.amount]||0)+1; });
+    const pArr = rec.poop||[];
+    if(pArr.length) poopC.push(pArr.length);
+    pArr.forEach(p=>{ if(p.type && p.type!=='정상') poopAbn[p.type]=(poopAbn[p.type]||0)+1; });
+    (rec.vomits||[]).forEach(v=>d.vomits.push({date:day, time:v.time||'', label:_vomitLabel(v), danger:_vomitDanger(v), memo:v.memo||''}));
+    const kSum = (rec.meals||[]).reduce((a,m)=>a+(m.kcal||0),0);
+    if(kSum>0) kcal.push(kSum);
+    (rec.meals||[]).forEach(m=>{ if(m.name) foods[m.name]=(foods[m.name]||0)+1; });
+    (rec.weights||[]).forEach(w=>{ if(w.weight) d.weights.push({date:day, weight:w.weight}); });
+    (rec.routines||[]).forEach(r=>(r.items||[]).forEach(k=>{
+      const nm = String(k).split('@')[0];
+      medCount[nm] = (medCount[nm]||0) + 1;
+    }));
   });
-  
-  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = `${cat}_케어기록_${today()}.csv`;
-  a.click(); URL.revokeObjectURL(url);
-  toast('CSV 다운로드 완료!');
+  d.water = { intakeAvg:_vrAvg(intake), fluidAvg:_vrAvg(fluid), intakeDays:intake.length, fluidDays:fluid.length,
+    fluidCount, fluidMlAvg: fluidCount?Math.round(fluidMlSum/fluidCount):null,
+    fluidTypeMain: Object.keys(fluidTypes).sort((a,b)=>fluidTypes[b]-fluidTypes[a])[0]||null,
+    target: d.profile.weight?Math.round(d.profile.weight*40):null };
+  d.urine = { avg:_vrAvg(urineC), days:urineC.length, abn:urineAbn };
+  d.poop = { avg:_vrAvg(poopC), days:poopC.length, abn:poopAbn };
+  d.meal = { kcalAvg:_vrAvg(kcal), days:kcal.length,
+    topFoods: Object.keys(foods).sort((a,b)=>foods[b]-foods[a]).slice(0,2) };
+  d.weight = { first: d.weights.length?d.weights[0]:null, last: d.weights.length?d.weights[d.weights.length-1]:null };
+  d.meds = Object.keys(medCount).sort((a,b)=>medCount[b]-medCount[a]).map(nm=>({name:nm, count:medCount[nm]}));
+  d.isDM = (prof.diseases||[]).some(x=>String(x).includes('DM'));
+  if(d.isDM && typeof cgmData !== 'undefined'){
+    const vals = [];
+    cgmData.filter(c=>(c.cat||'').trim()===cat.trim() && c.date>=fromStr && c.date<=toStr)
+      .forEach(c=>(c.readings||[]).forEach(r=>{ if(r.value>0) vals.push(r.value); }));
+    if(vals.length){
+      d.cgm = {
+        n: vals.length,
+        avg: Math.round(vals.reduce((a,b)=>a+b,0)/vals.length),
+        min: Math.min(...vals), max: Math.max(...vals),
+        tir: Math.round(vals.filter(v=>v>=80&&v<=200).length/vals.length*100),
+        high: vals.filter(v=>v>=300).length, low: vals.filter(v=>v<60).length
+      };
+    }
+  }
+  // 혈검 (선택) — 최근 검사 + 전회 대비 (중립 표현: 범위 밖/상승/하락, v0.7.32 원칙)
+  const bts = btData.filter(b=>b.cat===cat && b.items && b.items.length).sort((a,b)=>a.date<b.date?1:-1);
+  if(bts.length){
+    const cur = bts[0], prev = bts[1] || null;
+    const items = (cur.items||[]).map(i=>{
+      const v = parseFloat(i.value);
+      const out = (i.refHigh!=null && v>parseFloat(i.refHigh)) ? '높음' : (i.refLow!=null && v<parseFloat(i.refLow)) ? '낮음' : null;
+      let delta = null;
+      if(prev){
+        const p = (prev.items||[]).find(x=>x.abbr===i.abbr || (x.name&&x.name===i.name));
+        if(p && !isNaN(parseFloat(p.value))){
+          const pv = parseFloat(p.value);
+          delta = { prev: pv, dir: v>pv?'상승':v<pv?'하락':'동일' };
+        }
+      }
+      return { abbr:i.abbr||i.name, value:i.value, unit:i.unit||'', refLow:i.refLow, refHigh:i.refHigh, out, delta };
+    });
+    d.bt = { date: cur.date, prevDate: prev?prev.date:null, items };
+  }
+  return d;
+}
+
+/* ── 텍스트 리포트 (카톡 본문 — 이모지 금지, 대괄호 섹션) ── */
+function _vrNum(v, digits){ return v==null?'—':(digits!=null?v.toFixed(digits):String(Math.round(v))); }
+function buildVetReportText(d, inc, memo){
+  const L = [];
+  L.push('[케어마스터즈 진료 요약]');
+  const pf = [];
+  if(d.profile.breed) pf.push(d.profile.breed);
+  if(d.profile.age!=null) pf.push(d.profile.age+'세');
+  if(d.profile.weight!=null) pf.push(d.profile.weight+'kg');
+  if(d.profile.diseases) pf.push(d.profile.diseases);
+  L.push('반려묘: '+d.cat+(pf.length?' ('+pf.join(', ')+')':''));
+  L.push('기간: '+d.fromStr+' ~ '+d.toStr+' ('+d.days+'일)');
+  if(inc.water){
+    L.push('');
+    L.push('[음수량]');
+    const tot = (d.water.intakeAvg||0)+(d.water.fluidAvg||0);
+    L.push('평균: '+(tot?Math.round(tot):'—')+'ml/일'+(d.water.target?' (참고 목표 '+d.water.target+'ml)':''));
+    L.push('- 섭취: '+(d.water.intakeAvg!=null?'평균 '+Math.round(d.water.intakeAvg)+'ml/일 ('+d.water.intakeDays+'일 기록)':'기록 없음'));
+    if(d.water.fluidCount>0) L.push('- 수액: 평균 '+Math.round(d.water.fluidAvg)+'ml/일 · 총 '+d.water.fluidCount+'회'+(d.water.fluidMlAvg?' (회당 약 '+d.water.fluidMlAvg+'ml'+(d.water.fluidTypeMain?', '+d.water.fluidTypeMain:'')+')':''));
+  }
+  if(inc.urine){
+    L.push('');
+    L.push('[소변]');
+    L.push(d.urine.days?('평균 '+_vrNum(d.urine.avg,1)+'회/일 ('+d.urine.days+'일 기록)'):'기록 없음');
+    const abn = Object.keys(d.urine.abn).map(k=>k+' '+d.urine.abn[k]+'회').join(' · ');
+    L.push('이상 기록: '+(abn||'없음'));
+  }
+  if(inc.poop){
+    L.push('');
+    L.push('[배변]');
+    L.push(d.poop.days?('평균 '+_vrNum(d.poop.avg,1)+'회/일 ('+d.poop.days+'일 기록)'):'기록 없음');
+    const abn = Object.keys(d.poop.abn).map(k=>k+' '+d.poop.abn[k]+'회').join(' · ');
+    L.push('이상 기록: '+(abn||'없음'));
+  }
+  if(inc.vomit){
+    L.push('');
+    L.push('[구토]');
+    L.push('총 '+d.vomits.length+'회 (기간 내)');
+    d.vomits.slice(0,10).forEach(v=>{
+      L.push('- '+v.date.slice(5)+' '+v.time+' '+v.label+(v.danger?' (주의)':'')+(v.memo?' · '+v.memo:''));
+    });
+    if(d.vomits.length>10) L.push('- 외 '+(d.vomits.length-10)+'회');
+  }
+  if(inc.meal){
+    L.push('');
+    L.push('[급여]');
+    L.push(d.meal.days?('평균 '+Math.round(d.meal.kcalAvg)+' kcal/일 ('+d.meal.days+'일 기록)'+(d.profile.recommendedKcal?' · 참고 권장 '+d.profile.recommendedKcal+'kcal':'')):'기록 없음');
+    if(d.meal.topFoods.length) L.push('주 사료: '+d.meal.topFoods.join(' & '));
+  }
+  if(inc.weight){
+    L.push('');
+    L.push('[체중]');
+    if(d.weight.first && d.weight.last && d.weight.first.date!==d.weight.last.date){
+      const diff = +(d.weight.last.weight - d.weight.first.weight).toFixed(2);
+      L.push(d.weight.first.date.slice(5)+': '+d.weight.first.weight+'kg → '+d.weight.last.date.slice(5)+': '+d.weight.last.weight+'kg ('+(diff>0?'+':'')+diff+'kg)');
+    } else if(d.weight.last){
+      L.push('최근: '+d.weight.last.weight+'kg ('+d.weight.last.date.slice(5)+')');
+    } else L.push('기록 없음');
+    if(d.profile.targetWt) L.push('목표: '+d.profile.targetWt+'kg');
+  }
+  if(inc.med){
+    L.push('');
+    L.push('[투약·루틴]');
+    if(d.meds.length) d.meds.slice(0,12).forEach(m=>L.push('- '+m.name+': 기간 내 '+m.count+'회'));
+    else L.push('기록 없음');
+  }
+  if(inc.cgm && d.cgm){
+    L.push('');
+    L.push('[연속혈당(CGM) 요약]');
+    L.push('측정 '+d.cgm.n+'개 · 평균 '+d.cgm.avg+' · 최저 '+d.cgm.min+' · 최고 '+d.cgm.max+' mg/dL');
+    L.push('80~200 범위 내 비율: '+d.cgm.tir+'%');
+    L.push('300 이상 측정 '+d.cgm.high+'회 · 60 미만 측정 '+d.cgm.low+'회');
+  }
+  if(inc.bt && d.bt){
+    L.push('');
+    L.push('[혈액검사] ('+d.bt.date+' 검사'+(d.bt.prevDate?', 전회 '+d.bt.prevDate+' 대비':'')+')');
+    const outs = d.bt.items.filter(i=>i.out);
+    const ins2 = d.bt.items.filter(i=>!i.out);
+    outs.forEach(i=>{
+      let ln = '- '+i.abbr+': '+i.value+i.unit+' (참고 '+(i.refLow!=null?i.refLow:'')+'~'+(i.refHigh!=null?i.refHigh:'')+') 범위 밖·'+i.out;
+      if(i.delta && i.delta.dir!=='동일') ln += ' · 전회 '+i.delta.prev+' 대비 '+i.delta.dir;
+      L.push(ln);
+    });
+    if(ins2.length) L.push('- 범위 내 항목 '+ins2.length+'개 (상세 검사지 참조)');
+    L.push('※ 참고범위는 검사지 기재 기준. 해석은 담당 수의사와 상담하세요.');
+  }
+  if(memo && memo.trim()){
+    L.push('');
+    L.push('[특이사항]');
+    L.push(memo.trim());
+  }
+  L.push('');
+  L.push('---');
+  L.push('케어마스터즈 · caremasters.cat@gmail.com');
+  return L.join('\n');
+}
+
+/* ── 이미지 리포트 (Canvas 2D 직접 렌더 — 요약용, 브랜딩 포함) ── */
+function renderVetReportCanvas(d, inc, memo){
+  const W = 1080, PAD = 56, CW = W - PAD*2;
+  const secs = [];
+  if(inc.water){
+    const tot = (d.water.intakeAvg||0)+(d.water.fluidAvg||0);
+    const lines = ['평균 '+(tot?Math.round(tot):'—')+'ml/일'+(d.water.target?' / 참고 목표 '+d.water.target+'ml':'')];
+    if(d.water.fluidCount>0) lines.push('섭취 '+Math.round(d.water.intakeAvg||0)+'ml · 수액 '+Math.round(d.water.fluidAvg||0)+'ml');
+    secs.push({t:'음수량', lines, bar: d.water.target&&tot?Math.min(1.5,tot/d.water.target):null});
+  }
+  if(inc.urine) secs.push({t:'소변', lines:[(d.urine.days?('평균 '+_vrNum(d.urine.avg,1)+'회/일'):'기록 없음')+(Object.keys(d.urine.abn).length?' · 이상 '+Object.values(d.urine.abn).reduce((a,b)=>a+b,0)+'회':'')], warn:Object.keys(d.urine.abn).length>0});
+  if(inc.poop) secs.push({t:'배변', lines:[(d.poop.days?('평균 '+_vrNum(d.poop.avg,1)+'회/일'):'기록 없음')+(Object.keys(d.poop.abn).length?' · 이상 '+Object.values(d.poop.abn).reduce((a,b)=>a+b,0)+'회':'')], warn:Object.keys(d.poop.abn).length>0});
+  if(inc.vomit) secs.push({t:'구토', lines:['기간 내 총 '+d.vomits.length+'회'+(d.vomits.some(v=>v.danger)?' · 피/붉은색 포함':'')], warn:d.vomits.some(v=>v.danger)});
+  if(inc.meal) secs.push({t:'급여', lines:[d.meal.days?('평균 '+Math.round(d.meal.kcalAvg)+' kcal/일'+(d.profile.recommendedKcal?' / 참고 권장 '+d.profile.recommendedKcal:'')):'기록 없음'], bar: (d.meal.days&&d.profile.recommendedKcal)?Math.min(1.5,d.meal.kcalAvg/d.profile.recommendedKcal):null});
+  if(inc.weight && d.weight.last){
+    const wl = d.weight.first&&d.weight.first.date!==d.weight.last.date
+      ? d.weight.first.weight+'kg → '+d.weight.last.weight+'kg'
+      : d.weight.last.weight+'kg';
+    secs.push({t:'체중', lines:[wl+(d.profile.targetWt?' / 목표 '+d.profile.targetWt+'kg':'')]});
+  }
+  if(inc.med && d.meds.length) secs.push({t:'투약·루틴', lines:[d.meds.slice(0,4).map(m=>m.name).join(' · ')+(d.meds.length>4?' 외 '+(d.meds.length-4)+'종':'')]});
+  if(inc.cgm && d.cgm) secs.push({t:'연속혈당(CGM)', lines:['평균 '+d.cgm.avg+' · 최저 '+d.cgm.min+' · 최고 '+d.cgm.max+' mg/dL','80~200 범위 내 '+d.cgm.tir+'%']});
+  if(inc.bt && d.bt){
+    const outs = d.bt.items.filter(i=>i.out);
+    secs.push({t:'혈액검사 ('+d.bt.date+')', lines:[outs.length?('참고범위 밖 '+outs.length+'개 항목 — 텍스트 상세 참조'):'전 항목 참고범위 내'], warn:outs.length>0});
+  }
+  const SEC_H = s => 64 + s.lines.length*40 + (s.bar!=null?36:0) + 20;
+  const H = 250 + secs.reduce((a,s)=>a+SEC_H(s)+18,0) + (memo&&memo.trim()?110:0) + 130;
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const x = cv.getContext('2d');
+  const F = "-apple-system,'Noto Sans KR',sans-serif";
+  const INK='#2A251D', SOFT='#6B6459', GREEN='#235B43', CLAY='#B4552D', LINE='#E5DFD5', BG='#FAF7F1', CARD='#FFFFFF';
+  const rr = (x0,y0,w0,h0,r)=>{ x.beginPath(); x.moveTo(x0+r,y0); x.arcTo(x0+w0,y0,x0+w0,y0+h0,r); x.arcTo(x0+w0,y0+h0,x0,y0+h0,r); x.arcTo(x0,y0+h0,x0,y0,r); x.arcTo(x0,y0,x0+w0,y0,r); x.closePath(); };
+  x.fillStyle = BG; x.fillRect(0,0,W,H);
+  x.fillStyle = GREEN; x.fillRect(0,0,W,150);
+  x.fillStyle = '#FFFFFF';
+  x.font = '700 40px '+F; x.fillText('케어마스터즈 진료 요약', PAD, 66);
+  x.font = '500 28px '+F; x.globalAlpha = .85;
+  x.fillText(d.fromStr+' ~ '+d.toStr+' ('+d.days+'일)', PAD, 112);
+  x.globalAlpha = 1;
+  let y = 208;
+  x.fillStyle = INK; x.font = '800 42px '+F;
+  x.fillText(d.cat, PAD, y);
+  const nw = x.measureText(d.cat).width;
+  x.fillStyle = SOFT; x.font = '500 28px '+F;
+  const pf = [];
+  if(d.profile.breed) pf.push(d.profile.breed);
+  if(d.profile.age!=null) pf.push(d.profile.age+'세');
+  if(d.profile.weight!=null) pf.push(d.profile.weight+'kg');
+  if(d.profile.diseases) pf.push(d.profile.diseases);
+  if(pf.length) x.fillText(pf.join(' · '), PAD+nw+20, y);
+  y += 42;
+  secs.forEach(s=>{
+    const h = SEC_H(s);
+    x.fillStyle = CARD; rr(PAD, y, CW, h, 18); x.fill();
+    x.strokeStyle = LINE; x.lineWidth = 2; rr(PAD, y, CW, h, 18); x.stroke();
+    x.fillStyle = s.warn ? CLAY : GREEN;
+    x.font = '700 28px '+F;
+    x.fillText(s.t, PAD+28, y+48);
+    let ly = y + 96;
+    x.fillStyle = INK; x.font = '600 30px '+F;
+    s.lines.forEach(ln=>{ x.fillText(ln, PAD+28, ly); ly += 40; });
+    if(s.bar!=null){
+      const bw = CW-56, bx = PAD+28, by = ly-14;
+      x.fillStyle = '#EFEAE0'; rr(bx,by,bw,16,8); x.fill();
+      x.fillStyle = s.bar>=1?GREEN:'#BA7517'; rr(bx,by,Math.max(14,bw*Math.min(1,s.bar)),16,8); x.fill();
+    }
+    y += h + 18;
+  });
+  if(memo && memo.trim()){
+    x.fillStyle = SOFT; x.font = '700 26px '+F; x.fillText('특이사항', PAD, y+34);
+    x.fillStyle = INK; x.font = '500 28px '+F;
+    const mm = memo.trim().slice(0,60);
+    x.fillText(mm + (memo.trim().length>60?'…':''), PAD, y+76);
+    y += 110;
+  }
+  x.fillStyle = SOFT; x.font = '500 24px '+F;
+  x.fillText('상세 수치는 함께 전송된 텍스트를 확인해주세요.', PAD, H-72);
+  x.fillStyle = GREEN; x.font = '700 26px '+F;
+  x.fillText('케어마스터즈 · caremasters.cat@gmail.com', PAD, H-32);
+  return cv;
+}
+
+/* ── 리포트 만들기 4단계 모달 ── */
+let _vetRep = null;
+function _vetIncDefaults(cat){
+  const isDM = ((state.catProfiles||{})[cat]?.diseases||[]).some(x=>String(x).includes('DM'));
+  return { profile:true, water:true, urine:true, poop:true, vomit:true, meal:true, weight:true, med:true, cgm:isDM, bt:false };
+}
+function openVetReport(){
+  const cat = state.activeCat;
+  if(!cat){ toast('고양이를 먼저 등록해주세요', '#BA7517'); return; }
+  const saved = getNextVisit(cat);
+  const predicted = predictNextVisit(cat);
+  _vetRep = {
+    cat, step: 1,
+    nextVisit: saved || predicted || '',
+    predicted: !saved && !!predicted,
+    period: '2w', customFrom: '', customTo: today(),
+    inc: _vetIncDefaults(cat), memo: ''
+  };
+  let modal = document.getElementById('vetReportModal');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = 'vetReportModal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(42,37,29,0.5);z-index:9999;display:flex;align-items:flex-end;justify-content:center';
+    modal.innerHTML = '<div id="vetReportBox" style="background:var(--cm-bg);border-radius:20px 20px 0 0;width:100%;max-width:520px;max-height:88vh;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:1.25rem 1.1rem 1.5rem;box-sizing:border-box"></div>';
+    modal.addEventListener('click', e=>{ if(e.target===modal) closeVetReport(); });
+    document.body.appendChild(modal);
+  }
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  renderVetReportStep();
+}
+function closeVetReport(){
+  const modal = document.getElementById('vetReportModal');
+  if(modal) modal.style.display = 'none';
+  document.body.style.overflow = '';
+  _vetRep = null;
+}
+function _vrPeriodRange(){
+  const to = today();
+  if(_vetRep.period === 'custom'){
+    return { from: _vetRep.customFrom || to, to: _vetRep.customTo || to };
+  }
+  const daysMap = { '1w':6, '2w':13, '1m':29, '3m':89 };
+  const d = new Date(to+'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() - (daysMap[_vetRep.period] != null ? daysMap[_vetRep.period] : 13));
+  return { from: d.toISOString().slice(0,10), to };
+}
+function _vrBtn(label, onclick, primary){
+  return '<button type="button" onclick="'+onclick+'" style="flex:1;padding:12px;border-radius:11px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;'+
+    (primary?'background:var(--cm-green-700);color:#fff;border:none':'background:none;color:var(--cm-faint);border:1px solid var(--cm-line)')+'">'+label+'</button>';
+}
+function vetRepSet(key, val){ if(_vetRep) _vetRep[key] = val; }
+function vetRepToggle(key){
+  if(!_vetRep) return;
+  _vetRep.inc[key] = !_vetRep.inc[key];
+}
+function vetRepGo(step){
+  if(!_vetRep) return;
+  if(_vetRep.step === 1){
+    const dEl = document.getElementById('vrNextVisit');
+    if(dEl) _vetRep.nextVisit = dEl.value;
+  }
+  if(_vetRep.step === 2 && step === 3 && _vetRep.period === 'custom'){
+    const f = document.getElementById('vrFrom'), t = document.getElementById('vrTo');
+    if(f) _vetRep.customFrom = f.value;
+    if(t) _vetRep.customTo = t.value;
+    if(!_vetRep.customFrom || !_vetRep.customTo || _vetRep.customFrom > _vetRep.customTo){ toast('기간을 확인해주세요', '#BA7517'); return; }
+  }
+  if(_vetRep.step === 3){
+    const m = document.getElementById('vrMemo');
+    if(m) _vetRep.memo = m.value;
+  }
+  _vetRep.step = step;
+  renderVetReportStep();
+}
+function renderVetReportStep(){
+  const box = document.getElementById('vetReportBox');
+  if(!box || !_vetRep) return;
+  const R = _vetRep;
+  const head = (t,sub) => '<div style="display:flex;align-items:center;margin-bottom:4px"><div style="flex:1"><div style="font-size:17px;font-weight:800;color:var(--cm-ink)">'+t+'</div><div style="font-size:12px;color:var(--cm-faint);margin-top:2px">'+sub+'</div></div>'+
+    '<button type="button" onclick="closeVetReport()" style="background:none;border:none;font-size:20px;color:var(--cm-faint);cursor:pointer;padding:4px 8px;font-family:inherit">×</button></div>'+
+    '<div style="font-size:11px;color:var(--cm-faint);margin-bottom:14px">'+_vEsc(R.cat)+' · 단계 '+R.step+'/4</div>';
+  const inputStyle = 'padding:10px 12px;border:1px solid var(--cm-line);border-radius:11px;font-size:14px;background:var(--cm-surface);color:var(--cm-ink);font-family:inherit;box-sizing:border-box';
+  if(R.step === 1){
+    box.innerHTML = head('병원에 공유하기', '다음 진료 예정일을 확인해주세요')
+      + '<div style="background:var(--cm-surface-2);border:1px solid var(--cm-line);border-radius:13px;padding:14px;margin-bottom:12px">'
+      + '<div style="font-size:12.5px;font-weight:700;color:var(--cm-ink-soft);margin-bottom:8px">다음 진료 예정일'+(R.predicted?' <span style="font-weight:500;color:var(--cm-faint)">(혈검 주기 기반 자동 예측)</span>':'')+'</div>'
+      + '<input type="date" id="vrNextVisit" value="'+_vEsc(R.nextVisit)+'" style="'+inputStyle+';width:100%">'
+      + '<div style="font-size:11px;color:var(--cm-faint);margin-top:8px;line-height:1.5">진료 예정일 D-3부터 오늘탭에서 알려드려요. 비워두면 알림 없이 리포트만 만들어요.</div>'
+      + '</div>'
+      + '<div style="display:flex;gap:8px">'+_vrBtn('다음','vetRepGo(2)',true)+'</div>';
+  } else if(R.step === 2){
+    const per = [['1w','1주'],['2w','2주'],['1m','1개월'],['3m','3개월'],['custom','직접 지정']];
+    const incDefs = [['profile','프로필'],['water','음수량'],['urine','소변'],['poop','배변'],['vomit','구토'],['meal','급여'],['weight','체중'],['med','투약·루틴']];
+    if(((state.catProfiles||{})[R.cat]?.diseases||[]).some(x=>String(x).includes('DM'))) incDefs.push(['cgm','CGM 요약']);
+    incDefs.push(['bt','혈액검사 (전원·타 병원용)']);
+    box.innerHTML = head('리포트 옵션', '기간과 포함 항목을 선택해주세요')
+      + '<div style="font-size:12.5px;font-weight:700;color:var(--cm-ink-soft);margin-bottom:8px">기간</div>'
+      + '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">'
+      + per.map(p=>'<button type="button" onclick="vetRepSet(\'period\',\''+p[0]+'\');renderVetReportStep()" style="padding:8px 14px;border-radius:11px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;border:1px solid '+(R.period===p[0]?'var(--cm-green-700);background:var(--cm-green-tint);color:var(--cm-green-700)':'var(--cm-line);background:var(--cm-surface);color:var(--cm-ink-soft)')+'">'+p[1]+'</button>').join('')
+      + '</div>'
+      + (R.period==='custom' ? '<div style="display:flex;gap:8px;margin-bottom:12px"><input type="date" id="vrFrom" value="'+_vEsc(R.customFrom)+'" style="'+inputStyle+';flex:1;min-width:0"><input type="date" id="vrTo" value="'+_vEsc(R.customTo)+'" style="'+inputStyle+';flex:1;min-width:0"></div>' : '')
+      + '<div style="font-size:12.5px;font-weight:700;color:var(--cm-ink-soft);margin:8px 0">포함 항목</div>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:16px">'
+      + incDefs.map(k=>'<label style="display:flex;align-items:center;gap:7px;padding:9px 11px;border-radius:11px;background:var(--cm-surface);border:1px solid var(--cm-line);font-size:12.5px;color:var(--cm-ink);cursor:pointer"><input type="checkbox" '+(R.inc[k[0]]?'checked':'')+' onchange="vetRepToggle(\''+k[0]+'\')" style="accent-color:var(--cm-green-700)">'+k[1]+'</label>').join('')
+      + '</div>'
+      + '<div style="display:flex;gap:8px">'+_vrBtn('이전','vetRepGo(1)',false)+_vrBtn('미리보기','vetRepGo(3)',true)+'</div>';
+  } else if(R.step === 3){
+    const range = _vrPeriodRange();
+    const data = collectVetReportData(R.cat, range.from, range.to);
+    R._data = data;
+    const text = buildVetReportText(data, R.inc, R.memo);
+    R._text = text;
+    let imgHtml = '';
+    try{
+      const cv = renderVetReportCanvas(data, R.inc, R.memo);
+      R._canvas = cv;
+      imgHtml = '<img src="'+cv.toDataURL('image/png')+'" style="width:100%;border-radius:13px;border:1px solid var(--cm-line);margin-bottom:12px" alt="리포트 이미지 미리보기">';
+    }catch(e){ console.warn('리포트 이미지 생성 오류:', e); R._canvas = null; imgHtml = '<div style="font-size:12px;color:var(--cm-clay);margin-bottom:12px">이미지 미리보기를 만들지 못했어요 (텍스트만 공유됩니다)</div>'; }
+    box.innerHTML = head('미리보기', '공유 전 내용을 확인·수정해주세요')
+      + imgHtml
+      + '<div style="font-size:12.5px;font-weight:700;color:var(--cm-ink-soft);margin-bottom:6px">함께 전송될 텍스트</div>'
+      + '<pre style="white-space:pre-wrap;word-break:break-word;background:var(--cm-surface);border:1px solid var(--cm-line);border-radius:13px;padding:12px;font-size:12px;line-height:1.6;color:var(--cm-ink);font-family:inherit;max-height:200px;overflow-y:auto;margin:0 0 12px">'+_vEsc(text)+'</pre>'
+      + '<div style="font-size:12.5px;font-weight:700;color:var(--cm-ink-soft);margin-bottom:6px">특이사항 메모 (선택)</div>'
+      + '<textarea id="vrMemo" maxlength="300" placeholder="담당 수의사에게 전할 관찰 내용" style="'+inputStyle+';width:100%;min-height:64px;resize:vertical;margin-bottom:6px">'+_vEsc(R.memo)+'</textarea>'
+      + '<button type="button" onclick="vetRepGo(3)" style="background:none;border:none;color:var(--teal);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;padding:0 0 14px 0">메모 반영해 미리보기 새로고침</button>'
+      + '<div style="display:flex;gap:8px">'+_vrBtn('이전','vetRepGo(2)',false)+_vrBtn('카톡으로 공유','shareVetReport()',true)+'</div>';
+  } else if(R.step === 4){
+    const nv = R.nextVisit || predictNextVisit(R.cat) || '';
+    box.innerHTML = head('공유 완료', '다음 진료 예정일을 저장해두면 D-3부터 알려드려요')
+      + '<div style="background:var(--cm-surface-2);border:1px solid var(--cm-line);border-radius:13px;padding:14px;margin-bottom:12px">'
+      + '<div style="font-size:12.5px;font-weight:700;color:var(--cm-ink-soft);margin-bottom:8px">다음 진료 예정일</div>'
+      + '<input type="date" id="vrNextVisit2" value="'+_vEsc(nv)+'" style="'+inputStyle+';width:100%">'
+      + '</div>'
+      + '<div style="display:flex;gap:8px">'+_vrBtn('건너뛰기','closeVetReport()',false)+_vrBtn('저장하고 닫기','saveVetNextVisit()',true)+'</div>';
+  }
+}
+function saveVetNextVisit(){
+  const el = document.getElementById('vrNextVisit2');
+  const v = el ? el.value : '';
+  const cat = _vetRep ? _vetRep.cat : state.activeCat;
+  closeVetReport();
+  if(v && cat){
+    setNextVisit(cat, v);
+    toast('다음 진료 예정일이 저장됐어요 (D-3부터 알림)', '#1D9E75');
+  }
+}
+async function shareVetReport(){
+  if(!_vetRep) return;
+  const m = document.getElementById('vrMemo');
+  if(m) _vetRep.memo = m.value;
+  // 메모가 미리보기 생성 후 바뀌었을 수 있어 텍스트·이미지 재생성
+  if(_vetRep._data){
+    _vetRep._text = buildVetReportText(_vetRep._data, _vetRep.inc, _vetRep.memo);
+    try{ _vetRep._canvas = renderVetReportCanvas(_vetRep._data, _vetRep.inc, _vetRep.memo); }catch(e){}
+  }
+  // 1단계에서 입력한 진료일 저장 (공유 시점 확정)
+  if(_vetRep.nextVisit) setNextVisit(_vetRep.cat, _vetRep.nextVisit);
+  const text = _vetRep._text || '';
+  let file = null;
+  try{
+    if(_vetRep._canvas){
+      const blob = await new Promise(res=>_vetRep._canvas.toBlob(res, 'image/png'));
+      if(blob) file = new File([blob], 'caremasters_report_'+today()+'.png', {type:'image/png'});
+    }
+  }catch(e){ console.warn('이미지 blob 오류:', e); }
+  const payload = { title: '케어마스터즈 진료 요약', text };
+  if(file && navigator.canShare && navigator.canShare({files:[file]})) payload.files = [file];
+  if(navigator.share){
+    try{
+      await navigator.share(payload);
+      if(_vetRep) vetRepGo(4);
+      return;
+    }catch(e){
+      if(e && e.name === 'AbortError') return; // 유저가 공유 취소 — 미리보기 유지
+      console.warn('공유 오류:', e);
+    }
+  }
+  // fallback: 이미지 다운로드 + 텍스트 클립보드 복사 (데스크톱·미지원 브라우저)
+  try{
+    if(_vetRep && _vetRep._canvas){
+      const a = document.createElement('a');
+      a.href = _vetRep._canvas.toDataURL('image/png');
+      a.download = 'caremasters_report_'+today()+'.png';
+      a.click();
+    }
+    await navigator.clipboard.writeText(text);
+    toast('이미지 저장 + 텍스트 복사 완료. 카톡에 붙여넣어 공유하세요', '#1D9E75', 3200);
+    if(_vetRep) vetRepGo(4);
+  }catch(e){
+    console.warn('공유 fallback 오류:', e);
+    toast('공유에 실패했어요. 미리보기 텍스트를 길게 눌러 복사해주세요', '#BA7517');
+  }
 }
 
 
@@ -11575,6 +12108,7 @@ function _renderDailyTabSafe() {
   try{renderWaterLog();}catch(e){console.warn('[dailyRender] waterLog:',e);}
   try{renderVomitLog();}catch(e){console.warn('[dailyRender] vomit:',e);}
   try{renderTileGrid(state.activeCat);}catch(e){console.warn('[dailyRender] tiles:',e);}
+  try{renderVetVisitBanner();}catch(e){console.warn('[dailyRender] vetBanner:',e);}
 }
 
 async function syncFromDB() {
@@ -11664,6 +12198,7 @@ async function syncFromDB() {
       _tw('card_settings',  loadCardSettingsForCat(state.activeCat).catch(e => console.warn('카드설정 로드 오류:', e))),
       _tw('tile_config',    loadTileConfigFromDB(state.activeCat).catch(e => console.warn('타일설정 로드 오류:', e))),
       _tw('food_sync',      syncFoodDataFromDB(state.activeCat).catch(e => console.warn('사료 DB 로드 오류:', e))),
+      _tw('next_visit',     loadNextVisits().catch(e => console.warn('nextVisit 로드 오류:', e))),
     ]);
     console.log(`[Perf] Promise.all 전체: ${(performance.now()-_parallelT0).toFixed(0)}ms`);
 
@@ -12718,11 +13253,6 @@ async function uploadFoodDataToDB(cat) {
   <button type="button" onclick="migrateLocalToDB()" style="background:var(--cm-surface);border:1px solid var(--cm-line);border-radius:14px;padding:15px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;width:100%;cursor:pointer;font-family:inherit;text-align:left;box-sizing:border-box">
     <span class="cm-ic cm-ic--sm cm-ic--ghost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg></span>
     <span style="font-size:15px;font-weight:700;color:var(--cm-ink)">로컬 데이터 서버에 업로드</span>
-    <svg style="margin-left:auto;color:var(--cm-faint)" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
-  </button>
-  <button type="button" onclick="exportCSV()" style="background:var(--cm-surface);border:1px solid var(--cm-line);border-radius:14px;padding:15px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;width:100%;cursor:pointer;font-family:inherit;text-align:left;box-sizing:border-box">
-    <span class="cm-ic cm-ic--sm cm-ic--ghost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span>
-    <span style="font-size:15px;font-weight:700;color:var(--cm-ink)">CSV로 내보내기</span>
     <svg style="margin-left:auto;color:var(--cm-faint)" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
   </button>
 </div>
