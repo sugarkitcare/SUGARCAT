@@ -10851,8 +10851,8 @@ function renderVetManage(){
     + '</div>'
     + '<div style="font-size:12.5px;font-weight:700;color:var(--cm-ink-soft);margin-bottom:8px">최근 진료 이력</div>'
     + histHtml
-    + '<button type="button" onclick="vetManageMakeReport()" style="width:100%;margin-top:14px;padding:13px;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;background:var(--cm-green-700);color:#fff;border:none">지금 리포트 만들기</button>'
-    + '<div style="font-size:11px;color:var(--cm-faint);margin-top:8px;text-align:center;line-height:1.5">리포트는 지금까지의 기록으로 만들어져요. 예정일이 미래여도 바로 만들 수 있어요.</div>';
+    + '<button type="button" onclick="vetManageMakeReport()" style="width:100%;margin-top:14px;padding:13px;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;background:var(--cm-green-700);color:#fff;border:none">병원용 리포트 만들기</button>'
+    + '<div style="font-size:11px;color:var(--cm-faint);margin-top:8px;text-align:center;line-height:1.5">병원 카톡에 미리 공유하시면 진료가 편해져요.</div>';
 }
 
 /* 병원 타일 상태 텍스트 (v0.7.40) — 아이콘은 카테고리 정체성 원칙상 틴트 없음, 텍스트 톤만
@@ -11246,9 +11246,10 @@ function renderVetReportStep(){
       + '<div style="background:var(--cm-surface-2);border:1px solid var(--cm-line);border-radius:13px;padding:14px;margin-bottom:12px">'
       + '<div style="font-size:12.5px;font-weight:700;color:var(--cm-ink-soft);margin-bottom:8px">다음 진료 예정일'+(R.predicted?' <span style="font-weight:500;color:var(--cm-faint)">(혈검 주기 기반 자동 예측)</span>':'')+'</div>'
       + '<div style="width:100%;overflow:hidden;border-radius:11px"><input type="date" id="vrNextVisit" value="'+_vEsc(R.nextVisit)+'" style="'+dateStyle+'"></div>'
-      + '<div style="font-size:11px;color:var(--cm-faint);margin-top:8px;line-height:1.5">진료 예정일 D-3부터 오늘탭에서 알려드려요. 비워두면 알림 없이 리포트만 만들어요.<br>리포트는 지금까지의 기록으로 만들어져요 — 예정일이 미래여도 바로 만들 수 있어요.</div>'
+      + '<div style="font-size:11px;color:var(--cm-faint);margin-top:8px;line-height:1.5">진료 예정일 D-3부터 오늘탭에서 알려드려요. 비워두면 알림 없이 리포트만 만들어요.</div>'
       + '</div>'
-      + '<div style="display:flex;gap:8px">'+_vrBtn('다음','vetRepGo(2)',true)+'</div>';
+      + '<div style="display:flex;gap:8px">'+_vrBtn('다음','vetRepGo(2)',true)+'</div>'
+      + '<div style="font-size:11px;color:var(--cm-faint);margin-top:8px;text-align:center;line-height:1.5">병원 카톡에 미리 공유하시면 진료가 편해져요.</div>';
   } else if(R.step === 2){
     const per = [['1w','1주'],['2w','2주'],['1m','1개월'],['3m','3개월'],['custom','직접 지정']];
     const incDefs = [['profile','프로필'],['water','음수량'],['urine','소변'],['poop','배변'],['vomit','구토'],['meal','급여'],['weight','체중'],['med','투약·루틴']];
