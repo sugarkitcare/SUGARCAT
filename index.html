@@ -11120,11 +11120,14 @@ function renderVetReportStep(){
     '<button type="button" onclick="closeVetReport()" style="background:none;border:none;font-size:20px;color:var(--cm-faint);cursor:pointer;padding:4px 8px;font-family:inherit">×</button></div>'+
     '<div style="font-size:11px;color:var(--cm-faint);margin-bottom:14px">'+_vEsc(R.cat)+' · 단계 '+R.step+'/4</div>';
   const inputStyle = 'padding:10px 12px;border:1px solid var(--cm-line);border-radius:11px;font-size:14px;background:var(--cm-surface);color:var(--cm-ink);font-family:inherit;box-sizing:border-box';
+  // iOS Safari: date input은 네이티브 appearance인 동안 UA 내부 에디터의 고유 폭이 CSS width를 무시하고
+  // 카드 폭을 뚫음 → appearance 제거(B안)로 폭 제어권 회수 + min-height로 높이 붕괴 방지. 네이티브 피커는 유지됨
+  const dateStyle = inputStyle + ';-webkit-appearance:none;appearance:none;display:block;width:100%;max-width:100%;min-width:0;min-height:44px;text-align:left';
   if(R.step === 1){
     box.innerHTML = head('병원에 공유하기', '다음 진료 예정일을 확인해주세요')
       + '<div style="background:var(--cm-surface-2);border:1px solid var(--cm-line);border-radius:13px;padding:14px;margin-bottom:12px">'
       + '<div style="font-size:12.5px;font-weight:700;color:var(--cm-ink-soft);margin-bottom:8px">다음 진료 예정일'+(R.predicted?' <span style="font-weight:500;color:var(--cm-faint)">(혈검 주기 기반 자동 예측)</span>':'')+'</div>'
-      + '<input type="date" id="vrNextVisit" value="'+_vEsc(R.nextVisit)+'" style="'+inputStyle+';display:block;width:100%;max-width:100%;min-width:0">'
+      + '<div style="width:100%;overflow:hidden;border-radius:11px"><input type="date" id="vrNextVisit" value="'+_vEsc(R.nextVisit)+'" style="'+dateStyle+'"></div>'
       + '<div style="font-size:11px;color:var(--cm-faint);margin-top:8px;line-height:1.5">진료 예정일 D-3부터 오늘탭에서 알려드려요. 비워두면 알림 없이 리포트만 만들어요.</div>'
       + '</div>'
       + '<div style="display:flex;gap:8px">'+_vrBtn('다음','vetRepGo(2)',true)+'</div>';
@@ -11138,7 +11141,7 @@ function renderVetReportStep(){
       + '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">'
       + per.map(p=>'<button type="button" onclick="vetRepSet(\'period\',\''+p[0]+'\');renderVetReportStep()" style="padding:8px 14px;border-radius:11px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;border:1px solid '+(R.period===p[0]?'var(--cm-green-700);background:var(--cm-green-tint);color:var(--cm-green-700)':'var(--cm-line);background:var(--cm-surface);color:var(--cm-ink-soft)')+'">'+p[1]+'</button>').join('')
       + '</div>'
-      + (R.period==='custom' ? '<div style="display:flex;gap:8px;margin-bottom:12px"><input type="date" id="vrFrom" value="'+_vEsc(R.customFrom)+'" style="'+inputStyle+';flex:1;min-width:0;max-width:100%"><input type="date" id="vrTo" value="'+_vEsc(R.customTo)+'" style="'+inputStyle+';flex:1;min-width:0;max-width:100%"></div>' : '')
+      + (R.period==='custom' ? '<div style="display:flex;gap:8px;margin-bottom:12px;overflow:hidden"><input type="date" id="vrFrom" value="'+_vEsc(R.customFrom)+'" style="'+dateStyle.replace('display:block;width:100%','flex:1;width:auto')+'"><input type="date" id="vrTo" value="'+_vEsc(R.customTo)+'" style="'+dateStyle.replace('display:block;width:100%','flex:1;width:auto')+'"></div>' : '')
       + '<div style="font-size:12.5px;font-weight:700;color:var(--cm-ink-soft);margin:8px 0">포함 항목</div>'
       + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:16px">'
       + incDefs.map(k=>'<label style="display:flex;align-items:center;gap:7px;padding:9px 11px;border-radius:11px;background:var(--cm-surface);border:1px solid var(--cm-line);font-size:12.5px;color:var(--cm-ink);cursor:pointer"><input type="checkbox" '+(R.inc[k[0]]?'checked':'')+' onchange="vetRepToggle(\''+k[0]+'\')" style="accent-color:var(--cm-green-700)">'+k[1]+'</label>').join('')
@@ -11169,7 +11172,7 @@ function renderVetReportStep(){
     box.innerHTML = head('공유 완료', '다음 진료 예정일을 저장해두면 D-3부터 알려드려요')
       + '<div style="background:var(--cm-surface-2);border:1px solid var(--cm-line);border-radius:13px;padding:14px;margin-bottom:12px">'
       + '<div style="font-size:12.5px;font-weight:700;color:var(--cm-ink-soft);margin-bottom:8px">다음 진료 예정일</div>'
-      + '<input type="date" id="vrNextVisit2" value="'+_vEsc(nv)+'" style="'+inputStyle+';display:block;width:100%;max-width:100%;min-width:0">'
+      + '<div style="width:100%;overflow:hidden;border-radius:11px"><input type="date" id="vrNextVisit2" value="'+_vEsc(nv)+'" style="'+dateStyle+'"></div>'
       + '</div>'
       + '<div style="display:flex;gap:8px">'+_vrBtn('건너뛰기','closeVetReport()',false)+_vrBtn('저장하고 닫기','saveVetNextVisit()',true)+'</div>';
   }
