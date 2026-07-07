@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.36</span>
+      <span class="cm-beta">v0.7.37</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -680,6 +680,9 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
             <div class="l">소변</div>
             <div class="v" id="heroUrineSmall">—</div>
           </div>
+        </div>
+        <div id="heroVomitRow" style="display:none;margin-top:6px;padding:4px 8px;border-radius:8px;background:var(--cm-surface-2);border:1px solid var(--cm-line);font-size:11px;font-weight:700;text-align:center" >
+          <span id="heroVomitVal"></span>
         </div>
       </div>
     </div>
@@ -1011,7 +1014,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-card cm-card--flat" id="daily-card-water">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;cursor:pointer" onclick="toggleCard('waterBody',this)">
     <div>
-      <div style="font-size:14px;font-weight:700;color:var(--cm-ink)">💧 수분 밸런스</div>
+      <div style="font-size:14px;font-weight:700;color:var(--cm-ink)">수분 밸런스</div>
       <div id="waterSummary" style="font-size:10px;color:var(--text3);margin-top:1px">음수량 · 소변 체크</div>
     </div>
     <span style="font-size:12px;font-weight:700;color:var(--cm-green-700)">펼치기</span>
@@ -1020,7 +1023,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
 
     <!-- 음수량 -->
     <div style="margin-bottom:.85rem">
-      <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:.4rem">💧 음수량</div>
+      <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:.4rem">음수량</div>
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:.4rem;flex-wrap:wrap">
         <input type="number" id="waterInput" placeholder="ml" min="0" step="1"
           style="width:80px;padding:8px 10px;border:0.5px solid var(--bd);border-radius:9px;font-size:14px;background:var(--bg);color:var(--text);font-family:inherit">
@@ -1036,7 +1039,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
 
     <!-- 소변 체크 -->
     <div style="border-top:0.5px solid var(--bd);padding-top:.75rem">
-      <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:.4rem">🚽 소변 체크</div>
+      <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:.4rem">소변 체크</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.4rem">
         <button type="button" onclick="selectUrine('소량')"
           style="padding:7px 14px;border:0.5px solid var(--amber);border-radius:9px;font-size:12px;background:var(--amber-l);color:var(--amber-d);cursor:pointer;font-family:inherit">소량</button>
@@ -1045,9 +1048,9 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
         <button type="button" onclick="selectUrine('다량')"
           style="padding:7px 14px;border:0.5px solid var(--teal);border-radius:9px;font-size:12px;background:var(--teal-l);color:var(--teal);cursor:pointer;font-family:inherit;font-weight:600">다량</button>
         <button type="button" onclick="selectUrine('혈뇨')"
-          style="padding:7px 14px;border:0.5px solid var(--coral);border-radius:9px;font-size:12px;background:var(--coral-l);color:var(--coral);cursor:pointer;font-family:inherit;font-weight:600">🔴 혈뇨</button>
+          style="padding:7px 14px;border:0.5px solid var(--coral);border-radius:9px;font-size:12px;background:var(--coral-l);color:var(--coral);cursor:pointer;font-family:inherit;font-weight:600">혈뇨</button>
         <button type="button" onclick="selectUrine('핍뇨')"
-          style="padding:7px 14px;border:0.5px solid var(--coral);border-radius:9px;font-size:12px;background:var(--coral-l);color:var(--coral);cursor:pointer;font-family:inherit;font-weight:600">🔴 핍뇨</button>
+          style="padding:7px 14px;border:0.5px solid var(--coral);border-radius:9px;font-size:12px;background:var(--coral-l);color:var(--coral);cursor:pointer;font-family:inherit;font-weight:600">핍뇨</button>
         <button type="button" onclick="selectUrine('단백뇨')"
           style="padding:7px 14px;border:0.5px solid var(--amber);border-radius:9px;font-size:12px;background:var(--amber-l);color:var(--amber-d);cursor:pointer;font-family:inherit">단백뇨</button>
         <button type="button" onclick="selectUrine('뇨당')"
@@ -1071,7 +1074,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
 
     <!-- 대변 체크 -->
     <div style="border-top:0.5px solid var(--bd);padding-top:.75rem;margin-top:.75rem">
-      <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:.4rem">💩 대변 체크</div>
+      <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:.4rem">대변 체크</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.4rem">
         <button type="button" onclick="selectPoop('정상')"
           style="padding:7px 14px;border:0.5px solid var(--teal);border-radius:9px;font-size:12px;background:var(--teal-l);color:var(--teal);cursor:pointer;font-family:inherit;font-weight:600">정상</button>
@@ -1082,9 +1085,9 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
         <button type="button" onclick="selectPoop('무름')"
           style="padding:7px 14px;border:0.5px solid var(--amber);border-radius:9px;font-size:12px;background:var(--amber-l);color:var(--amber-d);cursor:pointer;font-family:inherit">무름</button>
         <button type="button" onclick="selectPoop('설사')"
-          style="padding:7px 14px;border:0.5px solid var(--coral);border-radius:9px;font-size:12px;background:var(--coral-l);color:var(--coral);cursor:pointer;font-family:inherit;font-weight:600">🔴 설사</button>
+          style="padding:7px 14px;border:0.5px solid var(--coral);border-radius:9px;font-size:12px;background:var(--coral-l);color:var(--coral);cursor:pointer;font-family:inherit;font-weight:600">설사</button>
         <button type="button" onclick="selectPoop('혈변')"
-          style="padding:7px 14px;border:0.5px solid var(--coral);border-radius:9px;font-size:12px;background:var(--coral-l);color:var(--coral);cursor:pointer;font-family:inherit;font-weight:600">🔴 혈변</button>
+          style="padding:7px 14px;border:0.5px solid var(--coral);border-radius:9px;font-size:12px;background:var(--coral-l);color:var(--coral);cursor:pointer;font-family:inherit;font-weight:600">혈변</button>
         <button type="button" onclick="selectPoop('토끼똥/변비')"
           style="padding:7px 14px;border:0.5px solid var(--amber);border-radius:9px;font-size:12px;background:var(--amber-l);color:var(--amber-d);cursor:pointer;font-family:inherit">토끼똥/변비</button>
         <button type="button" onclick="selectPoop('무변')"
@@ -1104,6 +1107,51 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
       </div>
       <div id="poopTotal" style="font-size:13px;color:var(--text);font-weight:600;margin-bottom:.3rem"></div>
       <div id="poopLog" style="font-size:11px;color:var(--text3);line-height:1.8"></div>
+    </div>
+
+    <!-- 구토 체크 (v0.7.37) — 이모지 없이 텍스트 라벨만 (앱 전체 이모지 정리 시범) -->
+    <div style="border-top:0.5px solid var(--bd);padding-top:.75rem;margin-top:.75rem">
+      <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:.4rem">구토 체크</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.4rem">
+        <button type="button" onclick="selectVomit('food')"
+          style="padding:7px 14px;border:0.5px solid var(--amber);border-radius:9px;font-size:12px;background:var(--amber-l);color:var(--amber-d);cursor:pointer;font-family:inherit">음식</button>
+        <button type="button" onclick="selectVomit('hairball')"
+          style="padding:7px 14px;border:0.5px solid var(--amber);border-radius:9px;font-size:12px;background:var(--amber-l);color:var(--amber-d);cursor:pointer;font-family:inherit">헤어볼</button>
+        <button type="button" onclick="selectVomit('water')"
+          style="padding:7px 14px;border:0.5px solid var(--amber);border-radius:9px;font-size:12px;background:var(--amber-l);color:var(--amber-d);cursor:pointer;font-family:inherit">물</button>
+        <button type="button" onclick="selectVomit('foam')"
+          style="padding:7px 14px;border:0.5px solid var(--amber);border-radius:9px;font-size:12px;background:var(--amber-l);color:var(--amber-d);cursor:pointer;font-family:inherit">거품</button>
+        <button type="button" onclick="selectVomit('blood')"
+          style="padding:7px 14px;border:0.5px solid var(--coral);border-radius:9px;font-size:12px;background:var(--coral-l);color:var(--coral);cursor:pointer;font-family:inherit;font-weight:600">피</button>
+      </div>
+      <div id="vomitPanel" style="display:none;margin-bottom:.4rem;background:var(--bg2);border-radius:9px;padding:.5rem .65rem;border:0.5px solid var(--bd)">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:.4rem">
+          <span style="font-size:12px;color:var(--text2)">내용물:</span>
+          <span id="vomitContentLabel" style="font-size:12px;font-weight:600;color:var(--text)"></span>
+          <select id="vomitColorInput"
+            style="padding:5px 8px;border:0.5px solid var(--bd);border-radius:7px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit">
+            <option value="">색 선택 안 함</option>
+            <option value="clear">투명</option>
+            <option value="white">흰색</option>
+            <option value="yellow">노랑</option>
+            <option value="brown">갈색</option>
+            <option value="red">붉은색</option>
+            <option value="green">초록색</option>
+          </select>
+          <input type="time" id="vomitTimeInput"
+            style="padding:5px 8px;border:0.5px solid var(--bd);border-radius:7px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit">
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input type="text" id="vomitMemoInput" placeholder="메모 (선택)" maxlength="80"
+            style="flex:1;min-width:120px;padding:5px 8px;border:0.5px solid var(--bd);border-radius:7px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit">
+          <button type="button" onclick="confirmAddVomit()"
+            style="padding:5px 14px;background:var(--teal);color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">저장</button>
+          <button type="button" onclick="document.getElementById('vomitPanel').style.display='none'"
+            style="padding:5px 10px;background:none;border:0.5px solid var(--bd);border-radius:7px;font-size:12px;color:var(--text3);cursor:pointer;font-family:inherit">취소</button>
+        </div>
+      </div>
+      <div id="vomitTotal" style="font-size:13px;color:var(--text);font-weight:600;margin-bottom:.3rem"></div>
+      <div id="vomitLog" style="font-size:11px;color:var(--text3);line-height:1.8"></div>
     </div>
 
     <!-- 비상이뇨제 알림 -->
@@ -1984,7 +2032,8 @@ try{const d=localStorage.getItem(SK);if(d)state=JSON.parse(d)}catch(e){}
 try{const d=localStorage.getItem(SK_BT);if(d){const raw=JSON.parse(d);btData=raw.map(r=>({...r,items:normalizeBTItems(r.items||[])}));}}catch(e){}
 try{const d=localStorage.getItem(SK_FD);if(d)fdData=JSON.parse(d)}catch(e){}
 /* 일일 레코드에 기록이 하나라도 있는지 (빈 값 덮어쓰기 가드 공용 헬퍼) */
-const REC_ARRAY_KEYS=['bg','ins','meals','weights','routines','water','urine','rr'];
+// poop·vomits 포함 (v0.7.37) — poop 누락은 기존 결함: 대변만 있는 날이 "빈 레코드"로 취급돼 DB upsert가 차단됐음
+const REC_ARRAY_KEYS=['bg','ins','meals','weights','routines','water','urine','rr','poop','vomits'];
 function recHasData(rec){
   if(!rec)return false;
   return REC_ARRAY_KEYS.some(k=>(rec[k]?.length||0)>0);
@@ -4435,6 +4484,10 @@ function renderDailySummary(catName) {
     const uc = r.amount==='혈뇨'?'var(--coral)':r.amount==='핍뇨'?'var(--amber)':'var(--teal)';
     items.push({ts:r.ts, time:r.time, html:`🚽 <span style="color:${uc};font-weight:600">${r.amount}</span> <span style="color:var(--text3);font-size:11px">${r.time}</span>`});
   });
+  (rec.vomits||[]).forEach(r => {
+    const vc = _vomitDanger(r)?'var(--coral)':'var(--amber-d)';
+    items.push({ts:r.ts, time:r.time, html:`구토 <span style="color:${vc};font-weight:600">${_vEsc(_vomitLabel(r))}</span> <span style="color:var(--text3);font-size:11px">${_vEsc(r.time||'')}</span>`});
+  });
   const doneSet = new Set((rec.routines||[]).flatMap(r=>r.items||[]));
   if(doneSet.size) items.push({ts:Date.now(), html:`✅ ${[...doneSet].join(', ')}`});
 
@@ -4489,6 +4542,22 @@ function renderDailySummary(catName) {
     const poopArr = rec.poop || [];
     const stoolEl = document.getElementById('heroStoolVal');
     if(stoolEl) stoolEl.textContent = poopArr.length ? poopArr.length+'회 · '+poopArr[poopArr.length-1].type : '—';
+
+    // 구토 (v0.7.37) — 1회 이상일 때만 표시, 텍스트만 (이모지 금지)
+    const vomitRowEl = document.getElementById('heroVomitRow');
+    if(vomitRowEl) {
+      const vArrHero = rec.vomits || [];
+      if(vArrHero.length) {
+        vomitRowEl.style.display = 'block';
+        const vValEl = document.getElementById('heroVomitVal');
+        if(vValEl) {
+          vValEl.textContent = '오늘 구토 ' + vArrHero.length + '회';
+          vValEl.style.color = vArrHero.some(_vomitDanger) ? 'var(--cm-clay)' : 'var(--cm-ink)';
+        }
+      } else {
+        vomitRowEl.style.display = 'none';
+      }
+    }
 
     // 소변 (미니)
     const urineSmEl = document.getElementById('heroUrineSmall');
@@ -6857,7 +6926,8 @@ const defaultItems=[
   // 피하수액은 신장질환(CKD/PKD) 전용 → 기본 항목에서 제외. loadRoutineForCat에서 신장질환 고양이만 자동 추가
   // 비상이뇨제는 HCM 전용 기능 → 기본 항목에서 제외. loadRoutineForCat에서 HCM 고양이만 자동 추가
   {name:'간식',cat:'food'},{name:'황금푸딩',cat:'food'},
-  {name:'병원 방문',cat:'other'},{name:'구토',cat:'other'}
+  // 구토는 v0.7.37부터 별도 상태 기록 카드(수분 밸런스 카드 내) — 루틴 기본 세트에서 제외
+  {name:'병원 방문',cat:'other'}
 ];
 let routineItems=defaultItems;
 let _rtItemsCat=null;   // 현재 전역 routineItems가 어느 고양이 것인지 (loadRoutineForCat 완료 시 기록)
@@ -7084,6 +7154,15 @@ async function loadRoutineForCat(catName) {
     });
     if(changed) saveRT(cat, items);
     try{localStorage.setItem(rtTimeCleanupKey,'1');}catch(e){}
+  }
+
+  // 구토 루틴 항목 제거 — v0.7.37부터 구토는 별도 카드 (체크 이력은 migrateRoutineVomitToCard가 이관). 최초 1회만
+  const vomitRtKey = 'vomit_rt_cleanup_' + cat;
+  if(!localStorage.getItem(vomitRtKey)) {
+    const _vBefore = items.length;
+    items = items.filter(i => i.name !== '구토');
+    if(items.length !== _vBefore) saveRT(cat, items);
+    try{localStorage.setItem(vomitRtKey,'1');}catch(e){}
   }
 
   // stale 가드: 이 로드 이후 더 새로운 loadRoutineForCat이 시작됐으면 전역 대입·렌더 폐기
@@ -7525,6 +7604,108 @@ function deletePoop(idx, date) {
   if(rec.poop) { rec.poop.splice(idx, 1); saveS(date); renderWaterLog(); }
 }
 
+/* ── 구토 기록 (v0.7.37) — 임상 증상 카드, 이모지 없이 텍스트 라벨만 ── */
+const VOMIT_COLORS={clear:'투명',white:'흰색',yellow:'노랑',brown:'갈색',red:'붉은색',green:'초록색'};
+const VOMIT_CONTENTS={food:'음식',hairball:'헤어볼',water:'물',foam:'거품',blood:'피'};
+function _vomitLabel(v){
+  // 표시 형식: "붉은색 - 음식" (색 없으면 내용물만)
+  const c=v.color?(VOMIT_COLORS[v.color]||v.color):'';
+  const t=v.content?(VOMIT_CONTENTS[v.content]||v.content):'';
+  return c&&t?c+' - '+t:(c||t||'구토');
+}
+function _vomitDanger(v){return v.content==='blood'||v.color==='red';}
+function _vEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+let _pendingVomit=null;
+function selectVomit(content){
+  _pendingVomit=content;
+  const lbl=document.getElementById('vomitContentLabel');
+  if(lbl)lbl.textContent=VOMIT_CONTENTS[content]||content;
+  const t=document.getElementById('vomitTimeInput');if(t)t.value=nowTime();
+  const c=document.getElementById('vomitColorInput');if(c)c.value=content==='blood'?'red':'';
+  const m=document.getElementById('vomitMemoInput');if(m)m.value='';
+  const p=document.getElementById('vomitPanel');if(p)p.style.display='block';
+}
+function confirmAddVomit(){
+  if(!_pendingVomit)return;
+  const time=document.getElementById('vomitTimeInput')?.value||nowTime();
+  const color=document.getElementById('vomitColorInput')?.value||null;
+  const memo=(document.getElementById('vomitMemoInput')?.value||'').trim();
+  const p=document.getElementById('vomitPanel');if(p)p.style.display='none';
+  addVomit(_pendingVomit,color,time,memo);
+  _pendingVomit=null;
+}
+function addVomit(content,color,time,memo){
+  const t=time||nowTime();
+  const dateEl2=document.getElementById('waterDate');
+  const date=(dateEl2&&dateEl2.value)?dateEl2.value:today();
+  const rec=getRec(state.activeCat,date);
+  if(!rec.vomits)rec.vomits=[];
+  const ts=Date.now();
+  rec.vomits.push({id:'v_'+ts,time:t,color:color||null,content:content||null,memo:memo||'',ts});
+  saveS(date);
+  renderVomitLog();
+  if(content==='blood'||color==='red') toast('구토(피/붉은색) 기록됨 — 즉시 수의사 상담을 권장해요','#D85A30');
+  else toast('구토 기록됐어요','#BA7517');
+  try{renderDailySummary();}catch(e){}
+}
+function renderVomitLog(){
+  const dateEl=document.getElementById('waterDate');
+  const date=dateEl?.value||today();
+  const rec=getRec(state.activeCat,date);
+  const arr=rec.vomits||[];
+  const totalEl=document.getElementById('vomitTotal');
+  if(totalEl)totalEl.textContent=arr.length>0?'오늘 총 '+arr.length+'회':'아직 기록 없어요';
+  const logEl=document.getElementById('vomitLog');
+  if(logEl){
+    logEl.innerHTML=arr.length===0?'':arr.map((v,i)=>{
+      const clr=_vomitDanger(v)?'var(--coral)':'var(--amber-d)';
+      const memoTxt=v.memo?' <span style="color:var(--text3)">'+_vEsc(v.memo)+'</span>':'';
+      return `<span data-vidx="${i}" style="margin-right:4px;margin-bottom:4px;color:${clr};display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap">${_vEsc(v.time||'')} <b>${_vEsc(_vomitLabel(v))}</b>${memoTxt}`
+        + ` <span onclick="editVomit(${i},'${date}')" style="color:var(--amber);cursor:pointer;font-size:10px">수정</span>`
+        + ` <span onclick="deleteVomit(${i},'${date}')" style="color:var(--coral);cursor:pointer;font-size:10px">삭제</span></span>`;
+    }).join('');
+  }
+}
+function editVomit(idx,date){
+  const logEl=document.getElementById('vomitLog');
+  if(!logEl)return;
+  const target=logEl.querySelector(`span[data-vidx="${idx}"]`);
+  if(!target)return;
+  const rec=getRec(state.activeCat,date);
+  const v=rec.vomits&&rec.vomits[idx];
+  if(!v)return;
+  if(target.querySelector('select')){renderVomitLog();return;}
+  const inputStyle='padding:3px 6px;border:1px solid var(--teal);border-radius:6px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit';
+  const cOpts=Object.keys(VOMIT_CONTENTS).map(k=>`<option value="${k}"${k===v.content?' selected':''}>${VOMIT_CONTENTS[k]}</option>`).join('');
+  const colOpts='<option value="">색 없음</option>'+Object.keys(VOMIT_COLORS).map(k=>`<option value="${k}"${k===v.color?' selected':''}>${VOMIT_COLORS[k]}</option>`).join('');
+  target.innerHTML=
+    `<select id="vetyp${idx}" style="${inputStyle}">${cOpts}</select>`
+    + ` <select id="vecol${idx}" style="${inputStyle}">${colOpts}</select>`
+    + ` <input type="time" id="vetim${idx}" value="${_vEsc(v.time||'')}" style="${inputStyle}">`
+    + ` <input type="text" id="vememo${idx}" value="${_vEsc(v.memo||'')}" placeholder="메모" maxlength="80" style="${inputStyle};width:110px">`
+    + ` <span onclick="saveEditVomit(${idx},'${date}')" style="color:var(--teal);cursor:pointer;font-size:11px;font-weight:600">저장</span>`
+    + ` <span onclick="renderVomitLog()" style="color:var(--text3);cursor:pointer;font-size:11px">취소</span>`;
+}
+function saveEditVomit(idx,date){
+  const rec=getRec(state.activeCat,date);
+  if(!(rec.vomits&&rec.vomits[idx]))return;
+  const content=document.getElementById('vetyp'+idx)?.value;
+  const color=document.getElementById('vecol'+idx)?.value;
+  const time=document.getElementById('vetim'+idx)?.value;
+  const memo=document.getElementById('vememo'+idx)?.value;
+  if(content)rec.vomits[idx].content=content;
+  rec.vomits[idx].color=color||null;
+  if(time)rec.vomits[idx].time=time;
+  rec.vomits[idx].memo=(memo||'').trim();
+  saveS(date);renderVomitLog();
+  toast('구토 기록이 수정됐어요','#1D9E75');
+  try{renderDailySummary();}catch(e){}
+}
+function deleteVomit(idx,date){
+  const rec=getRec(state.activeCat,date);
+  if(rec.vomits){rec.vomits.splice(idx,1);saveS(date);renderVomitLog();try{renderDailySummary();}catch(e){}}
+}
+
 function renderWaterLog() {
   const dateEl = document.getElementById('waterDate');
   const date = dateEl?.value || today();
@@ -7583,14 +7764,19 @@ function renderWaterLog() {
     }).join('');
   }
 
+  // 구토 목록 (같은 날짜 기준, v0.7.37)
+  renderVomitLog();
+
   // 수분 요약 업데이트
   const summaryEl = document.getElementById('waterSummary');
   if(summaryEl) {
+    const vomitArr = rec.vomits || [];
     let txt = '';
     if(totalMl > 0) txt += '음수 ' + totalMl + 'ml';
     if(urineArr.length > 0) txt += (txt?' · ':'') + '소변 ' + urineArr.length + '회';
     if(poopArr.length > 0) txt += (txt?' · ':'') + '대변 ' + poopArr.length + '회';
-    summaryEl.textContent = txt || '음수량 · 소변 · 대변 체크';
+    if(vomitArr.length > 0) txt += (txt?' · ':'') + '구토 ' + vomitArr.length + '회';
+    summaryEl.textContent = txt || '음수량 · 소변 · 대변 · 구토 체크';
   }
 
   // 비상이뇨제 알림
@@ -11201,6 +11387,9 @@ function showApp() {
   try { renderRoutineChecklist(); } catch(e) {}
   try { renderDailySummary(); } catch(e) {}
   try { renderTileGrid(state.activeCat); } catch(e) {}
+  // 비로그인: 로컬 기록만 존재 → 구토 루틴 이관을 여기서 실행 (로그인 유저는 syncFromDB merge 후 실행)
+  // ⚠ preview 검증 단계: dry-run만 (병합 직전 실행 모드로 전환)
+  if(!currentUser) try { migrateRoutineVomitToCard(true); } catch(e) {}
   console.log(`[Perf] showApp 초기렌더(동기): ${(performance.now()-_showT0).toFixed(0)}ms`);
 }
 
@@ -11385,6 +11574,7 @@ function _renderDailyTabSafe() {
   try{renderRoutineChecklist();}catch(e){console.warn('[dailyRender] routine:',e);}
   try{renderDailySummary();}catch(e){console.warn('[dailyRender] summary:',e);}
   try{renderWaterLog();}catch(e){console.warn('[dailyRender] waterLog:',e);}
+  try{renderVomitLog();}catch(e){console.warn('[dailyRender] vomit:',e);}
   try{renderTileGrid(state.activeCat);}catch(e){console.warn('[dailyRender] tiles:',e);}
 }
 
@@ -11518,6 +11708,9 @@ async function syncFromDB() {
       setTimeout(async ()=>{
         await migrateLocalToDB();
         await migrateBloodTestsToDB();
+        // ⚠ preview 검증 단계: dry-run만 자동 실행 (콘솔에서 이관 계획 확인용).
+        //   관리자 검증 완료 후 병합 직전에 migrateRoutineVomitToCard()(실행 모드)로 전환
+        try{await migrateRoutineVomitToCard(true);}catch(e){console.warn('vomit 이관 dry-run 오류:',e);}
         for(const _cat of state.cats){
           try{await uploadFoodDataToDB(_cat);}catch(e){}
         }
@@ -11653,6 +11846,70 @@ async function saveToDB(targetDate) {
   } catch(e) {
     console.error('DB 저장 오류:', e);
   }
+}
+
+/* 루틴 구토 체크 이력 → 구토 카드(vomits) 일회성 이관 (v0.7.37)
+   - dryRun=true: 변경 없이 이관 계획만 콘솔 출력 + 반환 (콘솔에서 migrateRoutineVomitToCard(true)로 사전 점검 가능)
+   - 실행: rec.routines에서 '구토' 체크를 vomits 항목(time만, 색·내용물 없음)으로 옮기고 루틴 체크에서 제거
+   - 변경된 (cat,date) 행은 DB에 직접 upsert (saveToDB는 activeCat 전용이라 사용 불가)
+   - 플래그는 유저별(vomit_migrated_v1_<uid|local>) + 전 행 성공 시에만 설정 → 실패분은 다음 로드에 재시도
+   - syncFromDB merge(DB overlay) 뒤에 실행해야 되돌려지지 않음 — 호출부: sync 완료 후 마이그레이션 블록 */
+async function migrateRoutineVomitToCard(dryRun) {
+  const FLAG = 'vomit_migrated_v1_' + (currentUser ? currentUser.id : 'local');
+  if(!dryRun && localStorage.getItem(FLAG)) return;
+  const isVomitKey = k => k === '구토' || (typeof k === 'string' && k.indexOf('구토@') === 0);
+  // 1. 스캔
+  const plan = []; // {cat, date, count}
+  Object.keys(state.records || {}).forEach(cat => {
+    Object.keys(state.records[cat] || {}).forEach(date => {
+      const rec = state.records[cat][date];
+      if(!rec || !Array.isArray(rec.routines)) return;
+      const hits = rec.routines.filter(r => (r.items || []).some(isVomitKey));
+      if(hits.length) plan.push({cat, date, count: hits.length, times: hits.map(r => r.time || '')});
+    });
+  });
+  const totalChecks = plan.reduce((a, p) => a + p.count, 0);
+  if(dryRun) {
+    console.log('[vomitMigrate][dry-run] 이관 대상 ' + totalChecks + '건 / ' + plan.length + '일', plan);
+    return plan;
+  }
+  if(!plan.length) {
+    try{localStorage.setItem(FLAG, '1');}catch(e){}
+    return;
+  }
+  // 2. 이관 (로컬 변형 + 변경 행 DB upsert)
+  let fail = 0;
+  for(const p of plan) {
+    const rec = state.records[p.cat][p.date];
+    if(!rec.vomits) rec.vomits = [];
+    rec.routines.forEach((r, ri) => {
+      const ks = (r.items || []).filter(isVomitKey);
+      if(!ks.length) return;
+      ks.forEach((k, ki) => {
+        const ts = r.ts || Date.now();
+        rec.vomits.push({id: 'v_' + ts + '_m' + ri + '_' + ki, time: r.time || '', color: null, content: null, memo: '루틴 기록에서 이관', ts});
+      });
+      r.items = (r.items || []).filter(k => !isVomitKey(k));
+    });
+    // 항목이 다 빠진 루틴 엔트리 제거 (수액 ml 기록이 있으면 보존)
+    rec.routines = rec.routines.filter(r => (r.items && r.items.length) || (r.ml && r.ml > 0));
+    if(sbClient && currentUser) {
+      const dbId = state.catProfiles?.[p.cat]?.dbId;
+      if(!dbId) { fail++; console.warn('[vomitMigrate] dbId 없음, DB 반영 보류:', p.cat, p.date); continue; }
+      if(!recHasData(rec)) { console.warn('[vomitMigrate] 빈 레코드 upsert 차단:', p.cat, p.date); continue; }
+      try {
+        const {error} = await sbClient.from('daily_records').upsert({
+          cat_id: dbId, user_id: currentUser.id, record_date: p.date,
+          data: rec, updated_at: new Date().toISOString()
+        }, {onConflict: 'cat_id,record_date'});
+        if(error) { fail++; console.warn('[vomitMigrate] upsert 실패:', p.cat, p.date, error); }
+      } catch(e) { fail++; console.warn('[vomitMigrate] upsert 오류:', p.cat, p.date, e); }
+    }
+  }
+  try{localStorage.setItem(SK, JSON.stringify(state));}catch(e){}
+  if(fail === 0) { try{localStorage.setItem(FLAG, '1');}catch(e){} }
+  console.log('[vomitMigrate] 완료: ' + totalChecks + '건 / ' + plan.length + '일 이관' + (fail ? ' (실패 ' + fail + '건 → 다음 로드에 재시도)' : ''));
+  try{_renderDailyTabSafe();}catch(e){}
 }
 
 // 로컬에만 있는 기록을 DB에 업로드 (초기 마이그레이션용, 단방향)
