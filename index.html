@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<link rel="stylesheet" href="cm.css">
+<link rel="stylesheet" href="cm.css?v=0.7.38">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="manifest" href="/manifest.json">
@@ -4591,8 +4591,10 @@ function renderDailySummary(catName) {
     if(tw){var twt=(tRec.water||[]).reduce(function(a,b){return a+b.ml;},0);if(twt>0){tw.textContent=twt+'ml';tw.dataset.tone='good';_tit('water','good');}else{tw.textContent='기록 전';tw.dataset.tone='muted';_tit('water','muted');}}
     var tex=document.getElementById('tileExcretaStatus');
     if(tex){var tuc=(tRec.urine||[]).length,tpc=(tRec.poop||[]).length;if(tuc||tpc){tex.textContent='소변 '+tuc+'회 · 대변 '+tpc+'회';tex.dataset.tone='good';_tit('excreta','good');}else{tex.textContent='기록 전';tex.dataset.tone='muted';_tit('excreta','muted');}}
+    // 구토 타일 아이콘은 카테고리 정체성 — 기록 심각도와 무관하게 항상 기본(딥그린) 고정.
+    // 심각도는 상태 텍스트 톤·히어로 셀·타임라인에서만 표현 (v0.7.38)
     var tvm=document.getElementById('tileVomitStatus');
-    if(tvm){var tva=tRec.vomits||[];if(tva.length){var _tvA=tva.some(_vomitDanger);tvm.textContent=tva.length+'회';tvm.dataset.tone=_tvA?'alert':'good';_tit('vomit',_tvA?'alert':'good');}else{tvm.textContent='기록 전';tvm.dataset.tone='muted';_tit('vomit','muted');}}
+    if(tvm){var tva=tRec.vomits||[];if(tva.length){var _tvA=tva.some(_vomitDanger);tvm.textContent=tva.length+'회';tvm.dataset.tone=_tvA?'alert':'good';_tit('vomit','good');}else{tvm.textContent='기록 전';tvm.dataset.tone='muted';_tit('vomit','muted');}}
     var tmd=document.getElementById('tileMedStatus');
     if(tmd){var tdn=_routineDoneSet(tRec).size;if(tdn>0){tmd.textContent=tdn+'개 완료';tmd.dataset.tone='good';_tit('med','good');}else{tmd.textContent='투약 전';tmd.dataset.tone='muted';_tit('med','muted');}}
     var tbr=document.getElementById('tileBreathStatus');

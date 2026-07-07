@@ -268,7 +268,7 @@ input[type="date"]{ border-radius:13px !important; -webkit-border-radius:13px !i
 .cmb-poo__v{ font-size:15px; font-weight:700; color:var(--cm-ink); margin-top:3px; display:flex; align-items:center; gap:7px; }
 .cmb-poo__v .dot{ width:9px; height:9px; border-radius:999px; background:var(--cm-green-500); }
 .cmb-mini{ display:flex; gap:8px; }
-.cmb-mini > div{ flex:1; background:var(--cm-surface-2); border:1px solid var(--cm-line); border-radius:12px; padding:9px 11px; }
+.cmb-mini > div{ flex:1; background:var(--cm-surface-2); border:1px solid var(--cm-line); border-radius:12px; padding:9px 11px; display:flex; flex-direction:column; justify-content:center; }
 .cmb-mini .l{ font-size:11px; color:var(--cm-faint); font-weight:600; }
 .cmb-mini .v{ font-size:15px; font-weight:800; color:var(--cm-ink); margin-top:2px; }
 .cmb-alert{ margin-top:14px; display:flex; align-items:center; gap:9px; background:var(--cm-clay-tint);
