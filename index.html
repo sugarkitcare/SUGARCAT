@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.37</span>
+      <span class="cm-beta">v0.7.38</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -680,9 +680,10 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
             <div class="l">소변</div>
             <div class="v" id="heroUrineSmall">—</div>
           </div>
-        </div>
-        <div id="heroVomitRow" style="display:none;margin-top:6px;padding:4px 8px;border-radius:8px;background:var(--cm-surface-2);border:1px solid var(--cm-line);font-size:11px;font-weight:700;text-align:center" >
-          <span id="heroVomitVal"></span>
+          <div>
+            <div class="l">구토</div>
+            <div class="v" id="heroVomitVal">—</div>
+          </div>
         </div>
       </div>
     </div>
@@ -4508,19 +4509,16 @@ function renderDailySummary(catName) {
     const stoolEl = document.getElementById('heroStoolVal');
     if(stoolEl) stoolEl.textContent = poopArr.length ? poopArr.length+'회 · '+poopArr[poopArr.length-1].type : '—';
 
-    // 구토 (v0.7.37) — 1회 이상일 때만 표시, 텍스트만 (이모지 금지)
-    const vomitRowEl = document.getElementById('heroVomitRow');
-    if(vomitRowEl) {
+    // 구토 (미니 그리드 셀 — 대변·소변과 동일 패턴, v0.7.38)
+    const vomitValEl = document.getElementById('heroVomitVal');
+    if(vomitValEl) {
       const vArrHero = rec.vomits || [];
-      if(vArrHero.length) {
-        vomitRowEl.style.display = 'block';
-        const vValEl = document.getElementById('heroVomitVal');
-        if(vValEl) {
-          vValEl.textContent = '오늘 구토 ' + vArrHero.length + '회';
-          vValEl.style.color = vArrHero.some(_vomitDanger) ? 'var(--cm-clay)' : 'var(--cm-ink)';
-        }
+      if(!vArrHero.length) {
+        vomitValEl.textContent = '—';
+        vomitValEl.style.color = '';
       } else {
-        vomitRowEl.style.display = 'none';
+        vomitValEl.textContent = vArrHero.length + '회';
+        vomitValEl.style.color = vArrHero.some(_vomitDanger) ? 'var(--cm-clay)' : '';
       }
     }
 
