@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.40</span>
+      <span class="cm-beta">v0.7.41</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -10897,7 +10897,7 @@ function collectVetReportData(cat, fromStr, toStr){
     weight: getLatestWeight(cat), diseases: (prof.diseases||[]).join('·'),
     targetWt: prof.targetWt || null, recommendedKcal: prof.recommendedKcal || null
   };
-  const intake = [], fluid = [], urineC = [], poopC = [], kcal = [];
+  const intake = [], fluid = [], urineC = [], poopC = [], kcal = [], rrAll = [], rrSleep = [];
   const urineAbn = {}, poopAbn = {}, fluidTypes = {}, foods = {}, medCount = {};
   let fluidCount = 0, fluidMlSum = 0;
   d.vomits = []; d.weights = [];
@@ -10921,6 +10921,7 @@ function collectVetReportData(cat, fromStr, toStr){
     if(kSum>0) kcal.push(kSum);
     (rec.meals||[]).forEach(m=>{ if(m.name) foods[m.name]=(foods[m.name]||0)+1; });
     (rec.weights||[]).forEach(w=>{ if(w.weight) d.weights.push({date:day, weight:w.weight}); });
+    (rec.rr||[]).forEach(r=>{ if(r.rr>0){ rrAll.push(r.rr); if(r.state==='sleep') rrSleep.push(r.rr); } });
     (rec.routines||[]).forEach(r=>(r.items||[]).forEach(k=>{
       const nm = String(k).split('@')[0];
       medCount[nm] = (medCount[nm]||0) + 1;
@@ -10935,6 +10936,8 @@ function collectVetReportData(cat, fromStr, toStr){
   d.meal = { kcalAvg:_vrAvg(kcal), days:kcal.length,
     topFoods: Object.keys(foods).sort((a,b)=>foods[b]-foods[a]).slice(0,2) };
   d.weight = { first: d.weights.length?d.weights[0]:null, last: d.weights.length?d.weights[d.weights.length-1]:null };
+  d.rr = { n: rrAll.length, avg: rrAll.length?Math.round(rrAll.reduce((a,b)=>a+b,0)/rrAll.length):null, max: rrAll.length?Math.max(...rrAll):null,
+    sleepN: rrSleep.length, sleepAvg: rrSleep.length?Math.round(rrSleep.reduce((a,b)=>a+b,0)/rrSleep.length):null, sleepMax: rrSleep.length?Math.max(...rrSleep):null };
   d.meds = Object.keys(medCount).sort((a,b)=>medCount[b]-medCount[a]).map(nm=>({name:nm, count:medCount[nm]}));
   d.isDM = (prof.diseases||[]).some(x=>String(x).includes('DM'));
   if(d.isDM && typeof cgmData !== 'undefined'){
@@ -11036,6 +11039,14 @@ function buildVetReportText(d, inc, memo){
     } else L.push('기록 없음');
     if(d.profile.targetWt) L.push('목표: '+d.profile.targetWt+'kg');
   }
+  if(inc.rr){
+    L.push('');
+    L.push('[호흡수]');
+    if(d.rr.n){
+      L.push('평균 '+d.rr.avg+'회/분 · 최고 '+d.rr.max+'회/분 (측정 '+d.rr.n+'회)');
+      if(d.rr.sleepN) L.push('수면 중: 평균 '+d.rr.sleepAvg+'회/분 · 최고 '+d.rr.sleepMax+'회/분 (측정 '+d.rr.sleepN+'회)');
+    } else L.push('기록 없음');
+  }
   if(inc.med){
     L.push('');
     L.push('[투약·루틴]');
@@ -11092,6 +11103,11 @@ function renderVetReportCanvas(d, inc, memo){
       ? d.weight.first.weight+'kg → '+d.weight.last.weight+'kg'
       : d.weight.last.weight+'kg';
     secs.push({t:'체중', lines:[wl+(d.profile.targetWt?' / 목표 '+d.profile.targetWt+'kg':'')]});
+  }
+  if(inc.rr && d.rr.n){
+    const rrLines = ['평균 '+d.rr.avg+' · 최고 '+d.rr.max+'회/분 (측정 '+d.rr.n+'회)'];
+    if(d.rr.sleepN) rrLines.push('수면 중 평균 '+d.rr.sleepAvg+' · 최고 '+d.rr.sleepMax+'회/분');
+    secs.push({t:'호흡수', lines:rrLines, warn:d.rr.sleepN&&d.rr.sleepMax>=40}); // 40회/분 = 기존 앱 임계값 재사용
   }
   if(inc.med && d.meds.length) secs.push({t:'투약·루틴', lines:[d.meds.slice(0,4).map(m=>m.name).join(' · ')+(d.meds.length>4?' 외 '+(d.meds.length-4)+'종':'')]});
   if(inc.cgm && d.cgm) secs.push({t:'연속혈당(CGM)', lines:['평균 '+d.cgm.avg+' · 최저 '+d.cgm.min+' · 최고 '+d.cgm.max+' mg/dL','80~200 범위 내 '+d.cgm.tir+'%']});
@@ -11159,7 +11175,7 @@ function renderVetReportCanvas(d, inc, memo){
 let _vetRep = null;
 function _vetIncDefaults(cat){
   const isDM = ((state.catProfiles||{})[cat]?.diseases||[]).some(x=>String(x).includes('DM'));
-  return { profile:true, water:true, urine:true, poop:true, vomit:true, meal:true, weight:true, med:true, cgm:isDM, bt:false };
+  return { profile:true, water:true, urine:true, poop:true, vomit:true, meal:true, weight:true, rr:true, med:true, cgm:isDM, bt:false };
 }
 function openVetReport(){
   const cat = state.activeCat;
@@ -11252,7 +11268,7 @@ function renderVetReportStep(){
       + '<div style="font-size:11px;color:var(--cm-faint);margin-top:8px;text-align:center;line-height:1.5">진료 전 병원 카톡에 공유하시면 진료가 편해져요.</div>';
   } else if(R.step === 2){
     const per = [['1w','1주'],['2w','2주'],['1m','1개월'],['3m','3개월'],['custom','직접 지정']];
-    const incDefs = [['profile','프로필'],['water','음수량'],['urine','소변'],['poop','배변'],['vomit','구토'],['meal','급여'],['weight','체중'],['med','투약·루틴']];
+    const incDefs = [['profile','프로필'],['water','음수량'],['urine','소변'],['poop','배변'],['vomit','구토'],['meal','급여'],['weight','체중'],['rr','호흡수'],['med','투약·루틴']];
     if(((state.catProfiles||{})[R.cat]?.diseases||[]).some(x=>String(x).includes('DM'))) incDefs.push(['cgm','CGM 요약']);
     incDefs.push(['bt','혈액검사 (전원·타 병원용)']);
     box.innerHTML = head('리포트 옵션', '기간과 포함 항목을 선택해주세요')
