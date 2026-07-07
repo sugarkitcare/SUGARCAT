@@ -10859,7 +10859,10 @@ function collectVetReportData(cat, fromStr, toStr){
 function _vrNum(v, digits){ return v==null?'—':(digits!=null?v.toFixed(digits):String(Math.round(v))); }
 function buildVetReportText(d, inc, memo){
   const L = [];
-  L.push('[케어마스터즈 진료 요약]');
+  // 병원 관점 워딩: 보호자가 만든 관리 기록임을 첫 줄에서 명확히 (v0.7.39 2차)
+  L.push('[반려묘 보호자 관리 기록 - 진료 상담용]');
+  L.push('보호자가 케어마스터즈 앱으로 정리한 데이터입니다.');
+  L.push('');
   const pf = [];
   if(d.profile.breed) pf.push(d.profile.breed);
   if(d.profile.age!=null) pf.push(d.profile.age+'세');
@@ -10989,22 +10992,20 @@ function renderVetReportCanvas(d, inc, memo){
   x.fillStyle = BG; x.fillRect(0,0,W,H);
   x.fillStyle = GREEN; x.fillRect(0,0,W,150);
   x.fillStyle = '#FFFFFF';
-  x.font = '700 40px '+F; x.fillText('케어마스터즈 진료 요약', PAD, 66);
-  x.font = '500 28px '+F; x.globalAlpha = .85;
-  x.fillText(d.fromStr+' ~ '+d.toStr+' ('+d.days+'일)', PAD, 112);
+  // 병원 관점 워딩: 반려묘 이름을 문두에 크게 — 어느 아이의 기록인지 즉시 인지 (v0.7.39 2차)
+  x.font = '800 44px '+F; x.fillText(d.cat+'의 관리 기록', PAD, 68);
+  x.font = '500 26px '+F; x.globalAlpha = .85;
+  x.fillText('보호자 기록 · '+d.fromStr+' ~ '+d.toStr+' ('+d.days+'일)', PAD, 112);
   x.globalAlpha = 1;
-  let y = 208;
-  x.fillStyle = INK; x.font = '800 42px '+F;
-  x.fillText(d.cat, PAD, y);
-  const nw = x.measureText(d.cat).width;
+  let y = 202;
   x.fillStyle = SOFT; x.font = '500 28px '+F;
   const pf = [];
   if(d.profile.breed) pf.push(d.profile.breed);
   if(d.profile.age!=null) pf.push(d.profile.age+'세');
   if(d.profile.weight!=null) pf.push(d.profile.weight+'kg');
   if(d.profile.diseases) pf.push(d.profile.diseases);
-  if(pf.length) x.fillText(pf.join(' · '), PAD+nw+20, y);
-  y += 42;
+  if(pf.length){ x.fillText(pf.join(' · '), PAD, y); }
+  y += pf.length ? 42 : 6;
   secs.forEach(s=>{
     const h = SEC_H(s);
     x.fillStyle = CARD; rr(PAD, y, CW, h, 18); x.fill();
@@ -11202,7 +11203,7 @@ async function shareVetReport(){
       if(blob) file = new File([blob], 'caremasters_report_'+today()+'.png', {type:'image/png'});
     }
   }catch(e){ console.warn('이미지 blob 오류:', e); }
-  const payload = { title: '케어마스터즈 진료 요약', text };
+  const payload = { title: _vetRep.cat+'의 관리 기록', text };
   if(file && navigator.canShare && navigator.canShare({files:[file]})) payload.files = [file];
   if(navigator.share){
     try{
