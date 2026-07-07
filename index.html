@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.39</span>
+      <span class="cm-beta">v0.7.40</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -813,6 +813,16 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
         <svg class="tile__chev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 5l7 7-7 7"/></svg>
       </div>
       <div class="tile__status" id="tileInsulinStatus" data-tone="muted">투여 전</div>
+    </button>
+    <button class="tile" data-tile="vet" onclick="openVetReport()">
+      <div class="tile__top">
+        <div class="tile__label">
+          <div class="cm-ic cm-ic--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4.5" width="16" height="15.5" rx="3.2"/><path d="M12 8.8v6.9M8.5 12.2h7"/></svg></div>
+          <div class="tile__title">병원</div>
+        </div>
+        <svg class="tile__chev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 5l7 7-7 7"/></svg>
+      </div>
+      <div class="tile__status" id="tileVetStatus" data-tone="muted">예정일 미지정</div>
     </button>
   </div>
 
@@ -4613,6 +4623,7 @@ function renderDailySummary(catName) {
     if(tgl){var tlbg=(tRec.bg||[]).filter(function(x){return x.bg!=='';}).slice(-1)[0];if(tlbg){var tbgv=parseFloat(tlbg.bg);var _tglT=tbgv<=80?'alert':tbgv>=300?'warn':'good';tgl.textContent=tbgv+' mg/dL';tgl.dataset.tone=_tglT;_tit('glucose',_tglT);}else{tgl.textContent='기록 전';tgl.dataset.tone='muted';_tit('glucose','muted');}}
     var tins2=document.getElementById('tileInsulinStatus');
     if(tins2){var tlins=(tRec.ins||[]).slice(-1)[0];if(tlins){tins2.textContent=tlins.dose+'U · '+(tlins.type||'').substring(0,4);tins2.dataset.tone='good';_tit('insulin','good');}else{tins2.textContent='투여 전';tins2.dataset.tone='muted';_tit('insulin','muted');}}
+    try{renderVetTileStatus();}catch(e){}
   } catch(e) { console.warn('tile status:', e); }
 }
 
@@ -10700,6 +10711,7 @@ function setNextVisit(cat, dateStr){
       .catch(e=>console.warn('nextVisit 저장 reject:', e));
   }
   try{ renderVetVisitBanner(); }catch(e){}
+  try{ renderVetTileStatus(); }catch(e){}
 }
 async function loadNextVisits(){
   if(!sbClient || !currentUser || !state.cats.length) return;
@@ -10750,6 +10762,20 @@ function dismissVetBanner(){
   try{ localStorage.setItem('vetBannerDismiss_'+today(), '1'); }catch(e){}
   const el = document.getElementById('vetVisitBanner');
   if(el) el.style.display = 'none';
+}
+/* 병원 타일 상태 텍스트 (v0.7.40) — 아이콘은 카테고리 정체성 원칙상 틴트 없음, 텍스트 톤만
+   미지정/지난 예정일 → muted, D-4 이상 → good(날짜), D-3~D-1 → warn(D-N), D-day → alert */
+function renderVetTileStatus(){
+  const el = document.getElementById('tileVetStatus');
+  if(!el) return;
+  const cat = state.activeCat;
+  const nv = cat ? getNextVisit(cat) : null;
+  let diff = null;
+  if(nv) diff = Math.round((new Date(nv+'T00:00:00') - new Date(today()+'T00:00:00')) / 86400000);
+  if(nv == null || diff < 0){ el.textContent = '예정일 미지정'; el.dataset.tone = 'muted'; }
+  else if(diff === 0){ el.textContent = '오늘 진료 예정'; el.dataset.tone = 'alert'; }
+  else if(diff <= 3){ el.textContent = '다음 진료 D-'+diff; el.dataset.tone = 'warn'; }
+  else { el.textContent = '다음 진료 '+nv.slice(5).replace('-','/'); el.dataset.tone = 'good'; }
 }
 function openVetReportFromBanner(){
   try{ const b = document.querySelector('.cm-tab[data-tab="history"]'); if(b) showTab('history', b); }catch(e){}
@@ -12605,7 +12631,7 @@ initSupabase();
 // ── Tile Config ──
 var _tileEditMode = false;
 var _tileDragSrc = null;
-var ALL_TILE_KEYS = ['water','excreta','vomit','med','breath','weight','meal','glucose','insulin'];
+var ALL_TILE_KEYS = ['water','excreta','vomit','med','breath','weight','meal','glucose','insulin','vet'];
 
 function saveTileConfig(cat, order, hidden) {
   var c = cat || state.activeCat;
@@ -12657,6 +12683,7 @@ function loadTileConfig(cat) {
   var hasDM = diseases.indexOf('DM') !== -1;
   var order = ['water','excreta','vomit','med','breath','weight','meal'];
   if(hasDM) { order.push('glucose'); order.push('insulin'); }
+  order.push('vet'); // 병원 타일 (v0.7.40) — 기본 세트 마지막
   return {order: order, hidden: []};
 }
 
