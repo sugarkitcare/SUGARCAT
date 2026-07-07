@@ -4594,7 +4594,7 @@ function renderDailySummary(catName) {
     var tex=document.getElementById('tileExcretaStatus');
     if(tex){var tuc=(tRec.urine||[]).length,tpc=(tRec.poop||[]).length;if(tuc||tpc){tex.textContent='소변 '+tuc+'회 · 대변 '+tpc+'회';tex.dataset.tone='good';_tit('excreta','good');}else{tex.textContent='기록 전';tex.dataset.tone='muted';_tit('excreta','muted');}}
     var tvm=document.getElementById('tileVomitStatus');
-    if(tvm){var tva=tRec.vomits||[];if(tva.length){var _tvT=tva.some(_vomitDanger)?'alert':'warn';tvm.textContent=tva.length+'회';tvm.dataset.tone=_tvT==='alert'?'alert':'good';_tit('vomit',_tvT);}else{tvm.textContent='기록 전';tvm.dataset.tone='muted';_tit('vomit','muted');}}
+    if(tvm){var tva=tRec.vomits||[];if(tva.length){var _tvA=tva.some(_vomitDanger);tvm.textContent=tva.length+'회';tvm.dataset.tone=_tvA?'alert':'good';_tit('vomit',_tvA?'alert':'good');}else{tvm.textContent='기록 전';tvm.dataset.tone='muted';_tit('vomit','muted');}}
     var tmd=document.getElementById('tileMedStatus');
     if(tmd){var tdn=_routineDoneSet(tRec).size;if(tdn>0){tmd.textContent=tdn+'개 완료';tmd.dataset.tone='good';_tit('med','good');}else{tmd.textContent='투약 전';tmd.dataset.tone='muted';_tit('med','muted');}}
     var tbr=document.getElementById('tileBreathStatus');
@@ -4985,6 +4985,7 @@ function renderHistory(){
   (rec.water||[]).forEach((r,i)=>all.push({ts:r.ts,type:'water',d:r,idx:i}));
   (rec.urine||[]).forEach((r,i)=>all.push({ts:r.ts,type:'urine',d:r,idx:i}));
   (rec.poop||[]).forEach((r,i)=>all.push({ts:r.ts,type:'poop',d:r,idx:i}));
+  (rec.vomits||[]).forEach((r,i)=>all.push({ts:r.ts,type:'vomit',d:r,idx:i}));
   all.sort(_recTimeCompareAsc);   // 시간 오름차순(아침→저녁)
   if(!all.length){list.innerHTML='<div class="empty">오늘 기록이 없어요</div>';return}
   list.innerHTML='';
@@ -5000,6 +5001,7 @@ function renderHistory(){
     else if(item.type==='water'){dot='ld-n';txt=`[음수] ${d.time} | ${d.ml}ml`;}
     else if(item.type==='urine'){dot=d.amount==='혈뇨'?'ld-d':d.amount==='핍뇨'||d.amount==='소량'?'ld-w':'ld-n';txt=`[소변] ${d.time} | ${d.amount}`;}
     else if(item.type==='poop'){dot=d.type==='혈변'||d.type==='설사'?'ld-d':d.type==='무름'||d.type==='무변'?'ld-w':'ld-n';txt=`[대변] ${d.time} | ${d.type}`;}
+    else if(item.type==='vomit'){dot=_vomitDanger(d)?'ld-d':'ld-w';txt=`[구토] ${d.time} | ${_vomitLabel(d)}${d.memo?' ('+d.memo+')':''}`;}
 
     const el=document.createElement('div');
     el.className='log-item';
@@ -5045,6 +5047,7 @@ function renderHistory(){
       if(item.type==='water'){ deleteWater(item.idx,histDate); renderHistory(); }
       else if(item.type==='urine'){ deleteUrine(item.idx,histDate); renderHistory(); }
       else if(item.type==='poop'){ deletePoop(item.idx,histDate); renderHistory(); }
+      else if(item.type==='vomit'){ deleteVomit(item.idx,histDate); renderHistory(); }
       else if(item.type==='mixgroup'){ deleteMixGroup(item.ts,histDate); }  // 그룹 단위 삭제
       else deleteLogItem(item.type,item.ts);  // 자체적으로 renderHistory 호출
     });
@@ -9572,6 +9575,7 @@ function editLogItem(type, ts, date) {
   else if(type==='water'){ item=(rec.water||[]).find(r=>r.ts===ts); label='음수'; }
   else if(type==='urine'){ item=(rec.urine||[]).find(r=>r.ts===ts); label='소변'; }
   else if(type==='poop') { item=(rec.poop||[]).find(r=>r.ts===ts); label='대변'; }
+  else if(type==='vomit'){ item=(rec.vomits||[]).find(r=>r.ts===ts); label='구토'; }
   if(!item) return;
 
   // 타겟팅: renderHistory가 각 행에 새긴 data-type/data-ts로 직접 조회 — 배열 위치 매칭 아님.
@@ -9637,6 +9641,17 @@ function editLogItem(type, ts, date) {
       <select id="ei_ptype" style="padding:5px 8px;border:1px solid var(--teal);border-radius:7px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit">${_popts}</select>
       <label style="font-size:11px;color:var(--text3)">시간</label>
       <input type="time" id="ei_time" value="${item.time||''}" style="padding:5px 8px;border:1px solid var(--teal);border-radius:7px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit">`;
+  } else if(type==='vomit') {
+    const _vcopts = Object.keys(VOMIT_CONTENTS).map(k=>`<option value="${k}"${k===item.content?' selected':''}>${VOMIT_CONTENTS[k]}</option>`).join('');
+    const _vlopts = '<option value="">색 없음</option>'+Object.keys(VOMIT_COLORS).map(k=>`<option value="${k}"${k===item.color?' selected':''}>${VOMIT_COLORS[k]}</option>`).join('');
+    fields = `<label style="font-size:11px;color:var(--text3)">내용물</label>
+      <select id="ei_vcontent" style="padding:5px 8px;border:1px solid var(--teal);border-radius:7px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit"><option value=""${!item.content?' selected':''}>선택 안 함</option>${_vcopts}</select>
+      <label style="font-size:11px;color:var(--text3)">색</label>
+      <select id="ei_vcolor" style="padding:5px 8px;border:1px solid var(--teal);border-radius:7px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit">${_vlopts}</select>
+      <label style="font-size:11px;color:var(--text3)">시간</label>
+      <input type="time" id="ei_time" value="${item.time||''}" style="padding:5px 8px;border:1px solid var(--teal);border-radius:7px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit">
+      <label style="font-size:11px;color:var(--text3)">메모</label>
+      <input type="text" id="ei_vmemo" value="${(item.memo||'').replace(/"/g,'&quot;')}" placeholder="(선택)" maxlength="80" style="width:110px;padding:5px 8px;border:1px solid var(--teal);border-radius:7px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit">`;
   }
 
   targetEl.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;width:100%;padding:4px 0">
@@ -9709,6 +9724,15 @@ function saveEditLog(type, ts, date) {
     const ptype = document.getElementById('ei_ptype')?.value;
     if(ptype) item.type = ptype;
     if(time) item.time = time;
+  } else if(type==='vomit') {
+    const item = (rec.vomits||[]).find(r=>r.ts===ts); if(!item) return;
+    const vcontent = document.getElementById('ei_vcontent')?.value;
+    const vcolor = document.getElementById('ei_vcolor')?.value;
+    const vmemo = document.getElementById('ei_vmemo')?.value;
+    item.content = vcontent || null;
+    item.color = vcolor || null;
+    if(vmemo !== undefined) item.memo = (vmemo||'').trim();
+    if(time) item.time = time;
   }
   saveS(date);
   renderHistory();
@@ -9717,6 +9741,8 @@ function saveEditLog(type, ts, date) {
   try{ renderDailySummary(); }catch(e){}
   // 수분탭(음수·소변·대변 카드)이 떠 있으면 같은 기록 반영
   try{ if(document.getElementById('waterLog')) renderWaterLog(); }catch(e){}
+  // 구토 시트가 열려 있으면 목록 반영
+  try{ if(document.getElementById('vomitLog')) renderVomitLog(); }catch(e){}
   toast('수정됐어요 ✅', '#1D9E75');
 }
 
