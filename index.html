@@ -10852,7 +10852,7 @@ function renderVetManage(){
     + '<div style="font-size:12.5px;font-weight:700;color:var(--cm-ink-soft);margin-bottom:8px">최근 진료 이력</div>'
     + histHtml
     + '<button type="button" onclick="vetManageMakeReport()" style="width:100%;margin-top:14px;padding:13px;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;background:var(--cm-green-700);color:#fff;border:none">병원용 리포트 만들기</button>'
-    + '<div style="font-size:11px;color:var(--cm-faint);margin-top:8px;text-align:center;line-height:1.5">병원 카톡에 미리 공유하시면 진료가 편해져요.</div>';
+    + '<div style="font-size:11px;color:var(--cm-faint);margin-top:8px;text-align:center;line-height:1.5">진료 전 병원 카톡에 공유하시면 진료가 편해져요.</div>';
 }
 
 /* 병원 타일 상태 텍스트 (v0.7.40) — 아이콘은 카테고리 정체성 원칙상 틴트 없음, 텍스트 톤만
@@ -11249,7 +11249,7 @@ function renderVetReportStep(){
       + '<div style="font-size:11px;color:var(--cm-faint);margin-top:8px;line-height:1.5">진료 예정일 D-3부터 오늘탭에서 알려드려요. 비워두면 알림 없이 리포트만 만들어요.</div>'
       + '</div>'
       + '<div style="display:flex;gap:8px">'+_vrBtn('다음','vetRepGo(2)',true)+'</div>'
-      + '<div style="font-size:11px;color:var(--cm-faint);margin-top:8px;text-align:center;line-height:1.5">병원 카톡에 미리 공유하시면 진료가 편해져요.</div>';
+      + '<div style="font-size:11px;color:var(--cm-faint);margin-top:8px;text-align:center;line-height:1.5">진료 전 병원 카톡에 공유하시면 진료가 편해져요.</div>';
   } else if(R.step === 2){
     const per = [['1w','1주'],['2w','2주'],['1m','1개월'],['3m','3개월'],['custom','직접 지정']];
     const incDefs = [['profile','프로필'],['water','음수량'],['urine','소변'],['poop','배변'],['vomit','구토'],['meal','급여'],['weight','체중'],['med','투약·루틴']];
