@@ -4504,10 +4504,18 @@ function renderDailySummary(catName) {
       }
     }
 
-    // 대변
+    // 대변 (미니 셀 — 'N회'만 표기, 정상 아닌 기록 있으면 clay. 상세는 소변·대변 시트에서, v0.7.38)
     const poopArr = rec.poop || [];
     const stoolEl = document.getElementById('heroStoolVal');
-    if(stoolEl) stoolEl.textContent = poopArr.length ? poopArr.length+'회 · '+poopArr[poopArr.length-1].type : '—';
+    if(stoolEl) {
+      if(!poopArr.length) {
+        stoolEl.textContent = '—';
+        stoolEl.style.color = '';
+      } else {
+        stoolEl.textContent = poopArr.length + '회';
+        stoolEl.style.color = poopArr.some(p => p.type && p.type !== '정상') ? 'var(--cm-clay)' : '';
+      }
+    }
 
     // 구토 (미니 그리드 셀 — 대변·소변과 동일 패턴, v0.7.38)
     const vomitValEl = document.getElementById('heroVomitVal');
@@ -4522,7 +4530,8 @@ function renderDailySummary(catName) {
       }
     }
 
-    // 소변 (미니)
+    // 소변 (미니 셀 — 'N회'만 표기, 혈뇨·핍뇨 있으면 clay)
+    // 기존 경고 판정 문자열이 '혁롼'/'핀롼'으로 깨져 있어 한 번도 동작하지 않던 잠복 버그도 정정 (v0.7.38)
     const urineSmEl = document.getElementById('heroUrineSmall');
     if(urineSmEl) {
       const urineArrHero = rec.urine || [];
@@ -4530,10 +4539,8 @@ function renderDailySummary(catName) {
         urineSmEl.textContent = '—';
         urineSmEl.style.color = '';
       } else {
-        const lastUHero = urineArrHero[urineArrHero.length-1];
-        const alertUHero = lastUHero.amount==='혁롼'||lastUHero.amount==='핀롼';
-        urineSmEl.textContent = urineArrHero.length+'회'+(alertUHero?' · '+lastUHero.amount:'');
-        urineSmEl.style.color = alertUHero ? 'var(--cm-clay)' : '';
+        urineSmEl.textContent = urineArrHero.length + '회';
+        urineSmEl.style.color = urineArrHero.some(u => u.amount === '혈뇨' || u.amount === '핍뇨') ? 'var(--cm-clay)' : '';
       }
     }
     // 피드백 슬라이더
