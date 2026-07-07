@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.35</span>
+      <span class="cm-beta">v0.7.36</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -1547,12 +1547,12 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
       </div>
       <div id="calcCondBody" style="display:none;margin-top:.75rem">
         <div class="row2" style="margin-bottom:8px">
-          <div class="ig"><label>현재 체중 (kg)</label><input type="number" id="calcWt" placeholder="예: 3.5" step="0.1" oninput="calcCalorie()"></div>
-          <div class="ig"><label>목표 체중 (kg)</label><input type="number" id="calcTargetWt" placeholder="없으면 비워두세요" step="0.1" oninput="calcCalorie();saveTargetWtToProfile()"></div>
+          <div class="ig"><label>현재 체중 (kg)</label><input type="number" id="calcWt" placeholder="예: 3.5" step="0.1" oninput="calcFormEdited()"></div>
+          <div class="ig"><label>목표 체중 (kg)</label><input type="number" id="calcTargetWt" placeholder="없으면 비워두세요" step="0.1" oninput="calcFormEdited();saveTargetWtToProfile()"></div>
         </div>
         <div class="row2" style="margin-bottom:8px">
           <div class="ig"><label>나이</label>
-            <select id="calcAge" onchange="calcCalorie()">
+            <select id="calcAge" onchange="calcFormEdited()">
               <option value="kitten">1세 미만 (키튼)</option>
               <option value="young">1~6세 (성묘)</option>
               <option value="senior" selected>7~10세 (시니어)</option>
@@ -1560,7 +1560,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
             </select>
           </div>
           <div class="ig"><label>중성화</label>
-            <select id="calcNeuter" onchange="calcCalorie()">
+            <select id="calcNeuter" onchange="calcFormEdited()">
               <option value="yes" selected>중성화 O</option>
               <option value="no">중성화 X</option>
             </select>
@@ -1568,14 +1568,14 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
         </div>
         <div class="row2" style="margin-bottom:8px">
           <div class="ig"><label>활동량</label>
-            <select id="calcActivity" onchange="calcCalorie();saveActivityBCSToProfile()">
+            <select id="calcActivity" onchange="calcFormEdited();saveActivityBCSToProfile()">
               <option value="low">낮음 (실내, 잘 안 움직임)</option>
               <option value="normal" selected>보통</option>
               <option value="high">높음 (활발)</option>
             </select>
           </div>
           <div class="ig"><label>체형</label>
-            <select id="calcBCS" onchange="calcCalorie();saveActivityBCSToProfile()">
+            <select id="calcBCS" onchange="calcFormEdited();saveActivityBCSToProfile()">
               <option value="thin">저체중 (BCS 1~3)</option>
               <option value="ideal" selected>정상 (BCS 4~5)</option>
               <option value="overweight">과체중 (BCS 6~7)</option>
@@ -3085,7 +3085,7 @@ window.switchCat = function(c) {
   try{const _ts=_tubeSlurryByCat[c]||{water:'',count:'4',tool:'syringe'};const _w=document.getElementById('tubeWaterMl');if(_w)_w.value=_ts.water;const _f=document.getElementById('tubeFeedCount');if(_f)_f.value=_ts.count;const _t=document.getElementById('tubeTool');if(_t)_t.value=_ts.tool;}catch(e){}
   try{loadFoodDataForCat(c);}catch(e){}
   try{renderTubeItemList();}catch(e){}try{const _ne=document.getElementById('tubeRecipeName');if(_ne)_ne.value='';}catch(e){}
-  if(sbClient&&currentUser){try{syncFoodDataFromDB(c).then(()=>{try{renderFdHistory();renderManualFoodList();renderTubeRecipeList();calcCalorie();}catch(e){}});}catch(e){}}
+  if(sbClient&&currentUser){try{syncFoodDataFromDB(c).then(()=>{if(state.activeCat!==c)return;/* 늦게 도착한 이전 고양이 sync 폐기 (v0.7.36) */try{renderFdHistory();renderManualFoodList();renderTubeRecipeList();calcCalorie();}catch(e){}});}catch(e){}}
   renderCatBar();updateMetrics();updateWtDiff();updateInsulinNext();saveS();
   const prof=(state.catProfiles||{})[c];
   if(prof&&prof.insulin){const el=document.getElementById('insType');if(el)el.value=prof.insulin;}
@@ -7776,10 +7776,21 @@ document.getElementById('saveRoutine').addEventListener('click',()=>{
 
 /* ── 칼로리 계산기 ── */
 const calcDiseases=new Set();
+/* 계산기 폼 소유 가드 (v0.7.36): 폼 조건이 어느 고양이 것인지 추적.
+   사용자가 폼을 직접 편집할 때만 현재 activeCat이 소유를 가짐.
+   switchCat·syncFoodDataFromDB·initCalcResult 등 프로그램 호출로 calcCalorie가 돌 때
+   폼에 이전 고양이 조건이 남아 있으면 recommendedKcal이 다른 고양이 프로필에 저장되는
+   오염(케이←달래 211 사고)이 발생 → 소유 불일치 시 저장 차단 */
+let _calcFormCat=null;
+function calcFormEdited(){
+  _calcFormCat=state.activeCat||null;
+  calcCalorie();
+}
 function toggleCalcDisease(el){
   const v=el.dataset.val;
   if(calcDiseases.has(v)){calcDiseases.delete(v);el.classList.remove('selected')}
   else{calcDiseases.add(v);el.classList.add('selected')}
+  _calcFormCat=state.activeCat||null; // 사용자 편집 → 폼 소유 갱신
   calcCalorie();
   saveCalcDiseasesToProfile();
 }
@@ -7817,6 +7828,7 @@ function saveCalcDiseasesToProfile(){
 }
 
 function initCalcResult(){
+  _calcFormCat=null; // 프로그램 프리필 — 사용자가 다시 편집하기 전까지 폼 소유 없음 (v0.7.36)
   const wtEl=document.getElementById('calcWt');
   if(wtEl&&(isNaN(parseFloat(wtEl.value))||parseFloat(wtEl.value)<=0)){
     const latestWt=getLatestWeight();
@@ -7958,12 +7970,16 @@ function calcCalorie(){
   // 수동 입력 사료 다시 계산
   updateManualFoodCalc(mer);
   // 권장 칼로리 프로필 저장 (오늘탭 달성률 표시용)
-  if(state.activeCat){
+  // 소유 가드 (v0.7.36): 폼을 현재 고양이 것으로 직접 편집한 경우에만 저장.
+  // 프로그램 호출(고양이 전환·동기화·탭 진입 프리필)은 표시만 하고 저장하지 않음
+  if(state.activeCat && _calcFormCat===state.activeCat){
     if(!state.catProfiles)state.catProfiles={};
     if(!state.catProfiles[state.activeCat])state.catProfiles[state.activeCat]={};
     state.catProfiles[state.activeCat].recommendedKcal=mer;
     saveS();
     if(sbClient&&currentUser)upsertCatToDB(state.activeCat).catch(e=>console.warn('recommendedKcal sync:',e));
+  } else if(state.activeCat){
+    console.warn('[calcCalorie] 폼 소유('+_calcFormCat+') ≠ activeCat('+state.activeCat+') → recommendedKcal 저장 차단 (표시만)');
   }
 }
 
@@ -12180,7 +12196,8 @@ async function syncFoodDataFromDB(cat) {
       if(row.key==='tubeRecipes_v1_'+cat&&cat===state.activeCat&&!_tubeRecipesPending){tubeRecipes=val;updated=true;}
     });
     // renderManualFoodList/renderTubeRecipeList 포함: syncFromDB 로그인 후 activeCat 변경 시 stale 목록 방지
-    if(updated){try{renderFdHistory();}catch(e){}try{renderManualFoodList();}catch(e){}try{renderTubeRecipeList();}catch(e){}try{calcCalorie();}catch(e){}}
+    // cat===state.activeCat 가드 (v0.7.36): await 사이 고양이가 바뀌었으면 렌더·재계산 폐기
+    if(updated && cat===state.activeCat){try{renderFdHistory();}catch(e){}try{renderManualFoodList();}catch(e){}try{renderTubeRecipeList();}catch(e){}try{calcCalorie();}catch(e){}}
     // favFoods 갱신 시 현재 열려 있는 피커 재렌더 (switchCat 후 sync 완료 전에 열린 피커 최신화)
     if(_favUpdated){try{[['favFoodPicker','favFoodPickerList'],['favFoodPickerDaily','favFoodPickerDailyList'],['tubeFavPicker','tubeFavPickerList']].forEach(([pid,lid])=>{const p=document.getElementById(pid);if(p&&p.style.display!=='none')_renderFavFoodPickerList(lid);});}catch(e){}}
   }catch(e){console.warn('사료 DB 로드 오류:',e);}
