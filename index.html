@@ -737,6 +737,16 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
       </div>
       <div class="tile__status" id="tileExcretaStatus" data-tone="muted">기록 전</div>
     </button>
+    <button class="tile" data-tile="vomit" onclick="openDailySheet('vomit')">
+      <div class="tile__top">
+        <div class="tile__label">
+          <div class="cm-ic cm-ic--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v6M9 7.5 12 10.5 15 7.5M5.5 14.5c1.5 1.2 3 1.2 4.5 0s3-1.2 4.5 0 3 1.2 4.5 0M5.5 18.5c1.5 1.2 3 1.2 4.5 0s3-1.2 4.5 0 3 1.2 4.5 0"/></svg></div>
+          <div class="tile__title">구토</div>
+        </div>
+        <svg class="tile__chev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 5l7 7-7 7"/></svg>
+      </div>
+      <div class="tile__status" id="tileVomitStatus" data-tone="muted">기록 전</div>
+    </button>
     <button class="tile" data-tile="med" onclick="openDailySheet('med')">
       <div class="tile__top">
         <div class="tile__label">
@@ -1107,51 +1117,6 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
       </div>
       <div id="poopTotal" style="font-size:13px;color:var(--text);font-weight:600;margin-bottom:.3rem"></div>
       <div id="poopLog" style="font-size:11px;color:var(--text3);line-height:1.8"></div>
-    </div>
-
-    <!-- 구토 체크 (v0.7.37) — 이모지 없이 텍스트 라벨만 (앱 전체 이모지 정리 시범) -->
-    <div style="border-top:0.5px solid var(--bd);padding-top:.75rem;margin-top:.75rem">
-      <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:.4rem">구토 체크</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.4rem">
-        <button type="button" onclick="selectVomit('food')"
-          style="padding:7px 14px;border:0.5px solid var(--amber);border-radius:9px;font-size:12px;background:var(--amber-l);color:var(--amber-d);cursor:pointer;font-family:inherit">음식</button>
-        <button type="button" onclick="selectVomit('hairball')"
-          style="padding:7px 14px;border:0.5px solid var(--amber);border-radius:9px;font-size:12px;background:var(--amber-l);color:var(--amber-d);cursor:pointer;font-family:inherit">헤어볼</button>
-        <button type="button" onclick="selectVomit('water')"
-          style="padding:7px 14px;border:0.5px solid var(--amber);border-radius:9px;font-size:12px;background:var(--amber-l);color:var(--amber-d);cursor:pointer;font-family:inherit">물</button>
-        <button type="button" onclick="selectVomit('foam')"
-          style="padding:7px 14px;border:0.5px solid var(--amber);border-radius:9px;font-size:12px;background:var(--amber-l);color:var(--amber-d);cursor:pointer;font-family:inherit">거품</button>
-        <button type="button" onclick="selectVomit('blood')"
-          style="padding:7px 14px;border:0.5px solid var(--coral);border-radius:9px;font-size:12px;background:var(--coral-l);color:var(--coral);cursor:pointer;font-family:inherit;font-weight:600">피</button>
-      </div>
-      <div id="vomitPanel" style="display:none;margin-bottom:.4rem;background:var(--bg2);border-radius:9px;padding:.5rem .65rem;border:0.5px solid var(--bd)">
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:.4rem">
-          <span style="font-size:12px;color:var(--text2)">내용물:</span>
-          <span id="vomitContentLabel" style="font-size:12px;font-weight:600;color:var(--text)"></span>
-          <select id="vomitColorInput"
-            style="padding:5px 8px;border:0.5px solid var(--bd);border-radius:7px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit">
-            <option value="">색 선택 안 함</option>
-            <option value="clear">투명</option>
-            <option value="white">흰색</option>
-            <option value="yellow">노랑</option>
-            <option value="brown">갈색</option>
-            <option value="red">붉은색</option>
-            <option value="green">초록색</option>
-          </select>
-          <input type="time" id="vomitTimeInput"
-            style="padding:5px 8px;border:0.5px solid var(--bd);border-radius:7px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit">
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <input type="text" id="vomitMemoInput" placeholder="메모 (선택)" maxlength="80"
-            style="flex:1;min-width:120px;padding:5px 8px;border:0.5px solid var(--bd);border-radius:7px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit">
-          <button type="button" onclick="confirmAddVomit()"
-            style="padding:5px 14px;background:var(--teal);color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">저장</button>
-          <button type="button" onclick="document.getElementById('vomitPanel').style.display='none'"
-            style="padding:5px 10px;background:none;border:0.5px solid var(--bd);border-radius:7px;font-size:12px;color:var(--text3);cursor:pointer;font-family:inherit">취소</button>
-        </div>
-      </div>
-      <div id="vomitTotal" style="font-size:13px;color:var(--text);font-weight:600;margin-bottom:.3rem"></div>
-      <div id="vomitLog" style="font-size:11px;color:var(--text3);line-height:1.8"></div>
     </div>
 
     <!-- 비상이뇨제 알림 -->
@@ -4628,6 +4593,8 @@ function renderDailySummary(catName) {
     if(tw){var twt=(tRec.water||[]).reduce(function(a,b){return a+b.ml;},0);if(twt>0){tw.textContent=twt+'ml';tw.dataset.tone='good';_tit('water','good');}else{tw.textContent='기록 전';tw.dataset.tone='muted';_tit('water','muted');}}
     var tex=document.getElementById('tileExcretaStatus');
     if(tex){var tuc=(tRec.urine||[]).length,tpc=(tRec.poop||[]).length;if(tuc||tpc){tex.textContent='소변 '+tuc+'회 · 대변 '+tpc+'회';tex.dataset.tone='good';_tit('excreta','good');}else{tex.textContent='기록 전';tex.dataset.tone='muted';_tit('excreta','muted');}}
+    var tvm=document.getElementById('tileVomitStatus');
+    if(tvm){var tva=tRec.vomits||[];if(tva.length){var _tvT=tva.some(_vomitDanger)?'alert':'warn';tvm.textContent=tva.length+'회';tvm.dataset.tone=_tvT==='alert'?'alert':'good';_tit('vomit',_tvT);}else{tvm.textContent='기록 전';tvm.dataset.tone='muted';_tit('vomit','muted');}}
     var tmd=document.getElementById('tileMedStatus');
     if(tmd){var tdn=_routineDoneSet(tRec).size;if(tdn>0){tmd.textContent=tdn+'개 완료';tmd.dataset.tone='good';_tit('med','good');}else{tmd.textContent='투약 전';tmd.dataset.tone='muted';_tit('med','muted');}}
     var tbr=document.getElementById('tileBreathStatus');
@@ -7617,17 +7584,17 @@ function _vomitDanger(v){return v.content==='blood'||v.color==='red';}
 function _vEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 let _pendingVomit=null;
 function selectVomit(content){
+  // 구토 시트: 내용물 버튼 탭 → 색·메모 패널 열림 → 저장 (시간·날짜는 시트 상단 행 공용)
   _pendingVomit=content;
   const lbl=document.getElementById('vomitContentLabel');
   if(lbl)lbl.textContent=VOMIT_CONTENTS[content]||content;
-  const t=document.getElementById('vomitTimeInput');if(t)t.value=nowTime();
   const c=document.getElementById('vomitColorInput');if(c)c.value=content==='blood'?'red':'';
   const m=document.getElementById('vomitMemoInput');if(m)m.value='';
   const p=document.getElementById('vomitPanel');if(p)p.style.display='block';
 }
 function confirmAddVomit(){
   if(!_pendingVomit)return;
-  const time=document.getElementById('vomitTimeInput')?.value||nowTime();
+  const time=document.getElementById('sheetVomitTime')?.value||nowTime();
   const color=document.getElementById('vomitColorInput')?.value||null;
   const memo=(document.getElementById('vomitMemoInput')?.value||'').trim();
   const p=document.getElementById('vomitPanel');if(p)p.style.display='none';
@@ -7636,7 +7603,7 @@ function confirmAddVomit(){
 }
 function addVomit(content,color,time,memo){
   const t=time||nowTime();
-  const dateEl2=document.getElementById('waterDate');
+  const dateEl2=document.getElementById('sheetVomitDate');
   const date=(dateEl2&&dateEl2.value)?dateEl2.value:today();
   const rec=getRec(state.activeCat,date);
   if(!rec.vomits)rec.vomits=[];
@@ -7649,8 +7616,8 @@ function addVomit(content,color,time,memo){
   try{renderDailySummary();}catch(e){}
 }
 function renderVomitLog(){
-  const dateEl=document.getElementById('waterDate');
-  const date=dateEl?.value||today();
+  const dateEl=document.getElementById('sheetVomitDate');
+  const date=(dateEl&&dateEl.value)?dateEl.value:today();
   const rec=getRec(state.activeCat,date);
   const arr=rec.vomits||[];
   const totalEl=document.getElementById('vomitTotal');
@@ -12069,7 +12036,7 @@ initSupabase();
 // ── Tile Config ──
 var _tileEditMode = false;
 var _tileDragSrc = null;
-var ALL_TILE_KEYS = ['water','excreta','med','breath','weight','meal','glucose','insulin'];
+var ALL_TILE_KEYS = ['water','excreta','vomit','med','breath','weight','meal','glucose','insulin'];
 
 function saveTileConfig(cat, order, hidden) {
   var c = cat || state.activeCat;
@@ -12119,7 +12086,7 @@ function loadTileConfig(cat) {
   var prof = ((state.catProfiles || {})[cat]) || {};
   var diseases = prof.diseases || [];
   var hasDM = diseases.indexOf('DM') !== -1;
-  var order = ['water','excreta','med','breath','weight','meal'];
+  var order = ['water','excreta','vomit','med','breath','weight','meal'];
   if(hasDM) { order.push('glucose'); order.push('insulin'); }
   return {order: order, hidden: []};
 }
@@ -12316,10 +12283,44 @@ function _dsExcretaBodyHtml() {
       '<button onclick="selectPoop(\'무변\')"      style="'+sAmber+'">무변</button>' +
     '</div>';
 }
+function _dsVomitBodyHtml() {
+  var sBase = 'padding:8px 14px;border-radius:11px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;border:1px solid ';
+  var sAmber = sBase+'var(--cm-amber-edge);background:var(--cm-amber-tint);color:#7E5C16';
+  var sClay  = sBase+'var(--cm-clay-edge);background:var(--cm-clay-tint);color:var(--cm-clay-ink)';
+  var lbl = 'font-size:12.5px;font-weight:700;color:var(--cm-ink-soft);margin-bottom:8px';
+  var inp = 'padding:8px 10px;border:1px solid var(--cm-line);border-radius:11px;font-size:13px;background:var(--cm-surface);color:var(--cm-ink);font-family:inherit';
+  return _dsDateTimeRow('sheetVomitDate','sheetVomitTime') +
+    '<div style="'+lbl+'">내용물</div>' +
+    '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">' +
+      '<button onclick="selectVomit(\'food\')"     style="'+sAmber+'">음식</button>' +
+      '<button onclick="selectVomit(\'hairball\')" style="'+sAmber+'">헤어볼</button>' +
+      '<button onclick="selectVomit(\'water\')"    style="'+sAmber+'">물</button>' +
+      '<button onclick="selectVomit(\'foam\')"     style="'+sAmber+'">거품</button>' +
+      '<button onclick="selectVomit(\'blood\')"    style="'+sClay+'">피</button>' +
+    '</div>' +
+    '<div id="vomitPanel" style="display:none;background:var(--cm-surface-2);border:1px solid var(--cm-line);border-radius:13px;padding:11px 13px;margin-bottom:12px">' +
+      '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px">' +
+        '<span style="font-size:12.5px;color:var(--cm-faint)">내용물:</span>' +
+        '<span id="vomitContentLabel" style="font-size:12.5px;font-weight:700;color:var(--cm-ink)"></span>' +
+        '<select id="vomitColorInput" style="'+inp+'">' +
+          '<option value="">색 선택 안 함</option><option value="clear">투명</option><option value="white">흰색</option>' +
+          '<option value="yellow">노랑</option><option value="brown">갈색</option><option value="red">붉은색</option><option value="green">초록색</option>' +
+        '</select>' +
+      '</div>' +
+      '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' +
+        '<input type="text" id="vomitMemoInput" placeholder="메모 (선택)" maxlength="80" style="'+inp+';flex:1;min-width:120px">' +
+        '<button type="button" onclick="confirmAddVomit()" style="padding:8px 16px;background:var(--cm-green-700);color:#fff;border:none;border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">저장</button>' +
+        '<button type="button" onclick="document.getElementById(\'vomitPanel\').style.display=\'none\'" style="padding:8px 12px;background:none;border:1px solid var(--cm-line);border-radius:11px;font-size:13px;color:var(--cm-faint);cursor:pointer;font-family:inherit">취소</button>' +
+      '</div>' +
+    '</div>' +
+    '<div id="vomitTotal" style="font-size:13px;font-weight:700;color:var(--cm-ink);margin-bottom:6px"></div>' +
+    '<div id="vomitLog" style="font-size:11px;color:var(--text3);line-height:1.8"></div>';
+}
 window.openDailySheet = function(type) {
   var MAP = {
     water:   {title:'음수량',        sub:'하루 목표 대비',   bodyId:null},
     excreta: {title:'소변 · 대변',   sub:'소변·대변 체크',   bodyId:null},
+    vomit:   {title:'구토',          sub:'내용물·색 기록',   bodyId:null},
     med:     {title:'투약 · 루틴',   sub:'탭해서 투약 체크', bodyId:'routineBody'},
     breath:  {title:'호흡수 측정',   sub:'호흡할 때마다 탭', bodyId:'rrCard'},
     weight:  {title:'몸무게',        sub:'체중 기록',         bodyId:'wtCard'},
@@ -12342,6 +12343,13 @@ window.openDailySheet = function(type) {
     if(sheetFoot) sheetFoot.innerHTML = '';
     var ed = document.getElementById('sheetExcretaDate'); if(ed) ed.value = today();
     var et = document.getElementById('sheetExcretaTime'); if(et) et.value = nowTime();
+  } else if(type === 'vomit') {
+    sheetBody.innerHTML = _dsVomitBodyHtml();
+    if(sheetFoot) sheetFoot.innerHTML = '';
+    _pendingVomit = null;
+    var vd = document.getElementById('sheetVomitDate'); if(vd) { vd.value = today(); vd.onchange = renderVomitLog; }
+    var vt = document.getElementById('sheetVomitTime'); if(vt) vt.value = nowTime();
+    try{renderVomitLog();}catch(e){}
   } else {
     var formEl = document.getElementById(cfg.bodyId); if(!formEl) return;
     _dsOrigin = {el:formEl, parent:formEl.parentNode, next:formEl.nextSibling};
