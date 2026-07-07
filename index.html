@@ -11381,8 +11381,7 @@ function showApp() {
   try { renderDailySummary(); } catch(e) {}
   try { renderTileGrid(state.activeCat); } catch(e) {}
   // 비로그인: 로컬 기록만 존재 → 구토 루틴 이관을 여기서 실행 (로그인 유저는 syncFromDB merge 후 실행)
-  // ⚠ preview 검증 단계: dry-run만 (병합 직전 실행 모드로 전환)
-  if(!currentUser) try { migrateRoutineVomitToCard(true); } catch(e) {}
+  if(!currentUser) try { migrateRoutineVomitToCard(); } catch(e) {}
   console.log(`[Perf] showApp 초기렌더(동기): ${(performance.now()-_showT0).toFixed(0)}ms`);
 }
 
@@ -11701,9 +11700,7 @@ async function syncFromDB() {
       setTimeout(async ()=>{
         await migrateLocalToDB();
         await migrateBloodTestsToDB();
-        // ⚠ preview 검증 단계: dry-run만 자동 실행 (콘솔에서 이관 계획 확인용).
-        //   관리자 검증 완료 후 병합 직전에 migrateRoutineVomitToCard()(실행 모드)로 전환
-        try{await migrateRoutineVomitToCard(true);}catch(e){console.warn('vomit 이관 dry-run 오류:',e);}
+        try{await migrateRoutineVomitToCard();}catch(e){console.warn('vomit 이관 오류:',e);}
         for(const _cat of state.cats){
           try{await uploadFoodDataToDB(_cat);}catch(e){}
         }
