@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.41</span>
+      <span class="cm-beta">v0.7.42</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -4659,6 +4659,7 @@ document.getElementById('saveWt').onclick=()=>{
   const w=parseFloat(document.getElementById('wtVal').value);if(isNaN(w)){toast('체중을 입력해주세요','#D85A30');return}
   const wtD=document.getElementById('wtDate').value||today();
   getRec(state.activeCat,wtD).weights.push({weight:w,time:document.getElementById('wtTime').value,note:document.getElementById('wtNote').value,ts:Date.now()});
+  if(w>0) setLastInput(state.activeCat,'weight',{value:w});   // 다음번 프리필용 (v0.7.42)
   saveS(wtD);updateMetrics();updateWtDiff();['wtVal','wtNote'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('wtTime').value=nowTime();   // 연속 입력 대응 (addWater 패턴)
   updateRecommendedKcal(state.activeCat,w);
@@ -4668,6 +4669,7 @@ document.getElementById('saveIns').onclick=()=>{
   const dose=parseFloat(document.getElementById('insVal').value);if(isNaN(dose)){toast('투여량을 입력해주세요','#D85A30');return}
   const insD=document.getElementById('insDate').value||today();
   getRec(state.activeCat,insD).ins.push({type:document.getElementById('insType').value,dose,time:document.getElementById('insTime').value,preBg:document.getElementById('insPreBg').value,ts:Date.now()});
+  if(dose>0) setLastInput(state.activeCat,'insulin',{type:document.getElementById('insType').value||null,amount_u:dose});   // 다음번 프리필용 (v0.7.42)
   saveS(insD);updateMetrics();updateInsulinNext();['insVal','insPreBg'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('insTime').value=nowTime();   // 연속 입력 대응 (addWater 패턴)
   toast(insD!==today()?insD+' 날짜로 저장됐어요':'인슐린 저장 완료!');renderDailySummary();
@@ -4677,6 +4679,12 @@ document.getElementById('saveMeal').onclick=()=>{
   if(!name&&!amt){toast('사료명 또는 급여량을 입력해주세요','#D85A30');return}
   const mealD=document.getElementById('foodDate').value||today();
   getRec(state.activeCat,mealD).meals.push({name,amt:parseFloat(amt)||0,kcal:parseFloat(document.getElementById('foodKcal').value)||0,time:document.getElementById('foodTime').value,ts:Date.now(),moisture:_favMoisture});
+  // 다음번 프리필용 (v0.7.42) — kcal/100g은 즐겨찾기 선택값 우선, 없으면 총kcal·급여량에서 역산
+  if(name){
+    const _liAmt=parseFloat(amt)||0, _liKcal=parseFloat(document.getElementById('foodKcal').value)||0;
+    const _liK100=_favKcalPer100||(_liAmt>0&&_liKcal>0?Math.round(_liKcal/_liAmt*100):null);
+    setLastInput(state.activeCat,'meal',{foodName:name,amount_g:_liAmt||null,kcal_per_100g:_liK100,moisture:_favMoisture});
+  }
   _favMoisture=null;
   saveS(mealD);['foodName','foodAmt','foodKcal'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('foodTime').value=nowTime();   // 연속 급여 대응 (addWater 패턴)
@@ -4859,8 +4867,11 @@ function renderRoutineSchedule(date) {
         const item = p.item, slot = p.slot;
         const done = _isDoneP(p);
         const fluidRec = _findRoutineRec(rec, item.name, slot);
-        const savedMl = fluidRec?.ml || item.defaultVal || 120;
-        const savedType = fluidRec?.fluidType || (item.typeOptions?.[0]||'');
+        // 미기록 시 마지막 저장값 프리필, 없으면 기존 기본값 (v0.7.42) — 목록에 없는 종류는 무시
+        const _liF = getLastInputs(state.activeCat).fluid || {};
+        const _liType = (item.typeOptions||[]).includes(_liF.type) ? _liF.type : '';
+        const savedMl = fluidRec?.ml || _liF.amount || item.defaultVal || 120;
+        const savedType = fluidRec?.fluidType || _liType || (item.typeOptions?.[0]||'');
         const slotArg = slot ? '\''+slot+'\'' : 'null';
         const mlId = _fluidElId('fluidMl_', item.name, slot, '_sched');
         const typeId = _fluidElId('fluidType_', item.name, slot, '_sched');
@@ -7209,8 +7220,11 @@ function renderRoutineChecklist(){
       _itemSlots(item).forEach(slot=>{
       const fluidRec = _findRoutineRec(rec, item.name, slot);
       const done = !!fluidRec;
-      const savedMl = fluidRec?.ml || item.defaultVal || 120;
-      const savedType = fluidRec?.fluidType || (item.typeOptions?.[0]||'');
+      // 미기록 시 마지막 저장값 프리필, 없으면 기존 기본값 (v0.7.42) — 목록에 없는 종류는 무시
+      const _liF = getLastInputs(state.activeCat).fluid || {};
+      const _liType = (item.typeOptions||[]).includes(_liF.type) ? _liF.type : '';
+      const savedMl = fluidRec?.ml || _liF.amount || item.defaultVal || 120;
+      const savedType = fluidRec?.fluidType || _liType || (item.typeOptions?.[0]||'');
       const slotArg = slot ? '\''+slot+'\'' : 'null';
       const mlId = _fluidElId('fluidMl_', item.name, slot, '');
       const typeId = _fluidElId('fluidType_', item.name, slot, '');
@@ -7299,6 +7313,7 @@ function saveFluidRoutine(itemName, slot, dateOverride, idSuffix) {
   const rObj = {items:[itemName], ml, fluidType, memo:'', time:nowTime(), ts:Date.now()};
   if(slot) rObj.slot = slot;
   rec.routines.push(rObj);
+  setLastInput(state.activeCat,'fluid',{type:fluidType||null,amount:ml});   // 다음번 프리필용 (v0.7.42)
   saveS(today_date);
   renderRoutineChecklist();
   try{renderRoutineSchedule();}catch(e){}
@@ -7326,7 +7341,8 @@ function toggleFluidCheck(itemName, slot, dateOverride, idSuffix) {
     const mlEl = document.getElementById(_fluidElId('fluidMl_', itemName, slot, _sfx));
     if(mlEl && (!mlEl.value || parseInt(mlEl.value) <= 0)) {
       const itemDef = routineItems.find(i=>i.name===itemName);
-      mlEl.value = String(itemDef?.defaultVal || 120);
+      const _liFluid = getLastInputs(state.activeCat).fluid || {};   // 마지막 저장값 우선 (v0.7.42)
+      mlEl.value = String(_liFluid.amount || itemDef?.defaultVal || 120);
     }
     saveFluidRoutine(itemName, slot, dateOverride, _sfx);
   }
@@ -10730,6 +10746,85 @@ async function loadNextVisits(){
     });
   }catch(e){ console.warn('nextVisit 로드 오류:', e); }
 }
+
+/* ── 마지막 입력값 자동 프리필 (v0.7.42) ──
+   각 아이별 마지막 저장값(수액 종류·양 / 몸무게 / 사료명·급여량)을 기억해 다음 입력 시 프리필.
+   catProfiles는 syncFromDB가 DB 기준 재구축(임의 필드 소실)하므로
+   원본은 localStorage(lastInputs_v1_<cat>) + user_settings(last_inputs_<cat>), 프로필 필드는 미러.
+   읽기는 항상 getLastInputs(localStorage 직행) — 미러는 리포트·향후 프리셋 확장용.
+   쓰기는 사용자 저장 핸들러에서만(프로그램 렌더 경로에서 쓰기 금지 — v0.7.36 소유 원칙) */
+function getLastInputs(cat){
+  if(!cat) return {};
+  try{ const d = localStorage.getItem('lastInputs_v1_'+cat); const v = d ? JSON.parse(d) : null; return (v && typeof v === 'object') ? v : {}; }catch(e){ return {}; }
+}
+function setLastInput(cat, kind, data){
+  if(!cat || !kind || !data) return;   // 빈값 갱신 금지 (v0.7.30 원칙)
+  const all = getLastInputs(cat);
+  all[kind] = Object.assign({}, data, {lastUpdated: new Date().toISOString()});
+  try{ localStorage.setItem('lastInputs_v1_'+cat, JSON.stringify(all)); }catch(e){}
+  if(state.catProfiles && state.catProfiles[cat]) state.catProfiles[cat].lastInputs = all;
+  if(sbClient && currentUser){
+    sbClient.from('user_settings').upsert({
+      user_id: currentUser.id, key: 'last_inputs_'+cat,
+      value: all, updated_at: new Date().toISOString()
+    }, {onConflict:'user_id,key'}).then(({error})=>{ if(error) console.warn('lastInputs 저장 오류:', error); })
+      .catch(e=>console.warn('lastInputs 저장 reject:', e));
+  }
+}
+async function loadLastInputs(){
+  if(!sbClient || !currentUser || !state.cats.length) return;
+  try{
+    const keys = state.cats.map(c => 'last_inputs_'+c);
+    const {data} = await sbClient.from('user_settings').select('key,value')
+      .eq('user_id', currentUser.id).in('key', keys);
+    (data||[]).forEach(row=>{
+      const cat = row.key.replace('last_inputs_','');
+      const v = row.value;
+      if(v && typeof v === 'object' && Object.keys(v).length){   // DB 빈값으로 로컬 덮어쓰기 금지
+        try{ localStorage.setItem('lastInputs_v1_'+cat, JSON.stringify(v)); }catch(e){}
+        if(state.catProfiles && state.catProfiles[cat]) state.catProfiles[cat].lastInputs = v;
+      }
+    });
+  }catch(e){ console.warn('lastInputs 로드 오류:', e); }
+}
+/* 시트 프리필 — openDailySheet 진입 시점의 activeCat 것만 읽기(소유 가드), 사용자가 입력 중이던 값은 보존 */
+function _prefillWeightSheet(){
+  try{
+    const cat = state.activeCat; if(!cat) return;
+    const el = document.getElementById('wtVal');
+    if(!el || el.value !== '') return;
+    const li = getLastInputs(cat).weight;
+    if(!li || li.value == null || !(parseFloat(li.value) > 0)) return;   // 없으면 기존 placeholder 유지
+    el.value = li.value;
+    if(typeof el.oninput === 'function') el.oninput.call(el);   // 이전 체중 대비 diff 표시 갱신
+  }catch(e){}
+}
+function _prefillMealSheet(){
+  try{
+    const cat = state.activeCat; if(!cat) return;
+    const nameEl = document.getElementById('foodName');
+    const amtEl = document.getElementById('foodAmt');
+    if(!nameEl || nameEl.value.trim() !== '') return;
+    const li = getLastInputs(cat).meal;
+    if(!li || !li.foodName) return;
+    if(amtEl && amtEl.value === '' && parseFloat(li.amount_g) > 0) amtEl.value = li.amount_g;
+    // 즐겨찾기 선택과 동일 경로 — kcal/100g·수분이 saveMeal까지 그대로 이어지도록 (v0.7.19 구조 재사용)
+    _fillMealFields(li.foodName, li.kcal_per_100g || null, (li.moisture != null ? li.moisture : null), true);
+  }catch(e){}
+}
+function _prefillInsulinSheet(){
+  try{
+    const cat = state.activeCat; if(!cat) return;
+    const li = getLastInputs(cat).insulin;
+    if(!li) return;
+    const typeEl = document.getElementById('insType');
+    // 종류: 마지막 사용 제품 우선 (switchCat의 profile.insulin 세팅보다 최근 행동 반영). 목록에 없는 값은 무시
+    if(typeEl && li.type && Array.prototype.some.call(typeEl.options, o => o.value === li.type)) typeEl.value = li.type;
+    const doseEl = document.getElementById('insVal');
+    if(doseEl && doseEl.value === '' && parseFloat(li.amount_u) > 0) doseEl.value = li.amount_u;
+  }catch(e){}
+}
+
 /* 혈검 날짜 = 병원 다녀온 날 (v1 스코프). 검사 3회 미만이면 예측 안 함 */
 function predictNextVisit(cat){
   const dates = [...new Set(btData.filter(b => b.cat === cat && b.date).map(b => b.date))].sort();
@@ -12338,6 +12433,7 @@ async function syncFromDB() {
       _tw('tile_config',    loadTileConfigFromDB(state.activeCat).catch(e => console.warn('타일설정 로드 오류:', e))),
       _tw('food_sync',      syncFoodDataFromDB(state.activeCat).catch(e => console.warn('사료 DB 로드 오류:', e))),
       _tw('next_visit',     loadNextVisits().catch(e => console.warn('nextVisit 로드 오류:', e))),
+      _tw('last_inputs',    loadLastInputs().catch(e => console.warn('lastInputs 로드 오류:', e))),
     ]);
     console.log(`[Perf] Promise.all 전체: ${(performance.now()-_parallelT0).toFixed(0)}ms`);
 
@@ -13063,6 +13159,10 @@ window.openDailySheet = function(type) {
     sheetBody.appendChild(formEl);
     if(sheetFoot) sheetFoot.innerHTML = '';
     _refreshCardTime(cfg.bodyId);   // 식사·혈당·인슐린·체중 시각·날짜 현재로 (물·배변 시트와 동일 패턴)
+    // 마지막 입력값 프리필 (v0.7.42) — 값 없으면 기존 placeholder/기본값 유지
+    if(type === 'weight') _prefillWeightSheet();
+    else if(type === 'meal') _prefillMealSheet();
+    else if(type === 'insulin') _prefillInsulinSheet();
   }
   var _medManageBtn = (type === 'med')
     ? '<button type="button" onclick="closeDailySheet();openCatProfile(state.activeCat,\'med\')" '+
