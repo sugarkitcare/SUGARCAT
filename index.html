@@ -10833,6 +10833,7 @@ function _resetSheetFields(type){
     const ids = type==='weight' ? ['wtVal','wtNote']
               : type==='meal' ? ['foodName','foodAmt','foodKcal']
               : type==='insulin' ? ['insVal','insPreBg']
+              : type==='glucose' ? ['bgVal','ketVal','bgNote']
               : [];
     ids.forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
     if(type==='meal'){ _favKcalPer100 = null; _favMoisture = null; }   // 잔류 필드와 함께 연동 전역도 리셋
@@ -13176,11 +13177,12 @@ window.openDailySheet = function(type) {
     _refreshCardTime(cfg.bodyId);   // 식사·혈당·인슐린·체중 시각·날짜 현재로 (물·배변 시트와 동일 패턴)
     // 마지막 입력값 프리필 (v0.7.42) — 값 없으면 기존 placeholder/기본값 유지
     // 필드 소유 고양이가 바뀌었으면 잔류 입력값 리셋 후 프리필 (v0.7.42 2차 — 이전 고양이 값 잔상 버그)
-    if(type === 'weight' || type === 'meal' || type === 'insulin'){
+    // glucose는 프리필 없이 잔상 리셋만 (v0.7.42 3차)
+    if(type === 'weight' || type === 'meal' || type === 'insulin' || type === 'glucose'){
       if(_dsFieldsCat[type] !== state.activeCat) _resetSheetFields(type);
       if(type === 'weight') _prefillWeightSheet();
       else if(type === 'meal') _prefillMealSheet();
-      else _prefillInsulinSheet();
+      else if(type === 'insulin') _prefillInsulinSheet();
       _dsFieldsCat[type] = state.activeCat;
     }
   }
