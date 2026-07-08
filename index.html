@@ -10824,6 +10824,21 @@ function _prefillInsulinSheet(){
     if(doseEl && doseEl.value === '' && parseFloat(li.amount_u) > 0) doseEl.value = li.amount_u;
   }catch(e){}
 }
+/* 시트 입력 필드는 시트를 닫아도 값이 DOM에 남는다 — 고양이 전환 후 열면 프리필의 "입력 중 보존"
+   조건이 이전 고양이 값을 사용자 입력으로 오인. 타입별로 필드 소유 고양이를 추적해
+   소유가 바뀐 경우에만 리셋 후 프리필 (같은 고양이 재진입 시 작성 중이던 값은 유지) (v0.7.42 2차) */
+let _dsFieldsCat = {};
+function _resetSheetFields(type){
+  try{
+    const ids = type==='weight' ? ['wtVal','wtNote']
+              : type==='meal' ? ['foodName','foodAmt','foodKcal']
+              : type==='insulin' ? ['insVal','insPreBg']
+              : [];
+    ids.forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+    if(type==='meal'){ _favKcalPer100 = null; _favMoisture = null; }   // 잔류 필드와 함께 연동 전역도 리셋
+    if(type==='weight'){ try{ updateWtDiff(); }catch(e){} }
+  }catch(e){}
+}
 
 /* 혈검 날짜 = 병원 다녀온 날 (v1 스코프). 검사 3회 미만이면 예측 안 함 */
 function predictNextVisit(cat){
@@ -13160,9 +13175,14 @@ window.openDailySheet = function(type) {
     if(sheetFoot) sheetFoot.innerHTML = '';
     _refreshCardTime(cfg.bodyId);   // 식사·혈당·인슐린·체중 시각·날짜 현재로 (물·배변 시트와 동일 패턴)
     // 마지막 입력값 프리필 (v0.7.42) — 값 없으면 기존 placeholder/기본값 유지
-    if(type === 'weight') _prefillWeightSheet();
-    else if(type === 'meal') _prefillMealSheet();
-    else if(type === 'insulin') _prefillInsulinSheet();
+    // 필드 소유 고양이가 바뀌었으면 잔류 입력값 리셋 후 프리필 (v0.7.42 2차 — 이전 고양이 값 잔상 버그)
+    if(type === 'weight' || type === 'meal' || type === 'insulin'){
+      if(_dsFieldsCat[type] !== state.activeCat) _resetSheetFields(type);
+      if(type === 'weight') _prefillWeightSheet();
+      else if(type === 'meal') _prefillMealSheet();
+      else _prefillInsulinSheet();
+      _dsFieldsCat[type] = state.activeCat;
+    }
   }
   var _medManageBtn = (type === 'med')
     ? '<button type="button" onclick="closeDailySheet();openCatProfile(state.activeCat,\'med\')" '+
