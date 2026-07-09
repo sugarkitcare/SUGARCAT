@@ -12243,8 +12243,10 @@ async function _checkAuthAndShow() {
 async function _signInSocial(provider){
   if(!sbClient){ toast('서버 연결을 확인해주세요. 잠시 후 다시 시도해주세요', '#D85A30'); return; }
   try{
+    // scopes 미전달 (v0.7.45 2차) — GoTrue 카카오 provider가 account_email·profile_image·profile_nickname
+    // 3종을 항상 기본 요청하고, 클라이언트 scopes는 대체가 아닌 추가 병합(쉼표 분리)이라
+    // 공백 구분 문자열을 넘기면 중복·비정상 토큰이 생김. 카카오 콘솔 동의항목은 이 3종 전부 설정 필요 (KOE205)
     const options = { redirectTo: window.location.origin };
-    if(provider === 'kakao') options.scopes = 'account_email profile_nickname';
     const { error } = await sbClient.auth.signInWithOAuth({ provider: provider, options: options });
     if(error){ console.error(provider + ' login error:', error); toast('로그인 오류: ' + error.message, '#D85A30'); }
     // 성공 시 provider 페이지로 리다이렉트 — 이후 코드는 실행되지 않음
