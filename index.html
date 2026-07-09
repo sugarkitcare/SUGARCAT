@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.42</span>
+      <span class="cm-beta">v0.7.43</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -992,47 +992,33 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
       <span style="font-size:12px;font-weight:700;color:var(--cm-green-700)">펼치기</span>
     </div>
     <div id="mealCard" style="display:none">
-    <div style="margin-bottom:.5rem">
-      <div style="display:flex;gap:6px">
-        <button type="button" onclick="openFavFoodPickerDaily()"
-          style="padding:6px 14px;border:1px solid var(--cm-green-edge);border-radius:8px;background:var(--cm-green-tint);color:var(--cm-green-700);font-size:12px;cursor:pointer;font-family:inherit;font-weight:500">즐겨찾기에서 선택</button>
-        <button type="button" onclick="toggleMealFoodSearchDaily()"
-          style="padding:6px 14px;border:1px solid var(--cm-green-edge);border-radius:8px;background:var(--cm-green-tint);color:var(--cm-green-700);font-size:12px;cursor:pointer;font-family:inherit;font-weight:500">이름으로 검색</button>
-      </div>
-      <div id="favFoodPickerDaily" style="display:none;background:var(--bg2);border-radius:10px;padding:.75rem;margin-top:.5rem">
-        <div style="font-size:11px;font-weight:500;color:var(--text2);margin-bottom:.5rem">즐겨찾기 사료 선택</div>
-        <div id="favFoodPickerDailyList"></div>
-        <!-- 혼합 레시피 선택 시 g 입력 미니 UI -->
-        <div id="tubeMixDailyBox" style="display:none;background:var(--cm-green-tint);border:0.5px solid var(--cm-green-edge);border-radius:9px;padding:.6rem .7rem;margin-top:.5rem">
-          <div style="font-size:11px;color:var(--cm-faint);margin-bottom:.3rem">혼합 레시피 기록</div>
-          <div id="tubeMixDailyName" style="font-size:13px;font-weight:600;color:var(--cm-ink);margin-bottom:.45rem"></div>
-          <div style="display:flex;gap:6px;align-items:center">
-            <input type="number" id="tubeMixDailyG" min="0" step="1" placeholder="먹인 양"
-              style="width:84px;padding:6px 8px;border:0.5px solid var(--cm-line);border-radius:8px;font-size:13px;background:var(--cm-surface-2);color:var(--cm-ink);font-family:inherit">
-            <span style="font-size:12px;color:var(--cm-faint)">g</span>
-            <button type="button" onclick="recordTubeMixDaily()"
-              style="flex:1;padding:6px 12px;border:none;border-radius:8px;background:var(--cm-green-700);color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap">먹였어요</button>
-          </div>
-        </div>
-        <button onclick="document.getElementById('favFoodPickerDaily').style.display='none'"
-          style="margin-top:.5rem;font-size:11px;color:var(--text3);background:none;border:none;cursor:pointer;font-family:inherit">닫기</button>
-      </div>
-      <!-- 사료 이름검색 패널 — 즐겨찾기 패널과 같은 자리, 상호배타 토글 (v0.7.19) -->
-      <div id="mealFoodSearchDaily" style="display:none;background:var(--bg2);border-radius:10px;padding:.75rem;margin-top:.5rem">
-        <div style="font-size:11px;font-weight:500;color:var(--text2);margin-bottom:.5rem">사료 이름으로 검색</div>
-        <input type="text" id="mealFoodSearchInput" placeholder="사료명 검색 (예: 로얄캐닌 레날)" autocomplete="off" oninput="mealFoodSearchInput(this)"
-          style="width:100%;box-sizing:border-box;padding:8px 10px;border:0.5px solid var(--bd);border-radius:9px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit">
-        <div id="mealFoodSearchResults" style="max-height:200px;overflow-y:auto;-webkit-overflow-scrolling:touch;margin-top:.4rem"></div>
-        <button onclick="document.getElementById('mealFoodSearchDaily').style.display='none'"
-          style="margin-top:.5rem;font-size:11px;color:var(--text3);background:none;border:none;cursor:pointer;font-family:inherit">닫기</button>
-      </div>
-    </div>
+    <!-- 상단 고정 필드 — 어느 탭에서 선택해도 결과는 여기로 모임, 저장은 하단 버튼 하나 (v0.7.43) -->
     <div class="row2">
-      <div class="ig"><label>사료명</label><input type="text" id="foodName" placeholder="예: 몬지 레날" oninput="_favKcalPer100=null;_favMoisture=null"></div>
+      <div class="ig"><label>사료명</label><input type="text" id="foodName" placeholder="예: 몬지 레날" oninput="_favKcalPer100=null;_favMoisture=null;_mealSelRecipe=null;_mealSelSource=null"></div>
       <div class="ig"><label>급여량 (g)</label><input type="number" id="foodAmt" placeholder="g" oninput="if(_favKcalPer100){const _a=parseFloat(this.value);const _kEl=document.getElementById('foodKcal');if(_kEl)_kEl.value=isNaN(_a)||_a<=0?'':Math.round(_favKcalPer100*_a/100);}"></div>
       <div class="ig"><label>칼로리 (kcal)</label><input type="number" id="foodKcal" placeholder="kcal"></div>
       <div class="ig"><label>날짜</label><input type="date" id="foodDate"></div>
       <div class="ig"><label>급여 시각</label><input type="time" id="foodTime"></div>
+    </div>
+    <!-- 사료 선택 탭 — 즐겨찾기 · 이름 검색 · 혼합 레시피를 한 UI로 통합 (v0.7.43) -->
+    <div class="f-seg" style="margin:.15rem 0 .5rem">
+      <button type="button" id="mealTabBtn_favorite" data-on="0" onclick="switchMealTab('favorite')" style="padding:8px 0;font-size:12.5px">즐겨찾기</button>
+      <button type="button" id="mealTabBtn_search" data-on="0" onclick="switchMealTab('search')" style="padding:8px 0;font-size:12.5px">이름 검색</button>
+      <button type="button" id="mealTabBtn_recipe" data-on="0" onclick="switchMealTab('recipe')" style="padding:8px 0;font-size:12.5px">혼합 레시피</button>
+    </div>
+    <div id="mealTabBody_favorite" style="display:none;background:var(--bg2);border-radius:10px;padding:.75rem;margin-bottom:.6rem">
+      <div style="font-size:11px;font-weight:500;color:var(--text2);margin-bottom:.5rem">즐겨찾기 사료 선택</div>
+      <div id="favFoodPickerDailyList"></div>
+    </div>
+    <div id="mealTabBody_search" style="display:none;background:var(--bg2);border-radius:10px;padding:.75rem;margin-bottom:.6rem">
+      <div style="font-size:11px;font-weight:500;color:var(--text2);margin-bottom:.5rem">사료 이름으로 검색</div>
+      <input type="text" id="mealFoodSearchInput" placeholder="사료명 검색 (예: 로얄캐닌 레날)" autocomplete="off" oninput="mealFoodSearchInput(this)"
+        style="width:100%;box-sizing:border-box;padding:8px 10px;border:0.5px solid var(--bd);border-radius:9px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit">
+      <div id="mealFoodSearchResults" style="max-height:200px;overflow-y:auto;-webkit-overflow-scrolling:touch;margin-top:.4rem"></div>
+    </div>
+    <div id="mealTabBody_recipe" style="display:none;background:var(--bg2);border-radius:10px;padding:.75rem;margin-bottom:.6rem">
+      <div style="font-size:11px;font-weight:500;color:var(--text2);margin-bottom:.5rem">혼합 레시피 선택</div>
+      <div id="mealRecipeListDaily"></div>
     </div>
     <button class="cm-btn cm-btn--block" id="saveMeal">식사 저장</button>
     </div>
@@ -1786,8 +1772,8 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
         <div style="margin-top:.35rem">흡인성 폐렴은 한번 생기면 위험하기 때문에 예방이 가장 중요합니다. 천천히, 너무 묽지 않은 점도, 무리하지 않기를 꼭 지켜 주세요.</div>
 
         <div style="font-weight:700;color:var(--cm-green-700);margin-top:.7rem;margin-bottom:.2rem">앱에 기록하는 방법</div>
-        <div>이 화면에서는 레시피를 만들어 저장합니다. 실제로 먹인 양은 <b>오늘 탭 → 식사·칼로리 → '즐겨찾기에서 선택'</b>에서 기록합니다.</div>
-        <div style="margin-top:.35rem">'혼합 레시피'를 골라 먹인 양(g)을 입력하면 칼로리가 자동으로 계산됩니다. 강급이든 혼합이든 먹인 양만 입력하면 됩니다.</div>
+        <div>이 화면에서는 레시피를 만들어 저장합니다. 실제로 먹인 양은 <b>오늘 탭 → 식사·칼로리 → '혼합 레시피' 탭</b>에서 기록합니다.</div>
+        <div style="margin-top:.35rem">레시피를 골라 먹인 양(g)을 입력하고 '식사 저장'을 누르면 칼로리가 자동으로 계산됩니다. 강급이든 혼합이든 먹인 양만 입력하면 됩니다.</div>
       </div>
     </div>
 
@@ -2001,7 +1987,9 @@ let btEditMode=false,btEditOriginals={};
 let favFoods=[];
 let _favKcalPer100=null; // 즐겨찾기 선택 시 세팅, 수동 입력 시 null로 초기화
 let _favMoisture=null;   // 즐겨찾기 선택 시 moisture% 세팅, 수동 입력 시 null
-let _tubeMixDailyIdx=null; // 오늘탭 식사 피커에서 고른 혼합 레시피 인덱스 (tubeRecipes)
+let _mealSelRecipe=null;   // 오늘탭 식사 시트에서 고른 혼합 레시피 {cat,id,name} — saveMeal 라우팅용 (v0.7.43)
+let _mealSelSource=null;   // 상단 필드 값의 출처 탭 'favorite'|'search'|'recipe' — lastInputs.meal.type용 (v0.7.43)
+let _mealPrefillType=null; // 직전 프리필의 lastInputs.meal.type — 시트 진입 기본 탭 결정용 (v0.7.43)
 try{const _ffd=localStorage.getItem('favFoods_v1');if(_ffd){const _r=JSON.parse(_ffd);favFoods=_r.map(x=>typeof x==='string'?{name:x,kcalPer100g:null,type:null}:x);}}catch(e){}
 try{const d=localStorage.getItem(SK);if(d)state=JSON.parse(d)}catch(e){}
 try{const d=localStorage.getItem(SK_BT);if(d){const raw=JSON.parse(d);btData=raw.map(r=>({...r,items:normalizeBTItems(r.items||[])}));}}catch(e){}
@@ -2831,56 +2819,90 @@ function autoSetFdMode(cat) {
 }
 
 
-/* ── 즐겨찾기 사료 피커 (오늘기록탭) ── */
-function openFavFoodPickerDaily() {
-  const picker = document.getElementById('favFoodPickerDaily');
-  const list = document.getElementById('favFoodPickerDailyList');
-  if(!picker || !list) return;
-  // 다시 열 때 이전 혼합 레시피 선택 미니 UI 초기화
-  _tubeMixDailyIdx = null;
-  const _box = document.getElementById('tubeMixDailyBox');
-  if(_box) _box.style.display = 'none';
-  // 상호배타: 이름검색 패널 닫기 (동시 열림 방지)
-  const _srch = document.getElementById('mealFoodSearchDaily');
-  if(_srch) _srch.style.display = 'none';
-  picker.style.display = picker.style.display === 'none' ? 'block' : 'none';
-  if(picker.style.display === 'none') return;
-  try{const d=localStorage.getItem('favFoods_v1_'+state.activeCat);if(d)favFoods=JSON.parse(d);}catch(e){}
-  try{const d=localStorage.getItem('tubeRecipes_v1_'+state.activeCat);if(d)tubeRecipes=JSON.parse(d);}catch(e){}
-  _renderFavFoodPickerList('favFoodPickerDailyList');
+/* ── 사료 선택 탭 UI (오늘기록탭 식사 시트, v0.7.43) ──
+   즐겨찾기·이름 검색·혼합 레시피 세 진입점을 탭 하나로 통합. 어느 탭에서 선택해도
+   상단 필드(foodName·foodKcal)로 모이고, 저장은 하단 '식사 저장' 버튼 하나.
+   마지막 사용 탭은 고양이별 localStorage(lastMealTab_<cat>)에 기억. */
+function switchMealTab(tab, _noSave) {
+  if(['favorite','search','recipe'].indexOf(tab) < 0) tab = 'favorite';
+  ['favorite','search','recipe'].forEach(t => {
+    const btn = document.getElementById('mealTabBtn_'+t);
+    const body = document.getElementById('mealTabBody_'+t);
+    if(btn) btn.dataset.on = (t === tab) ? '1' : '0';
+    if(body) body.style.display = (t === tab) ? 'block' : 'none';
+  });
+  // 마지막 사용 탭 기억 — 사용자 탭 전환에서만 기록, 프로그램 경로(_noSave)는 제외 (v0.7.36 소유 원칙)
+  if(!_noSave){ try{ if(state.activeCat) localStorage.setItem('lastMealTab_'+state.activeCat, tab); }catch(e){} }
+  if(tab === 'favorite') {
+    try{const d=localStorage.getItem('favFoods_v1_'+state.activeCat);if(d)favFoods=JSON.parse(d);}catch(e){}
+    _renderFavFoodPickerList('favFoodPickerDailyList');
+  } else if(tab === 'search') {
+    const box = document.getElementById('mealFoodSearchResults');
+    const inp = document.getElementById('mealFoodSearchInput');
+    if(inp && inp.value.trim().length >= 2) { mealFoodSearchInput(inp); }   // 작성 중이던 검색어 유지 → 재검색
+    else if(box) {
+      const _loggedIn = (typeof sbClient !== 'undefined' && sbClient) && (typeof currentUser !== 'undefined' && currentUser);
+      box.innerHTML = '<div style="font-size:11px;color:var(--text3);padding:.25rem 0">사료명을 2자 이상 입력해주세요'
+        + (_loggedIn ? '' : ' · 로그인하면 보호자 등록 사료까지 검색돼요') + '</div>';
+      _mealSearchResults = [];
+    }
+  } else {
+    _renderMealRecipeTab();
+  }
 }
-/* 오늘탭 식사 피커: 혼합 레시피 고르면 g 입력 미니 UI 표시 (단일 사료 경로와 별개) */
-function selectTubeRecipeDaily(idx) {
-  const r = tubeRecipes[idx];
+/* 시트 진입 시 탭 초기화 — 프리필이 레시피면 레시피 탭, 아니면 마지막 사용 탭(없으면 즐겨찾기) */
+function _initMealTabs() {
+  try{
+    let tab = null;
+    if(_mealPrefillType === 'recipe') tab = 'recipe';
+    if(!tab){ try{ tab = localStorage.getItem('lastMealTab_'+(state.activeCat||'')); }catch(e){} }
+    switchMealTab(tab || 'favorite', true);
+  }catch(e){}
+}
+/* 레시피 kcal/100g(사료 g 기준, 물 제외) — feedTubeRecipeMix의 kcal 분배와 동일 기준 */
+function _mealRecipeKcalPer100(r) {
+  const items = (r && r.items) || [];
+  const foodG = items.reduce((a,it) => a + (parseFloat(it.grams)||0), 0);
+  if(foodG <= 0) return null;
+  const totalKcal = items.reduce((a,it) => a + (parseFloat(it.grams)||0) * (parseFloat(it.kcalPer100g)||0) / 100, 0);
+  return Math.round(totalKcal / foodG * 100 * 10) / 10;
+}
+function _renderMealRecipeTab() {
+  const list = document.getElementById('mealRecipeListDaily');
+  if(!list) return;
+  try{const d=localStorage.getItem('tubeRecipes_v1_'+state.activeCat);tubeRecipes=d?JSON.parse(d):[];}catch(e){}
+  if(!tubeRecipes || !tubeRecipes.length) {
+    list.innerHTML = '<div style="font-size:11px;color:var(--text3);padding:.25rem 0">저장된 혼합 레시피가 없어요.<br>사료탭 → 강급 레시피에서 만들 수 있어요.</div>';
+    return;
+  }
+  list.innerHTML = tubeRecipes.map(function(r, i) {
+    var rnm = String(r.name || '혼합 레시피').replace(/</g,'&lt;');
+    var nFood = (r.items || []).length;
+    var meta = (r.totalKcal != null ? r.totalKcal + 'kcal' : '') + (nFood ? ' · 재료 ' + nFood + '종' : '');
+    return '<div style="display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:0.5px solid var(--bd)">'
+      + '<span style="flex:1;font-size:12px;color:var(--text)">' + rnm + (meta ? ' <span style="color:var(--text3)">(' + meta + ')</span>' : '') + '</span>'
+      + '<button type="button" onclick="selectMealRecipeDaily(' + i + ')" style="padding:4px 10px;background:var(--cm-green-700);color:#fff;border:none;border-radius:7px;font-size:11px;cursor:pointer;font-family:inherit">선택</button>'
+      + '</div>';
+  }).join('');
+}
+/* 혼합 레시피 [선택] — 상단 필드에 레시피명·kcal 반영. '먹였어요' 버튼 대신 하단 식사 저장으로 일원화.
+   저장 시 saveMeal이 _mealSelRecipe를 보고 feedTubeRecipeMix(재료별 분해 기록) 경로로 라우팅 */
+function selectMealRecipeDaily(i) {
+  const r = tubeRecipes[i];
   if(!r) return;
-  _tubeMixDailyIdx = idx;
-  const nm = document.getElementById('tubeMixDailyName');
-  const gi = document.getElementById('tubeMixDailyG');
-  const box = document.getElementById('tubeMixDailyBox');
-  if(nm) nm.textContent = r.name || '혼합 레시피';
-  if(gi) gi.value = '';
-  if(box) box.style.display = 'block';
-  if(gi) try{ gi.focus(); }catch(e){}
+  const kp = _mealRecipeKcalPer100(r);
+  const name = r.name || '혼합 레시피';
+  _fillMealFields(name, kp, null, true);
+  _mealSelRecipe = {cat: state.activeCat, id: (r.id != null ? r.id : null), name: name};   // 선택 시점 고양이 캡처 (소유 가드)
+  _mealSelSource = 'recipe';
+  toast(name + ' · 먹은 양(g) 입력 후 식사 저장을 눌러주세요');
 }
-/* "먹였어요" → 기존 feedTubeRecipeMix 재사용(재료별 push·칼로리·수분 자체 처리). today 고정 */
-function recordTubeMixDaily() {
-  if(_tubeMixDailyIdx == null) return;
-  const gi = document.getElementById('tubeMixDailyG');
-  const g = parseFloat(gi ? gi.value : '') || 0;
-  if(g <= 0) { toast('먹은 양(g)을 입력해주세요', '#BA7517'); return; }
-  feedTubeRecipeMix(_tubeMixDailyIdx, g);   // meals 갱신·식사요약·칼로리·수분 게이지 모두 이 안에서 처리
-  const box = document.getElementById('tubeMixDailyBox');
-  if(box) box.style.display = 'none';
-  if(gi) gi.value = '';
-  _tubeMixDailyIdx = null;
-  const picker = document.getElementById('favFoodPickerDaily');
-  if(picker) picker.style.display = 'none';
-}
-/* 공용 필드 채움 — 즐겨찾기·이름검색 [선택]이 공유. moisture가 즐겨찾기와 동일 경로
+/* 공용 필드 채움 — 즐겨찾기·이름검색·레시피 [선택]이 공유. moisture가 즐겨찾기와 동일 경로
    (_favMoisture → saveMeal → meals[].moisture → 음수량 집계)를 타는 것이 핵심 (v0.7.19).
    silentToast=true면 기본 토스트 생략(호출부가 자체 안내 토스트를 띄울 때). */
 function _fillMealFields(name, kcalPer100, moisture, silentToast) {
   _favMoisture = (moisture != null) ? moisture : null;
+  _mealSelRecipe = null;   // 레시피 선택 해제 — 레시피 경로는 selectMealRecipeDaily가 이후 다시 세팅
   document.getElementById('foodName').value = name;
   document.getElementById('foodKcal').value = '';
   if(kcalPer100) {
@@ -2901,29 +2923,13 @@ function selectFavFoodDaily(idx) {
   const kcalPer100 = typeof fav === 'string' ? null : fav.kcalPer100g;
   const moisture = (typeof fav === 'object' && fav.moisture != null) ? fav.moisture : null;
   _fillMealFields(name, kcalPer100, moisture, false);
-  document.getElementById('favFoodPickerDaily').style.display = 'none';
+  _mealSelSource = 'favorite';
 }
 
 /* ── 사료 이름검색 (오늘기록탭 급여 폼) — searchFoodMaster 재사용, 즐겨찾기와 동일 필드채움 경로 (v0.7.19) ── */
 let _mealSearchResults=[];   // 현재 표시 중인 검색 결과 — [선택] 인덱스 매핑용
 let _mealSearchDebTimer=null;
 let _mealSearchSeq=0;        // 비동기 응답 stale 가드 (fmSearchInput 패턴)
-function toggleMealFoodSearchDaily() {
-  const panel = document.getElementById('mealFoodSearchDaily');
-  if(!panel) return;
-  // 상호배타: 즐겨찾기 패널 닫기 (동시 열림 방지 → 스크롤 안 늘어남)
-  const _fav = document.getElementById('favFoodPickerDaily');
-  if(_fav) _fav.style.display = 'none';
-  panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-  if(panel.style.display === 'none') return;
-  const box = document.getElementById('mealFoodSearchResults');
-  const _loggedIn = (typeof sbClient !== 'undefined' && sbClient) && (typeof currentUser !== 'undefined' && currentUser);
-  if(box) box.innerHTML = '<div style="font-size:11px;color:var(--text3);padding:.25rem 0">사료명을 2자 이상 입력해주세요'
-    + (_loggedIn ? '' : ' · 로그인하면 보호자 등록 사료까지 검색돼요') + '</div>';
-  _mealSearchResults = [];
-  const inp = document.getElementById('mealFoodSearchInput');
-  if(inp) { inp.value=''; try{ inp.focus(); }catch(e){} }
-}
 /* cm_fooddb 항목(b/n/t/k 축약키) → 급여 검색 공통 형태. moisture 없음(카탈로그) → null
    → 습식이면 선택 시 "수분정보 없음" 토스트 경로로 자연 연결 (v0.7.20) */
 function _mealNormLocal(x) {
@@ -2996,8 +3002,7 @@ function selectMealSearchFoodDaily(i) {
   const wetNoMoisture = item.type === 'wet' && (item.moisture == null || item.moisture === 0);
   _fillMealFields(item.name, item.kcal_per_100g, item.moisture, wetNoMoisture);
   if(wetNoMoisture) toast('💧 수분정보없음 (음수량 미반영) · 성분분석 필요', '#BA7517', 3500);
-  const panel = document.getElementById('mealFoodSearchDaily');
-  if(panel) panel.style.display = 'none';
+  _mealSelSource = 'search';
 }
 
 /* ── 즐겨찾기 사료 피커 ── */
@@ -3014,15 +3019,14 @@ function _renderFavFoodPickerList(listId, onSelect) {
   const _list = document.getElementById(listId);
   if(!_list) return;
   var _isDaily = listId === 'favFoodPickerDailyList';
-  // 일일 피커는 혼합 레시피 섹션이 있을 수 있어 favFoods 비어도 막지 않음
   if(!favFoods.length && !_isDaily) {
     _list.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:.5rem">즐겨찾기된 사료가 없어요.<br>사료 분석 후 ⭐️을 눌러 추가해주세요.</div>';
     return;
   }
   if(_isDaily) {
+    // 혼합 레시피는 별도 탭으로 분리 (v0.7.43) — 여기는 즐겨찾기 사료만
     var html = '';
-    html += '<div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:.35rem">사료</div>';
-    if(!favFoods.length) html += '<div style="font-size:11px;color:var(--text3);padding:.25rem 0 .35rem">즐겨찾기된 사료가 없어요</div>';
+    if(!favFoods.length) html += '<div style="font-size:11px;color:var(--text3);padding:.25rem 0 .35rem">즐겨찾기된 사료가 없어요.<br>사료탭에서 분석 후 즐겨찾기에 추가해주세요.</div>';
     html += favFoods.map(function(f, i) {
       var nm = typeof f === 'string' ? f : f.name;
       var kp = typeof f === 'string' ? null : f.kcalPer100g;
@@ -3033,19 +3037,6 @@ function _renderFavFoodPickerList(listId, onSelect) {
         + '<button type="button" onclick="deleteFavFood(' + i + ',\u0027favFoodPickerDailyList\u0027)" style="background:none;border:none;color:var(--cm-faint);cursor:pointer;padding:2px 6px;font-size:15px;line-height:1">×</button>'
         + '</div>';
     }).join('');
-    // ── 혼합 레시피 섹션 (있을 때만) ──
-    if(typeof tubeRecipes !== 'undefined' && tubeRecipes && tubeRecipes.length) {
-      html += '<div style="font-size:11px;font-weight:600;color:var(--text2);margin:.7rem 0 .35rem;padding-top:.5rem;border-top:0.5px solid var(--bd)">혼합 레시피</div>';
-      html += tubeRecipes.map(function(r, i) {
-        var rnm = (r.name || '혼합 레시피');
-        var nFood = (r.items || []).length;
-        var meta = (r.totalKcal != null ? r.totalKcal + 'kcal' : '') + (nFood ? ' · 재료 ' + nFood + '종' : '');
-        return '<div style="display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:0.5px solid var(--bd)">'
-          + '<span style="flex:1;font-size:12px;color:var(--text)">' + rnm + (meta ? ' <span style="color:var(--text3)">(' + meta + ')</span>' : '') + '</span>'
-          + '<button type="button" onclick="selectTubeRecipeDaily(' + i + ')" style="padding:4px 10px;background:var(--cm-green-700);color:#fff;border:none;border-radius:7px;font-size:11px;cursor:pointer;font-family:inherit">선택</button>'
-          + '</div>';
-      }).join('');
-    }
     _list.innerHTML = html;
   } else {
     var _isTube = listId === 'tubeFavPickerList';
@@ -4678,14 +4669,29 @@ document.getElementById('saveMeal').onclick=()=>{
   const name=document.getElementById('foodName').value,amt=document.getElementById('foodAmt').value;
   if(!name&&!amt){toast('사료명 또는 급여량을 입력해주세요','#D85A30');return}
   const mealD=document.getElementById('foodDate').value||today();
+  // ── 혼합 레시피 경로 (v0.7.43) — 선택한 고양이·레시피명이 그대로일 때만 (소유 가드).
+  //    재료별 분해 기록(feedTubeRecipeMix)이라 수분 게이지·이력 그룹 표시 기존 형식 유지
+  if(_mealSelRecipe&&_mealSelRecipe.cat===state.activeCat&&name.trim()===_mealSelRecipe.name){
+    const g=parseFloat(amt)||0;
+    if(g<=0){toast('먹은 양(g)을 입력해주세요','#D85A30');return}
+    let idx=(_mealSelRecipe.id!=null)?tubeRecipes.findIndex(r=>r&&r.id===_mealSelRecipe.id):-1;
+    if(idx<0)idx=tubeRecipes.findIndex(r=>r&&(r.name||'혼합 레시피')===_mealSelRecipe.name);
+    if(idx<0){toast('레시피를 찾을 수 없어요. 다시 선택해주세요','#BA7517');_mealSelRecipe=null;return}
+    feedTubeRecipeMix(idx,g,mealD,document.getElementById('foodTime').value||nowTime());
+    setLastInput(state.activeCat,'meal',{type:'recipe',foodName:_mealSelRecipe.name,recipeId:_mealSelRecipe.id,amount_g:g,kcal_per_100g:_favKcalPer100||null,moisture:null});
+    _mealSelRecipe=null;_mealSelSource=null;_favKcalPer100=null;_favMoisture=null;
+    ['foodName','foodAmt','foodKcal'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('foodTime').value=nowTime();
+    return;
+  }
   getRec(state.activeCat,mealD).meals.push({name,amt:parseFloat(amt)||0,kcal:parseFloat(document.getElementById('foodKcal').value)||0,time:document.getElementById('foodTime').value,ts:Date.now(),moisture:_favMoisture});
   // 다음번 프리필용 (v0.7.42) — kcal/100g은 즐겨찾기 선택값 우선, 없으면 총kcal·급여량에서 역산
   if(name){
     const _liAmt=parseFloat(amt)||0, _liKcal=parseFloat(document.getElementById('foodKcal').value)||0;
     const _liK100=_favKcalPer100||(_liAmt>0&&_liKcal>0?Math.round(_liKcal/_liAmt*100):null);
-    setLastInput(state.activeCat,'meal',{foodName:name,amount_g:_liAmt||null,kcal_per_100g:_liK100,moisture:_favMoisture});
+    setLastInput(state.activeCat,'meal',{type:_mealSelSource||null,foodName:name,recipeId:null,amount_g:_liAmt||null,kcal_per_100g:_liK100,moisture:_favMoisture});
   }
-  _favMoisture=null;
+  _favMoisture=null;_mealSelSource=null;
   saveS(mealD);['foodName','foodAmt','foodKcal'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('foodTime').value=nowTime();   // 연속 급여 대응 (addWater 패턴)
   toast(mealD!==today()?mealD+' 날짜로 저장됐어요':'식사 저장 완료!');renderDailySummary();
@@ -8670,12 +8676,13 @@ function deleteTubeRecipe(idx){
   toast(nm+' 삭제됐어요');
 }
 
-/* 혼합급여 "N g 먹였어요" — 레시피를 일반 식사로 기록.
+/* 혼합급여 — 레시피를 일반 식사로 기록 (v0.7.43: 오늘탭 식사 저장 버튼으로 일원화).
    재료별 개별 meal push → 습식 항목(moisture≥60)이 단독으로 수분 게이지 통과.
    mixTs(=base, 그룹키)·mixName(레시피명) 마커 부여 (v0.7.18) — 소비처는 renderHistory·
    renderDailySummary 그룹 표시와 editMixGroup/deleteMixGroup뿐, 그 외 경로엔 일반 식사.
-   ⚠️ 추가물(addedWaterMl moisture:100)은 제외 — 탄 물은 음수로 따로 기록(이중계산 방지). */
-function feedTubeRecipeMix(idx, gOverride){
+   ⚠️ 추가물(addedWaterMl moisture:100)은 제외 — 탄 물은 음수로 따로 기록(이중계산 방지).
+   dateOverride·timeOverride: 시트 날짜·시각 필드 반영용, 생략 시 오늘·현재 (기존 동작) */
+function feedTubeRecipeMix(idx, gOverride, dateOverride, timeOverride){
   if(idx<0||idx>=tubeRecipes.length)return;
   const r=tubeRecipes[idx];
   const items=r.items||[];
@@ -8685,9 +8692,9 @@ function feedTubeRecipeMix(idx, gOverride){
   // 레시피 사료 총 g(물 제외) — 먹은 g을 재료 비율대로 분배
   const foodG=items.reduce((a,it)=>a+(parseFloat(it.grams)||0),0);
   if(foodG<=0){toast('레시피 재료 g이 없어요','#BA7517');return;}
-  const d=today();
+  const d=dateOverride||today();
   const recd=getRec(state.activeCat,d);
-  const t=nowTime();
+  const t=timeOverride||nowTime();
   const base=Date.now();
   let kcalSum=0,waterSum=0,n=0;
   items.forEach(item=>{
@@ -8706,7 +8713,7 @@ function feedTubeRecipeMix(idx, gOverride){
   try{updateMetrics();}catch(e){}
   try{renderDailySummary();}catch(e){}
   try{renderTubeRecipeList();}catch(e){}
-  toast('혼합급여 기록 · '+Math.round(eg)+'g · '+Math.round(kcalSum)+'kcal'+(waterSum>0?' · 수분 '+Math.round(waterSum)+'ml':''));
+  toast((d!==today()?d+' · ':'')+'혼합급여 기록 · '+Math.round(eg)+'g · '+Math.round(kcalSum)+'kcal'+(waterSum>0?' · 수분 '+Math.round(waterSum)+'ml':''));
 }
 
 function openTubeFavPicker(){
@@ -10800,6 +10807,7 @@ function _prefillWeightSheet(){
   }catch(e){}
 }
 function _prefillMealSheet(){
+  _mealPrefillType = null;
   try{
     const cat = state.activeCat; if(!cat) return;
     const nameEl = document.getElementById('foodName');
@@ -10808,6 +10816,22 @@ function _prefillMealSheet(){
     const li = getLastInputs(cat).meal;
     if(!li || !li.foodName) return;
     if(amtEl && amtEl.value === '' && parseFloat(li.amount_g) > 0) amtEl.value = li.amount_g;
+    // 마지막 저장이 혼합 레시피면 레시피 재조회 후 레시피 선택 상태로 복원 (v0.7.43)
+    // — 그대로 저장하면 다시 레시피(재료별 분해) 경로. 구버전 데이터(type 없음)는 일반 경로
+    if(li.type === 'recipe'){
+      let recipes = [];
+      try{ const d = localStorage.getItem('tubeRecipes_v1_'+cat); recipes = d ? JSON.parse(d) : []; }catch(e){}
+      let idx = (li.recipeId != null) ? recipes.findIndex(r => r && r.id === li.recipeId) : -1;
+      if(idx < 0) idx = recipes.findIndex(r => r && (r.name || '혼합 레시피') === li.foodName);
+      if(idx >= 0){
+        const r = recipes[idx];
+        _fillMealFields(li.foodName, _mealRecipeKcalPer100(r), null, true);
+        _mealSelRecipe = {cat: cat, id: (r.id != null ? r.id : null), name: li.foodName};
+        _mealPrefillType = 'recipe';
+        return;
+      }
+      // 레시피가 삭제됨 — 일반 사료 프리필로 폴백
+    }
     // 즐겨찾기 선택과 동일 경로 — kcal/100g·수분이 saveMeal까지 그대로 이어지도록 (v0.7.19 구조 재사용)
     _fillMealFields(li.foodName, li.kcal_per_100g || null, (li.moisture != null ? li.moisture : null), true);
   }catch(e){}
@@ -10836,7 +10860,10 @@ function _resetSheetFields(type){
               : type==='glucose' ? ['bgVal','ketVal','bgNote']
               : [];
     ids.forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
-    if(type==='meal'){ _favKcalPer100 = null; _favMoisture = null; }   // 잔류 필드와 함께 연동 전역도 리셋
+    if(type==='meal'){ _favKcalPer100 = null; _favMoisture = null; _mealSelRecipe = null; _mealSelSource = null;   // 잔류 필드와 함께 연동 전역도 리셋
+      const _si = document.getElementById('mealFoodSearchInput'); if(_si) _si.value = '';   // 이전 고양이 검색어 잔상 리셋 (v0.7.43)
+      const _sr = document.getElementById('mealFoodSearchResults'); if(_sr) _sr.innerHTML = ''; _mealSearchResults = [];
+    }
     if(type==='weight'){ try{ updateWtDiff(); }catch(e){} }
   }catch(e){}
 }
@@ -13185,6 +13212,8 @@ window.openDailySheet = function(type) {
       else if(type === 'insulin') _prefillInsulinSheet();
       _dsFieldsCat[type] = state.activeCat;
     }
+    // 사료 선택 탭 초기화 (v0.7.43) — 프리필이 레시피면 레시피 탭, 아니면 고양이별 마지막 사용 탭
+    if(type === 'meal') try{ _initMealTabs(); }catch(e){}
   }
   var _medManageBtn = (type === 'med')
     ? '<button type="button" onclick="closeDailySheet();openCatProfile(state.activeCat,\'med\')" '+
@@ -13291,7 +13320,7 @@ async function syncFoodDataFromDB(cat) {
     // cat===state.activeCat 가드 (v0.7.36): await 사이 고양이가 바뀌었으면 렌더·재계산 폐기
     if(updated && cat===state.activeCat){try{renderFdHistory();}catch(e){}try{renderManualFoodList();}catch(e){}try{renderTubeRecipeList();}catch(e){}try{calcCalorie();}catch(e){}}
     // favFoods 갱신 시 현재 열려 있는 피커 재렌더 (switchCat 후 sync 완료 전에 열린 피커 최신화)
-    if(_favUpdated){try{[['favFoodPicker','favFoodPickerList'],['favFoodPickerDaily','favFoodPickerDailyList'],['tubeFavPicker','tubeFavPickerList']].forEach(([pid,lid])=>{const p=document.getElementById(pid);if(p&&p.style.display!=='none')_renderFavFoodPickerList(lid);});}catch(e){}}
+    if(_favUpdated){try{[['favFoodPicker','favFoodPickerList'],['mealTabBody_favorite','favFoodPickerDailyList'],['tubeFavPicker','tubeFavPickerList']].forEach(([pid,lid])=>{const p=document.getElementById(pid);if(p&&p.style.display!=='none')_renderFavFoodPickerList(lid);});}catch(e){}}
   }catch(e){console.warn('사료 DB 로드 오류:',e);}
 }
 
