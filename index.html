@@ -588,7 +588,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.43</span>
+      <span class="cm-beta">v0.7.44</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -1004,7 +1004,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
     <div class="f-seg" style="margin:.15rem 0 .5rem">
       <button type="button" id="mealTabBtn_favorite" data-on="0" onclick="switchMealTab('favorite')" style="padding:8px 0;font-size:12.5px">즐겨찾기</button>
       <button type="button" id="mealTabBtn_search" data-on="0" onclick="switchMealTab('search')" style="padding:8px 0;font-size:12.5px">이름 검색</button>
-      <button type="button" id="mealTabBtn_recipe" data-on="0" onclick="switchMealTab('recipe')" style="padding:8px 0;font-size:12.5px">혼합 레시피</button>
+      <button type="button" id="mealTabBtn_recipe" data-on="0" onclick="switchMealTab('recipe')" style="padding:8px 0;font-size:12.5px">레시피</button>
     </div>
     <div id="mealTabBody_favorite" style="display:none;background:var(--bg2);border-radius:10px;padding:.75rem;margin-bottom:.6rem">
       <div style="font-size:11px;font-weight:500;color:var(--text2);margin-bottom:.5rem">즐겨찾기 사료 선택</div>
@@ -1017,7 +1017,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
       <div id="mealFoodSearchResults" style="max-height:200px;overflow-y:auto;-webkit-overflow-scrolling:touch;margin-top:.4rem"></div>
     </div>
     <div id="mealTabBody_recipe" style="display:none;background:var(--bg2);border-radius:10px;padding:.75rem;margin-bottom:.6rem">
-      <div style="font-size:11px;font-weight:500;color:var(--text2);margin-bottom:.5rem">혼합 레시피 선택</div>
+      <div style="font-size:11px;font-weight:500;color:var(--text2);margin-bottom:.5rem">레시피 선택</div>
       <div id="mealRecipeListDaily"></div>
     </div>
     <button class="cm-btn cm-btn--block" id="saveMeal">식사 저장</button>
@@ -1511,7 +1511,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="f-seg" style="margin-bottom:.75rem">
     <button id="fSegCalc" data-on="1" onclick="setFoodSeg('calc')" style="padding:7px 0;font-size:13px">급여량 계산</button>
     <button id="fSegAnalysis" data-on="0" onclick="setFoodSeg('analysis')" style="padding:7px 0;font-size:13px">성분 분석</button>
-    <button id="fSegTube" data-on="0" onclick="setFoodSeg('tube')" style="padding:7px 0;font-size:13px">강급 레시피</button>
+    <button id="fSegTube" data-on="0" onclick="setFoodSeg('tube')" style="padding:7px 0;font-size:13px">레시피</button>
   </div>
 
   <!-- ── 급여량 계산 ── -->
@@ -1733,13 +1733,19 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
 
   </div>
 
-  <!-- ── 강급 레시피 ── -->
+  <!-- ── 레시피 (일반 조합 · 강급용 조합, v0.7.44) ── -->
   <div id="foodSegTube" style="display:none">
 
-    <div style="font-size:11.5px;color:var(--cm-faint);line-height:1.6;margin-bottom:.75rem">스스로 먹지 못하는 아이를 위한 급여 레시피입니다</div>
+    <div style="font-size:11.5px;color:var(--cm-faint);line-height:1.6;margin-bottom:.75rem">여러 사료를 조합해 레시피를 만들 수 있어요</div>
 
-    <!-- 처음 강급하는 보호자를 위한 안내 (아코디언, 기본 접힘) -->
-    <div class="cm-card cm-card--flat" style="margin-bottom:.75rem;padding:0;overflow:hidden">
+    <!-- 모드 토글 — 강급은 레시피의 사용 케이스 중 하나 (v0.7.44) -->
+    <div class="f-seg" style="margin-bottom:.75rem">
+      <button type="button" id="recipeModeNormal" data-on="1" onclick="setRecipeMode('normal')" style="padding:7px 0;font-size:13px">일반 조합</button>
+      <button type="button" id="recipeModeAssisted" data-on="0" onclick="setRecipeMode('assisted')" style="padding:7px 0;font-size:13px">강급용 조합</button>
+    </div>
+
+    <!-- 처음 강급하는 보호자를 위한 안내 (아코디언, 기본 접힘) — 강급용 조합 모드에서만 표시 -->
+    <div class="cm-card cm-card--flat" id="tubeGuideCard" style="margin-bottom:.75rem;padding:0;overflow:hidden;display:none">
       <div onclick="toggleTubeGuide()" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:.85rem .9rem;cursor:pointer">
         <span style="font-size:13px;font-weight:700;color:var(--cm-green-700)">처음 강급하는 보호자를 위한 안내</span>
         <span id="tubeGuideArrow" style="font-size:11px;color:var(--cm-green-700);transition:transform .2s">▼</span>
@@ -1772,7 +1778,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
         <div style="margin-top:.35rem">흡인성 폐렴은 한번 생기면 위험하기 때문에 예방이 가장 중요합니다. 천천히, 너무 묽지 않은 점도, 무리하지 않기를 꼭 지켜 주세요.</div>
 
         <div style="font-weight:700;color:var(--cm-green-700);margin-top:.7rem;margin-bottom:.2rem">앱에 기록하는 방법</div>
-        <div>이 화면에서는 레시피를 만들어 저장합니다. 실제로 먹인 양은 <b>오늘 탭 → 식사·칼로리 → '혼합 레시피' 탭</b>에서 기록합니다.</div>
+        <div>이 화면에서는 레시피를 만들어 저장합니다. 실제로 먹인 양은 <b>오늘 탭 → 식사·칼로리 → '레시피' 탭</b>에서 기록합니다.</div>
         <div style="margin-top:.35rem">레시피를 골라 먹인 양(g)을 입력하고 '식사 저장'을 누르면 칼로리가 자동으로 계산됩니다. 강급이든 혼합이든 먹인 양만 입력하면 됩니다.</div>
       </div>
     </div>
@@ -1808,8 +1814,8 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
     <!-- 질환별 영양 지표 (참고용) -->
     <div class="cm-card cm-card--flat" id="tubeNutritionCard" style="margin-bottom:.75rem;display:none"></div>
 
-    <!-- 강급 계산 (총g·회차·1회분g) -->
-    <div class="cm-card cm-card--flat" id="tubeSlurryCard" style="margin-bottom:.75rem">
+    <!-- 강급 계산 (총g·회차·1회분g) — 강급용 조합 모드에서만 표시 (v0.7.44) -->
+    <div class="cm-card cm-card--flat" id="tubeSlurryCard" style="margin-bottom:.75rem;display:none">
       <div style="margin-bottom:.6rem"><span id="tubeCalcTitle" style="font-size:12px;font-weight:600;color:var(--cm-ink-soft)">급여량 계산</span><span style="font-size:10.5px;color:var(--cm-faint);margin-left:6px">지금 조합 중인 재료 기준이에요</span></div>
       <div style="display:flex;gap:8px;margin-bottom:.6rem">
         <div id="tubeWaterRow" style="flex:1;min-width:0">
@@ -2872,7 +2878,7 @@ function _renderMealRecipeTab() {
   if(!list) return;
   try{const d=localStorage.getItem('tubeRecipes_v1_'+state.activeCat);tubeRecipes=d?JSON.parse(d):[];}catch(e){}
   if(!tubeRecipes || !tubeRecipes.length) {
-    list.innerHTML = '<div style="font-size:11px;color:var(--text3);padding:.25rem 0">저장된 혼합 레시피가 없어요.<br>사료탭 → 강급 레시피에서 만들 수 있어요.</div>';
+    list.innerHTML = '<div style="font-size:11px;color:var(--text3);padding:.25rem 0">저장된 레시피가 없어요.<br>사료탭 → 레시피에서 만들 수 있어요.</div>';
     return;
   }
   list.innerHTML = tubeRecipes.map(function(r, i) {
@@ -3100,6 +3106,8 @@ window.switchCat = function(c) {
   try{const _ts=_tubeSlurryByCat[c]||{water:'',count:'4',tool:'syringe'};const _w=document.getElementById('tubeWaterMl');if(_w)_w.value=_ts.water;const _f=document.getElementById('tubeFeedCount');if(_f)_f.value=_ts.count;const _t=document.getElementById('tubeTool');if(_t)_t.value=_ts.tool;}catch(e){}
   try{loadFoodDataForCat(c);}catch(e){}
   try{renderTubeItemList();}catch(e){}try{const _ne=document.getElementById('tubeRecipeName');if(_ne)_ne.value='';}catch(e){}
+  try{_initRecipeMode();}catch(e){}   // 레시피 모드도 고양이별 복원 (v0.7.44)
+  try{const _m=document.getElementById('recipeModeAskModal');if(_m)_m.remove();}catch(e){}   // 전환 중 팝업 잔상 제거
   if(sbClient&&currentUser){try{syncFoodDataFromDB(c).then(()=>{if(state.activeCat!==c)return;/* 늦게 도착한 이전 고양이 sync 폐기 (v0.7.36) */try{renderFdHistory();renderManualFoodList();renderTubeRecipeList();calcCalorie();}catch(e){}});}catch(e){}}
   renderCatBar();updateMetrics();updateWtDiff();updateInsulinNext();saveS();
   const prof=(state.catProfiles||{})[c];
@@ -5866,7 +5874,7 @@ function setFoodSeg(seg) {
     if(btn)btn.dataset.on=s===seg?'1':'0';
   });
   try{renderFdHistory();}catch(e){}
-  if(seg==='tube')try{renderTubeRecipeList();}catch(e){}
+  if(seg==='tube'){try{renderTubeRecipeList();}catch(e){}try{_initRecipeMode();}catch(e){}}   // 모드 복원 (v0.7.44)
 }
 function toggleCalcCond() {
   const body = document.getElementById('calcCondBody');
@@ -8271,12 +8279,63 @@ function updateManualFoodCalc(mer){
 renderManualFoodList();
 
 
-/* ── 강급 레시피 ── */
+/* ── 레시피 (구 강급 레시피 — v0.7.44 개념 통합: 강급은 사용 케이스 중 하나) ── */
 let tubeRecipes=[];
 let _tubeItems=[];
 let _tubeItemsByCat={};   // 고양이별 작업대 임시 보관 (세션 메모리만, 저장 안 함)
 let _tubeSlurryByCat={};  // 고양이별 슬러리 입력(물/횟수) 임시 보관 (세션 메모리만)
 let _tubeRecipesPending=false;
+let _recipeMode='normal'; // 레시피 화면 모드 'normal'(일반 조합)|'assisted'(강급용 조합) (v0.7.44)
+
+/* 모드 토글 — 재료·합산은 공통, 강급 안내 카드와 물·나눌 횟수 계산 카드만 전환.
+   재료(_tubeItems)는 모드 전환에도 유지 (계산 방식만 바뀜).
+   마지막 사용 모드는 고양이별 localStorage(lastRecipeMode_<cat>) — 사용자 클릭에서만 기록 (v0.7.36 소유 원칙) */
+function setRecipeMode(mode, _noSave){
+  if(mode!=='assisted')mode='normal';
+  _recipeMode=mode;
+  const bN=document.getElementById('recipeModeNormal');
+  const bA=document.getElementById('recipeModeAssisted');
+  if(bN)bN.dataset.on=(mode==='normal')?'1':'0';
+  if(bA)bA.dataset.on=(mode==='assisted')?'1':'0';
+  const guide=document.getElementById('tubeGuideCard');
+  if(guide)guide.style.display=(mode==='assisted')?'block':'none';
+  const slurry=document.getElementById('tubeSlurryCard');
+  if(slurry)slurry.style.display=(mode==='assisted')?'block':'none';
+  if(!_noSave){try{if(state.activeCat)localStorage.setItem('lastRecipeMode_'+state.activeCat,mode);}catch(e){}}
+}
+/* 화면 진입·고양이 전환 시 모드 복원 — 고양이별 마지막 선택, 없으면 일반 조합 */
+function _initRecipeMode(){
+  let m=null;
+  try{m=localStorage.getItem('lastRecipeMode_'+(state.activeCat||''));}catch(e){}
+  setRecipeMode(m==='assisted'?'assisted':'normal', true);
+}
+/* 구버전 레시피(mode 없음) 편집 진입 시 모드 확인 팝업 — 자동 판별 안 함, 유저 명시 선택 (v0.7.44).
+   오늘탭 급여 기록에서는 절대 안 뜸 (selectMealRecipeDaily는 mode 무관). 배경 탭 = 취소(편집 안 열림) */
+function _askRecipeMode(recipeName, onPick){
+  let modal=document.getElementById('recipeModeAskModal');
+  if(modal)modal.remove();   // 잔상 방지 — 항상 새로 그림
+  modal=document.createElement('div');
+  modal.id='recipeModeAskModal';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(42,37,29,0.5);z-index:9998;display:flex;align-items:center;justify-content:center;padding:24px';
+  const safe=String(recipeName||'레시피').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  modal.innerHTML='<div style="background:var(--cm-bg);border-radius:16px;width:100%;max-width:340px;padding:1.25rem 1.1rem;box-sizing:border-box">'
+    +'<div style="font-size:14px;font-weight:700;color:var(--cm-ink);margin-bottom:.35rem">'+safe+'은(는) 어떤 목적인가요?</div>'
+    +'<div style="font-size:12px;color:var(--cm-faint);line-height:1.6;margin-bottom:.9rem">한 번만 선택하면 다음부터는 바로 열려요.</div>'
+    +'<div style="display:flex;gap:8px">'
+    +'<button type="button" id="recipeModeAskNormal" style="flex:1;padding:11px 0;border:1px solid var(--cm-green-edge);border-radius:11px;background:var(--cm-green-tint);color:var(--cm-green-700);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">일반 조합</button>'
+    +'<button type="button" id="recipeModeAskAssisted" style="flex:1;padding:11px 0;border:1px solid var(--cm-green-edge);border-radius:11px;background:var(--cm-green-tint);color:var(--cm-green-700);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">강급용 조합</button>'
+    +'</div>'
+    +'<div style="font-size:11px;color:var(--cm-faint);line-height:1.5;margin-top:.7rem">일반 조합: 그냥 섞어서 급여 · 강급용 조합: 물을 섞어 나눠서 급여</div>'
+    +'</div>';
+  const close=()=>{try{modal.remove();}catch(e){}};
+  modal.addEventListener('click',e=>{if(e.target===modal)close();});
+  document.body.appendChild(modal);
+  const _pick=(m)=>{close();onPick(m);};
+  const bN=document.getElementById('recipeModeAskNormal');
+  const bA=document.getElementById('recipeModeAskAssisted');
+  if(bN)bN.onclick=()=>_pick('normal');
+  if(bA)bA.onclick=()=>_pick('assisted');
+}
 
 const saveTubeRecipes=()=>{
   const _cat=state.activeCat||'_global';
@@ -8623,10 +8682,11 @@ function saveTubeRecipeEntry(){
   if(!_tubeItems.length){toast('재료를 먼저 추가해주세요','#BA7517');return;}
   let total=0;
   _tubeItems.forEach(item=>{total+=(parseFloat(item.grams)||0)*(parseFloat(item.kcalPer100g)||0)/100;});
-  // 슬러리 계산 필드 (사료환이면 물 0으로 저장)
-  const _water=parseFloat(document.getElementById('tubeWaterMl')?.value)||0;
-  const _cnt=Math.max(1,parseInt(document.getElementById('tubeFeedCount')?.value)||4);
-  const _tool=document.getElementById('tubeTool')?.value||'syringe';
+  // 모드별 저장 (v0.7.44) — 일반 조합은 물·나눌 횟수 없음(숨겨진 필드의 잔류값 무시)
+  const _assisted=(_recipeMode==='assisted');
+  const _water=_assisted?(parseFloat(document.getElementById('tubeWaterMl')?.value)||0):0;
+  const _cnt=_assisted?Math.max(1,parseInt(document.getElementById('tubeFeedCount')?.value)||4):null;
+  const _tool=_assisted?(document.getElementById('tubeTool')?.value||'syringe'):null;
   const _foodG=_tubeItems.reduce((a,it)=>a+(parseFloat(it.grams)||0),0);  // 총 사료 g(수분 아님)
   const _totalG=Math.round(_foodG+_water);  // 총 슬러리 g = 사료g + 물ml(1ml=1g)
   const entry={
@@ -8634,11 +8694,12 @@ function saveTubeRecipeEntry(){
     name:name,
     items:_tubeItems.map(x=>({...x})),
     totalKcal:Math.round(total),
+    mode:_recipeMode,                                  // 'normal'|'assisted' (v0.7.44). 구버전 데이터는 필드 없음(null 취급)
     addedWaterMl:_water,
     feedingCount:_cnt,
     tool:_tool,
     totalG:_totalG,
-    gPerFeeding:Math.round(_totalG/_cnt),
+    gPerFeeding:_cnt?Math.round(_totalG/_cnt):null,
     createdAt:new Date().toISOString()
   };
   tubeRecipes.unshift(entry);
@@ -8648,9 +8709,33 @@ function saveTubeRecipeEntry(){
   toast(name+' 저장됐어요');
 }
 
+/* 불러오기(편집 진입) — mode 미지정(구버전)이면 먼저 모드 확인 팝업 (v0.7.44 마이그레이션).
+   선택값은 recipe.mode에 저장돼 다음부턴 팝업 없이 그 모드로 바로 열림.
+   소유 가드: 팝업이 떠 있는 동안 고양이가 바뀌면 선택을 폐기 (tubeRecipes가 교체되므로) */
 function loadTubeRecipe(idx){
   if(idx<0||idx>=tubeRecipes.length)return;
   const r=tubeRecipes[idx];
+  if(!r.mode){
+    const _cat=state.activeCat, _id=r.id, _nm=r.name;
+    _askRecipeMode(r.name, function(mode){
+      if(state.activeCat!==_cat){toast('고양이가 바뀌어 취소됐어요. 다시 시도해주세요','#BA7517');return;}
+      // 인덱스 불신 — id(구버전은 이름)로 재조회 후 mode 기록
+      let i=(_id!=null)?tubeRecipes.findIndex(x=>x&&x.id===_id):-1;
+      if(i<0)i=tubeRecipes.findIndex(x=>x&&x.name===_nm);
+      if(i<0){toast('레시피를 찾을 수 없어요','#BA7517');return;}
+      tubeRecipes[i].mode=mode;
+      saveTubeRecipes();
+      _loadTubeRecipeBody(i);
+    });
+    return;
+  }
+  _loadTubeRecipeBody(idx);
+}
+function _loadTubeRecipeBody(idx){
+  const r=tubeRecipes[idx];
+  if(!r)return;
+  // 레시피의 모드로 화면 전환 (프로그램 경로 — lastRecipeMode 기록 안 함)
+  setRecipeMode(r.mode==='assisted'?'assisted':'normal', true);
   _tubeItems=(r.items||[]).map(x=>({...x}));
   // 1단계 구버전 레시피(슬러리 필드 없음)는 기본값(물 0, 횟수 4)으로 복원
   const wEl=document.getElementById('tubeWaterMl');
