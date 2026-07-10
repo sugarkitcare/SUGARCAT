@@ -20,6 +20,12 @@ export default async function handler(req, res) {
     const user = await uRes.json();
     if (!user || !user.id || user.email !== DEBUG_EMAIL) return res.status(403).json({ error: 'not_debug_account' });
 
+    // profiles_id_fkey(비 CASCADE)가 유저 삭제를 막음 → profiles 행 먼저 제거
+    const pRes = await fetch(url + '/rest/v1/profiles?id=eq.' + encodeURIComponent(user.id), {
+      method: 'DELETE',
+      headers: { apikey: serviceKey, Authorization: 'Bearer ' + serviceKey }
+    });
+    if (!pRes.ok) console.warn('delete-debug-account: profiles 행 삭제 실패', pRes.status);
     const dRes = await fetch(url + '/auth/v1/admin/users/' + user.id, {
       method: 'DELETE',
       headers: { apikey: serviceKey, Authorization: 'Bearer ' + serviceKey }

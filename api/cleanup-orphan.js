@@ -79,6 +79,12 @@ export default async function handler(req, res) {
     }
 
     // 5. 삭제 (GoTrue Admin API)
+    // profiles_id_fkey가 CASCADE가 아니어서 자동 생성된 profiles 행이 유저 삭제를 막음 → 먼저 제거
+    const pRes = await fetch(url + '/rest/v1/profiles?id=eq.' + encodeURIComponent(user.id), {
+      method: 'DELETE',
+      headers: { apikey: serviceKey, Authorization: 'Bearer ' + serviceKey }
+    });
+    if (!pRes.ok) console.warn('cleanup-orphan: profiles 행 삭제 실패', pRes.status);
     const dRes = await fetch(url + '/auth/v1/admin/users/' + user.id, {
       method: 'DELETE',
       headers: { apikey: serviceKey, Authorization: 'Bearer ' + serviceKey }
