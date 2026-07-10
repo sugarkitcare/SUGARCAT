@@ -645,7 +645,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.45</span>
+      <span class="cm-beta">v0.7.46</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -12321,7 +12321,8 @@ async function submitSocialLink(){
       return;
     }
     currentUser = data.user;
-    if(orphanId) _markSocialAsked(orphanId);
+    // 고아 uid는 여기서 마크하지 않음 — 연결이 실패(cleaned=false)하면 다음 카카오 로그인에서
+    // 환영 화면이 다시 떠야 재시도 가능. 같은 계정 케이스는 아래 줄이 커버(id 동일)
     _markSocialAsked(data.user.id);
     if(data.user.id === orphanId){   // 같은 계정이면 (이메일이 사실 같았던 경우) 연결 불필요
       document.getElementById('socialWelcomePage').style.display = 'none';
