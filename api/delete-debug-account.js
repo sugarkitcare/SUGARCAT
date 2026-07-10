@@ -25,7 +25,8 @@ export default async function handler(req, res) {
       headers: { apikey: serviceKey, Authorization: 'Bearer ' + serviceKey }
     });
     if (!dRes.ok) {
-      console.error('delete-debug-account: 삭제 실패', dRes.status);
+      const dBody = await dRes.text().catch(() => '');
+      console.error('delete-debug-account: 삭제 실패', dRes.status, dBody.slice(0, 300));
       return res.status(500).json({ error: 'delete_failed' });
     }
     console.log('delete-debug-account: 삭제 완료', user.id);
