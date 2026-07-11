@@ -652,7 +652,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.48</span>
+      <span class="cm-beta">v0.7.49</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -2923,6 +2923,12 @@ function switchMealTab(tab, _noSave) {
 /* 시트 진입 시 탭 초기화 — 프리필이 레시피면 레시피 탭, 아니면 마지막 사용 탭(없으면 즐겨찾기) */
 function _initMealTabs() {
   try{
+    // 시트 재진입 시 이전 검색 잔상 리셋 (v0.7.49) — 시트가 닫혀도 DOM 값이 남아,
+    // 검색 탭 복원 시 switchMealTab의 자동 재검색이 즐겨찾기와 무관한 카탈로그 목록을
+    // 요청 없이 띄우던 문제. 시트가 열려 있는 동안의 탭 전환 검색어 유지는 그대로.
+    const _si = document.getElementById('mealFoodSearchInput'); if(_si) _si.value = '';
+    const _sb = document.getElementById('mealFoodSearchResults'); if(_sb) _sb.innerHTML = '';
+    _mealSearchResults = [];
     let tab = null;
     if(_mealPrefillType === 'recipe') tab = 'recipe';
     if(!tab){ try{ tab = localStorage.getItem('lastMealTab_'+(state.activeCat||'')); }catch(e){} }
