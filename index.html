@@ -434,6 +434,13 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div style="text-align:center;margin-top:2rem;font-size:11px;color:var(--cm-faint)">
     로그인하면 어떤 기기에서도 데이터가 이어져요
   </div>
+
+  <!-- 법적 문서 링크 (v0.7.48) — 같은 탭 이동, 뒤로가기로 복귀 -->
+  <div style="text-align:center;margin-top:.9rem;font-size:11px;color:var(--cm-faint)">
+    <a href="/terms" style="color:var(--cm-faint);text-decoration:underline">이용약관</a>
+    <span style="margin:0 4px">·</span>
+    <a href="/privacy" style="color:var(--cm-faint);text-decoration:underline">개인정보처리방침</a>
+  </div>
 </div>
 
 <!-- 소셜 신규 계정 첫 진입 확인 (v0.7.45) — 다른 이메일 기존 계정 연결 안전망 -->
@@ -645,7 +652,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.47</span>
+      <span class="cm-beta">v0.7.48</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -13829,6 +13836,20 @@ async function uploadFoodDataToDB(cat) {
     <span style="font-size:15px;font-weight:700;color:var(--cm-ink)">로컬 데이터 서버에 업로드</span>
     <svg style="margin-left:auto;color:var(--cm-faint)" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
   </button>
+
+  <!-- 약관·정책 (v0.7.48) — 새 탭으로 열어 앱 상태 보존 -->
+  <div style="font-size:11px;font-weight:700;color:var(--cm-faint);margin:20px 0 8px">약관·정책</div>
+  <a href="/terms" target="_blank" rel="noopener" style="background:var(--cm-surface);border:1px solid var(--cm-line);border-radius:14px;padding:15px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;width:100%;cursor:pointer;font-family:inherit;text-align:left;box-sizing:border-box;text-decoration:none">
+    <span class="cm-ic cm-ic--sm cm-ic--ghost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span>
+    <span style="font-size:15px;font-weight:700;color:var(--cm-ink)">이용약관</span>
+    <svg style="margin-left:auto;color:var(--cm-faint)" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+  </a>
+  <a href="/privacy" target="_blank" rel="noopener" style="background:var(--cm-surface);border:1px solid var(--cm-line);border-radius:14px;padding:15px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;width:100%;cursor:pointer;font-family:inherit;text-align:left;box-sizing:border-box;text-decoration:none">
+    <span class="cm-ic cm-ic--sm cm-ic--ghost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
+    <span style="font-size:15px;font-weight:700;color:var(--cm-ink)">개인정보처리방침</span>
+    <svg style="margin-left:auto;color:var(--cm-faint)" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+  </a>
+  <div style="font-size:11px;color:var(--cm-faint);margin-top:4px">문의: caremasters.cat@gmail.com</div>
 </div>
 </div>
 
@@ -13836,6 +13857,7 @@ async function uploadFoodDataToDB(cat) {
 <div style="text-align:center;padding:.75rem 1rem;font-size:10px;color:var(--text3);line-height:1.8;max-width:420px;margin:0 auto">
   케어마스터즈의 모든 분석 결과는 <b>참고용</b>이며 수의학적 진단&middot;처방을 대체하지 않아요.<br>
   치료 결정은 반드시 담당 수의사와 상담하세요.<br>
+  <a href="/terms" target="_blank" rel="noopener" style="color:var(--text3);text-decoration:underline">이용약관</a> &middot; <a href="/privacy" target="_blank" rel="noopener" style="color:var(--text3);text-decoration:underline">개인정보처리방침</a><br>
   © 2025 케어마스터즈 BETA &middot; <a href="https://open.kakao.com/o/sjseVrVe" target="_blank" style="color:var(--teal);text-decoration:none">💬 카카오 채널</a> &middot; <button type="button" 
   onclick="openAdminPage()"
   style="background:none;border:none;color:var(--text3);font-size:11px;cursor:pointer;font-family:inherit;padding:4px;touch-action:manipulation">관리자</button>

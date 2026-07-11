@@ -1,5 +1,9 @@
 {
   "framework": null,
   "buildCommand": null,
-  "outputDirectory": "."
+  "outputDirectory": ".",
+  "rewrites": [
+    { "source": "/terms", "destination": "/terms.html" },
+    { "source": "/privacy", "destination": "/privacy.html" }
+  ]
 }
