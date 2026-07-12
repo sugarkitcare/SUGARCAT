@@ -1238,31 +1238,12 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
 <!-- ══ 연속혈당(CGM) ══ -->
 <div class="sec" id="tab-cgm" style="display:none">
 
-  <!-- CSV 파일 업로드 (v0.7.53) — AI 호출 없는 순수 파싱, 스크린샷 방식과 병행 -->
-  <div class="card" id="cgmCsvCard">
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:.5rem">
-      <div class="cm-ic cm-ic--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg></div>
-      <span style="font-size:14px;font-weight:700;color:var(--cm-ink)">CGM 파일로 불러오기</span>
-      <span style="font-size:9px;padding:2px 7px;border-radius:6px;background:var(--cm-green-tint);color:var(--cm-green-700);font-weight:700">신규</span>
-    </div>
-    <div style="font-size:11.5px;color:var(--text2);line-height:1.6;margin-bottom:.6rem">CGM 앱에서 내보낸 CSV 파일을 올리면 한 번에 불러올 수 있어요.<br>현재 지원: <b>센스365 (CareSens Air)</b> · 최대 5MB</div>
-    <div class="drop-zone" id="cgmCsvDrop">
-      <div class="drop-title">CGM CSV 파일 업로드</div>
-      <div class="drop-sub">Sens365 앱 → 데이터 내보내기 → CSV</div>
-      <label class="drop-lbl" for="cgmCsvFile">CSV 파일 선택</label>
-      <input type="file" id="cgmCsvFile" accept=".csv,text/csv" style="display:none">
-    </div>
-    <div id="cgmCsvStatus" style="display:none"></div>
-    <div id="cgmCsvPreview" style="display:none"></div>
-  </div>
-
   <!-- 업로드 카드 -->
   <div class="card">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:.75rem">
       <div class="cm-ic cm-ic--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
       <span style="font-size:14px;font-weight:700;color:var(--cm-ink)">CGM 스크린샷 AI 혈당 추출</span>
     </div>
-    <div style="font-size:11px;color:var(--text3);margin-bottom:.6rem">CSV 내보내기를 지원하지 않는 기기는 이 방법을 사용하세요.</div>
 
     <!-- 앱 선택 -->
     <div style="font-size:11px;color:var(--text2);margin-bottom:.6rem">어떤 앱 화면을 업로드할 건가요?</div>
@@ -1308,6 +1289,24 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
       <div class="ig"><label>고양이</label><input type="text" id="cgmCat" placeholder="케이" readonly style="background:var(--bg2);cursor:default"></div>
     </div>
     <div id="cgmStatus" style="display:none"></div>
+  </div>
+
+  <!-- CSV 파일 업로드 (v0.7.53) — AI 호출 없는 순수 파싱, 스크린샷 방식과 병행 -->
+  <div class="card" id="cgmCsvCard">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:.5rem">
+      <div class="cm-ic cm-ic--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg></div>
+      <span style="font-size:14px;font-weight:700;color:var(--cm-ink)">CGM 파일로 불러오기</span>
+      <span style="font-size:9px;padding:2px 7px;border-radius:6px;background:var(--cm-green-tint);color:var(--cm-green-700);font-weight:700">신규</span>
+    </div>
+    <div style="font-size:11.5px;color:var(--text2);line-height:1.6;margin-bottom:.6rem">CGM 앱에서 CSV를 내보낼 수 있다면 한 번에 여러 날치를 불러올 수 있어요.<br>현재 지원: <b>센스365 (CareSens Air)</b> · 최대 5MB</div>
+    <div class="drop-zone" id="cgmCsvDrop">
+      <div class="drop-title">CGM CSV 파일 업로드</div>
+      <div class="drop-sub">Sens365 앱 → 데이터 내보내기 → CSV</div>
+      <label class="drop-lbl" for="cgmCsvFile">CSV 파일 선택</label>
+      <input type="file" id="cgmCsvFile" accept=".csv,text/csv" style="display:none">
+    </div>
+    <div id="cgmCsvStatus" style="display:none"></div>
+    <div id="cgmCsvPreview" style="display:none"></div>
   </div>
 
   <!-- 추출 결과 -->
