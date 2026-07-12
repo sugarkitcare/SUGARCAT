@@ -652,7 +652,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.54</span>
+      <span class="cm-beta">v0.7.55</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -12119,7 +12119,7 @@ function renderVetReportCanvas(d, inc, memo){
   const secs = [];
   if(inc.obs){
     const obs = computeObservations(d.cat, d.toStr);
-    if(obs.length) secs.push({t:'최근 관찰 지표', lines: obs.slice(0,4).map(o=>o.title).concat(['상세는 텍스트 리포트 참조']), warn:false});
+    if(obs.length) secs.push({t:'최근 관찰 지표', lines: obs.slice(0,4).map(o=>o.title).concat(['텍스트 리포트가 함께 전송되지 않았다면','보호자에게 요청해주세요']), warn:false});
   }
   if(inc.water){
     const tot = (d.water.intakeAvg||0)+(d.water.fluidAvg||0);
@@ -12367,6 +12367,39 @@ async function shareVetReport(){
   // 1단계에서 입력한 진료일 저장 (공유 시점 확정)
   if(_vetRep.nextVisit) setNextVisit(_vetRep.cat, _vetRep.nextVisit);
   const text = _vetRep._text || '';
+  // Android 카톡은 이미지 인텐트에서 텍스트를 버림(EXTRA_STREAM 있으면 EXTRA_TEXT 무시) → 붙여넣기용 선복사.
+  // 클립보드 쓰기는 사용자 제스처가 살아있어야 하므로 toBlob await보다 먼저 실행
+  let clipOk = false;
+  try{ await navigator.clipboard.writeText(text); clipOk = true; }catch(e){ console.warn('클립보드 복사 실패:', e); }
+  const isAndroid = /android/i.test(navigator.userAgent);
+  if(isAndroid && clipOk && navigator.share && !localStorage.getItem('vetShareClipHint_v1')){
+    _vetShareHintDialog(text, clipOk, isAndroid);
+    return;
+  }
+  await _vetShareProceed(text, clipOk, isAndroid);
+}
+// Android 첫 공유 안내 — [사진 보내기] 클릭이 새 사용자 제스처가 되어 share를 이어감
+function _vetShareHintDialog(text, clipOk, isAndroid){
+  const old = document.getElementById('vetShareHint');
+  if(old) old.remove();
+  const d = document.createElement('div');
+  d.id = 'vetShareHint';
+  d.style.cssText = 'position:fixed;inset:0;background:rgba(42,37,29,0.55);z-index:10001;display:flex;align-items:center;justify-content:center;padding:24px';
+  d.innerHTML = '<div style="background:var(--cm-bg);border-radius:18px;max-width:340px;width:100%;padding:20px 18px;box-sizing:border-box">'
+    + '<div style="font-size:15px;font-weight:700;color:var(--cm-ink);margin-bottom:10px">글 내용을 복사해뒀어요</div>'
+    + '<div style="font-size:13px;color:var(--cm-ink-soft);line-height:1.65;margin-bottom:16px">카카오톡은 사진과 글을 한 번에 보낼 수 없어요.<br>글 내용은 복사해뒀어요.<br>사진을 보낸 뒤 채팅창에 붙여넣기 해주세요.</div>'
+    + '<button type="button" id="vetShareHintBtn" style="width:100%;padding:12px;background:var(--cm-green-700);color:#fff;border:none;border-radius:11px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">사진 보내기</button>'
+    + '</div>';
+  d.addEventListener('click', e=>{ if(e.target===d) d.remove(); });
+  document.body.appendChild(d);
+  document.getElementById('vetShareHintBtn').onclick = ()=>{
+    localStorage.setItem('vetShareClipHint_v1','1');
+    d.remove();
+    _vetShareProceed(text, clipOk, isAndroid);
+  };
+}
+async function _vetShareProceed(text, clipOk, isAndroid){
+  if(!_vetRep) return;
   let file = null;
   try{
     if(_vetRep._canvas){
@@ -12379,6 +12412,11 @@ async function shareVetReport(){
   if(navigator.share){
     try{
       await navigator.share(payload);
+      // iOS는 사진·텍스트가 모두 전달되므로 안내 생략 — Android만 붙여넣기 안내
+      if(isAndroid && payload.files){
+        if(clipOk) toast('텍스트가 복사됐어요. 사진 전송 후 붙여넣기 해주세요', '#1D9E75', 3200);
+        else toast('텍스트 복사가 안 됐어요. 리포트를 다시 열어 미리보기 텍스트를 길게 눌러 복사해주세요', '#BA7517', 3600);
+      }
       if(_vetRep) vetRepGo(4);
       return;
     }catch(e){
@@ -12394,7 +12432,7 @@ async function shareVetReport(){
       a.download = 'caremasters_report_'+today()+'.png';
       a.click();
     }
-    await navigator.clipboard.writeText(text);
+    if(!clipOk) await navigator.clipboard.writeText(text);
     toast('이미지 저장 + 텍스트 복사 완료. 카톡에 붙여넣어 공유하세요', '#1D9E75', 3200);
     if(_vetRep) vetRepGo(4);
   }catch(e){
