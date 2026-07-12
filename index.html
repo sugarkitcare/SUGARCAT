@@ -11201,6 +11201,8 @@ function _vrAge(cat){
 
 const OBS_TH = {
   waterPct:30, urinePct:30,            // 7일 평균 vs 이전 4주 평균 증가율 %
+  urineHeavyPp:20, urineHeavyMinN:14,  // 소변 '다량' 비율 절대 증가폭 %p / 최소 기록 건수
+  poopLoosePp:20, poopLooseMinN:10,    // 대변 무름·설사 비율 절대 증가폭 %p / 최소 기록 건수
   vomitX:2, vomit3dCount:3,            // 주간 배수 / 최근 3일 절대 횟수
   poopGapDays:3, poopTrackDays:14,     // 대변 공백 일수 / 기록 습관 확인 창
   weightPct:3,                         // 4주 vs 이전 8주 감소율 %
@@ -11312,6 +11314,28 @@ function computeObservations(cat, anchor){
           : '소변 횟수 증가는 여러 원인으로 나타날 수 있어요.' });
   }
 
+  // 2-A) 소변 '다량' 비율 증가 — 성상 선택형 데이터의 비율 변화 (절대 증가폭 %p 기준)
+  //      혈뇨 등 이상 성상은 기존 리포트 [소변] 이상 기록이 담당 (응급 뉘앙스 방지 — 별도 논의)
+  {
+    const recs=(state.records||{})[cat]||{};
+    const cnt=dates=>{ let n=0,h=0; dates.forEach(day=>{ ((recs[day]||{}).urine||[]).forEach(u=>{ n++; if(u.amount==='다량') h++; }); }); return {n,h}; };
+    const r=cnt(_obsDates(_obsAddDays(anchor,-6), anchor));
+    const p=cnt(_obsDates(_obsAddDays(anchor,-34), _obsAddDays(anchor,-7)));
+    if(r.n>=3 && p.n>=8 && r.n+p.n>=OBS_TH.urineHeavyMinN){
+      const rp=Math.round(r.h/r.n*100), pp=Math.round(p.h/p.n*100);
+      const diff=rp-pp;
+      if(diff>=OBS_TH.urineHeavyPp){
+        out.push({ key:'urineHeavy', mag:diff,
+          title:'소변 \'다량\' 비율 '+rp+'%로 증가',
+          lines:['최근 7일 소변 중 다량 비율 '+rp+'% ('+r.n+'건 중 '+r.h+'건)','지난 4주 평균 '+pp+'% 대비 '+diff+'%p 증가'],
+          hint: dz.ckd ? '소변량 증가는 CKD 아이에서 관찰되는 변화 중 하나예요. 다뇨는 신장 기능 변화와 관련될 수 있어요.'
+              : dz.dm  ? '소변량 증가는 DM 아이에서 관찰되는 변화 중 하나예요. 다뇨는 혈당 관리 상태와 관련될 수 있어요.'
+              : dz.hcm ? '소변량 증가는 이뇨제 반응과 관련될 수 있어요.'
+              : '소변량 증가는 여러 원인으로 나타날 수 있어요.' });
+      }
+    }
+  }
+
   // 3) 구토 급증 — 최근 7일 총합 vs 이전 4주 주평균 2배, 또는 최근 3일 3회
   const vCount=dates=>_obsDaily(cat, dates, r=>(r.vomits||[]).length||null).reduce((a,b)=>a+b,0);
   const v7=vCount(_obsDates(_obsAddDays(anchor,-6), anchor));
@@ -11355,6 +11379,29 @@ function computeObservations(cat, anchor){
               : (dz.dm||dz.hcm||dz.ibd||dz.panc) ? '대변 기록 공백은 변비 또는 식욕 저하와 관련될 수 있어요.'
               : '대변 기록 공백은 변비나 식욕 저하와 관련될 수 있어요.',
           caveat:'기록을 놓치신 게 아니라면 참고해주세요' });
+      }
+    }
+  }
+
+  // 4-B) 대변 무름·설사 비율 증가 — 성상 선택형 데이터의 비율 변화 (절대 증가폭 %p 기준)
+  //      분모는 실제 배변 기록만('무변' 제외), 혈변은 이 지표 스코프 밖(별도 논의 — 응급 뉘앙스 위험)
+  {
+    const recs=(state.records||{})[cat]||{};
+    const cnt=dates=>{ let n=0,l=0; dates.forEach(day=>{ ((recs[day]||{}).poop||[]).forEach(pk=>{ if(pk.type==='무변') return; n++; if(pk.type==='설사'||pk.type==='무름') l++; }); }); return {n,l}; };
+    const r=cnt(_obsDates(_obsAddDays(anchor,-6), anchor));
+    const p=cnt(_obsDates(_obsAddDays(anchor,-34), _obsAddDays(anchor,-7)));
+    if(r.n>=3 && p.n>=6 && r.n+p.n>=OBS_TH.poopLooseMinN){
+      const rp=Math.round(r.l/r.n*100), pp=Math.round(p.l/p.n*100);
+      const diff=rp-pp;
+      if(diff>=OBS_TH.poopLoosePp){
+        out.push({ key:'poopLoose', mag:diff,
+          title:'대변 무름·설사 비율 '+rp+'%로 증가',
+          lines:['최근 7일 대변 중 무름·설사 비율 '+rp+'% ('+r.n+'건 중 '+r.l+'건)','지난 4주 평균 '+pp+'% 대비 '+diff+'%p 증가'],
+          hint: dz.ibd  ? '대변 상태 변화는 IBD 관리 중 관찰될 수 있어요.'
+              : dz.panc ? '대변 상태 변화는 소화 흡수 상태와 관련될 수 있어요.'
+              : dz.ckd  ? '대변 상태 변화는 여러 원인으로 나타날 수 있어요.'
+              : (dz.dm||dz.hcm) ? '대변 상태 변화는 소화기 상태와 관련될 수 있어요.'
+              : '대변 상태 변화는 소화기 상태 확인이 필요할 수 있어요.' });
       }
     }
   }
