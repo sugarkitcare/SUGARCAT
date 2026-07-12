@@ -11321,9 +11321,10 @@ function computeObservations(cat, anchor){
   // 1) 음수량 급증 (자발음수 rec.water 합계 — 수액·습식수분 제외: 보호자 급여분은 다음(多飮) 신호 아님)
   const wt=_obsTrend(cat, anchor, r=>{ const s=(r.water||[]).reduce((a,b)=>a+(b.ml||0),0); return s>0?s:null; });
   if(wt.recentDays>=3 && wt.priorDays>=8 && wt.recentDays+wt.priorDays>=14 && wt.pct!=null && wt.pct>=OBS_TH.waterPct){
+    // 표기 통일: 리포트 [음수량] 섹션은 섭취+수액 합산이라 기준 차이를 문구로 명시 (수의사 혼란 방지)
     out.push({ key:'water', mag:wt.pct,
-      title:'이번 주 음수량 '+wt.pct+'% 증가',
-      lines:['이번 주 평균 '+Math.round(wt.recentAvg)+'ml/일','지난 4주 평균 '+Math.round(wt.priorAvg)+'ml/일 대비 '+wt.pct+'% 증가'],
+      title:'이번 주 음수 섭취량 '+wt.pct+'% 증가 (수액 제외)',
+      lines:['이번 주 평균 '+Math.round(wt.recentAvg)+'ml/일 (수액 제외)','지난 4주 평균 '+Math.round(wt.priorAvg)+'ml/일 대비 '+wt.pct+'% 증가'],
       hint: dz.ckd ? '음수량 증가는 CKD 아이에서 관찰되는 변화 중 하나예요. 신장 기능 변화와 관련될 수 있어요.'
           : dz.dm  ? '음수량 증가는 DM 아이에서 관찰되는 변화 중 하나예요. 혈당 관리 상태와 관련될 수 있어요.'
           : dz.hcm ? '음수량 증가는 다양한 원인으로 나타날 수 있어요. 이뇨제 복용 중이시면 반응과 관련될 수 있어요.'
@@ -11335,8 +11336,8 @@ function computeObservations(cat, anchor){
     const sp=_obsSpike(cat, anchor, r=>{ const s=(r.water||[]).reduce((a,b)=>a+(b.ml||0),0); return s>0?s:null; }, OBS_TH.waterSpikePct);
     if(sp){
       out.push({ key:'waterSpike', mag:sp.mag,
-        title:sp.day.slice(5)+' 하루 음수량 '+Math.round(sp.value)+'ml 급증',
-        lines:[sp.day+' 음수량 '+Math.round(sp.value)+'ml',
+        title:sp.day.slice(5)+' 하루 음수 섭취량 '+Math.round(sp.value)+'ml 급증 (수액 제외)',
+        lines:[sp.day+' 음수 섭취량 '+Math.round(sp.value)+'ml (수액 제외)',
                '평소(4주 평균 '+Math.round(sp.base)+'ml) 대비 '+(sp.pct!=null?sp.pct+'% 증가':'증가')+(sp.isMax?' · 최근 4주 중 최대':'')],
         hint: dz.ckd ? '하루 음수량이 크게 늘어난 날이 있어요. 일시적 변화일 수도 있지만, 음수량 증가는 CKD 아이에서 관찰되는 변화 중 하나예요.'
             : dz.dm  ? '하루 음수량이 크게 늘어난 날이 있어요. 일시적 변화일 수도 있지만, 음수량 증가는 DM 아이에서 관찰되는 변화 중 하나예요.'
