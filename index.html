@@ -652,7 +652,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.51</span>
+      <span class="cm-beta">v0.7.53</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -1238,12 +1238,31 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
 <!-- ══ 연속혈당(CGM) ══ -->
 <div class="sec" id="tab-cgm" style="display:none">
 
+  <!-- CSV 파일 업로드 (v0.7.53) — AI 호출 없는 순수 파싱, 스크린샷 방식과 병행 -->
+  <div class="card" id="cgmCsvCard">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:.5rem">
+      <div class="cm-ic cm-ic--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg></div>
+      <span style="font-size:14px;font-weight:700;color:var(--cm-ink)">CGM 파일로 불러오기</span>
+      <span style="font-size:9px;padding:2px 7px;border-radius:6px;background:var(--cm-green-tint);color:var(--cm-green-700);font-weight:700">신규</span>
+    </div>
+    <div style="font-size:11.5px;color:var(--text2);line-height:1.6;margin-bottom:.6rem">CGM 앱에서 내보낸 CSV 파일을 올리면 한 번에 불러올 수 있어요.<br>현재 지원: <b>센스365 (CareSens Air)</b> · 최대 5MB</div>
+    <div class="drop-zone" id="cgmCsvDrop">
+      <div class="drop-title">CGM CSV 파일 업로드</div>
+      <div class="drop-sub">Sens365 앱 → 데이터 내보내기 → CSV</div>
+      <label class="drop-lbl" for="cgmCsvFile">CSV 파일 선택</label>
+      <input type="file" id="cgmCsvFile" accept=".csv,text/csv" style="display:none">
+    </div>
+    <div id="cgmCsvStatus" style="display:none"></div>
+    <div id="cgmCsvPreview" style="display:none"></div>
+  </div>
+
   <!-- 업로드 카드 -->
   <div class="card">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:.75rem">
       <div class="cm-ic cm-ic--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
       <span style="font-size:14px;font-weight:700;color:var(--cm-ink)">CGM 스크린샷 AI 혈당 추출</span>
     </div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:.6rem">CSV 내보내기를 지원하지 않는 기기는 이 방법을 사용하세요.</div>
 
     <!-- 앱 선택 -->
     <div style="font-size:11px;color:var(--text2);margin-bottom:.6rem">어떤 앱 화면을 업로드할 건가요?</div>
@@ -3188,7 +3207,7 @@ window.switchCat = function(c) {
   try{ renderTileGrid(c); }catch(e){}
   if(currentUser) try{ loadTileConfigFromDB(c); }catch(e){}
   try{const cc=document.getElementById('cgmCat');if(cc)cc.value=c;}catch(e){}
-  try{loadCGMForCat(c).then(()=>{
+  try{Promise.all([loadCGMForCat(c),loadCgmCsvForCat(c)]).then(()=>{
     const at=document.querySelector('.cm-tab.active')?.dataset?.tab;
     if(at==='cgm')renderCgmHistory();
     if(at==='graph')try{renderTimelineChart(document.getElementById('timelineDatePicker')?.value||today());}catch(e){}
@@ -4810,7 +4829,7 @@ window.showTab = function showTab(tab, btn) {
     if(btn) btn.classList.add('active');
 
     // 렌더링
-    if(tab==='cgm') try{const cc=document.getElementById('cgmCat');if(cc)cc.value=state.activeCat||'';loadCGMForCat(state.activeCat).then(()=>renderCgmHistory());}catch(e){console.warn(e);}
+    if(tab==='cgm') try{const cc=document.getElementById('cgmCat');if(cc)cc.value=state.activeCat||'';Promise.all([loadCGMForCat(state.activeCat),loadCgmCsvForCat(state.activeCat)]).then(()=>renderCgmHistory());}catch(e){console.warn(e);}
     if(tab==='graph') try{loadGraphHiddenFromDB().then(()=>{applyGraphCards();});renderGraphs();renderBTTrend();const tlDate=document.getElementById('timelineDatePicker');if(tlDate&&!tlDate.value)tlDate.value=today();try{renderTimelineChart(document.getElementById('timelineDatePicker')?.value||today());}catch(e2){console.warn(e2);}}catch(e){console.warn(e);}
     if(tab==='history') try{renderHistory();renderRoutineSchedule();}catch(e){console.warn(e);}
     if(tab==='bloodtest') try{renderBTGraphs();renderBTHistoryList();}catch(e){console.warn(e);}
@@ -5194,8 +5213,8 @@ function renderTimelineChart(date) {
       _label:'혈당 '+r.bg+'mg/dL'+(r.ketone?' / 케톤 '+r.ketone:'')+(r.type?' ('+r.type+')':'')}))
     .filter(r=>r.x!==null);
 
-  // CGM 데이터에서 해당 날짜+고양이 readings 추가
-  const cgmForDay = (typeof cgmData !== 'undefined' ? cgmData : [])
+  // CGM 데이터에서 해당 날짜+고양이 readings 추가 (스크린샷+CSV 통합, v0.7.53)
+  const cgmForDay = (typeof cgmAllEntries === 'function' ? cgmAllEntries() : [])
     .filter(c=>c.date===d && (c.cat||'').trim()===(state.activeCat||'').trim());
   // 세션별 변환 — 자정 넘김(시각 큰 역행) 이후는 다음 날 데이터라 절단(하루 축 접힘 그물 방지),
   // 작은 역행(추출 노이즈)은 그 점만 스킵해 하루 전체가 잘리지 않게 함
@@ -9089,6 +9108,263 @@ async function loadCGMForCat(catName){
   }catch(e){cgmData=[];}
 }
 
+/* ══ CGMCSV-BEGIN — CGM CSV 파일 업로드 (v0.7.53) ══
+   AI 호출 없는 순수 JS 파싱(비용 0원). 저장은 cgm_daily 테이블(일별 JSONB 묶음, cat_id 격리).
+   스크린샷 방식(cgmData/user_settings)은 미접촉 — 읽기 시 cgmAllEntries()로 병합.
+   대량 데이터(288개/일)라 localStorage 미러 없이 DB 전용 — 업로드는 로그인 필요 */
+
+const CGM_CSV_MAX_BYTES = 5*1024*1024;   // 5MB (1년치 ≈ 5MB)
+const CGM_CSV_LOW = 60;    // 앱 공용 저혈당 기준 — bgLabel '매우 낮음'·병원 리포트 '60 미만'과 동일
+const CGM_CSV_HIGH = 300;  // 앱 공용 고혈당 기준 — bgLabel '매우 높음'·병원 리포트 '300 이상'과 동일
+const CGM_CSV_BATCH_DAYS = 10;   // 배치 저장 단위 (10일 ≈ 80KB, Supabase payload 안전권)
+const CGM_CSV_LOAD_DAYS = 60;    // 세션 로드 창 (기존 cgmData 60개 캡과 정합)
+
+/* 기기별 헤더 매핑 — 새 기기 지원 시 여기에만 추가 (컬럼명은 대소문자 무시 완전일치) */
+const CGM_FORMATS = [
+  { name:'Sens365 (CareSens Air)',
+    dateCol:'Date and Time', glucoseCol:'Glucose Value', unitCol:'Unit',
+    trendCol:'Trend Rate', deviceCol:'Device', serialCol:'Serial Number' },
+  // 향후 추가 예: FreeStyle Libre(LibreView), Dexcom Clarity, 파스타
+];
+
+function _cgmCsvParseLine(line){
+  // 최소 CSV 파싱 — 따옴표 필드·이스케이프("")만 지원 (Sens365는 따옴표 없음)
+  const out=[]; let cur='', q=false;
+  for(let i=0;i<line.length;i++){
+    const ch=line[i];
+    if(q){ if(ch==='"'){ if(line[i+1]==='"'){cur+='"';i++;} else q=false; } else cur+=ch; }
+    else if(ch==='"') q=true;
+    else if(ch===','){ out.push(cur); cur=''; }
+    else cur+=ch;
+  }
+  out.push(cur);
+  return out.map(s=>s.trim());
+}
+
+/* CSV 텍스트 → {format, device, serials[], days:[{date, readings:[{t,v,r?}], summary}], rows, skipped}
+   실패 시 {error:'format'|'nodata'} */
+function parseCgmCsv(text){
+  const lines=String(text||'').replace(/^\uFEFF/,'').split(/\r\n|\n|\r/).filter(l=>l.trim()!=='');
+  if(!lines.length) return {error:'format'};
+  // 헤더 자동 감지 — 상위 5줄에서 형식 매핑의 날짜·혈당 컬럼이 모두 있는 줄 탐색
+  let fmt=null, headIdx=-1, ci=null;
+  for(let i=0;i<Math.min(lines.length,5)&&!fmt;i++){
+    const cells=_cgmCsvParseLine(lines[i].replace(/^\uFEFF/,'')).map(c=>c.toLowerCase());
+    for(const f of CGM_FORMATS){
+      const di=cells.indexOf(f.dateCol.toLowerCase());
+      const gi=cells.indexOf(f.glucoseCol.toLowerCase());
+      if(di>=0&&gi>=0){
+        fmt=f; headIdx=i;
+        ci={date:di, glucose:gi,
+          unit:f.unitCol?cells.indexOf(f.unitCol.toLowerCase()):-1,
+          trend:f.trendCol?cells.indexOf(f.trendCol.toLowerCase()):-1,
+          device:f.deviceCol?cells.indexOf(f.deviceCol.toLowerCase()):-1,
+          serial:f.serialCol?cells.indexOf(f.serialCol.toLowerCase()):-1};
+        break;
+      }
+    }
+  }
+  if(!fmt) return {error:'format'};
+  const days={}; const serials=[]; const devices=[];
+  let rows=0, skipped=0;
+  for(let i=headIdx+1;i<lines.length;i++){
+    const c=_cgmCsvParseLine(lines[i]);
+    const dt=c[ci.date]||'';
+    const m=dt.match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}):(\d{2})/);  // 초는 버림 (5분 간격)
+    let v=parseFloat(c[ci.glucose]);
+    if(!m || !(v>0)){ skipped++; continue; }
+    const unit=ci.unit>=0?(c[ci.unit]||''):'';
+    v=/mmol/i.test(unit) ? Math.round(v*18) : Math.round(v);   // mmol/L → mg/dL 환산
+    const reading={t:m[2]+':'+m[3], v};
+    if(ci.trend>=0){ const r=parseFloat(c[ci.trend]); if(!isNaN(r)) reading.r=r; }
+    (days[m[1]]=days[m[1]]||[]).push(reading);
+    const sn=ci.serial>=0?c[ci.serial]:''; if(sn && serials.indexOf(sn)<0) serials.push(sn);  // 센서 교체 시 복수
+    const dv=ci.device>=0?c[ci.device]:''; if(dv && devices.indexOf(dv)<0) devices.push(dv);
+    rows++;
+  }
+  if(!rows) return {error:'nodata'};
+  const dayList=Object.keys(days).sort().map(date=>{
+    const rd=days[date].sort((a,b)=>a.t<b.t?-1:a.t>b.t?1:0);
+    const vals=rd.map(x=>x.v);
+    return { date, readings:rd, summary:{
+      avg:Math.round(vals.reduce((a,b)=>a+b,0)/vals.length),
+      min:Math.min(...vals), max:Math.max(...vals),
+      low_count:vals.filter(x=>x<CGM_CSV_LOW).length,
+      high_count:vals.filter(x=>x>=CGM_CSV_HIGH).length,
+      count:vals.length } };
+  });
+  return {format:fmt.name, device:devices[0]||null, serials, days:dayList, rows, skipped};
+}
+
+/* ── 세션 캐시 + 로더 (현재 고양이 CSV 데이터, 앱 공용 엔트리 형태로 변환) ── */
+let cgmCsv=[];
+async function loadCgmCsvForCat(catName){
+  const cat=catName||state.activeCat;
+  cgmCsv=[];
+  if(!sbClient||!currentUser||!cat) return;
+  const dbId=(state.catProfiles||{})[cat]?.dbId;
+  if(!dbId) return;
+  try{
+    const {data,error}=await sbClient.from('cgm_daily')
+      .select('date,device,serial,readings,summary')
+      .eq('cat_id',dbId).order('date',{ascending:false}).limit(CGM_CSV_LOAD_DAYS);
+    if(error){ console.warn('CGM CSV 로드 오류:',error); return; }
+    cgmCsv=(data||[]).map(row=>({
+      cat, date:row.date, source:'csv', device:row.device||'CSV',
+      readings:(row.readings||[]).map(x=>({time:x.t, value:x.v})),
+      avg:row.summary?.avg, min:row.summary?.min, max:row.summary?.max
+    }));
+  }catch(e){ console.warn('CGM CSV 로드 오류:', e); }
+}
+
+/* 통합 접근자 — 스크린샷(cgmData) 우선 배치: 타임라인 세션 겹침 가드가 앞쪽을 채택 */
+function cgmAllEntries(){
+  return cgmData.concat(cgmCsv);
+}
+
+/* ── 업로드 흐름 ── */
+let _cgmCsvPending=null;   // {parsed, cat} — 파일 선택 시점 고양이 고정 (v0.7.36 소유 가드)
+
+function _cgmCsvStat(type, msg){
+  const el=document.getElementById('cgmCsvStatus'); if(!el) return;
+  el.style.display='block';
+  el.style.cssText+=';padding:.55rem .75rem;border-radius:8px;font-size:12px;margin-top:.5rem;line-height:1.6';
+  el.style.background=type==='err'?'var(--coral-l,#FDEBE3)':'var(--teal-l,#E4F2ED)';
+  el.style.color=type==='err'?'var(--coral,#D85A30)':'var(--teal-d,#1D9E75)';
+  el.textContent=msg;
+}
+function _cgmCsvReset(){
+  _cgmCsvPending=null;
+  const p=document.getElementById('cgmCsvPreview'); if(p){p.style.display='none';p.innerHTML='';}
+  const s=document.getElementById('cgmCsvStatus'); if(s)s.style.display='none';
+  const f=document.getElementById('cgmCsvFile'); if(f)f.value='';
+}
+
+document.getElementById('cgmCsvFile')?.addEventListener('change', async e=>{
+  const file=e.target.files&&e.target.files[0];
+  if(!file) return;
+  _cgmCsvReset();
+  if(file.size>CGM_CSV_MAX_BYTES){
+    _cgmCsvStat('err','파일이 너무 커요 ('+(file.size/1048576).toFixed(1)+'MB). 한 번에 최대 5MB까지 올릴 수 있어요. 기간을 나눠서 여러 번 올려주세요.');
+    return;
+  }
+  let text='';
+  try{ text=await file.text(); }catch(err){ _cgmCsvStat('err','파일을 읽지 못했어요. 다시 시도해주세요.'); return; }
+  const parsed=parseCgmCsv(text);
+  if(parsed.error==='format'){
+    _cgmCsvStat('err','지원하지 않는 파일 형식이에요. 현재 지원: '+CGM_FORMATS.map(f=>f.name).join(', ')+'. 다른 CGM 앱을 사용하신다면 피드백으로 파일을 보내주세요. 지원 목록에 추가할게요.');
+    return;
+  }
+  if(parsed.error==='nodata'){
+    _cgmCsvStat('err','파일에서 혈당 데이터를 읽지 못했어요. CGM 앱에서 내보낸 원본 CSV인지 확인해주세요.');
+    return;
+  }
+  _cgmCsvPending={parsed, cat:state.activeCat};
+  const from=parsed.days[0].date, to=parsed.days[parsed.days.length-1].date;
+  const box=document.getElementById('cgmCsvPreview');
+  box.style.display='block';
+  box.innerHTML=
+    '<div style="margin-top:.6rem;padding:.75rem .85rem;border:1px solid var(--cm-line,#E5DFD5);border-radius:10px;background:var(--bg2)">'
+    +'<div style="font-size:13px;font-weight:700;color:var(--cm-ink)">'+_vEsc(parsed.device||parsed.format)+'</div>'
+    +'<div style="font-size:12px;color:var(--text2);margin-top:3px">'+from+' ~ '+to+' ('+parsed.days.length+'일)</div>'
+    +'<div style="font-size:12px;color:var(--text2)">'+parsed.rows.toLocaleString()+'건'
+    +(parsed.serials.length>1?' · 센서 '+parsed.serials.length+'개 (교체 포함)':'')
+    +(parsed.skipped?' · '+parsed.skipped+'건 제외(형식 불일치)':'')+'</div>'
+    +'<div style="font-size:11px;color:var(--text3);margin-top:3px">대상: '+_vEsc(_cgmCsvPending.cat||'')+'</div>'
+    +'<div id="cgmCsvChoice" style="display:flex;gap:8px;margin-top:.7rem">'
+    +'<button type="button" class="btn btn-teal btn-sm" onclick="cgmCsvImport()">불러오기</button>'
+    +'<button type="button" class="btn btn-sm" onclick="_cgmCsvReset()" style="background:var(--bg);border:1px solid var(--cm-line)">취소</button>'
+    +'</div></div>';
+});
+
+async function cgmCsvImport(){
+  const pend=_cgmCsvPending;
+  if(!pend) return;
+  const cat=pend.cat;
+  if(cat!==state.activeCat){ _cgmCsvStat('err','고양이가 바뀌었어요. 파일을 다시 선택해주세요.'); _cgmCsvReset(); return; }
+  if(!sbClient||!currentUser){ _cgmCsvStat('err','CSV 불러오기는 로그인 후 사용할 수 있어요. (대량 데이터라 클라우드에 저장돼요)'); return; }
+  let dbId=(state.catProfiles||{})[cat]?.dbId;
+  if(!dbId){
+    try{ await upsertCatToDB(cat); dbId=(state.catProfiles||{})[cat]?.dbId; }catch(e){}
+    if(!dbId){ _cgmCsvStat('err','고양이 정보를 동기화하지 못했어요. 잠시 후 다시 시도해주세요.'); return; }
+  }
+  // 중복 확인 — cgm_daily 기존 행 + 스크린샷(cgmData) 겹침 안내
+  const dates=pend.parsed.days.map(d=>d.date);
+  let existing=[];
+  try{
+    const {data,error}=await sbClient.from('cgm_daily').select('date,source').eq('cat_id',dbId).in('date',dates);
+    if(error) throw error;
+    existing=data||[];
+  }catch(e){ _cgmCsvStat('err','기존 데이터 확인에 실패했어요. 잠시 후 다시 시도해주세요.'); return; }
+  const shotDates=cgmData.filter(d=>(d.cat||'')===cat && dates.indexOf(d.date)>=0).map(d=>d.date);
+  if(!existing.length){
+    _cgmCsvSave(dbId, pend.parsed, null, shotDates);
+    return;
+  }
+  // 겹침 → 덮어쓰기/건너뛰기/취소 선택
+  const from=dates[0], to=dates[dates.length-1];
+  const choice=document.getElementById('cgmCsvChoice');
+  if(choice){
+    choice.innerHTML=
+      '<div style="width:100%">'
+      +'<div style="font-size:12px;color:var(--cm-ink);line-height:1.6;margin-bottom:.5rem">'
+      +from+' ~ '+to+' 중 <b>'+existing.length+'일치</b> 데이터가 이미 있어요.'
+      +(shotDates.length?'<br>스크린샷으로 입력한 데이터도 '+shotDates.length+'일치 있어요 (그대로 유지돼요).':'')
+      +'</div>'
+      +'<div style="display:flex;flex-direction:column;gap:6px">'
+      +'<button type="button" class="btn btn-sm" style="background:var(--coral,#D85A30);color:#fff;text-align:left" onclick="_cgmCsvSaveGo(\'overwrite\')">덮어쓰기 — 기존 데이터를 새 파일로 교체해요 (되돌릴 수 없어요)</button>'
+      +'<button type="button" class="btn btn-teal btn-sm" style="text-align:left" onclick="_cgmCsvSaveGo(\'skip\')">건너뛰기 — 기존 데이터는 유지하고, 없는 날짜만 추가해요</button>'
+      +'<button type="button" class="btn btn-sm" style="background:var(--bg);border:1px solid var(--cm-line)" onclick="_cgmCsvReset()">취소</button>'
+      +'</div></div>';
+    choice.dataset.existing=JSON.stringify(existing.map(x=>x.date));
+    choice.dataset.dbid=dbId;
+  }
+}
+function _cgmCsvSaveGo(mode){
+  const pend=_cgmCsvPending; if(!pend) return;
+  const choice=document.getElementById('cgmCsvChoice');
+  const existingDates=choice&&choice.dataset.existing?JSON.parse(choice.dataset.existing):[];
+  const dbId=choice&&choice.dataset.dbid;
+  if(!dbId) return;
+  _cgmCsvSave(dbId, pend.parsed, mode==='skip'?existingDates:null, []);
+}
+
+/* 배치 저장 — 10일씩 upsert, 진행률 표시. skipDates 지정 시(건너뛰기) 해당 날짜 제외 */
+async function _cgmCsvSave(dbId, parsed, skipDates, shotDates){
+  const cat=_cgmCsvPending?_cgmCsvPending.cat:state.activeCat;
+  const serial=parsed.serials.join('·')||null;
+  let days=parsed.days;
+  if(skipDates&&skipDates.length) days=days.filter(d=>skipDates.indexOf(d.date)<0);
+  if(!days.length){ _cgmCsvStat('ok','추가할 새 날짜가 없어요. 기존 데이터를 그대로 유지했어요.'); _cgmCsvPending=null; const p=document.getElementById('cgmCsvPreview'); if(p){p.style.display='none';p.innerHTML='';} return; }
+  const choice=document.getElementById('cgmCsvChoice');
+  const rows=days.map(d=>({
+    cat_id:dbId, user_id:currentUser.id, date:d.date,
+    device:parsed.device, serial, readings:d.readings, summary:d.summary,
+    source:'csv', updated_at:new Date().toISOString()
+  }));
+  let saved=0;
+  for(let i=0;i<rows.length;i+=CGM_CSV_BATCH_DAYS){
+    if(choice) choice.innerHTML='<div style="font-size:12px;color:var(--text2)">저장 중... '+Math.min(i+CGM_CSV_BATCH_DAYS,rows.length)+'/'+rows.length+'일</div>';
+    const batch=rows.slice(i,i+CGM_CSV_BATCH_DAYS);
+    try{
+      const {error}=await sbClient.from('cgm_daily').upsert(batch,{onConflict:'cat_id,date'});
+      if(error) throw error;
+      saved+=batch.length;
+    }catch(e){
+      console.warn('CGM CSV 저장 오류:',e);
+      _cgmCsvStat('err','저장 중 오류가 났어요 ('+saved+'/'+rows.length+'일 저장됨). 같은 파일을 다시 올리면 이어서 저장할 수 있어요.');
+      _cgmCsvPending=null;
+      return;
+    }
+  }
+  _cgmCsvPending=null;
+  const p=document.getElementById('cgmCsvPreview'); if(p){p.style.display='none';p.innerHTML='';}
+  _cgmCsvStat('ok',saved+'일치 혈당 데이터를 불러왔어요.'+(shotDates&&shotDates.length?' 스크린샷 데이터 '+shotDates.length+'일치는 그대로 유지돼요.':''));
+  try{ await loadCgmCsvForCat(cat); renderCgmHistory(); }catch(e){}
+  toast('CGM CSV '+saved+'일치 저장 완료');
+}
+/* ══ CGMCSV-END ══ */
+
 document.getElementById('cgmDate').value=today();
 document.getElementById('cgmCat').value=state.activeCat||'케이';
 
@@ -9455,6 +9731,7 @@ function renderCgmExtracted(d){
 // 저장
 document.getElementById('cgmSaveBtn').onclick=()=>{
   if(!cgmExtracted)return;
+  if(cgmExtracted.source==='csv'){toast('CSV로 불러온 데이터는 이미 저장돼 있어요');return;}
   // 저장 시 현재 activeCat으로 강제 설정
   cgmExtracted.cat = state.activeCat || cgmExtracted.cat;
   cgmData.unshift({ts:Date.now(),...cgmExtracted});
@@ -9604,7 +9881,8 @@ ${(()=>{ // 【이번 주 변화】 섹션용 최근 일별 요약 (오늘 제�
 function renderCgmHistory(){
   const hist=document.getElementById('cgmHistory');
   const list=document.getElementById('cgmHistList');
-  if(!cgmData.length){hist.style.display='none';return}
+  const all=(typeof cgmAllEntries==='function'?cgmAllEntries():cgmData);   // 스크린샷+CSV 통합 (v0.7.53)
+  if(!all.length){hist.style.display='none';return}
   hist.style.display='block';
 
   // 추이 차트
@@ -9612,7 +9890,7 @@ function renderCgmHistory(){
   const isDark=matchMedia('(prefers-color-scheme:dark)').matches;
   const gc=isDark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.05)';
   const tc=isDark?'#B4B2A9':'#888780';
-  const sorted=[...cgmData].sort((a,b)=>a.date<b.date?-1:1);
+  const sorted=[...all].sort((a,b)=>a.date<b.date?-1:1);
   const tLabels=sorted.map(d=>(d.date||'').length>=7?d.date.slice(5):d.date||'?');
   const tAvgs=sorted.map(d=>d.avg||Math.round((d.readings||[]).reduce((a,r)=>a+r.value,0)/Math.max((d.readings||[]).length,1)));
   const tMins=sorted.map(d=>d.min||Math.min(...(d.readings||[]).map(r=>r.value)));
@@ -9630,27 +9908,40 @@ function renderCgmHistory(){
     }
   });
 
-  // 이력 리스트
+  // 이력 리스트 — 통합 목록을 날짜 내림차순으로 (CSV·스크린샷 출처 배지 구분)
   list.innerHTML='';
-  cgmData.slice(0,10).forEach(d=>{
+  [...all].sort((a,b)=>a.date<b.date?1:-1).slice(0,10).forEach(d=>{
     const avg=d.avg||Math.round((d.readings||[]).reduce((a,r)=>a+r.value,0)/Math.max((d.readings||[]).length,1));
     const color=avg<=200?'#1D9E75':avg<=300?'#BA7517':'#D85A30';
     const dt=d.date||(d.readings&&d.readings[0]?.time?.slice(0,10))||'날짜 없음';
+    const badge=d.source==='csv'?'<span style="font-size:9px;padding:1px 6px;border-radius:5px;background:var(--cm-green-tint);color:var(--cm-green-700);margin-left:3px">CSV 파일</span>'
+      :d.appType==='pasta'?'<span style="font-size:9px;padding:1px 6px;border-radius:5px;background:var(--amber-l);color:var(--amber-d);margin-left:3px">파스타</span>'
+      :d.appType==='libre'?'<span style="font-size:9px;padding:1px 6px;border-radius:5px;background:#EDE7F6;color:#6A1B9A;margin-left:3px">리브레</span>'
+      :'<span style="font-size:9px;padding:1px 6px;border-radius:5px;background:var(--teal-l);color:var(--teal-d);margin-left:3px">케어센스</span>';
     const item=document.createElement('div');item.className='h-item';
     item.innerHTML=`<div class="h-dot" style="background:${color}"></div>
       <div class="h-name">${d.cat} · ${dt}
         <span style="font-size:10px;color:var(--text3)">${d.device||'CGM'} · ${(d.readings||[]).length}회</span>
-        ${d.appType==='pasta'?'<span style="font-size:9px;padding:1px 6px;border-radius:5px;background:var(--amber-l);color:var(--amber-d);margin-left:3px">파스타</span>':d.appType==='libre'?'<span style="font-size:9px;padding:1px 6px;border-radius:5px;background:#EDE7F6;color:#6A1B9A;margin-left:3px">리브레</span>':'<span style="font-size:9px;padding:1px 6px;border-radius:5px;background:var(--teal-l);color:var(--teal-d);margin-left:3px">케어센스</span>'}
+        ${badge}
       </div>
       <div class="h-meta">평균 ${avg}<br>최저 ${d.min||'?'} · 최고 ${d.max||'?'}</div>`;
-    // 삭제 버튼
+    // 삭제 버튼 — 스크린샷은 cgmData, CSV는 cgm_daily 행 삭제
     const cgmDelBtn=document.createElement('button');
     cgmDelBtn.type='button';
     cgmDelBtn.textContent='🗑️';
     cgmDelBtn.style.cssText='background:none;border:none;font-size:13px;cursor:pointer;padding:2px 6px;opacity:0.5;flex-shrink:0';
-    cgmDelBtn.addEventListener('click',(e)=>{
+    cgmDelBtn.addEventListener('click',async (e)=>{
       e.stopPropagation();
       if(!confirm(dt+' CGM 기록을 삭제할까요?'))return;
+      if(d.source==='csv'){
+        const dbId=(state.catProfiles||{})[d.cat]?.dbId;
+        if(!sbClient||!currentUser||!dbId){toast('삭제하려면 로그인이 필요해요','#BA7517');return;}
+        const {error}=await sbClient.from('cgm_daily').delete().eq('cat_id',dbId).eq('date',d.date);
+        if(error){toast('삭제에 실패했어요','#D85A30');return;}
+        cgmCsv=cgmCsv.filter(x=>x!==d);
+        renderCgmHistory();toast('삭제됐어요');
+        return;
+      }
       const i=cgmData.indexOf(d);
       if(i>-1){cgmData.splice(i,1);saveCGM();renderCgmHistory();toast('삭제됐어요');}
     });
@@ -9661,7 +9952,7 @@ function renderCgmHistory(){
   });
 }
 document.getElementById('cgmClear').onclick=()=>{
-  if(confirm('CGM 이력을 모두 삭제할까요?')){cgmData=[];saveCGM();renderCgmHistory()}
+  if(confirm('스크린샷 CGM 이력을 모두 삭제할까요? (CSV로 불러온 데이터는 유지돼요)')){cgmData=[];saveCGM();renderCgmHistory()}
 };
 
 
@@ -11278,7 +11569,7 @@ function _obsBgReadings(cat, anchor){
     const r=recs[day];
     if(r) (r.bg||[]).forEach(b=>{ const v=parseFloat(b.bg); if(v>0) vals.push(v); });
   });
-  (typeof cgmData!=='undefined'?cgmData:[])
+  (typeof cgmAllEntries==='function'?cgmAllEntries():[])
     .filter(c=>(c.cat||'').trim()===(cat||'').trim() && c.date>=dates[0] && c.date<=anchor)
     .forEach(c=>(c.readings||[]).forEach(r=>{ if(r.value>0) vals.push(r.value); }));
   return vals;
@@ -11292,7 +11583,7 @@ function _obsInsResponses(cat, dates){
     const rec=recs[day]; if(!rec || !(rec.ins||[]).length) return;
     const bgs=[];
     (rec.bg||[]).forEach(b=>{ const v=parseFloat(b.bg), x=_obsTimeMin(b.time); if(v>0 && x!=null) bgs.push({x,v}); });
-    (typeof cgmData!=='undefined'?cgmData:[])
+    (typeof cgmAllEntries==='function'?cgmAllEntries():[])
       .filter(c=>c.date===day && (c.cat||'').trim()===(cat||'').trim())
       .forEach(c=>(c.readings||[]).forEach(r=>{ const x=_obsTimeMin(r.time); if(r.value>0 && x!=null) bgs.push({x,v:r.value}); }));
     (rec.ins||[]).forEach(inj=>{
@@ -11657,9 +11948,9 @@ function collectVetReportData(cat, fromStr, toStr){
     sleepN: rrSleep.length, sleepAvg: rrSleep.length?Math.round(rrSleep.reduce((a,b)=>a+b,0)/rrSleep.length):null, sleepMax: rrSleep.length?Math.max(...rrSleep):null };
   d.meds = Object.keys(medCount).sort((a,b)=>medCount[b]-medCount[a]).map(nm=>({name:nm, count:medCount[nm]}));
   d.isDM = (prof.diseases||[]).some(x=>String(x).includes('DM'));
-  if(d.isDM && typeof cgmData !== 'undefined'){
+  if(d.isDM && typeof cgmAllEntries === 'function'){
     const vals = [];
-    cgmData.filter(c=>(c.cat||'').trim()===cat.trim() && c.date>=fromStr && c.date<=toStr)
+    cgmAllEntries().filter(c=>(c.cat||'').trim()===cat.trim() && c.date>=fromStr && c.date<=toStr)
       .forEach(c=>(c.readings||[]).forEach(r=>{ if(r.value>0) vals.push(r.value); }));
     if(vals.length){
       d.cgm = {
@@ -13110,6 +13401,7 @@ async function handleLogout() {
   if(!sbClient) return;
   await sbClient.auth.signOut();
   currentUser = null;
+  cgmCsv = [];   // CSV 데이터는 DB 전용 — 로그아웃 시 세션 캐시 비움
   document.getElementById('logoutBtn').style.display = 'none';
   showLogin();
 }
@@ -13215,6 +13507,7 @@ async function syncFromDB() {
       _tw('graph_hidden',   loadGraphHiddenFromDB().catch(e => console.warn('그래프 설정 로드 오류:', e))),
       _tw('routine',        loadRoutineForCat(state.activeCat).catch(e => console.warn('루틴 로드 오류:', e))),
       _tw('cgm',            loadCGMForCat(state.activeCat).catch(e => console.warn('CGM 로드 오류:', e))),
+      _tw('cgm_csv',        loadCgmCsvForCat(state.activeCat).catch(e => console.warn('CGM CSV 로드 오류:', e))),
       _tw('card_settings',  loadCardSettingsForCat(state.activeCat).catch(e => console.warn('카드설정 로드 오류:', e))),
       _tw('tile_config',    loadTileConfigFromDB(state.activeCat).catch(e => console.warn('타일설정 로드 오류:', e))),
       _tw('food_sync',      syncFoodDataFromDB(state.activeCat).catch(e => console.warn('사료 DB 로드 오류:', e))),
