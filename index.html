@@ -652,7 +652,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.50</span>
+      <span class="cm-beta">v0.7.51</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -11193,6 +11193,285 @@ function _vrAge(cat){
   const y = Math.floor((Date.now() - new Date(birth).getTime()) / (365.25*86400000));
   return y >= 0 ? y : null;
 }
+/* ══ OBS-BEGIN — 최근 관찰 지표 엔진 (v0.7.51) ══
+   개인 기준선(최근 7일 vs 이전 4주) 대비 변화 감지 — 수치 관찰 전달만.
+   진단·처방·응급 판정·용량 권고 금지 (v0.7.34 원칙), 문구 전부 하드코딩(AI 생성 아님).
+   질환별 힌트는 등록 질환에만 매칭(감별 진단 유도 금지), 데이터 부족 시 지표 미표시(오탐 방지).
+   v0.7.52 오늘탭 요약 카드에서 computeObservations(cat, today()) 재사용 예정 */
+
+const OBS_TH = {
+  waterPct:30, urinePct:30,            // 7일 평균 vs 이전 4주 평균 증가율 %
+  vomitX:2, vomit3dCount:3,            // 주간 배수 / 최근 3일 절대 횟수
+  poopGapDays:3, poopTrackDays:14,     // 대변 공백 일수 / 기록 습관 확인 창
+  weightPct:3,                         // 4주 vs 이전 8주 감소율 %
+  mealPct:30, mealLowRatio:0.5, mealLowDays:3,
+  bgLow:60, bgHigh:300, bgHighPct:30, bgMinReadings:10,  // 앱 공용 임계값(CGM 배너·리포트)과 동일
+  insPct:30, insMinRecent:3, insMinPrior:5,
+  rrPct:20, rrAbs:40                   // rrAbs: 커뮤니티 경험 기준 재확인 필요 (스펙 메모)
+};
+
+function _obsAddDays(dateStr, n){ const d=new Date(dateStr+'T00:00:00Z'); d.setUTCDate(d.getUTCDate()+n); return d.toISOString().slice(0,10); }
+function _obsDates(from, to){ const out=[]; let d=from; while(d<=to){ out.push(d); d=_obsAddDays(d,1); } return out; }
+function _obsTimeMin(t){ if(!t) return null; const p=String(t).split(':'); const h=parseInt(p[0]), m=parseInt(p[1]||0); return isNaN(h)?null:h*60+(isNaN(m)?0:m); }
+function _obsAvg(a){ return a.length ? a.reduce((x,y)=>x+y,0)/a.length : null; }
+function _obsR1(v){ return Math.round(v*10)/10; }
+
+/* 일 단위 값 수집 — getRec 미사용(빈 구조 생성 부작용 방지, collectVetReportData와 동일 원칙) */
+function _obsDaily(cat, dates, fn){
+  const recs=(state.records||{})[cat]||{};
+  const vals=[];
+  dates.forEach(day=>{ const r=recs[day]; if(!r) return; const v=fn(r, day); if(v!=null) vals.push(v); });
+  return vals;
+}
+
+/* 최근 7일 vs 이전 4주(그 앞 28일) 추세 */
+function _obsTrend(cat, anchor, fn){
+  const rv=_obsDaily(cat, _obsDates(_obsAddDays(anchor,-6), anchor), fn);
+  const pv=_obsDaily(cat, _obsDates(_obsAddDays(anchor,-34), _obsAddDays(anchor,-7)), fn);
+  const ra=_obsAvg(rv), pa=_obsAvg(pv);
+  return { recentAvg:ra, priorAvg:pa, recentDays:rv.length, priorDays:pv.length,
+    pct:(ra!=null && pa>0) ? Math.round((ra-pa)/pa*100) : null };
+}
+
+function _obsDiseases(cat){
+  const dz=((state.catProfiles||{})[cat]||{}).diseases||[];
+  const has=s=>dz.some(d=>String(d).includes(s));
+  return { dm:has('DM'), ckd:has('CKD')||has('PKD'), hcm:has('HCM'), ibd:has('IBD'), panc:has('췌장염') };
+}
+
+/* 최근 7일 혈당 측정치 (수동 + CGM, 고양이·날짜 격리) */
+function _obsBgReadings(cat, anchor){
+  const dates=_obsDates(_obsAddDays(anchor,-6), anchor);
+  const recs=(state.records||{})[cat]||{};
+  const vals=[];
+  dates.forEach(day=>{
+    const r=recs[day];
+    if(r) (r.bg||[]).forEach(b=>{ const v=parseFloat(b.bg); if(v>0) vals.push(v); });
+  });
+  (typeof cgmData!=='undefined'?cgmData:[])
+    .filter(c=>(c.cat||'').trim()===(cat||'').trim() && c.date>=dates[0] && c.date<=anchor)
+    .forEach(c=>(c.readings||[]).forEach(r=>{ if(r.value>0) vals.push(r.value); }));
+  return vals;
+}
+
+/* 인슐린 투여별 혈당 반응량(투여전 기준 - 이후 1~8시간 최저) — 같은 날 기록만 사용(자정 넘김 미추적) */
+function _obsInsResponses(cat, dates){
+  const recs=(state.records||{})[cat]||{};
+  const out=[];
+  dates.forEach(day=>{
+    const rec=recs[day]; if(!rec || !(rec.ins||[]).length) return;
+    const bgs=[];
+    (rec.bg||[]).forEach(b=>{ const v=parseFloat(b.bg), x=_obsTimeMin(b.time); if(v>0 && x!=null) bgs.push({x,v}); });
+    (typeof cgmData!=='undefined'?cgmData:[])
+      .filter(c=>c.date===day && (c.cat||'').trim()===(cat||'').trim())
+      .forEach(c=>(c.readings||[]).forEach(r=>{ const x=_obsTimeMin(r.time); if(r.value>0 && x!=null) bgs.push({x,v:r.value}); }));
+    (rec.ins||[]).forEach(inj=>{
+      const t=_obsTimeMin(inj.time); if(t==null) return;
+      let base=parseFloat(inj.preBg);
+      if(!(base>0)){
+        const cand=bgs.filter(b=>b.x>=t-90 && b.x<=t+15);
+        if(cand.length) base=cand.sort((a,b)=>Math.abs(a.x-t)-Math.abs(b.x-t))[0].v;
+      }
+      if(!(base>0)) return;
+      const after=bgs.filter(b=>b.x>=t+60 && b.x<=t+480);
+      if(!after.length) return;
+      out.push(Math.max(0, base-Math.min(...after.map(b=>b.v))));
+    });
+  });
+  return out;
+}
+
+/* 관찰 지표 계산 — anchor(YYYY-MM-DD) 기준. 반환: 급증 크기 순 정렬된 엔트리 배열
+   {key, mag, title, lines[], hint, caveat} */
+function computeObservations(cat, anchor){
+  if(!cat || !anchor) return [];
+  const dz=_obsDiseases(cat);
+  const out=[];
+
+  // 1) 음수량 급증 (자발음수 rec.water 합계 — 수액·습식수분 제외: 보호자 급여분은 다음(多飮) 신호 아님)
+  const wt=_obsTrend(cat, anchor, r=>{ const s=(r.water||[]).reduce((a,b)=>a+(b.ml||0),0); return s>0?s:null; });
+  if(wt.recentDays>=3 && wt.priorDays>=8 && wt.recentDays+wt.priorDays>=14 && wt.pct!=null && wt.pct>=OBS_TH.waterPct){
+    out.push({ key:'water', mag:wt.pct,
+      title:'이번 주 음수량 '+wt.pct+'% 증가',
+      lines:['이번 주 평균 '+Math.round(wt.recentAvg)+'ml/일','지난 4주 평균 '+Math.round(wt.priorAvg)+'ml/일 대비 '+wt.pct+'% 증가'],
+      hint: dz.ckd ? '음수량 증가는 CKD 아이에서 관찰되는 변화 중 하나예요. 신장 기능 변화와 관련될 수 있어요.'
+          : dz.dm  ? '음수량 증가는 DM 아이에서 관찰되는 변화 중 하나예요. 혈당 관리 상태와 관련될 수 있어요.'
+          : dz.hcm ? '음수량 증가는 다양한 원인으로 나타날 수 있어요. 이뇨제 복용 중이시면 반응과 관련될 수 있어요.'
+          : '음수량 증가는 여러 원인으로 나타날 수 있어요.' });
+  }
+
+  // 2) 소변 횟수 급증 — 데이터 모델에 소변량(ml)이 없어 횟수/일 기준 (스펙 적응)
+  const ut=_obsTrend(cat, anchor, r=>{ const n=(r.urine||[]).length; return n>0?n:null; });
+  if(ut.recentDays>=3 && ut.priorDays>=8 && ut.recentDays+ut.priorDays>=14 && ut.pct!=null && ut.pct>=OBS_TH.urinePct){
+    out.push({ key:'urine', mag:ut.pct,
+      title:'이번 주 소변 횟수 '+ut.pct+'% 증가',
+      lines:['이번 주 평균 '+_obsR1(ut.recentAvg)+'회/일','지난 4주 평균 '+_obsR1(ut.priorAvg)+'회/일 대비 '+ut.pct+'% 증가'],
+      hint: dz.ckd ? '소변 횟수 증가는 CKD 아이에서 관찰되는 변화 중 하나예요. 다뇨는 신장 기능 변화와 관련될 수 있어요.'
+          : dz.dm  ? '소변 횟수 증가는 DM 아이에서 관찰되는 변화 중 하나예요. 다뇨는 혈당 관리 상태와 관련될 수 있어요.'
+          : dz.hcm ? '소변 횟수 증가는 이뇨제 반응과 관련될 수 있어요.'
+          : '소변 횟수 증가는 여러 원인으로 나타날 수 있어요.' });
+  }
+
+  // 3) 구토 급증 — 최근 7일 총합 vs 이전 4주 주평균 2배, 또는 최근 3일 3회
+  const vCount=dates=>_obsDaily(cat, dates, r=>(r.vomits||[]).length||null).reduce((a,b)=>a+b,0);
+  const v7=vCount(_obsDates(_obsAddDays(anchor,-6), anchor));
+  const v3=vCount(_obsDates(_obsAddDays(anchor,-2), anchor));
+  const vPrior=vCount(_obsDates(_obsAddDays(anchor,-34), _obsAddDays(anchor,-7)));
+  const vWeekly=vPrior/4;
+  const vomitHint = dz.ckd ? '구토 빈도 증가는 CKD 아이에서 관찰되는 변화 중 하나예요.'
+      : dz.panc ? '구토는 췌장염 재발 시 나타날 수 있는 변화예요.'
+      : dz.ibd  ? '구토 빈도 변화는 IBD 관리 중 관찰될 수 있어요.'
+      : (dz.dm||dz.hcm) ? '구토가 자주 관찰되면 원인 확인이 필요할 수 있어요.'
+      : '구토가 자주 관찰되면 소화기 상태 확인이 필요할 수 있어요.';
+  if(vWeekly>0 && v7>=vWeekly*OBS_TH.vomitX && v7>=2){
+    out.push({ key:'vomit', mag:Math.round((v7/vWeekly-1)*100),
+      title:'최근 7일간 구토 '+v7+'회',
+      lines:['최근 7일간 구토 '+v7+'회','지난 4주 평균 주 '+_obsR1(vWeekly)+'회 대비 증가'],
+      hint:vomitHint });
+  } else if(v3>=OBS_TH.vomit3dCount){
+    out.push({ key:'vomit', mag:100,
+      title:'최근 3일간 구토 '+v3+'회',
+      lines:['최근 3일간 구토 '+v3+'회 기록'],
+      hint:vomitHint });
+  }
+
+  // 4) 대변 공백 — '무변'은 배변 아님(배변 없음 관찰 기록). 최근 2주 내 배변 계열 기록이 있어야 유의미
+  {
+    const recs=(state.records||{})[cat]||{};
+    const scan=_obsDates(_obsAddDays(anchor,-34), anchor);
+    let lastPoop=null, trackRecent=false;
+    scan.forEach(day=>{
+      const arr=(recs[day]||{}).poop||[];
+      if(arr.length && day>=_obsAddDays(anchor,-(OBS_TH.poopTrackDays-1))) trackRecent=true;
+      if(arr.some(p=>p.type!=='무변')) lastPoop=day;
+    });
+    if(trackRecent && lastPoop){
+      const gap=Math.round((new Date(anchor+'T00:00:00Z')-new Date(lastPoop+'T00:00:00Z'))/86400000);
+      if(gap>=OBS_TH.poopGapDays){
+        out.push({ key:'poop', mag:gap*15,
+          title:'마지막 대변 기록 '+gap+'일 전',
+          lines:['마지막 대변 기록: '+lastPoop+' ('+gap+'일 전)'],
+          hint: dz.ckd ? '대변 기록 공백은 변비와 관련될 수 있어요. CKD 아이는 탈수 상태에 민감해요.'
+              : (dz.dm||dz.hcm||dz.ibd||dz.panc) ? '대변 기록 공백은 변비 또는 식욕 저하와 관련될 수 있어요.'
+              : '대변 기록 공백은 변비나 식욕 저하와 관련될 수 있어요.',
+          caveat:'기록을 놓치신 게 아니라면 참고해주세요' });
+      }
+    }
+  }
+
+  // 5) 체중 급감 — 최근 4주 평균 vs 이전 8주 평균, 3% 이상 감소
+  {
+    const wFn=r=>{ const ws=r.weights||[]; return ws.length?ws[ws.length-1].weight:null; };
+    const rv=_obsDaily(cat, _obsDates(_obsAddDays(anchor,-27), anchor), wFn);
+    const pv=_obsDaily(cat, _obsDates(_obsAddDays(anchor,-83), _obsAddDays(anchor,-28)), wFn);
+    const ra=_obsAvg(rv), pa=_obsAvg(pv);
+    if(rv.length>=2 && pv.length>=2 && pa>0){
+      const dropPct=Math.round((pa-ra)/pa*1000)/10;
+      if(dropPct>=OBS_TH.weightPct){
+        out.push({ key:'weight', mag:dropPct,
+          title:'최근 4주 체중 '+dropPct+'% 감소',
+          lines:['최근 4주 평균 체중 '+(Math.round(ra*100)/100)+'kg',
+                 '이전 8주 평균 '+(Math.round(pa*100)/100)+'kg 대비 '+dropPct+'% 감소 (약 '+Math.round((pa-ra)*1000)+'g)'],
+          hint: dz.ckd ? '체중 감소는 CKD 아이에서 관찰되는 변화 중 하나예요.'
+              : dz.dm  ? '체중 감소는 DM 아이에서 관찰되는 변화 중 하나예요. 혈당 관리와 관련될 수 있어요.'
+              : (dz.ibd||dz.panc) ? '체중 감소는 소화 흡수 상태와 관련될 수 있어요.'
+              : dz.hcm ? '체중 감소는 다양한 원인으로 나타날 수 있어요.'
+              : '체중 감소는 여러 원인으로 나타날 수 있어요.' });
+      }
+    }
+  }
+
+  // 6) 혈당 급변 (DM 아이만) — 저혈당 횟수 / 고혈당 비율. 임계값은 앱 공용(60·300)과 동일
+  if(dz.dm){
+    const vals=_obsBgReadings(cat, anchor);
+    const lows=vals.filter(v=>v<OBS_TH.bgLow).length;
+    if(lows>=1){
+      out.push({ key:'bgLow', mag:100+lows*10,
+        title:'최근 7일간 저혈당 '+lows+'회 관찰',
+        lines:['최근 7일간 '+OBS_TH.bgLow+'mg/dL 미만 측정 '+lows+'회 (총 '+vals.length+'회 측정 중)'],
+        hint:'저혈당은 인슐린 반응·식사 시점 등과 관련될 수 있어요.' });
+    }
+    if(vals.length>=OBS_TH.bgMinReadings){
+      const highPct=Math.round(vals.filter(v=>v>OBS_TH.bgHigh).length/vals.length*100);
+      if(highPct>=OBS_TH.bgHighPct){
+        out.push({ key:'bgHigh', mag:highPct,
+          title:'최근 7일간 고혈당 비율 '+highPct+'%',
+          lines:['최근 7일간 '+OBS_TH.bgHigh+'mg/dL 초과 측정 비율 '+highPct+'% (총 '+vals.length+'회 측정)'],
+          hint:'고혈당 지속은 인슐린 효과나 식사 관리와 관련될 수 있어요.' });
+      }
+    }
+
+    // 7) 인슐린 반응 감소 (DM 아이만) — 용량·시점 권고 금지, 반응량 수치 관찰만
+    const ir=_obsInsResponses(cat, _obsDates(_obsAddDays(anchor,-6), anchor));
+    const ip=_obsInsResponses(cat, _obsDates(_obsAddDays(anchor,-34), _obsAddDays(anchor,-7)));
+    const ira=_obsAvg(ir), ipa=_obsAvg(ip);
+    if(ir.length>=OBS_TH.insMinRecent && ip.length>=OBS_TH.insMinPrior && ipa>0){
+      const drop=Math.round((ipa-ira)/ipa*100);
+      if(drop>=OBS_TH.insPct){
+        out.push({ key:'ins', mag:drop,
+          title:'인슐린 후 혈당 반응 '+drop+'% 감소',
+          lines:['최근 7일 인슐린 투여 후 혈당 반응 평균 '+Math.round(ira)+'mg/dL 감소',
+                 '지난 4주 평균 '+Math.round(ipa)+'mg/dL 대비 반응이 '+drop+'% 감소'],
+          hint:'인슐린 반응 변화는 여러 요인으로 나타날 수 있어요.' });
+      }
+    }
+  }
+
+  // 8) 안정시(수면) 호흡수 변화 (HCM 아이만) — 20% 증가 또는 40회/분 이상 지속
+  if(dz.hcm){
+    const rrFn=r=>{ const a=(r.rr||[]).filter(x=>x.state==='sleep'&&x.rr>0).map(x=>x.rr); return a.length?_obsAvg(a):null; };
+    const rt=_obsTrend(cat, anchor, rrFn);
+    const risePct=(rt.pct!=null && rt.recentDays>=3 && rt.priorDays>=6) ? rt.pct : null;
+    const absHigh=rt.recentDays>=3 && rt.recentAvg>=OBS_TH.rrAbs;
+    if((risePct!=null && risePct>=OBS_TH.rrPct) || absHigh){
+      const lines=['최근 7일 평균 안정시 호흡수 '+Math.round(rt.recentAvg)+'회/분'];
+      if(risePct!=null && risePct>=OBS_TH.rrPct) lines.push('지난 4주 평균 '+Math.round(rt.priorAvg)+'회/분 대비 '+risePct+'% 증가');
+      else lines.push('최근 7일간 '+OBS_TH.rrAbs+'회/분 이상 수준이 이어지고 있어요');
+      out.push({ key:'rr', mag:risePct!=null?Math.max(risePct, absHigh?50:0):50,
+        title:'최근 7일 안정시 호흡수 증가',
+        lines, hint:'안정시 호흡수 증가는 HCM 관리 중 관찰될 수 있는 변화예요.' });
+    }
+  }
+
+  // 9) 식사량 급감 — 30% 감소 또는 권장량 50% 미만 3일 연속
+  {
+    const kFn=r=>{ const s=(r.meals||[]).reduce((a,m)=>a+(m.kcal||0),0); return s>0?s:null; };
+    const mt=_obsTrend(cat, anchor, kFn);
+    const mealHint = dz.ckd ? '식사량 감소는 CKD 아이에서 관찰되는 변화 중 하나예요.'
+        : dz.dm  ? '식사량 감소는 혈당 관리에도 영향을 줄 수 있어요.'
+        : (dz.ibd||dz.panc) ? '식사량 감소는 소화기 상태 변화와 관련될 수 있어요.'
+        : dz.hcm ? '식사량 감소는 다양한 원인으로 나타날 수 있어요.'
+        : '식사량 감소는 여러 원인으로 나타날 수 있어요.';
+    const dropPct=(mt.pct!=null)?-mt.pct:null;
+    if(mt.recentDays>=3 && mt.priorDays>=8 && dropPct!=null && dropPct>=OBS_TH.mealPct){
+      out.push({ key:'meal', mag:dropPct,
+        title:'이번 주 식사량 '+dropPct+'% 감소',
+        lines:['최근 7일 평균 식사량 '+Math.round(mt.recentAvg)+'kcal/일','지난 4주 평균 '+Math.round(mt.priorAvg)+'kcal/일 대비 '+dropPct+'% 감소'],
+        hint:mealHint });
+    } else {
+      const recKcal=((state.catProfiles||{})[cat]||{}).recommendedKcal;
+      if(recKcal>0){
+        const recs=(state.records||{})[cat]||{};
+        let run=0;
+        const days=_obsDates(_obsAddDays(anchor,-6), anchor);
+        for(let i=days.length-1;i>=0;i--){
+          const s=(((recs[days[i]]||{}).meals)||[]).reduce((a,m)=>a+(m.kcal||0),0);
+          if(s>0 && s<recKcal*OBS_TH.mealLowRatio) run++; else break;
+        }
+        if(run>=OBS_TH.mealLowDays){
+          out.push({ key:'meal', mag:50,
+            title:'권장량 대비 50% 미만 식사 '+run+'일 지속',
+            lines:['최근 '+run+'일간 권장량('+recKcal+'kcal) 대비 50% 미만 지속'],
+            hint:mealHint });
+        }
+      }
+    }
+  }
+
+  return out.sort((a,b)=>b.mag-a.mag);
+}
+/* ══ OBS-END ══ */
+
 function collectVetReportData(cat, fromStr, toStr){
   const prof = (state.catProfiles||{})[cat] || {};
   const dates = _vrDates(fromStr, toStr);
@@ -11296,6 +11575,25 @@ function buildVetReportText(d, inc, memo){
   if(d.profile.diseases) pf.push(d.profile.diseases);
   L.push('반려묘: '+d.cat+(pf.length?' ('+pf.join(', ')+')':''));
   L.push('기간: '+d.fromStr+' ~ '+d.toStr+' ('+d.days+'일)');
+  if(inc.obs){
+    // 관찰 지표 — 기준일은 리포트 종료일, 개인 기준선(최근 7일 vs 이전 4주) 대비
+    const obs = computeObservations(d.cat, d.toStr);
+    L.push('');
+    L.push('[최근 관찰 지표] ('+d.toStr+' 기준 · 아이 개인 평균 대비)');
+    if(obs.length){
+      obs.forEach((o,i)=>{
+        if(i>0) L.push('');
+        L.push('▶ '+o.title);
+        o.lines.forEach(ln=>L.push('  '+ln));
+        if(o.hint) L.push('  '+o.hint);
+        if(o.caveat) L.push('  ('+o.caveat+')');
+        L.push('  → 이 기록을 함께 봐주세요.');
+      });
+      L.push('※ 기록 기반 관찰이에요. 해석과 판단은 담당 수의사와 상담하세요.');
+    } else {
+      L.push('개인 기준선 대비 감지된 변화가 없어요 (기록이 부족한 지표는 비교하지 않아요)');
+    }
+  }
   if(inc.water){
     L.push('');
     L.push('[음수량]');
@@ -11393,6 +11691,10 @@ function buildVetReportText(d, inc, memo){
 function renderVetReportCanvas(d, inc, memo){
   const W = 1080, PAD = 56, CW = W - PAD*2;
   const secs = [];
+  if(inc.obs){
+    const obs = computeObservations(d.cat, d.toStr);
+    if(obs.length) secs.push({t:'최근 관찰 지표', lines: obs.slice(0,4).map(o=>o.title).concat(['상세는 텍스트 리포트 참조']), warn:false});
+  }
   if(inc.water){
     const tot = (d.water.intakeAvg||0)+(d.water.fluidAvg||0);
     const lines = ['평균 '+(tot?Math.round(tot):'—')+'ml/일'+(d.water.target?' / 참고 목표 '+d.water.target+'ml':'')];
@@ -11480,7 +11782,7 @@ function renderVetReportCanvas(d, inc, memo){
 let _vetRep = null;
 function _vetIncDefaults(cat){
   const isDM = ((state.catProfiles||{})[cat]?.diseases||[]).some(x=>String(x).includes('DM'));
-  return { profile:true, water:true, urine:true, poop:true, vomit:true, meal:true, weight:true, rr:true, med:true, cgm:isDM, bt:false };
+  return { obs:true, profile:true, water:true, urine:true, poop:true, vomit:true, meal:true, weight:true, rr:true, med:true, cgm:isDM, bt:false };
 }
 function openVetReport(){
   const cat = state.activeCat;
@@ -11573,7 +11875,7 @@ function renderVetReportStep(){
       + '<div style="font-size:11px;color:var(--cm-faint);margin-top:8px;text-align:center;line-height:1.5">진료 전 병원 카톡에 공유하시면 진료가 편해져요.</div>';
   } else if(R.step === 2){
     const per = [['1w','1주'],['2w','2주'],['1m','1개월'],['3m','3개월'],['custom','직접 지정']];
-    const incDefs = [['profile','프로필'],['water','음수량'],['urine','소변'],['poop','배변'],['vomit','구토'],['meal','급여'],['weight','체중'],['rr','호흡수'],['med','투약·루틴']];
+    const incDefs = [['obs','최근 관찰 지표'],['profile','프로필'],['water','음수량'],['urine','소변'],['poop','배변'],['vomit','구토'],['meal','급여'],['weight','체중'],['rr','호흡수'],['med','투약·루틴']];
     if(((state.catProfiles||{})[R.cat]?.diseases||[]).some(x=>String(x).includes('DM'))) incDefs.push(['cgm','CGM 요약']);
     incDefs.push(['bt','혈액검사 (전원·타 병원용)']);
     box.innerHTML = head('리포트 옵션', '기간과 포함 항목을 선택해주세요')
