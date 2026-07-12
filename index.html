@@ -11203,6 +11203,8 @@ const OBS_TH = {
   waterPct:30, urinePct:30,            // 7일 평균 vs 이전 4주 평균 증가율 %
   urineHeavyPp:20, urineHeavyMinN:14,  // 소변 '다량' 비율 절대 증가폭 %p / 최소 기록 건수
   poopLoosePp:20, poopLooseMinN:10,    // 대변 무름·설사 비율 절대 증가폭 %p / 최소 기록 건수
+  waterSpikePct:40, urineSpikePct:40,  // 단일일 급증: 자기 제외 4주 기준선 대비 증가율 %
+  vomitSpikeCount:2, spikeWindowDays:3, spikeMinDays:14,  // 하루 구토 절대 횟수 / 급증 탐지 창 / 최소 기록일
   vomitX:2, vomit3dCount:3,            // 주간 배수 / 최근 3일 절대 횟수
   poopGapDays:3, poopTrackDays:14,     // 대변 공백 일수 / 기록 습관 확인 창
   weightPct:3,                         // 4주 vs 이전 8주 감소율 %
@@ -11233,6 +11235,32 @@ function _obsTrend(cat, anchor, fn){
   const ra=_obsAvg(rv), pa=_obsAvg(pv);
   return { recentAvg:ra, priorAvg:pa, recentDays:rv.length, priorDays:pv.length,
     pct:(ra!=null && pa>0) ? Math.round((ra-pa)/pa*100) : null };
+}
+
+/* 단일일 급증 탐지 — 최근 3일 중 (1) 자기 제외 4주 기준선 대비 pctTh% 이상 증가
+   또는 (2) 4주 내 다른 날 최대값 초과. 기준선에서 급증일 자신을 제외해 희석 방지.
+   여러 날 걸리면 증가폭 최대인 날 하나만 반환 */
+function _obsSpike(cat, anchor, fn, pctTh){
+  const recs=(state.records||{})[cat]||{};
+  const daily={}; let recDays=0;
+  _obsDates(_obsAddDays(anchor,-27), anchor).forEach(day=>{
+    const r=recs[day]; const v=r?fn(r,day):null;
+    if(v!=null){ daily[day]=v; recDays++; }
+  });
+  if(recDays<OBS_TH.spikeMinDays) return null;
+  let best=null;
+  _obsDates(_obsAddDays(anchor,-(OBS_TH.spikeWindowDays-1)), anchor).forEach(day=>{
+    const v=daily[day]; if(v==null) return;
+    const others=Object.keys(daily).filter(d2=>d2!==day).map(d2=>daily[d2]);
+    if(!others.length) return;
+    const base=_obsAvg(others), maxOther=Math.max(...others);
+    const pct=base>0?Math.round((v-base)/base*100):null;
+    if((pct!=null && pct>=pctTh) || v>maxOther){
+      const mag=pct!=null?pct:100;
+      if(!best || mag>best.mag) best={day, value:v, base, pct, mag, isMax:v>maxOther};
+    }
+  });
+  return best;
 }
 
 function _obsDiseases(cat){
@@ -11302,6 +11330,21 @@ function computeObservations(cat, anchor){
           : '음수량 증가는 여러 원인으로 나타날 수 있어요.' });
   }
 
+  // 1-C) 단일일 음수량 급증 — 하루 스파이크가 7일 평균에 희석돼 추세 지표가 놓치는 신호 보완
+  {
+    const sp=_obsSpike(cat, anchor, r=>{ const s=(r.water||[]).reduce((a,b)=>a+(b.ml||0),0); return s>0?s:null; }, OBS_TH.waterSpikePct);
+    if(sp){
+      out.push({ key:'waterSpike', mag:sp.mag,
+        title:sp.day.slice(5)+' 하루 음수량 '+Math.round(sp.value)+'ml 급증',
+        lines:[sp.day+' 음수량 '+Math.round(sp.value)+'ml',
+               '평소(4주 평균 '+Math.round(sp.base)+'ml) 대비 '+(sp.pct!=null?sp.pct+'% 증가':'증가')+(sp.isMax?' · 최근 4주 중 최대':'')],
+        hint: dz.ckd ? '하루 음수량이 크게 늘어난 날이 있어요. 일시적 변화일 수도 있지만, 음수량 증가는 CKD 아이에서 관찰되는 변화 중 하나예요.'
+            : dz.dm  ? '하루 음수량이 크게 늘어난 날이 있어요. 일시적 변화일 수도 있지만, 음수량 증가는 DM 아이에서 관찰되는 변화 중 하나예요.'
+            : dz.hcm ? '하루 음수량이 크게 늘어난 날이 있어요. 일시적 변화일 수도 있지만, 이뇨제 반응과 관련될 수 있어요.'
+            : '하루 음수량이 크게 늘어난 날이 있어요. 일시적 변화일 수도 있지만, 반복되면 관찰이 필요해요.' });
+    }
+  }
+
   // 2) 소변 횟수 급증 — 데이터 모델에 소변량(ml)이 없어 횟수/일 기준 (스펙 적응)
   const ut=_obsTrend(cat, anchor, r=>{ const n=(r.urine||[]).length; return n>0?n:null; });
   if(ut.recentDays>=3 && ut.priorDays>=8 && ut.recentDays+ut.priorDays>=14 && ut.pct!=null && ut.pct>=OBS_TH.urinePct){
@@ -11336,6 +11379,21 @@ function computeObservations(cat, anchor){
     }
   }
 
+  // 2-D) 단일일 소변 횟수 급증 — 음수량 스파이크와 동일 구조
+  {
+    const sp=_obsSpike(cat, anchor, r=>{ const n=(r.urine||[]).length; return n>0?n:null; }, OBS_TH.urineSpikePct);
+    if(sp){
+      out.push({ key:'urineSpike', mag:sp.mag,
+        title:sp.day.slice(5)+' 하루 소변 '+sp.value+'회 급증',
+        lines:[sp.day+' 소변 '+sp.value+'회',
+               '평소(4주 평균 '+_obsR1(sp.base)+'회) 대비 증가'+(sp.isMax?' · 최근 4주 중 최대':'')],
+        hint: dz.ckd ? '하루 소변 횟수가 크게 늘어난 날이 있어요. 일시적 변화일 수도 있지만, 소변 횟수 증가는 CKD 아이에서 관찰되는 변화 중 하나예요. 다뇨는 신장 기능 변화와 관련될 수 있어요.'
+            : dz.dm  ? '하루 소변 횟수가 크게 늘어난 날이 있어요. 일시적 변화일 수도 있지만, 소변 횟수 증가는 DM 아이에서 관찰되는 변화 중 하나예요. 다뇨는 혈당 관리 상태와 관련될 수 있어요.'
+            : dz.hcm ? '하루 소변 횟수가 크게 늘어난 날이 있어요. 일시적 변화일 수도 있지만, 이뇨제 반응과 관련될 수 있어요.'
+            : '하루 소변 횟수가 크게 늘어난 날이 있어요. 일시적 변화일 수도 있지만, 여러 원인으로 나타날 수 있어요.' });
+    }
+  }
+
   // 3) 구토 급증 — 최근 7일 총합 vs 이전 4주 주평균 2배, 또는 최근 3일 3회
   const vCount=dates=>_obsDaily(cat, dates, r=>(r.vomits||[]).length||null).reduce((a,b)=>a+b,0);
   const v7=vCount(_obsDates(_obsAddDays(anchor,-6), anchor));
@@ -11357,6 +11415,26 @@ function computeObservations(cat, anchor){
       title:'최근 3일간 구토 '+v3+'회',
       lines:['최근 3일간 구토 '+v3+'회 기록'],
       hint:vomitHint });
+  }
+
+  // 3-E) 단일일 구토 다발 — 하루 2회 이상은 그 자체로 관찰 가치 (기준선·최소 데이터 불필요)
+  {
+    const recs=(state.records||{})[cat]||{};
+    let best=null;
+    _obsDates(_obsAddDays(anchor,-(OBS_TH.spikeWindowDays-1)), anchor).forEach(day=>{
+      const n=((recs[day]||{}).vomits||[]).length;
+      if(n>=OBS_TH.vomitSpikeCount && (!best || n>=best.n)) best={day, n};  // 동률이면 최근일 우선
+    });
+    if(best){
+      out.push({ key:'vomitSpike', mag:100+(best.n-OBS_TH.vomitSpikeCount)*20,
+        title:best.day.slice(5)+' 하루 구토 '+best.n+'회',
+        lines:[best.day+' 구토 '+best.n+'회'],
+        hint: dz.ckd ? '하루에 구토가 여러 번 있었어요. 구토 빈도 증가는 CKD 아이에서 관찰되는 변화 중 하나예요.'
+            : dz.panc ? '하루에 구토가 여러 번 있었어요. 구토는 췌장염 재발 시 나타날 수 있는 변화예요.'
+            : dz.ibd  ? '하루에 구토가 여러 번 있었어요. 구토 빈도 변화는 IBD 관리 중 관찰될 수 있어요.'
+            : (dz.dm||dz.hcm) ? '하루에 구토가 여러 번 있었어요. 원인 확인이 필요할 수 있어요.'
+            : '하루에 구토가 여러 번 있었어요. 소화기 상태 확인이 필요할 수 있어요.' });
+    }
   }
 
   // 4) 대변 공백 — '무변'은 배변 아님(배변 없음 관찰 기록). 최근 2주 내 배변 계열 기록이 있어야 유의미
@@ -11515,7 +11593,14 @@ function computeObservations(cat, anchor){
     }
   }
 
-  return out.sort((a,b)=>b.mag-a.mag);
+  out.sort((a,b)=>b.mag-a.mag);
+  // 같은 항목에서 추세·단일일 둘 다 감지되면 단일일을 추세 바로 위로 (더 최근·구체적 신호)
+  [['waterSpike','water'],['urineSpike','urine'],['vomitSpike','vomit']].forEach(pair=>{
+    const si=out.findIndex(o=>o.key===pair[0]);
+    const ti=out.findIndex(o=>o.key===pair[1]);
+    if(si>=0 && ti>=0 && si>ti){ const s=out.splice(si,1)[0]; out.splice(ti,0,s); }
+  });
+  return out;
 }
 /* ══ OBS-END ══ */
 
