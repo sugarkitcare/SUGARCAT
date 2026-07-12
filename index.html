@@ -1434,7 +1434,6 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
     </div>
   </div>
 
-  <div id="gBgCard" data-graph-card="bg"><div id="bgChartWrap"></div></div>
   <div id="gKetCard" data-graph-card="ket" style="display:none"><div id="ketChartWrap"></div></div>
   <div id="gWtCard" data-graph-card="wt"><div id="wtChartWrap"></div></div>
   <div id="gRrCard" data-graph-card="rr" style="display:none"><div id="rrChartWrap"></div></div>
@@ -3304,7 +3303,6 @@ function checkAILimit(type) {
 /* ── 그래프탭 카드 편집 ── */
 const GRAPH_CARDS = [
   { id: 'timelineCard', label: '당뇨 타임라인', icon: 'activity', seg: 'bio' },
-  { id: 'gBgCard',      label: '혈당',          icon: 'activity', seg: 'bio' },
   { id: 'gKetCard',     label: '케톤',          icon: 'flask',    seg: 'bio' },
   { id: 'gWtCard',      label: '체중',          icon: 'scale',    seg: 'bio' },
   { id: 'gRrCard',      label: '호흡수',        icon: 'lungs',    seg: 'bio' },
@@ -5231,8 +5229,11 @@ function renderTimelineChart(date) {
     }
     return pts;
   }).filter(pts=>pts.length);
-  // 세션 간 겹침 가드 — 최신 세션(cgmData 앞쪽) 우선 채택, 시간 범위가 겹치는 이전 세션은
-  // 스킵(같은 날 재추출 중복 → 두 겹 그물 방지). 안 겹치는 세션(오전/오후 분할 촬영)은 병합 유지
+  // 세션 간 겹침 가드 — 겹치면 하나만 채택(같은 날 재추출 중복 → 두 겹 그물 방지),
+  // 안 겹치는 세션(오전/오후 분할 촬영)은 병합 유지.
+  // 채택 우선순위: 데이터 많은 세션 먼저 (v0.7.54) — 스크린샷 소수 추출이 CSV 288개를
+  // 통째로 밀어내던 버그 수정. 동수(재추출 중복)는 stable sort로 기존 최신 스크린샷 우선 유지
+  cgmSessions.sort((a,b)=>b.length-a.length);
   const bgCGM=[]; const cgmRanges=[];
   cgmSessions.forEach(pts=>{
     const lo=pts[0].x, hi=pts[pts.length-1].x;
@@ -5348,204 +5349,6 @@ function renderTimelineChart(date) {
   });
 }
 
-/* ══ BGGRAPH-BEGIN — 그래프탭 혈당 그래프 (v0.7.54): CGM 선(배경) + 수동 측정 점(강조) ══
-   당뇨 타임라인(하루 단위)과 별개 — 기간(7/30/90/전체) 스케일 신규 카드.
-   다운샘플링은 min-max 버킷 방식: 버킷별 최저·최고점을 시간순 보존 → 단순 평균과 달리
-   저혈당(47 등)·고혈당 스파이크가 절대 사라지지 않음 (임상 최우선 요건) */
-let bgGraphInst=null;
-let _bgSummaryCache={};    // { cat: {date:{avg,min,max}} } — cgm_daily summary (메모리 60일 창 밖 과거 포함)
-let _bgSummaryFetched={};  // { cat: true } 1회 페치 가드 (CSV 업로드 성공 시 무효화)
-const BG_DS_BUCKETS=360;   // min-max 버킷 수 — 30일 8,640점 → 최대 720점 렌더
-const BG_BAND_DAYS=45;     // 이 기간 초과(90일/전체)는 일별 평균+최저~최고 밴드 모드
-
-function _bgDownsampleMinMax(pts, buckets){
-  if(pts.length<=buckets*2) return pts;
-  const x0=pts[0].x, span=((pts[pts.length-1].x-x0)/buckets)||1;
-  const out=[]; let bi=-1, lo=null, hi=null;
-  const flush=()=>{ if(!lo)return; if(lo===hi)out.push(lo); else if(lo.x<=hi.x)out.push(lo,hi); else out.push(hi,lo); lo=hi=null; };
-  pts.forEach(p=>{
-    const b=Math.min(buckets-1, Math.floor((p.x-x0)/span));
-    if(b!==bi){ flush(); bi=b; }
-    if(!lo||p.y<lo.y) lo=p;
-    if(!hi||p.y>hi.y) hi=p;
-  });
-  flush();
-  return out;
-}
-
-/* 90일/전체 밴드 모드용 — cgm_daily 요약만 전 기간 페치 (readings 없이 행당 수십 byte) */
-async function _bgFetchSummaries(cat){
-  if(_bgSummaryFetched[cat]) return false;
-  _bgSummaryFetched[cat]=true;
-  if(!sbClient||!currentUser) return false;
-  const dbId=(state.catProfiles||{})[cat]?.dbId;
-  if(!dbId) return false;
-  try{
-    const {data,error}=await sbClient.from('cgm_daily').select('date,summary').eq('cat_id',dbId);
-    if(error) throw error;
-    const m={};
-    (data||[]).forEach(r=>{ if(r.summary&&r.summary.avg!=null) m[r.date]={avg:r.summary.avg,min:r.summary.min,max:r.summary.max}; });
-    _bgSummaryCache[cat]=m;
-    return true;
-  }catch(e){ _bgSummaryFetched[cat]=false; console.warn('혈당 요약 로드 오류:',e); return false; }
-}
-
-/* 기간 내 CGM 일별 요약(avg/min/max) 병합 — 메모리 엔트리(스크린샷+CSV 60일) + summary 캐시 */
-function _bgDailyMap(cat, from, to){
-  const m={};
-  const sc=_bgSummaryCache[cat]||{};
-  Object.keys(sc).forEach(d=>{ if(d>=from&&d<=to) m[d]={avg:sc[d].avg,min:sc[d].min,max:sc[d].max}; });
-  (typeof cgmAllEntries==='function'?cgmAllEntries():[])
-    .filter(c=>(c.cat||'').trim()===(cat||'').trim() && c.date>=from && c.date<=to)
-    .forEach(c=>{
-      if(m[c.date]) return;   // 요약 캐시 우선 (동일 데이터)
-      const vals=(c.readings||[]).map(r=>r.value).filter(v=>v>0);
-      if(!vals.length) return;
-      m[c.date]={ avg:c.avg||Math.round(vals.reduce((a,b)=>a+b,0)/vals.length),
-                  min:c.min||Math.min(...vals), max:c.max||Math.max(...vals) };
-    });
-  return m;
-}
-
-function renderBgGraph(days, periodLabel, gc, tc){
-  const wrap=document.getElementById('bgChartWrap');
-  if(!wrap) return;
-  wrap.innerHTML='';
-  if(bgGraphInst){ try{bgGraphInst.destroy();}catch(e){} bgGraphInst=null; }
-  const cat=state.activeCat;
-  const from=days[0], to=days[days.length-1];
-  const bandMode=days.length>BG_BAND_DAYS;
-
-  // 수동 측정 (rec.bg) — 소량이라 항상 원시 표시
-  const recs=(state.records||{})[cat]||{};
-  const manual=[];
-  days.forEach(d=>{
-    const r=recs[d]; if(!r) return;
-    (r.bg||[]).forEach(b=>{
-      const v=parseFloat(b.bg); if(!(v>0)||!b.time) return;
-      const t=new Date(d+'T'+b.time+':00').getTime();
-      if(!isNaN(t)) manual.push({x:t, y:v, _label:'수동 '+v+'mg/dL'+(b.type?' ('+b.type+')':'')});
-    });
-  });
-  manual.sort((a,b)=>a.x-b.x);
-
-  // CGM 원시 (메모리 창: 스크린샷 + CSV 최근 60일)
-  let cgmPts=[];
-  (typeof cgmAllEntries==='function'?cgmAllEntries():[])
-    .filter(c=>(c.cat||'').trim()===(cat||'').trim() && c.date>=from && c.date<=to)
-    .forEach(c=>(c.readings||[]).forEach(r=>{
-      if(!(r.value>0)||!r.time) return;
-      const t=new Date(c.date+'T'+r.time+':00').getTime();
-      if(!isNaN(t)) cgmPts.push({x:t, y:r.value});
-    }));
-  cgmPts.sort((a,b)=>a.x-b.x);
-
-  // 위험값(60 미만·400 이상)은 다운샘플·밴드와 무관하게 항상 개별 점으로 강조 (스파이크 가시성 보장)
-  const danger=cgmPts.filter(p=>p.y<60||p.y>=400).map(p=>({x:p.x,y:p.y,_label:'CGM '+p.y+'mg/dL'}));
-
-  const dailyMap=bandMode?_bgDailyMap(cat, from, to):{};
-  const bandDates=Object.keys(dailyMap).sort();
-  const hasCgm=cgmPts.length>0||bandDates.length>0;
-  const hasAny=hasCgm||manual.length>0;
-
-  // 카드 셸 (다른 생체 그래프 카드와 동일 골격)
-  const _ico='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>';
-  const _hd='<div class="cm-sechead" style="margin-bottom:.5rem"><div class="cm-ic cm-ic--sm">'+_ico+'</div><div><div class="cm-sechead__t">혈당 <span style="font-size:11px;font-weight:500;color:var(--cm-faint)">mg/dL</span></div></div><div class="cm-sechead__r" style="font-size:12px;color:var(--cm-faint)">'+periodLabel+'</div></div>';
-  const card=document.createElement('div');card.className='cm-card cm-card--flat';
-  if(!hasAny){
-    card.innerHTML=_hd+'<div style="text-align:center;padding:1.5rem;color:var(--cm-faint);font-size:12px">아직 기록이 없어요<br><span style="font-size:11px">오늘 기록 탭 혈당 입력 또는 CGM 탭에서 불러오면 그래프가 그려져요</span></div>';
-    wrap.appendChild(card);return;
-  }
-  const legendParts=[];
-  if(hasCgm) legendParts.push('<span style="color:#1D9E75;font-weight:600"><span style="display:inline-block;width:14px;height:3px;background:rgba(29,158,117,0.55);border-radius:2px;vertical-align:middle;margin-right:3px"></span>CGM'+(bandMode?' (일별 평균·최저~최고)':'')+'</span>');
-  if(manual.length) legendParts.push('<span style="color:#235B43;font-weight:600"><span style="display:inline-block;width:8px;height:8px;background:#235B43;border-radius:50%;vertical-align:middle;margin-right:3px"></span>수동 측정</span>');
-  const leg='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:.4rem;font-size:10px;color:var(--cm-faint)">'+legendParts.join('')+'</div>';
-  card.innerHTML=_hd+leg+'<div class="chart-wrap" style="height:190px"><canvas id="gc_bg"></canvas></div>';
-  wrap.appendChild(card);
-
-  // 데이터셋 구성
-  const datasets=[];
-  if(bandMode){
-    // 일별 평균 선 + 최저~최고 밴드 (min이 밴드로 남아 저혈당 스파이크 보존)
-    const noon=d=>new Date(d+'T12:00:00').getTime();
-    datasets.push({label:'최고', data:bandDates.map(d=>({x:noon(d),y:dailyMap[d].max})),
-      borderColor:'rgba(29,158,117,0.25)', backgroundColor:'rgba(29,158,117,0.10)',
-      borderWidth:1, pointRadius:0, fill:'+2', tension:.3, spanGaps:true, order:3});
-    datasets.push({label:'평균', data:bandDates.map(d=>({x:noon(d),y:dailyMap[d].avg})),
-      borderColor:'rgba(29,158,117,0.55)', borderWidth:1.5, pointRadius:0, fill:false, tension:.3, spanGaps:true, order:2});
-    datasets.push({label:'최저', data:bandDates.map(d=>({x:noon(d),y:dailyMap[d].min})),
-      borderColor:'rgba(24,95,165,0.35)', borderWidth:1, pointRadius:0, fill:false, tension:.3, spanGaps:true, order:3});
-  }else if(cgmPts.length){
-    const ds=_bgDownsampleMinMax(cgmPts, BG_DS_BUCKETS);
-    datasets.push({label:'CGM', data:ds,
-      borderColor:'rgba(29,158,117,0.55)', backgroundColor:'rgba(29,158,117,0.08)',
-      borderWidth:1.2, pointRadius:0, fill:false, tension:.2, spanGaps:true, order:3});
-  }
-  if(danger.length){
-    datasets.push({label:'위험 범위', data:danger,
-      showLine:false, pointRadius:3, pointHoverRadius:5,
-      pointBackgroundColor:'#D85A30', pointBorderColor:'#D85A30', order:1});
-  }
-  if(manual.length){
-    datasets.push({label:'수동 측정', data:manual,
-      showLine:false, pointRadius:4, pointHoverRadius:6, pointBorderWidth:1.5,
-      pointBackgroundColor:manual.map(p=>bgPointColor(p.y)), pointBorderColor:'#fff', order:0});
-  }
-
-  // Y축 상한 — v0.7.50 규칙 동일 (데이터 최대 +20% 를 50 단위 올림, 최소 450 유지)
-  const allY=[...cgmPts.map(p=>p.y),...manual.map(p=>p.y),...bandDates.map(d=>dailyMap[d].max)];
-  const yMax=Math.max(450, Math.ceil((allY.length?Math.max(...allY):0)*1.2/50)*50);
-
-  // 목표범위 배경 (80~200) — 타임라인과 동일 시각 언어
-  const bandPlugin={ id:'bgTargetBand',
-    beforeDatasetsDraw:function(chart){
-      const ys=chart.scales['y'], xs=chart.scales['x'];
-      if(!ys||!xs) return;
-      const c2=chart.ctx;
-      c2.save(); c2.fillStyle='rgba(29,158,117,0.07)';
-      c2.fillRect(xs.left, ys.getPixelForValue(200), xs.right-xs.left, ys.getPixelForValue(80)-ys.getPixelForValue(200));
-      c2.restore();
-    }};
-
-  const xMin=new Date(from+'T00:00:00').getTime(), xMax=new Date(to+'T23:59:00').getTime();
-  bgGraphInst=new Chart(document.getElementById('gc_bg'),{
-    type:'scatter',
-    plugins:[bandPlugin],
-    data:{datasets},
-    options:{responsive:true, maintainAspectRatio:false, animation:false,
-      parsing:false, normalized:true,
-      plugins:{legend:{display:false},
-        tooltip:{callbacks:{label:function(ctx){
-          const raw=ctx.raw||{};
-          const dt=new Date(raw.x);
-          const pad=n=>String(n).padStart(2,'0');
-          const when=pad(dt.getMonth()+1)+'-'+pad(dt.getDate())+' '+pad(dt.getHours())+':'+pad(dt.getMinutes());
-          if(bandMode&&ctx.dataset.label!=='수동 측정'&&ctx.dataset.label!=='위험 범위')
-            return ' '+pad(dt.getMonth()+1)+'-'+pad(dt.getDate())+' '+ctx.dataset.label+' '+raw.y+'mg/dL';
-          return ' '+when+' '+(raw._label||ctx.dataset.label+' '+raw.y+'mg/dL');
-        }}}},
-      scales:{
-        x:{type:'linear', min:xMin, max:xMax, grid:{color:gc},
-           ticks:{color:tc, font:{size:10}, maxTicksLimit:8,
-             callback:function(v){const d=new Date(v);return String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}}},
-        y:{min:0, max:yMax, grid:{color:gc},
-           ticks:{color:tc, font:{size:10}}}
-      }
-    }
-  });
-
-  // 밴드 모드: 요약 미페치면 백그라운드 페치 후 1회 재렌더 (고양이·기간 유지 시에만)
-  if(bandMode){
-    const gp=gPeriod;
-    _bgFetchSummaries(cat).then(fetched=>{
-      if(fetched && state.activeCat===cat && gPeriod===gp){
-        try{ renderBgGraph(days, periodLabel, gc, tc); }catch(e){}
-      }
-    });
-  }
-}
-/* ══ BGGRAPH-END ══ */
-
 /* 그래프 */
 let gInst=[];let gPeriod=0;
 const gActive=new Set(['ket','wt','rr','water']);
@@ -5599,7 +5402,6 @@ function renderGraphs(){
   const tc=isDark?'#B4B2A9':'#888780';
   const days=getDateRange();
   const periodLabel=gPeriod===0?'전체':gPeriod+'일';
-  try{ renderBgGraph(days, periodLabel, gc, tc); }catch(e){ console.warn('혈당 그래프:', e); }
 
   const _gcIcons={ket:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 3h7 M10 3v5l-4.2 9A2.4 2.4 0 0 0 8 20.5h8a2.4 2.4 0 0 0 2.2-3.5L14 8V3"/></svg>',wt:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5h16a1.5 1.5 0 0 1 1.5 1.5v11a1.5 1.5 0 0 1-1.5 1.5H4A1.5 1.5 0 0 1 2.5 18.5v-11A1.5 1.5 0 0 1 4 5.5Z M8.3 12.2a3.7 3.7 0 0 1 7.4 0 M12 12.2l2.2-1.7"/></svg>',rr:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v7 M9 8.5c0 0-3 .8-3.7 4.3C4.8 15.6 5 19 7.4 19c1.7 0 1.9-1.5 2-3 .1-1.6 0-5.2-.4-7.5 M15 8.5c0 0 3 .8 3.7 4.3C19.2 15.6 19 19 16.6 19c-1.7 0-1.9-1.5-2-3-.1-1.6 0-5.2.4-7.5"/></svg>',water:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6c2.8 3.4 6 7 6 10.1a6 6 0 0 1-12 0C6 10.6 9.2 7 12 3.6Z"/></svg>'};
   const _gcMeta={ket:{name:'케톤',unit:'mmol/L'},wt:{name:'체중',unit:'kg'},rr:{name:'호흡수',unit:'회/분'},water:{name:'음수량',unit:'ml'}};
@@ -9560,7 +9362,6 @@ async function _cgmCsvSave(dbId, parsed, skipDates, shotDates){
   _cgmCsvPending=null;
   const p=document.getElementById('cgmCsvPreview'); if(p){p.style.display='none';p.innerHTML='';}
   _cgmCsvStat('ok',saved+'일치 혈당 데이터를 불러왔어요.'+(shotDates&&shotDates.length?' 스크린샷 데이터 '+shotDates.length+'일치는 그대로 유지돼요.':''));
-  try{ delete _bgSummaryCache[cat]; delete _bgSummaryFetched[cat]; }catch(e){}   // 혈당 그래프 요약 캐시 무효화 (v0.7.54)
   try{ await loadCgmCsvForCat(cat); renderCgmHistory(); }catch(e){}
   toast('CGM CSV '+saved+'일치 저장 완료');
 }
