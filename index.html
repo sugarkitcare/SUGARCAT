@@ -652,7 +652,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.49</span>
+      <span class="cm-beta">v0.7.50</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -5229,6 +5229,10 @@ function renderTimelineChart(date) {
   });
   const bgPoints = bgAll.sort((a,b)=>a.x-b.x);
   const bgPtColors = bgPoints.map(p=>bgPointColor(p.y)); // 정렬 후 생성 — 색-점 순서 일치
+  // y축 상한 동적 계산 — 450 하드코딩 시 DKA급 고혈당(450↑)이 잘려 미기록으로 오해됨.
+  // 데이터 최대값 +20% 여유를 50 단위로 올림, 최소 450 유지(정상 데이터 축 고정)
+  const bgDataMax = bgPoints.length ? Math.max(...bgPoints.map(p=>p.y)) : 0;
+  const bgYMax = Math.max(450, Math.ceil(bgDataMax*1.2/50)*50);
 
   // 인슐린: y축 하단 고정 마커 (y=15 고정, 수치는 툴팁으로만)
   const insPoints = rec.ins.filter(r=>r.dose&&r.time)
@@ -5316,7 +5320,7 @@ function renderTimelineChart(date) {
            }
         },
         yBg:{position:'left', grid:{color:gc},
-             min:0, max:450,
+             min:0, max:bgYMax,
              ticks:{color:'#1D9E75', font:{size:10}},
              title:{display:true, text:'혈당 mg/dL', color:'#1D9E75', font:{size:9}}}
       }
@@ -5447,6 +5451,10 @@ function renderGraphs(){
         }
       });
 
+      // 고정 상한(60) 초과 호흡수(빈호흡 응급)가 잘리지 않게 초과 시 +20% 확장
+      const rrMax=Math.max(...datasets.flatMap(ds=>ds.data).filter(v=>v!==null&&!isNaN(v)),0);
+      if(rrMax>yOpts.max)yOpts.max=Math.ceil(rrMax*1.2);
+
       // 참조선
       if(def.annotations){
         def.annotations.forEach(ann=>{
@@ -5515,7 +5523,11 @@ function renderGraphs(){
 
     const yOpts={grid:{color:gc},ticks:{color:tc,font:{size:10}}};
     if(def.yMin!==undefined)yOpts.min=def.yMin;
-    if(def.yMax!==undefined)yOpts.max=def.yMax;
+    // 고정 상한은 데이터가 넘으면 잘림(케톤 6↑ 등 위험 수치일수록 안 보임) → 초과 시 +20% 확장
+    if(def.yMax!==undefined){
+      const dMax=Math.max(...data.filter(v=>v!==null&&!isNaN(v)),0);
+      yOpts.max=dMax>def.yMax?parseFloat((dMax*1.2).toFixed(1)):def.yMax;
+    }
     if(!hasData){yOpts.min=0;}
 
     const datasets=[{data,borderColor:'#235B43',backgroundColor:def.type==='bar'?'rgba(35,91,67,0.7)':'rgba(35,91,67,0.12)',
