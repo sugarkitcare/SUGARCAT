@@ -10,8 +10,9 @@ create table if not exists public.care_events (
   id          uuid primary key default gen_random_uuid(),
   cat_id      uuid not null references public.cats(id) on delete cascade,
   user_id     uuid not null references auth.users(id) on delete cascade,
-  type        text not null default '통원',        -- '통원' | '입원' | '응급'
-  start_date  date not null,                        -- 입원일 / 방문일
+  type         text not null default '통원',        -- '통원' | '입원' (응급은 is_emergency 태그)
+  is_emergency boolean not null default false,       -- 응급 여부 (통원·입원 어느 쪽에도 부여 가능)
+  start_date   date not null,                        -- 입원일 / 방문일
   end_date    date,                                 -- 퇴원일 (통원=start와 동일, 입원중=null)
   symptom     text,                                 -- 증상 / 주호소
   diagnosis   text,                                 -- 진단(선택)

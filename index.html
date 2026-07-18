@@ -652,7 +652,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.62</span>
+      <span class="cm-beta">v0.7.63</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -2079,7 +2079,7 @@ function filterAIAnalysisText(raw){
 }
 let state={cats:[],activeCat:'',records:{},catProfiles:{}};
 let btData=[],fdData=[];
-let careEvents=[]; // 케어 이벤트 — {id,cat,type,start,end,symptom,diagnosis,treatment,procedures[],note,ts} (병원명·비용 미수집: 프라이버시)
+let careEvents=[]; // 케어 이벤트 — {id,cat,type:'통원'|'입원',is_emergency,start,end,symptom,diagnosis,treatment,procedures[],note,ts} (병원명·비용 미수집)
 let _fdViewData=null;
 let btEditMode=false,btEditOriginals={};
 let favFoods=[];
@@ -4625,7 +4625,7 @@ function renderDailySummary(catName) {
   // 5-9. 병원 카드 맥락(스펙 ③ 2단계) + 투약 순응도(스펙 ② Tier 2)
   // ════════════════════════════════
   if(_admitted) {
-    feedbacks.push({priority:1, ...makeFeedback('info','','입원 중',
+    feedbacks.push({priority:1, ...makeFeedback('info','',(_careToday.is_emergency?'응급 입원 중':'입원 중'),
       '입원 기간에는 홈 모니터링 알림을 잠시 멈춰요. 측정·투약은 병원이 관리해요. 퇴원 처리하면 다시 시작해요.')});
   } else {
     // 퇴원 후 N일차 앵커 (14일 이내)
@@ -10595,7 +10595,7 @@ function renderBTHistoryList() {
       const _ev = getEventForDate(bt.cat, bt.date);
       const _evBadge = _ev
         ? ' <span style="display:inline-block;font-size:10px;font-weight:700;color:#3A66A6;background:rgba(58,102,166,.10);padding:1px 6px;border-radius:6px;margin-left:3px;vertical-align:middle">'
-          + ((_ev.type==='입원'&&!_ev.end)?'입원 중':_ev.type) + '</span>'
+          + (_ev.is_emergency?'응급 ':'') + ((_ev.type==='입원'&&!_ev.end)?'입원 중':_ev.type) + '</span>'
         : '';
       let flagsHtml = '';
       if(highCount) flagsHtml += '<span class="flag flag--hi">↑'+highCount+'</span>';
@@ -11600,7 +11600,7 @@ function dismissVetBanner(){
    type: 통원(당일) | 입원(기간) | 응급. 입원중 = end 없음(열린 이벤트).
    저장: careEvents_v1(localStorage) + care_events 테이블(DB). 소급 입력 지원.
    ════════════════════════════════════════════════════════════ */
-const CARE_TYPES = ['통원','입원','응급'];
+const CARE_TYPES = ['통원','입원']; // 응급은 별개 축(is_emergency 태그)
 function saveCareEventsLocal(){ try{ localStorage.setItem('careEvents_v1', JSON.stringify(careEvents)); }catch(e){} }
 function getCareEvents(cat){ return careEvents.filter(e=>e.cat===cat).sort((a,b)=> (a.start<b.start?1:a.start>b.start?-1:0)); }
 function careEventById(id){ return careEvents.find(e=>e.id===id) || null; }
@@ -11610,7 +11610,7 @@ function careEventContains(ev, date){ if(!ev||!ev.start||!date) return false; re
 function getOpenAdmission(cat){ return getCareEvents(cat).find(e=>e.type==='입원' && !e.end) || null; }
 // 특정 날짜가 속한 이벤트(입원>응급>통원 우선, 최근 start 우선) — 혈검·모니터링 맥락 부여
 function getEventForDate(cat, date){
-  const rank={'입원':0,'응급':1,'통원':2};
+  const rank={'입원':0,'통원':1};
   const cands=getCareEvents(cat).filter(e=>careEventContains(e,date));
   if(!cands.length) return null;
   cands.sort((a,b)=> (rank[a.type]??3)-(rank[b.type]??3) || (a.start<b.start?1:-1));
@@ -11684,7 +11684,7 @@ async function saveCareEventToDB(ev){
   if(!prof?.dbId && ev.cat){ await upsertCatToDB(ev.cat); prof=(state.catProfiles||{})[ev.cat]; }
   if(!prof?.dbId){ console.warn('care_event 저장 실패: cat_id 없음', ev.cat); return; }
   const row={ id:ev.id, cat_id:prof.dbId, user_id:currentUser.id, type:ev.type||'통원',
-    start_date:ev.start, end_date:ev.end||null,
+    is_emergency:!!ev.is_emergency, start_date:ev.start, end_date:ev.end||null,
     symptom:ev.symptom||null, diagnosis:ev.diagnosis||null, treatment:ev.treatment||null,
     procedures:ev.procedures||[], note:ev.note||null };
   const {error}=await sbClient.from('care_events').upsert(row,{onConflict:'id'});
@@ -11706,7 +11706,8 @@ async function loadCareEvents(){
   const mapped=(data||[]).map(r=>({
     id:r.id,
     cat: r.cats?.name || Object.keys(state.catProfiles||{}).find(k=>(state.catProfiles||{})[k]?.dbId===r.cat_id) || state.activeCat || '',
-    type:r.type||'통원', start:r.start_date, end:r.end_date||'',
+    type:(r.type==='응급'?'통원':(r.type||'통원')), is_emergency:(!!r.is_emergency || r.type==='응급'),
+    start:r.start_date, end:r.end_date||'',
     symptom:r.symptom||'', diagnosis:r.diagnosis||'', treatment:r.treatment||'',
     procedures:r.procedures||[], note:r.note||'',
     ts: r.created_at ? new Date(r.created_at).getTime() : Date.now()
@@ -11724,9 +11725,11 @@ async function loadCareEvents(){
 /* ── 병원 카드 UI (스펙 ③ 1단계) ── */
 function _careTypeBadge(ev){
   const open = ev.type==='입원' && !ev.end;
-  const map={'입원':['#3A66A6','rgba(58,102,166,.10)'],'응급':['#C0492E','rgba(192,73,46,.10)'],'통원':['#2F7D4F','rgba(47,125,79,.10)']};
-  const [c,bg]=map[ev.type]||map['통원'];
-  return '<span style="font-size:10.5px;font-weight:800;color:'+c+';background:'+bg+';padding:2px 8px;border-radius:999px;flex:0 0 auto">'+(open?'입원 중':ev.type)+'</span>';
+  const base = open ? '입원 중' : ev.type;
+  const label = (ev.is_emergency ? '응급 ' : '') + base;
+  const c  = ev.is_emergency ? '#C0492E' : (ev.type==='입원' ? '#3A66A6' : '#2F7D4F');
+  const bg = ev.is_emergency ? 'rgba(192,73,46,.10)' : (ev.type==='입원' ? 'rgba(58,102,166,.10)' : 'rgba(47,125,79,.10)');
+  return '<span style="font-size:10.5px;font-weight:800;color:'+c+';background:'+bg+';padding:2px 8px;border-radius:999px;flex:0 0 auto">'+label+'</span>';
 }
 function _carePeriodText(ev){
   if(ev.type==='통원') return ev.start;
@@ -11741,7 +11744,7 @@ function renderCareEventsSection(cat){
   if(open) html+='<button type="button" onclick="careDischarge(\''+open.id+'\')" style="padding:7px 12px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;background:var(--cm-green-700);color:#fff;border:none">퇴원 처리</button>';
   else html+='<button type="button" onclick="openCareEventForm(null,\'입원\')" style="padding:7px 12px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;background:var(--cm-surface-2);color:var(--cm-ink-soft);border:1px solid var(--cm-line)">입원 등록</button>';
   html+='<button type="button" onclick="openCareEventForm(null,\'통원\')" style="padding:7px 12px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;background:var(--cm-surface-2);color:var(--cm-ink-soft);border:1px solid var(--cm-line)">기록 추가</button></div>';
-  if(open) html+='<div style="font-size:11px;color:#3A66A6;background:rgba(58,102,166,.08);border:1px solid rgba(58,102,166,.2);border-radius:10px;padding:8px 11px;margin-bottom:8px;line-height:1.5">현재 <b>입원 중</b> ('+open.start+' ~) · 이 기간 혈검은 자동 연결돼요.</div>';
+  if(open) html+='<div style="font-size:11px;color:#3A66A6;background:rgba(58,102,166,.08);border:1px solid rgba(58,102,166,.2);border-radius:10px;padding:8px 11px;margin-bottom:8px;line-height:1.5">현재 <b>'+(open.is_emergency?'응급 ':'')+'입원 중</b> ('+open.start+' ~) · 이 기간 혈검은 자동 연결돼요.</div>';
   if(!evs.length){
     html+='<div style="font-size:12px;color:var(--cm-faint);padding:2px 2px 4px;line-height:1.5">아직 병원 기록이 없어요. 입원·통원을 등록하면 혈검·그래프에 자동으로 연결돼요.</div>';
     return html;
@@ -11804,7 +11807,8 @@ function renderCareForm(ev){
   box.innerHTML=
     '<div style="display:flex;align-items:center;margin-bottom:10px"><div style="flex:1;font-size:16px;font-weight:800;color:var(--cm-ink)">'+(_careFormId?'병원 기록 수정':'병원 기록 추가')+'</div>'
     +'<button type="button" onclick="closeCareForm()" style="background:none;border:none;font-size:20px;color:var(--cm-faint);cursor:pointer;padding:4px 8px;font-family:inherit">×</button></div>'
-    +'<div style="display:flex;gap:6px;margin-bottom:2px">'+typeBtn('통원')+typeBtn('입원')+typeBtn('응급')+'</div>'
+    +'<div style="display:flex;gap:6px;margin-bottom:2px">'+typeBtn('통원')+typeBtn('입원')+'</div>'
+    +'<label style="display:flex;align-items:center;gap:7px;margin-top:9px;font-size:13px;color:var(--cm-ink-soft);cursor:pointer"><input type="checkbox" id="cfEmergency" '+(ev?.is_emergency?'checked':'')+' style="width:16px;height:16px"> 응급 <span style="font-size:11px;color:var(--cm-faint)">(응급실·응급 상황이면 체크)</span></label>'
     +'<div id="cfStartLabel" style="'+lblS+'">'+(_careFormType==='입원'?'입원일':'방문일')+'</div><input type="date" id="cfStart" value="'+_vEsc(ev?.start||today())+'" style="'+dateS+'">'
     +'<div id="cfEndRow" style="display:'+(_careFormType==='입원'?'block':'none')+'"><div style="'+lblS+'">퇴원일</div><input type="date" id="cfEnd" value="'+_vEsc(ev?.end||'')+'" style="'+dateS+'">'
     +'<label style="display:flex;align-items:center;gap:7px;margin-top:7px;font-size:12.5px;color:var(--cm-ink-soft);cursor:pointer"><input type="checkbox" id="cfOngoing" '+(ongoing?'checked':'')+' onchange="document.getElementById(\'cfEnd\').disabled=this.checked;if(this.checked)document.getElementById(\'cfEnd\').value=\'\'" style="width:16px;height:16px"> 아직 입원 중 (퇴원 전)</label></div>'
@@ -11830,7 +11834,7 @@ async function saveCareEventForm(){
     end = ongoing ? '' : (g('cfEnd')?.value||'');
     if(end && end<start){ toast('퇴원일이 입원일보다 빠를 수 없어요','#D85A30'); return; }
   } else { end=start; }
-  const patch={ cat, type, start, end,
+  const patch={ cat, type, is_emergency: !!(g('cfEmergency') && g('cfEmergency').checked), start, end,
     symptom:g('cfSymptom')?.value.trim()||'', diagnosis:g('cfDiagnosis')?.value.trim()||'',
     treatment:g('cfTreatment')?.value.trim()||'', note:g('cfNote')?.value.trim()||'' };
   if(_careFormId) await updateCareEvent(_careFormId, patch);
