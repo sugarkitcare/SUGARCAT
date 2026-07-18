@@ -652,7 +652,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.56</span>
+      <span class="cm-beta">v0.7.57</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -2113,16 +2113,43 @@ const saveFD=()=>{
 
 let _btManualRowId = 0;
 
-// 같은 날짜 혈액검사 항목 병합 — abbr(또는 name) 기준, 새 값 우선
+// 같은 날짜 혈액검사 항목 병합 — (abbr,category) 기준. 충돌 시 출처 우선순위, 없으면 새 값 우선.
 function mergeBTItems(existing, incoming) {
-  const merged = [...(existing || [])];
-  for(const item of (incoming || [])) {
-    const key = item.abbr || item.name;
-    const idx = merged.findIndex(e => (e.abbr || e.name) === key);
-    if(idx > -1) merged[idx] = item;
+  const merged = normalizeBTItems(existing || []);
+  for(const raw of (incoming || [])) {
+    const item = normalizeBTItem(raw);
+    const key = _btKey(item);
+    const idx = merged.findIndex(e => _btKey(e) === key);
+    if(idx > -1) merged[idx] = _btPickBySource(merged[idx], item);
     else merged.push(item);
   }
   return merged;
+}
+
+// 같은 (cat,date) 재업로드 시 병합/교체/건너뛰기 선택 — 조용한 덮어쓰기 금지
+function askBTDateConflict(cat, date, exN, inN) {
+  return new Promise(resolve => {
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:24px';
+    const card = document.createElement('div');
+    card.style.cssText = 'background:var(--cm-surface,#fff);border-radius:16px;max-width:340px;width:100%;padding:20px;box-shadow:0 12px 40px rgba(0,0,0,.28)';
+    const btn = (c, title, desc, primary) =>
+      `<button type="button" data-c="${c}" style="text-align:left;padding:11px 13px;border-radius:11px;border:1px solid ${primary?'var(--cm-green-700,#2f7d4f)':'var(--cm-line,#e3e3e0)'};background:${primary?'var(--cm-green-tint,#eaf5ee)':'var(--cm-surface-2,#f6f6f4)'};cursor:pointer;font-family:inherit;display:block;width:100%">`
+      + `<span style="display:block;font-size:13px;font-weight:800;color:var(--cm-ink,#222)">${title}</span>`
+      + `<span style="display:block;font-size:11.5px;color:var(--cm-ink-soft,#666);margin-top:2px">${desc}</span></button>`;
+    card.innerHTML =
+      `<div style="font-size:15px;font-weight:800;color:var(--cm-ink,#222);margin-bottom:6px">이미 저장된 날짜예요</div>`
+      + `<div style="font-size:13px;line-height:1.5;color:var(--cm-ink-soft,#555);margin-bottom:15px">${cat} · ${date}에 이미 <b>${exN}개</b> 항목이 있어요.<br>새로 읽은 <b>${inN}개</b> 항목을 어떻게 할까요?</div>`
+      + `<div style="display:flex;flex-direction:column;gap:8px">`
+      + btn('merge', '병합', '기존에 없는 항목만 추가 (겹치면 새 값 우선)', true)
+      + btn('replace', '교체', '이 날짜를 새로 읽은 결과로 전체 덮어쓰기', false)
+      + btn('skip', '건너뛰기', '기존 기록을 그대로 두기', false)
+      + `</div>`;
+    ov.appendChild(card);
+    document.body.appendChild(ov);
+    card.querySelectorAll('button').forEach(b => b.onclick = () => { ov.remove(); resolve(b.dataset.c); });
+    ov.onclick = e => { if(e.target === ov) { ov.remove(); resolve('skip'); } };
+  });
 }
 
 function showBTManualEntry() {
@@ -2171,7 +2198,7 @@ function addBTManualRow(prefillName, prefillVal, prefillUnit) {
   if(prefillVal != null)  { const i=document.getElementById('btMV'+id); if(i) i.value=prefillVal; }
   if(prefillUnit != null) { const i=document.getElementById('btMU'+id); if(i) i.value=prefillUnit; }
 }
-function saveBTManual() {
+async function saveBTManual() {
   const date = document.getElementById('btManualDate')?.value;
   const cat = document.getElementById('btManualCat')?.value;
   if(!date || !cat) { toast('날짜와 고양이를 선택해주세요', '#D85A30'); return; }
@@ -2190,10 +2217,14 @@ function saveBTManual() {
   const ei = btData.findIndex(d => d.cat === cat && d.date === date);
   let entry;
   const isMerge = ei > -1;
+  let action = 'new';
   if(isMerge) {
-    const mergedItems = mergeBTItems(btData[ei].items, normalized);
+    const choice = await askBTDateConflict(cat, date, (btData[ei].items||[]).length, normalized.length);
+    if(choice === 'skip') { toast('기존 기록을 유지했어요'); return; }
+    const mergedItems = choice === 'merge' ? mergeBTItems(btData[ei].items, normalized) : normalized;
     entry = {...btData[ei], items: mergedItems, ts: Date.now()};
     btData[ei] = entry;
+    action = choice;
   } else {
     entry = {cat, date, items: normalized, ts: Date.now()};
     btData.unshift(entry);
@@ -2207,7 +2238,7 @@ function saveBTManual() {
   // 폼 초기화
   const rowsCont = document.getElementById('btManualRows');
   if(rowsCont) rowsCont.innerHTML = '';
-  toast(isMerge ? `같은 날짜 항목과 병합됐어요 ✅ (총 ${entry.items.length}개)` : '혈액검사 기록이 저장됐어요 ✅');
+  toast(action === 'merge' ? `같은 날짜 항목과 병합됐어요 ✅ (총 ${entry.items.length}개)` : action === 'replace' ? `이 날짜를 새로 교체했어요 ✅ (${entry.items.length}개)` : '혈액검사 기록이 저장됐어요 ✅');
 }
 
 function kstNow(){return new Date(Date.now()+9*3600000);}
@@ -3549,10 +3580,21 @@ const BT_NORM_MAP = {
   // 지질
   'CHOL':      ['CHOL','Cholesterol','Cholesterol-Total','T-Chol_f','TCHO','Total Cholesterol','콜레스테롤','T.Cholesterol'],
   'TG':        ['TG','TG_f','Triglyceride'],
-  // 뇨검
-  'USG':       ['USG','Urine Specific Gravity','Sp.Gr','SpGr','요비중'],
-  'UPC':       ['UPC','UPRO/UCREA','UP/C'],
-  'UAC':       ['UAC','UAlb/Cr','Urine Albumin/Creatinine'],
+  // 뇨검 — 혈청 항목과 약자 충돌 방지: 뇨 항목은 U- 접두 표준화
+  'USG':       ['USG','U-SG','Urine Specific Gravity','Sp.Gr','SpGr','요비중','뇨비중'],
+  'UPC':       ['UPC','U-PC','UPRO/UCREA','UP/C'],
+  'UAC':       ['UAC','U-AC','UAlb/Cr','Urine Albumin/Creatinine'],
+  'U-CREA':    ['U-CREA','UCREA','뇨CREA','뇨 CREA','Urine Creatinine','UCRE','뇨크레아티닌'],
+  'U-GLU':     ['U-GLU','UGLU','뇨GLU','뇨당','Urine Glucose','뇨포도당'],
+  'U-PRO':     ['U-PRO','UPRO','뇨PRO','뇨단백','Urine Protein','뇨단백질'],
+  'U-BLD':     ['U-BLD','UBLD','뇨BLD','뇨Blood','뇨잠혈','Urine Blood','요잠혈'],
+  'U-pH':      ['U-pH','UpH','뇨pH','Urine pH','요pH'],
+  'U-LEU':     ['U-LEU','ULEU','뇨LEU','뇨백혈구','Urine Leukocyte','요백혈구'],
+  'U-ALB':     ['U-ALB','UALB','뇨ALB','뇨알부민','Urine Albumin','요알부민'],
+  'U-KET':     ['U-KET','UKET','뇨KET','뇨케톤','Urine Ketone'],
+  'U-BIL':     ['U-BIL','UBIL','뇨BIL','뇨빌리루빈','Urine Bilirubin'],
+  'U-URO':     ['U-URO','UURO','유로빌리노겐','Urobilinogen'],
+  'U-NIT':     ['U-NIT','뇨NIT','뇨아질산염','뇨질산염'],
   'Blood':     ['Blood'],
   'NIT':       ['NIT','Nitrite'],
   // 기타
@@ -3598,6 +3640,8 @@ const BT_ABBR_CAT = {
   'CHOL':'지질','TG':'지질',
   // 뇨검
   'USG':'뇨검','UPC':'뇨검','UAC':'뇨검','Blood':'뇨검','NIT':'뇨검',
+  'U-CREA':'뇨검','U-GLU':'뇨검','U-PRO':'뇨검','U-BLD':'뇨검','U-pH':'뇨검','U-LEU':'뇨검',
+  'U-ALB':'뇨검','U-KET':'뇨검','U-BIL':'뇨검','U-URO':'뇨검','U-NIT':'뇨검',
   // 기타
   'NH3':'기타','CK':'기타','temperature':'기타',
 };
@@ -3620,8 +3664,33 @@ const BT_ABBR_NAME = {
   'proBNP':'proBNP','T4':'갑상선호르몬','fT4':'유리갑상선호르몬',
   'CHOL':'총콜레스테롤','TG':'중성지방',
   'USG':'뇨비중','UPC':'단백/크레아티닌 비율','UAC':'알부민/크레아티닌 비율','Blood':'소변잠혈','NIT':'아질산염',
+  'U-CREA':'뇨 크레아티닌','U-GLU':'뇨 포도당','U-PRO':'뇨 단백','U-BLD':'뇨 잠혈','U-pH':'뇨 pH',
+  'U-LEU':'뇨 백혈구','U-ALB':'뇨 알부민','U-KET':'뇨 케톤','U-BIL':'뇨 빌리루빈','U-URO':'유로빌리노겐','U-NIT':'뇨 아질산염',
   'NH3':'암모니아','CK':'크레아틴키나아제','temperature':'체온',
 };
+
+// 같은 (abbr,category) 충돌 시 측정 출처 우선순위 (앞쪽이 우선). 혈구는 CBC 전용기 > 혈액가스기.
+const SOURCE_PRIORITY = { HGB:['CBC','혈액가스'], HCT:['CBC','혈액가스'] };
+function _btSourceRank(abbr, source) {
+  const pri = SOURCE_PRIORITY[abbr];
+  if(!pri || !source) return -1;                 // 우선순위 규칙 없음/출처 없음 → 판단 보류
+  const i = pri.indexOf(source);
+  return i < 0 ? pri.length : i;                  // 목록에 없는 출처는 최하위
+}
+// 혈검 항목 유일성 키 = (표준 abbr, category). 같은 약자라도 카테고리 다르면 별개 항목.
+function _btKey(item) { return (item.abbr || item.name || '') + '|' + (item.category || '기타'); }
+// 동일 키 충돌 해소: 출처 우선순위가 있으면 높은 출처 채택, 없으면 나중 항목(기존 last-wins).
+function _btPickBySource(a, b) {
+  const abbr = a.abbr;
+  if(SOURCE_PRIORITY[abbr]) {
+    const ra = _btSourceRank(abbr, a.source), rb = _btSourceRank(abbr, b.source);
+    if(ra !== -1 || rb !== -1) {
+      const na = ra === -1 ? Infinity : ra, nb = rb === -1 ? Infinity : rb;
+      if(na !== nb) return na < nb ? a : b;       // 더 높은 우선순위(작은 값) 채택
+    }
+  }
+  return b;                                        // 기본: 나중 항목 우선
+}
 
 // 항목 정규화 함수
 function normalizeBTItem(item) {
@@ -3644,10 +3713,12 @@ function normalizeBTItem(item) {
 // items 배열 전체 정규화
 function normalizeBTItems(items) {
   const normalized = (items||[]).map(normalizeBTItem);
-  // 같은 abbr/name 중복 제거 — 나중 항목으로 덮어쓰기
+  // (abbr, category) 기준 중복 제거 — 충돌 시 출처 우선순위, 없으면 나중 항목
   const seen = new Map();
   for(const item of normalized) {
-    seen.set(item.abbr || item.name, item);
+    const key = _btKey(item);
+    const prev = seen.get(key);
+    seen.set(key, prev ? _btPickBySource(prev, item) : item);
   }
   return Array.from(seen.values());
 }
@@ -5617,8 +5688,11 @@ setupDrop('btDrop','btFile',async file=>{
   const b64=await toB64(file);
   const sys='혈액검사지에서 날짜별로 모든 항목을 추출하여 아래 JSON만 출력하세요.\n'+
 '날짜가 여러 개이면 날짜별로 각각 분리해서 추출하세요.\n'+
-'{"results":[{"date":"YYYY-MM-DD","items":[{"name":"항목명","abbr":"약어","value":숫자,"unit":"단위","refLow":숫자or null,"refHigh":숫자or null,"category":"신장|간|혈구|전해질|혈당|췌장|갑상선|단백|지질|기타"}]}]}\n'+
+'{"results":[{"date":"YYYY-MM-DD","items":[{"name":"항목명","abbr":"약어","value":숫자,"unit":"단위","refLow":숫자or null,"refHigh":숫자or null,"category":"신장|간|혈구|전해질|혈당|췌장|갑상선|단백|지질|혈가스|심장|뇨검|기타","source":"CBC|혈액가스|화학|뇨검|특수 또는 기계명"}]}]}\n'+
 '날짜를 모르면 date를 null로 설정하세요.\n'+
+'[출처 태깅] 각 항목의 measurement 출처를 source에 표기하세요. CBC 전용기(ProCyte/VetABC 등 혈구계수기)=\"CBC\", 혈액가스기(ABL 등)=\"혈액가스\", 화학분석기=\"화학\", 요검사=\"뇨검\", 특수검사(fPL/proBNP 등)=\"특수\". 기계명이 인쇄돼 있으면 그 원문을 써도 됩니다. 알 수 없으면 category와 같은 값을 쓰세요.\n'+
+'[혈청 vs 뇨 분리] 소변(뇨) 패널 항목은 반드시 혈청 항목과 분리하세요. 뇨 항목은 category를 \"뇨검\"으로 하고 abbr에 U- 접두를 붙이세요: 뇨크레아티닌→U-CREA, 뇨당→U-GLU, 뇨단백→U-PRO, 뇨잠혈→U-BLD, 뇨pH→U-pH, 뇨백혈구→U-LEU, 뇨알부민→U-ALB, 뇨케톤→U-KET, 뇨빌리루빈→U-BIL. 뇨비중=USG, 뇨단백/크레아티닌비=UPC 는 그대로. 혈청 CREA·GLU 등은 U- 없이 원래 약자를 유지하세요. (혈청 크레아티닌 자리에 뇨 크레아티닌 값을 넣지 마세요.)\n'+
+'[중복 측정] 같은 항목이 하루에 2회 이상(다른 기계/다른 채혈시각) 측정됐으면 모두 추출하세요. 임의로 하나만 남기지 말고, 각각 source를 다르게 태깅하세요.\n'+
 'category 분류 기준:\n'+
 '신장: BUN, CREA, SDMA, PHOS, BUN/CREA, MUREA (인/phosphorus 포함)\n'+
 '간: ALT, AST, ALKP, GGT, TBIL, LDH\n'+
@@ -5689,29 +5763,31 @@ setupDrop('btDrop','btFile',async file=>{
     // 날짜 최신순 정렬
     resultsToSave.sort((a,b)=>b.date>a.date?1:-1);
     btEx=resultsToSave[0];
-    // 여러 날짜면 모두 btData에 저장
+    // 여러 날짜면 모두 btData에 저장 — 기존 날짜는 병합/교체/건너뛰기 확인(조용한 덮어쓰기 금지)
     if(resultsToSave.length>1){
-      resultsToSave.forEach(r=>{
+      let savedCount=0, skippedCount=0;
+      for(const r of resultsToSave){
         const ei=btData.findIndex(d=>d.cat===r.cat&&d.date===r.date);
         let entry;
         if(ei>-1) {
-          const mergedItems=mergeBTItems(btData[ei].items,r.items);
-          entry=Object.assign({},btData[ei],{items:mergedItems,ts:Date.now()});
+          const choice=await askBTDateConflict(r.cat,r.date,(btData[ei].items||[]).length,(r.items||[]).length);
+          if(choice==='skip'){ skippedCount++; continue; }
+          const items = choice==='merge' ? mergeBTItems(btData[ei].items,r.items) : normalizeBTItems(r.items);
+          entry=Object.assign({},btData[ei],{items,ts:Date.now()});
           btData[ei]=entry;
         } else {
-          entry=Object.assign({},r,{ts:Date.now()});
+          entry=Object.assign({},r,{items:normalizeBTItems(r.items),ts:Date.now()});
           btData.unshift(entry);
         }
-        // DB에도 각 날짜별로 저장 (병합된 항목으로)
+        // DB에도 각 날짜별로 저장 (병합/교체된 항목으로)
         saveBloodTestToDB(entry);
-      });
-      // 저장 전 정규화
-      btData = btData.map(d => ({...d, items: normalizeBTItems(d.items)}));
+        savedCount++;
+      }
       saveBT();
       renderBTGraphs();
       renderBTHistoryList();
       if(document.getElementById('tab-graph')?.classList.contains('active')) renderBTTrend();
-      toast(resultsToSave.length+'개 날짜 결과 저장 완료! 그래프 탭에서 확인해보세요 📊');
+      toast(`${savedCount}개 날짜 저장${skippedCount?`, ${skippedCount}개 건너뜀`:''} 완료 📊`);
       // 저장 후 결과 영역 숨기기
       document.getElementById('btResult').style.display='none';
       hideStat('btStatus');
@@ -5720,6 +5796,7 @@ setupDrop('btDrop','btFile',async file=>{
       if(btFileEl) btFileEl.value='';
       const btPreviewEl = document.getElementById('btPreview');
       if(btPreviewEl) btPreviewEl.style.display='none';
+      return;
     }
     const btDate=btEx.date;
   hideStat('btStatus');
@@ -5739,14 +5816,24 @@ setupDrop('btDrop','btFile',async file=>{
 });
 document.getElementById('btSave').onclick=async()=>{
   if(!btEx)return;
+  const _closeBTResult=()=>{
+    document.getElementById('btResult').style.display='none';
+    const cc=document.getElementById('btCatCards');if(cc)cc.innerHTML='';
+    const tw=document.querySelector('#btResult div[style*="overflow"]');if(tw)tw.style.display='';
+  };
   const ei=btData.findIndex(d=>d.cat===btEx.cat&&d.date===btEx.date);
   const isMerge=ei>-1;
+  let action='new';
   if(isMerge) {
-    const mergedItems=mergeBTItems(btData[ei].items,btEx.items);
-    btEx=Object.assign({},btEx,{items:mergedItems,ts:Date.now()});
+    const choice=await askBTDateConflict(btEx.cat,btEx.date,(btData[ei].items||[]).length,(btEx.items||[]).length);
+    if(choice==='skip'){ btEx=null; _closeBTResult(); toast('기존 기록을 유지했어요'); return; }
+    const items = choice==='merge' ? mergeBTItems(btData[ei].items,btEx.items) : normalizeBTItems(btEx.items);
+    btEx=Object.assign({},btEx,{items,ts:Date.now()});
     btData[ei]=btEx;
+    action=choice;
   } else {
-    btData.unshift(Object.assign({},btEx,{ts:Date.now()}));
+    btEx=Object.assign({},btEx,{items:normalizeBTItems(btEx.items),ts:Date.now()});
+    btData.unshift(btEx);
   }
   saveBT();
   // 고양이 DB 등록 확인 후 혈액검사 저장
@@ -5757,10 +5844,8 @@ document.getElementById('btSave').onclick=async()=>{
     } catch(e) { console.error('혈액검사 DB 저장 오류:', e); }
   }
   btEx=null;
-  document.getElementById('btResult').style.display='none';
-  const cc=document.getElementById('btCatCards');if(cc)cc.innerHTML='';
-  const tw=document.querySelector('#btResult div[style*="overflow"]');if(tw)tw.style.display='';
-  toast(isMerge ? '같은 날짜 항목과 병합해서 저장했어요 ☁️' : '혈액검사 저장 완료! ☁️');
+  _closeBTResult();
+  toast(action==='merge' ? '같은 날짜 항목과 병합해서 저장했어요 ☁️' : action==='replace' ? '이 날짜를 새 결과로 교체했어요 ☁️' : '혈액검사 저장 완료! ☁️');
   renderBTGraphs();
   renderBTHistoryList();
   if(document.getElementById('tab-graph')?.classList.contains('active')) renderBTTrend();
@@ -10439,7 +10524,7 @@ function findBTDuplicates(items) {
   const groups = {};
   (items||[]).forEach((item, idx) => {
     const norm = normalizeBTItem(item);
-    const key = norm.abbr || norm.name;
+    const key = _btKey(norm);
     if(!groups[key]) groups[key] = [];
     groups[key].push({item, idx});
   });
@@ -10510,13 +10595,28 @@ function checkBTDuplicatesAndRender(bt) {
       if(--pending === 0) finish();
     };
 
+    // 출처 우선순위 규칙이 있으면 추천 항목 계산 (예: HCT/HGB는 CBC 우선)
+    const _stdAbbr = normalizeBTItem(group[0].item).abbr;
+    let recI = -1;
+    if(SOURCE_PRIORITY[_stdAbbr]) {
+      let bestRank = Infinity;
+      group.forEach(({item}, i) => {
+        const r = _btSourceRank(_stdAbbr, normalizeBTItem(item).source);
+        const rank = r === -1 ? Infinity : r;
+        if(rank < bestRank) { bestRank = rank; recI = i; }
+      });
+      if(bestRank === Infinity) recI = -1;
+    }
+
     group.forEach(({item}, i) => {
       const b = document.createElement('button');
       b.type = 'button';
-      b.style.cssText = 'padding:5px 10px;border:1px solid var(--cm-line);border-radius:8px;background:var(--cm-surface-2);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;color:var(--cm-ink-soft)';
+      const isRec = i === recI;
+      b.style.cssText = 'padding:5px 10px;border:1px solid '+(isRec?'var(--cm-green-700)':'var(--cm-line)')+';border-radius:8px;background:'+(isRec?'var(--cm-green-tint)':'var(--cm-surface-2)')+';font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;color:'+(isRec?'var(--cm-green-700)':'var(--cm-ink-soft)');
       const nm = item.name || item.abbr || '항목'+(i+1);
       const vl = (item.value!==null&&item.value!==undefined) ? item.value : '–';
-      b.textContent = (i===0?'첫 번째':'두 번째')+': '+nm+' → '+vl;
+      const src = item.source ? ' ('+item.source+')' : '';
+      b.textContent = (i===0?'첫 번째':'두 번째')+': '+nm+src+' → '+vl+(isRec?' · 추천':'');
       b.onclick = () => pick(i);
       br.appendChild(b);
     });
