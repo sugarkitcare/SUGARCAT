@@ -652,7 +652,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.60</span>
+      <span class="cm-beta">v0.7.61</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -4050,6 +4050,9 @@ function renderDailySummary(catName) {
   const recs = state.records[cat] || {};
   // 수면 호흡수 피드백 대상: 심장병뿐 아니라 CKD(수액 과부하·동반 심질환) + 실제 SRR 기록 중인 개체
   const srrTracked = (rec.rr && rec.rr.length > 0) || Object.values(recs).some(r => (r.rr||[]).length > 0);
+  // 병원 카드 맥락(스펙 ③ 2단계): 입원 기간엔 홈 모니터링 알림 억제
+  const _careToday = getEventForDate(cat, d);
+  const _admitted = !!(_careToday && _careToday.type==='입원');
 
   const feedbacks = []; // {level, icon, title, detail, priority}
 
@@ -4262,7 +4265,7 @@ function renderDailySummary(catName) {
   // ════════════════════════════════
   // 2. HCM 피드백
   // ════════════════════════════════
-  if(hasHCM || hasCKD || srrTracked) {
+  if(!_admitted && (hasHCM || hasCKD || srrTracked)) {
     // 수면 호흡수 경고 — 3단계(관찰경고 ≥30 / 응급 ≥40) + 개체 기준선 대비 (관찰+병원 안내 톤)
     const todayRrSleep = (rec.rr||[]).filter(x=>x.state==='sleep'&&x.rr>0).map(x=>x.rr);
     if(todayRrSleep.length) {
@@ -4337,7 +4340,7 @@ function renderDailySummary(catName) {
   // ════════════════════════════════
   // 3. CKD 피드백
   // ════════════════════════════════
-  if(hasCKD) {
+  if(!_admitted && hasCKD) {
     // 음수량 목표 vs 실제
     const latestWt = getLatestWeight(cat);
     const todayWater = (rec.water||[]).reduce((a,b)=>a+b.ml, 0);
@@ -4405,8 +4408,8 @@ function renderDailySummary(catName) {
     }
   }
 
-  // 체중 30일 완만한 감소 (전 고양이 공통 — 만성질환 근육소실·악액질 조기 신호)
-  {
+  // 체중 30일 완만한 감소 (전 고양이 공통 — 만성질환 근육소실·악액질 조기 신호). 입원 중 억제.
+  if(!_admitted) {
     const wt30 = getRecentDays(30).map(day => {
       const ws = getRec(cat, day).weights || [];
       return ws.length ? ws[ws.length-1].weight : null;
@@ -4423,9 +4426,9 @@ function renderDailySummary(catName) {
   }
 
   // ════════════════════════════════
-  // 4-0. 식사 칼로리 피드백 (전 고양이 공통)
+  // 4-0. 식사 칼로리 피드백 (전 고양이 공통). 입원 중 억제.
   // ════════════════════════════════
-  {
+  if(!_admitted) {
     const _recKcal = prof.recommendedKcal || 0;
     if(_recKcal > 0) {
       // 최근 3일 유효 kcal: 기록 없음=null, kcal 미입력=null (기록 안 함으로 간주)
@@ -4615,6 +4618,41 @@ function renderDailySummary(catName) {
           feedbacks.push({priority:6,...makeFeedback(lv,'💩','대변 횟수 주간 변화',`지난주 하루평균 ${lAvg}회 → 이번주 ${tAvg}회 (${dir} ${pct}%)`)});}
         else feedbacks.push({priority:10,...makeFeedback('ok','💩','이번주 하루평균 대변',`${tAvg}회`)});
       } else feedbacks.push({priority:10,...makeFeedback('ok','💩','이번주 하루평균 대변',`${tAvg}회`)});
+    }
+  }
+
+  // ════════════════════════════════
+  // 5-9. 병원 카드 맥락(스펙 ③ 2단계) + 투약 순응도(스펙 ② Tier 2)
+  // ════════════════════════════════
+  if(_admitted) {
+    const _hosp = _careToday.hospital ? _vEsc(_careToday.hospital)+' ' : '';
+    feedbacks.push({priority:1, ...makeFeedback('info','',`${_hosp}입원 중`,
+      '입원 기간에는 홈 모니터링 알림을 잠시 멈춰요. 측정·투약은 병원이 관리해요. 퇴원 처리하면 다시 시작해요.')});
+  } else {
+    // 퇴원 후 N일차 앵커 (14일 이내)
+    const _dc = getDaysSinceDischarge(cat);
+    if(_dc && _dc.days <= 14) {
+      feedbacks.push({priority:7, ...makeFeedback('info','',`퇴원 ${_dc.days===0?'당일':_dc.days+'일차'}`,
+        `${_dc.event.hospital?_vEsc(_dc.event.hospital)+' ':''}퇴원 후 재택 관찰 중이에요. 호흡수·체중·식욕을 잘 지켜봐 주세요.`)});
+    }
+    // 투약 순응도 — 예정 시간이 있는 약만, 오늘, 저녁(21시) 이후 미완료 시 (오탐 방지)
+    if(d === today()) {
+      let sched=0, done=0;
+      const _dset = _routineDoneSet(rec);
+      (routineItems||[]).forEach(it=>{
+        if(!_routineUsesTimes(it)) return;
+        (it.times||[]).forEach(s=>{ sched++; if(_dset.has(_slotKey(it.name, s))) done++; });
+      });
+      if(sched>0) {
+        const missing=sched-done;
+        const nowH=kstNow().getUTCHours();
+        if(missing>0 && nowH>=21) {
+          feedbacks.push({priority:5, ...makeFeedback('warn','',`오늘 투약 ${done}/${sched}`,
+            `예정된 투약 ${missing}건이 아직 기록되지 않았어요. 완료했다면 기록해 주세요.`)});
+        } else if(missing===0) {
+          feedbacks.push({priority:10, ...makeFeedback('ok','',`오늘 투약 완료`,`예정 투약 ${sched}건 모두 기록했어요`)});
+        }
+      }
     }
   }
 
@@ -11580,6 +11618,15 @@ function getEventForDate(cat, date){
   return cands[0];
 }
 function _newEventId(){ try{ if(crypto&&crypto.randomUUID) return crypto.randomUUID(); }catch(e){} return 'ce_'+Date.now()+'_'+Math.random().toString(36).slice(2); }
+// 가장 최근 퇴원(입원 end 있음) 이후 경과일 — '퇴원 후 N일차' 앵커용
+function getDaysSinceDischarge(cat){
+  const adm=getCareEvents(cat).filter(e=>e.type==='입원' && e.end);
+  if(!adm.length) return null;
+  const latest=adm.sort((a,b)=> a.end<b.end?1:a.end>b.end?-1:0)[0];
+  const days=Math.round((new Date(today()+'T00:00:00')-new Date(latest.end+'T00:00:00'))/86400000);
+  if(days<0) return null;
+  return {days, event:latest};
+}
 
 // 그래프 입원 구간 음영 밴드 — 카테고리 x축(raw 날짜 배열)에서 입원 이벤트 구간을 표시
 function careAdmissionBandPlugin(cat, rawDates){
@@ -11777,6 +11824,8 @@ function renderCareForm(ev){
 async function saveCareEventForm(){
   const cat=state.activeCat; const g=id=>document.getElementById(id);
   const type=_careFormType;
+  const _prior=_careFormId?careEventById(_careFormId):null;
+  const _wasOpen=_prior && _prior.type==='입원' && !_prior.end;
   const start=g('cfStart')?.value||'';
   if(!start){ toast('시작일(방문일/입원일)을 입력해주세요','#D85A30'); return; }
   let end='';
@@ -11796,7 +11845,20 @@ async function saveCareEventForm(){
   try{ renderVetManage(); }catch(e){}
   try{ if(document.getElementById('tab-graph')?.classList.contains('active')) renderBTTrend(); }catch(e){}
   try{ renderBTHistoryList(); }catch(e){}
-  toast(_careFormId?'병원 기록을 수정했어요 ✅':'병원 기록을 저장했어요 ✅','#1D9E75');
+  try{ renderDailySummary(); }catch(e){}
+  const _isDischarge = type==='입원' && end && _wasOpen;
+  if(_isDischarge){
+    toast('퇴원 처리됐어요 ✅','#1D9E75');
+    setTimeout(()=>{
+      if(confirm('퇴원 후 처방이 바뀌었다면 투약 루틴을 업데이트하는 게 좋아요.\n지금 투약 관리 화면으로 갈까요?')){
+        try{ const b=document.querySelector('.cm-tab[data-tab="daily"]')||document.querySelector('[data-tab="daily"]'); showTab('daily', b);
+          setTimeout(()=>{ const el=document.getElementById('routineScheduleList'); if(el) el.scrollIntoView({behavior:'smooth',block:'center'}); }, 250);
+        }catch(e){}
+      }
+    }, 350);
+  } else {
+    toast(_careFormId?'병원 기록을 수정했어요 ✅':'병원 기록을 저장했어요 ✅','#1D9E75');
+  }
 }
 function careDischarge(id){
   openCareEventForm(id);
