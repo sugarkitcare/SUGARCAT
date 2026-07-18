@@ -652,7 +652,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.58</span>
+      <span class="cm-beta">v0.7.59</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -4046,6 +4046,8 @@ function renderDailySummary(catName) {
   const hasCKD = diseases.includes('CKD') || diseases.includes('PKD');
   const hasHCM = diseases.includes('HCM');
   const recs = state.records[cat] || {};
+  // 수면 호흡수 피드백 대상: 심장병뿐 아니라 CKD(수액 과부하·동반 심질환) + 실제 SRR 기록 중인 개체
+  const srrTracked = (rec.rr && rec.rr.length > 0) || Object.values(recs).some(r => (r.rr||[]).length > 0);
 
   const feedbacks = []; // {level, icon, title, detail, priority}
 
@@ -4258,7 +4260,7 @@ function renderDailySummary(catName) {
   // ════════════════════════════════
   // 2. HCM 피드백
   // ════════════════════════════════
-  if(hasHCM) {
+  if(hasHCM || hasCKD || srrTracked) {
     // 수면 호흡수 경고 — 3단계(관찰경고 ≥30 / 응급 ≥40) + 개체 기준선 대비 (관찰+병원 안내 톤)
     const todayRrSleep = (rec.rr||[]).filter(x=>x.state==='sleep'&&x.rr>0).map(x=>x.rr);
     if(todayRrSleep.length) {
