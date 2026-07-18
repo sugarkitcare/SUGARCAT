@@ -652,7 +652,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.61</span>
+      <span class="cm-beta">v0.7.62</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -2079,7 +2079,7 @@ function filterAIAnalysisText(raw){
 }
 let state={cats:[],activeCat:'',records:{},catProfiles:{}};
 let btData=[],fdData=[];
-let careEvents=[]; // 병원 카드(케어 이벤트) — {id,cat,type,hospital,start,end,reason,diagnosis,treatment,procedures[],cost,note,ts}
+let careEvents=[]; // 케어 이벤트 — {id,cat,type,start,end,symptom,diagnosis,treatment,procedures[],note,ts} (병원명·비용 미수집: 프라이버시)
 let _fdViewData=null;
 let btEditMode=false,btEditOriginals={};
 let favFoods=[];
@@ -4625,15 +4625,14 @@ function renderDailySummary(catName) {
   // 5-9. 병원 카드 맥락(스펙 ③ 2단계) + 투약 순응도(스펙 ② Tier 2)
   // ════════════════════════════════
   if(_admitted) {
-    const _hosp = _careToday.hospital ? _vEsc(_careToday.hospital)+' ' : '';
-    feedbacks.push({priority:1, ...makeFeedback('info','',`${_hosp}입원 중`,
+    feedbacks.push({priority:1, ...makeFeedback('info','','입원 중',
       '입원 기간에는 홈 모니터링 알림을 잠시 멈춰요. 측정·투약은 병원이 관리해요. 퇴원 처리하면 다시 시작해요.')});
   } else {
     // 퇴원 후 N일차 앵커 (14일 이내)
     const _dc = getDaysSinceDischarge(cat);
     if(_dc && _dc.days <= 14) {
       feedbacks.push({priority:7, ...makeFeedback('info','',`퇴원 ${_dc.days===0?'당일':_dc.days+'일차'}`,
-        `${_dc.event.hospital?_vEsc(_dc.event.hospital)+' ':''}퇴원 후 재택 관찰 중이에요. 호흡수·체중·식욕을 잘 지켜봐 주세요.`)});
+        '퇴원 후 재택 관찰 중이에요. 호흡수·체중·식욕을 잘 지켜봐 주세요.')});
     }
     // 투약 순응도 — 예정 시간이 있는 약만, 오늘, 저녁(21시) 이후 미완료 시 (오탐 방지)
     if(d === today()) {
@@ -10596,7 +10595,7 @@ function renderBTHistoryList() {
       const _ev = getEventForDate(bt.cat, bt.date);
       const _evBadge = _ev
         ? ' <span style="display:inline-block;font-size:10px;font-weight:700;color:#3A66A6;background:rgba(58,102,166,.10);padding:1px 6px;border-radius:6px;margin-left:3px;vertical-align:middle">'
-          + ((_ev.type==='입원'&&!_ev.end)?'입원 중':_ev.type) + (_ev.hospital?' · '+_vEsc(_ev.hospital):'') + '</span>'
+          + ((_ev.type==='입원'&&!_ev.end)?'입원 중':_ev.type) + '</span>'
         : '';
       let flagsHtml = '';
       if(highCount) flagsHtml += '<span class="flag flag--hi">↑'+highCount+'</span>';
@@ -11685,9 +11684,9 @@ async function saveCareEventToDB(ev){
   if(!prof?.dbId && ev.cat){ await upsertCatToDB(ev.cat); prof=(state.catProfiles||{})[ev.cat]; }
   if(!prof?.dbId){ console.warn('care_event 저장 실패: cat_id 없음', ev.cat); return; }
   const row={ id:ev.id, cat_id:prof.dbId, user_id:currentUser.id, type:ev.type||'통원',
-    hospital:ev.hospital||null, start_date:ev.start, end_date:ev.end||null,
-    reason:ev.reason||null, diagnosis:ev.diagnosis||null, treatment:ev.treatment||null,
-    procedures:ev.procedures||[], cost:(ev.cost!==''&&ev.cost!=null)?ev.cost:null, note:ev.note||null };
+    start_date:ev.start, end_date:ev.end||null,
+    symptom:ev.symptom||null, diagnosis:ev.diagnosis||null, treatment:ev.treatment||null,
+    procedures:ev.procedures||[], note:ev.note||null };
   const {error}=await sbClient.from('care_events').upsert(row,{onConflict:'id'});
   if(error) console.warn('care_events upsert 오류:', error.message||error);
 }
@@ -11707,9 +11706,9 @@ async function loadCareEvents(){
   const mapped=(data||[]).map(r=>({
     id:r.id,
     cat: r.cats?.name || Object.keys(state.catProfiles||{}).find(k=>(state.catProfiles||{})[k]?.dbId===r.cat_id) || state.activeCat || '',
-    type:r.type||'통원', hospital:r.hospital||'', start:r.start_date, end:r.end_date||'',
-    reason:r.reason||'', diagnosis:r.diagnosis||'', treatment:r.treatment||'',
-    procedures:r.procedures||[], cost:(r.cost!=null?r.cost:''), note:r.note||'',
+    type:r.type||'통원', start:r.start_date, end:r.end_date||'',
+    symptom:r.symptom||'', diagnosis:r.diagnosis||'', treatment:r.treatment||'',
+    procedures:r.procedures||[], note:r.note||'',
     ts: r.created_at ? new Date(r.created_at).getTime() : Date.now()
   }));
   const merged=[...mapped];
@@ -11742,7 +11741,7 @@ function renderCareEventsSection(cat){
   if(open) html+='<button type="button" onclick="careDischarge(\''+open.id+'\')" style="padding:7px 12px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;background:var(--cm-green-700);color:#fff;border:none">퇴원 처리</button>';
   else html+='<button type="button" onclick="openCareEventForm(null,\'입원\')" style="padding:7px 12px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;background:var(--cm-surface-2);color:var(--cm-ink-soft);border:1px solid var(--cm-line)">입원 등록</button>';
   html+='<button type="button" onclick="openCareEventForm(null,\'통원\')" style="padding:7px 12px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;background:var(--cm-surface-2);color:var(--cm-ink-soft);border:1px solid var(--cm-line)">기록 추가</button></div>';
-  if(open) html+='<div style="font-size:11px;color:#3A66A6;background:rgba(58,102,166,.08);border:1px solid rgba(58,102,166,.2);border-radius:10px;padding:8px 11px;margin-bottom:8px;line-height:1.5">현재 <b>'+_vEsc(open.hospital||'병원')+'</b> 입원 중 ('+open.start+' ~) · 이 기간 혈검은 자동 연결돼요.</div>';
+  if(open) html+='<div style="font-size:11px;color:#3A66A6;background:rgba(58,102,166,.08);border:1px solid rgba(58,102,166,.2);border-radius:10px;padding:8px 11px;margin-bottom:8px;line-height:1.5">현재 <b>입원 중</b> ('+open.start+' ~) · 이 기간 혈검은 자동 연결돼요.</div>';
   if(!evs.length){
     html+='<div style="font-size:12px;color:var(--cm-faint);padding:2px 2px 4px;line-height:1.5">아직 병원 기록이 없어요. 입원·통원을 등록하면 혈검·그래프에 자동으로 연결돼요.</div>';
     return html;
@@ -11750,11 +11749,10 @@ function renderCareEventsSection(cat){
   html+=evs.map(ev=>{
     const linked=btData.filter(b=>b.cat===cat && careEventContains(ev,b.date)).length;
     return '<div style="background:var(--cm-surface);border:1px solid var(--cm-line);border-radius:12px;padding:11px 12px;margin-bottom:7px">'
-      +'<div style="display:flex;align-items:center;gap:7px;margin-bottom:5px">'+_careTypeBadge(ev)
-      +'<span style="font-size:13px;font-weight:700;color:var(--cm-ink);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+_vEsc(ev.hospital||'병원 미입력')+'</span>'
+      +'<div style="display:flex;align-items:center;gap:7px;margin-bottom:'+((ev.symptom||ev.treatment||linked)?'5px':'0')+'">'+_careTypeBadge(ev)
+      +'<span style="font-size:13px;font-weight:700;color:var(--cm-ink);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+_carePeriodText(ev)+'</span>'
       +'<button type="button" onclick="openCareEventForm(\''+ev.id+'\')" style="padding:5px 11px;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;background:var(--cm-surface-2);border:1px solid var(--cm-line);color:var(--cm-ink-soft);flex:0 0 auto">수정</button></div>'
-      +'<div style="font-size:12px;color:var(--cm-ink-soft);margin-bottom:2px">'+_carePeriodText(ev)+'</div>'
-      +(ev.reason?'<div style="font-size:12px;color:var(--cm-faint)">사유: '+_vEsc(ev.reason)+'</div>':'')
+      +(ev.symptom?'<div style="font-size:12px;color:var(--cm-faint)">증상: '+_vEsc(ev.symptom)+'</div>':'')
       +(ev.treatment?'<div style="font-size:12px;color:var(--cm-faint)">처치: '+_vEsc(ev.treatment)+'</div>':'')
       +(linked?'<div style="font-size:11px;color:var(--cm-green-700);margin-top:4px">이 기간 혈액검사 '+linked+'건 연결</div>':'')
       +'</div>';
@@ -11807,14 +11805,12 @@ function renderCareForm(ev){
     '<div style="display:flex;align-items:center;margin-bottom:10px"><div style="flex:1;font-size:16px;font-weight:800;color:var(--cm-ink)">'+(_careFormId?'병원 기록 수정':'병원 기록 추가')+'</div>'
     +'<button type="button" onclick="closeCareForm()" style="background:none;border:none;font-size:20px;color:var(--cm-faint);cursor:pointer;padding:4px 8px;font-family:inherit">×</button></div>'
     +'<div style="display:flex;gap:6px;margin-bottom:2px">'+typeBtn('통원')+typeBtn('입원')+typeBtn('응급')+'</div>'
-    +'<div style="'+lblS+'">병원명</div><input type="text" id="cfHospital" placeholder="예: 품 동물의료센터" value="'+_vEsc(ev?.hospital||'')+'" style="'+inS+'">'
     +'<div id="cfStartLabel" style="'+lblS+'">'+(_careFormType==='입원'?'입원일':'방문일')+'</div><input type="date" id="cfStart" value="'+_vEsc(ev?.start||today())+'" style="'+dateS+'">'
     +'<div id="cfEndRow" style="display:'+(_careFormType==='입원'?'block':'none')+'"><div style="'+lblS+'">퇴원일</div><input type="date" id="cfEnd" value="'+_vEsc(ev?.end||'')+'" style="'+dateS+'">'
     +'<label style="display:flex;align-items:center;gap:7px;margin-top:7px;font-size:12.5px;color:var(--cm-ink-soft);cursor:pointer"><input type="checkbox" id="cfOngoing" '+(ongoing?'checked':'')+' onchange="document.getElementById(\'cfEnd\').disabled=this.checked;if(this.checked)document.getElementById(\'cfEnd\').value=\'\'" style="width:16px;height:16px"> 아직 입원 중 (퇴원 전)</label></div>'
-    +'<div style="'+lblS+'">사유 / 주호소</div><input type="text" id="cfReason" placeholder="예: 호흡곤란, 식욕부진" value="'+_vEsc(ev?.reason||'')+'" style="'+inS+'">'
+    +'<div style="'+lblS+'">증상 / 주호소</div><input type="text" id="cfSymptom" placeholder="예: 호흡곤란, 식욕부진" value="'+_vEsc(ev?.symptom||'')+'" style="'+inS+'">'
     +'<div style="'+lblS+'">진단 <span style="font-weight:400;color:var(--cm-faint)">(선택)</span></div><input type="text" id="cfDiagnosis" value="'+_vEsc(ev?.diagnosis||'')+'" style="'+inS+'">'
-    +'<div style="'+lblS+'">처치 요약 <span style="font-weight:400;color:var(--cm-faint)">(예: 고압산소, 푸로세마이드)</span></div><textarea id="cfTreatment" rows="2" style="'+inS+';resize:none;min-height:56px">'+_vEsc(ev?.treatment||'')+'</textarea>'
-    +'<div style="'+lblS+'">비용 <span style="font-weight:400;color:var(--cm-faint)">(선택, 원)</span></div><input type="number" id="cfCost" step="any" value="'+(ev&&ev.cost!==''&&ev.cost!=null?ev.cost:'')+'" style="'+inS+'">'
+    +'<div style="'+lblS+'">처치 방향·내역 <span style="font-weight:400;color:var(--cm-faint)">(예: 고압산소, 이뇨제)</span></div><textarea id="cfTreatment" rows="2" style="'+inS+';resize:none;min-height:56px">'+_vEsc(ev?.treatment||'')+'</textarea>'
     +'<div style="'+lblS+'">메모 <span style="font-weight:400;color:var(--cm-faint)">(선택)</span></div><textarea id="cfNote" rows="2" style="'+inS+';resize:none;min-height:56px">'+_vEsc(ev?.note||'')+'</textarea>'
     +'<div style="display:flex;gap:8px;margin-top:16px">'
     +(_careFormId?'<button type="button" onclick="confirmDeleteCareEvent(\''+_careFormId+'\')" style="padding:12px 16px;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;background:none;color:var(--cm-clay-ink,#B4472A);border:1px solid var(--cm-line)">삭제</button>':'')
@@ -11834,11 +11830,9 @@ async function saveCareEventForm(){
     end = ongoing ? '' : (g('cfEnd')?.value||'');
     if(end && end<start){ toast('퇴원일이 입원일보다 빠를 수 없어요','#D85A30'); return; }
   } else { end=start; }
-  const costV=g('cfCost')?.value;
-  const patch={ cat, type, hospital:g('cfHospital')?.value.trim()||'', start, end,
-    reason:g('cfReason')?.value.trim()||'', diagnosis:g('cfDiagnosis')?.value.trim()||'',
-    treatment:g('cfTreatment')?.value.trim()||'', note:g('cfNote')?.value.trim()||'',
-    cost:(costV!==''&&costV!=null)?parseFloat(costV):'' };
+  const patch={ cat, type, start, end,
+    symptom:g('cfSymptom')?.value.trim()||'', diagnosis:g('cfDiagnosis')?.value.trim()||'',
+    treatment:g('cfTreatment')?.value.trim()||'', note:g('cfNote')?.value.trim()||'' };
   if(_careFormId) await updateCareEvent(_careFormId, patch);
   else await addCareEvent(patch);
   closeCareForm();
