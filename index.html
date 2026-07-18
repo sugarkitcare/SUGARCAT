@@ -652,7 +652,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.57</span>
+      <span class="cm-beta">v0.7.58</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -924,11 +924,20 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
       <span style="font-size:12px;font-weight:700;color:var(--cm-green-700)">펼치기</span>
     </div>
     <div id="rrCard" style="display:none">
-      <!-- 경고 기준 -->
-      <div style="display:flex;gap:6px;margin-bottom:.75rem;flex-wrap:wrap">
-        <span style="background:var(--teal-l);color:var(--teal-d);font-size:10px;padding:3px 8px;border-radius:6px">정상 &lt;30회/분</span>
-        <span style="background:var(--amber-l);color:var(--amber-d);font-size:10px;padding:3px 8px;border-radius:6px">주의 30~39회</span>
-        <span style="background:var(--coral-l);color:var(--coral-d);font-size:10px;padding:3px 8px;border-radius:6px">위험 ≥40회</span>
+      <!-- 경고 기준 (수면/안정 시, 심장내과 표준) -->
+      <div style="display:flex;gap:6px;margin-bottom:.35rem;flex-wrap:wrap">
+        <span style="background:var(--teal-l);color:var(--teal-d);font-size:10px;padding:3px 8px;border-radius:6px">정상 &lt;27회/분</span>
+        <span style="background:var(--amber-l);color:var(--amber-d);font-size:10px;padding:3px 8px;border-radius:6px">주의 27~29회</span>
+        <span style="background:var(--coral-l);color:var(--coral-d);font-size:10px;padding:3px 8px;border-radius:6px">관찰경고 ≥30회</span>
+        <span style="background:var(--coral-l);color:var(--coral-d);font-size:10px;padding:3px 8px;border-radius:6px;font-weight:700">응급 ≥40회</span>
+      </div>
+      <div style="font-size:10px;color:var(--text3);margin-bottom:.75rem">* 기준은 참고용이며 수의사 확인을 권장해요. 개체별 평소값(기준선) 대비 상승도 함께 살펴요.</div>
+      <!-- 측정 시간 모드 -->
+      <div style="display:flex;gap:6px;margin-bottom:.75rem">
+        <button type="button" id="rrMode60" class="rr-mode-btn" onclick="rrSetMode(60)"
+          style="flex:1;padding:6px 4px;border-radius:8px;border:1px solid var(--cm-green-700);background:var(--cm-green-tint);color:var(--cm-green-ink);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">1분 (정확)</button>
+        <button type="button" id="rrMode15" class="rr-mode-btn" onclick="rrSetMode(15)"
+          style="flex:1;padding:6px 4px;border-radius:8px;border:1px solid var(--cm-line);background:var(--cm-surface-2);color:var(--cm-ink-soft);font-size:11px;font-weight:500;cursor:pointer;font-family:inherit">15초 ×4 (빠름)</button>
       </div>
       <!-- 호흡 상태 선택 -->
       <div style="margin-bottom:.75rem">
@@ -2379,8 +2388,46 @@ let rrCount2 = 0;
 let rrSeconds = 0;
 let rrRunning = false;
 let rrState = 'sleep'; // sleep | rest | active
-const RR_DURATION = 60;
+let RR_DURATION = 60;      // 측정 시간(초). 15초 빠른모드에서 15로 전환
+let rrMode = 60;           // 60 = 1분 전체 카운트, 15 = 15초×4
 const rrStateLabel = {sleep:'수면', rest:'안정', active:'활동'};
+
+/* ── 수면 호흡수(SRR) 임계 — 고양이 심장내과 표준. 수의사 확인 권장 값(상수 분리로 조정 용이) ──
+   warn 27~29 주의(노랑) · obs ≥30 관찰경고(빨강) · emerg ≥40 응급(강한 톤) */
+const SRR_TH = { warn: 27, obs: 30, emerg: 40 };
+function srrTier(rr){
+  if(rr>=SRR_TH.emerg) return 'emerg';
+  if(rr>=SRR_TH.obs)   return 'obs';
+  if(rr>=SRR_TH.warn)  return 'warn';
+  return 'normal';
+}
+const SRR_TONE = {
+  normal:{color:'var(--teal)',  bg:'rgba(29,158,117,0.10)'},
+  warn:  {color:'var(--amber)', bg:'rgba(186,117,23,0.10)'},
+  obs:   {color:'var(--coral)', bg:'rgba(216,90,48,0.10)'},
+  emerg: {color:'var(--coral)', bg:'rgba(216,90,48,0.16)'},
+};
+// 관찰 + 병원 안내 톤 (진단·단정 금지)
+function srrMsg(rr){
+  const t=srrTier(rr);
+  if(t==='emerg') return '매우 높게 나왔어요 ('+SRR_TH.emerg+'회↑) — 담당 수의사와 바로 상담하세요';
+  if(t==='obs')   return '평소보다 높아요 ('+SRR_TH.obs+'회↑) — 안정 시에도 지속되면 병원 상담을 권해요';
+  if(t==='warn')  return '약간 높은 편이에요 ('+SRR_TH.warn+'~'+(SRR_TH.obs-1)+'회) — 추이를 지켜봐 주세요';
+  return '정상 범위예요 ('+SRR_TH.warn+'회 미만)';
+}
+function srrToastColor(rr){ const t=srrTier(rr); return (t==='emerg'||t==='obs')?'#D85A30':t==='warn'?'#BA7517':'#1D9E75'; }
+// 개체별 SRR 기준선 — 수면 호흡수 중 안정치(obs 미만) 중앙값, 3회 이상 있을 때만
+function getSRRBaseline(cat){
+  const recs=(state.records||{})[cat]||{};
+  const vals=[];
+  Object.values(recs).forEach(r=>(r.rr||[]).forEach(x=>{
+    if(x.state==='sleep' && x.rr>0 && x.rr<SRR_TH.obs) vals.push(x.rr);
+  }));
+  if(vals.length<3) return null;
+  vals.sort((a,b)=>a-b);
+  const m=Math.floor(vals.length/2);
+  return vals.length%2 ? vals[m] : Math.round((vals[m-1]+vals[m])/2);
+}
 
 function rrSelectState(btn) {
   document.querySelectorAll('.rr-state-btn').forEach(b => {
@@ -2394,6 +2441,19 @@ function rrSelectState(btn) {
   btn.style.color = 'var(--cm-green-ink)';
   btn.style.fontWeight = '600';
   rrState = btn.dataset.state;
+}
+
+// 측정 시간 모드 전환 (60초 정확 / 15초 ×4 빠름)
+function rrSetMode(dur) {
+  if(rrRunning) rrReset();
+  rrMode = dur;
+  RR_DURATION = dur;
+  const b60 = document.getElementById('rrMode60'), b15 = document.getElementById('rrMode15');
+  const on = b => { if(!b) return; b.style.border='1px solid var(--cm-green-700)'; b.style.background='var(--cm-green-tint)'; b.style.color='var(--cm-green-ink)'; b.style.fontWeight='600'; };
+  const off = b => { if(!b) return; b.style.border='1px solid var(--cm-line)'; b.style.background='var(--cm-surface-2)'; b.style.color='var(--cm-ink-soft)'; b.style.fontWeight='500'; };
+  if(dur===60){ on(b60); off(b15); } else { on(b15); off(b60); }
+  const hint = document.querySelector('#rrTapBtn div:last-child');
+  if(hint) hint.textContent = dur===15 ? '15초 동안 호흡마다 탭' : '호흡할 때마다 탭';
 }
 
 function rrTap() {
@@ -2457,19 +2517,16 @@ function rrFinish() {
   btn.querySelector('div:last-child').textContent = '탭하여 시작';
   document.getElementById('rrTimerLabel').textContent = '측정 완료!';
 
-  // 결과 표시
-  const rr = rrCount2;
-  let color, msg;
-  if(rr >= 40)      { color='var(--coral)'; msg='⚠️ 정상 범위 초과 (40회↑) - 즉시 담당 수의사와 상담하세요'; }
-  else if(rr >= 30) { color='var(--amber)'; msg='△ 주의 관찰 범위 (30~39회)'; }
-  else              { color='var(--teal)';  msg='✅ 정상 범위 (30회 미만)'; }
+  // 결과 표시 — 15초 모드면 ×4 환산
+  const rr = rrMode===15 ? rrCount2*4 : rrCount2;
+  const tone = SRR_TONE[srrTier(rr)];
 
   const resultEl = document.getElementById('rrResult');
   resultEl.style.display = 'block';
-  resultEl.style.color = color;
-  const bgMap = {'var(--coral)':'rgba(216,90,48,0.1)','var(--amber)':'rgba(186,117,23,0.1)','var(--teal)':'rgba(29,158,117,0.1)'};
-  resultEl.style.background = bgMap[color]||'var(--bg2)';
-  resultEl.textContent = (rrStateLabel[rrState]||'') + ' ' + rr + '회/분  ' + msg;
+  resultEl.style.color = tone.color;
+  resultEl.style.background = tone.bg;
+  const modeNote = rrMode===15 ? ' (15초×4 환산)' : '';
+  resultEl.textContent = (rrStateLabel[rrState]||'') + ' ' + rr + '회/분' + modeNote + '  ' + srrMsg(rr);
 
   // 자동 저장
   const rrDate = document.getElementById('rrDate').value || today();
@@ -2478,14 +2535,16 @@ function rrFinish() {
   if(!rec.rr) rec.rr = [];
   rec.rr.push({rr: rr, state: rrState, stateLabel: rrStateLabel[rrState]||rrState, time: nowTime(), ts: Date.now()});
   saveS(rrDate);
-  toast(`${rrStateLabel[rrState]} 호흡수 ${rr}회/분 저장 완료!`, rr>=40?'#D85A30':rr>=30?'#BA7517':'#1D9E75');
+  toast(`${rrStateLabel[rrState]} 호흡수 ${rr}회/분 저장 완료!`, srrToastColor(rr));
   // 측정 완료 피드백 (설정에 따라)
+  const _rrTier = srrTier(rr);
   const _fb2 = getRRFeedback();
   if(_fb2.vibrate) {
     try {
       if(navigator.vibrate) {
-        if(rr >= 40) navigator.vibrate([300,100,300,100,300]);
-        else if(rr >= 30) navigator.vibrate([250,100,250]);
+        if(_rrTier==='emerg') navigator.vibrate([300,100,300,100,300]);
+        else if(_rrTier==='obs') navigator.vibrate([250,100,250,100,250]);
+        else if(_rrTier==='warn') navigator.vibrate([250,100,250]);
         else navigator.vibrate(300);
       }
     } catch(e) {}
@@ -2497,7 +2556,7 @@ function rrFinish() {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.connect(gain); gain.connect(ctx.destination);
-      osc.frequency.value = rr>=40 ? 880 : rr>=30 ? 660 : 440;
+      osc.frequency.value = (_rrTier==='emerg') ? 880 : (_rrTier==='obs') ? 660 : (_rrTier==='warn') ? 550 : 440;
       gain.gain.setValueAtTime(0.3, ctx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
       osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.4);
@@ -4200,13 +4259,21 @@ function renderDailySummary(catName) {
   // 2. HCM 피드백
   // ════════════════════════════════
   if(hasHCM) {
-    // 호흡수 즉시 경고 (수면 중 40↑)
+    // 수면 호흡수 경고 — 3단계(관찰경고 ≥30 / 응급 ≥40) + 개체 기준선 대비 (관찰+병원 안내 톤)
     const todayRrSleep = (rec.rr||[]).filter(x=>x.state==='sleep'&&x.rr>0).map(x=>x.rr);
     if(todayRrSleep.length) {
       const maxRr = Math.max(...todayRrSleep);
-      if(maxRr >= 40) {
-        feedbacks.push({priority:1, ...makeFeedback('danger','🚨','수면 중 호흡수가 정상 범위를 크게 벗어남',
-          `수면 중 ${maxRr}회/분 측정됨 — 즉시 담당 수의사에게 연락하세요<br>심장 질환이 있는 아이의 경우 특히 주의가 필요합니다`)});
+      const tier = srrTier(maxRr);
+      const base = getSRRBaseline(cat);
+      if(tier==='emerg') {
+        feedbacks.push({priority:1, ...makeFeedback('danger','🚨','수면 호흡수가 매우 높아요',
+          `수면 중 ${maxRr}회/분 측정 (응급 기준 ${SRR_TH.emerg}회↑) — 담당 수의사와 바로 상담하세요<br>심장 질환이 있는 아이는 특히 주의가 필요해요`)});
+      } else if(tier==='obs') {
+        feedbacks.push({priority:2, ...makeFeedback('warn','⚠️','수면 호흡수가 평소보다 높아요',
+          `수면 중 ${maxRr}회/분 측정 (관찰 기준 ${SRR_TH.obs}회↑)${base?` · 평소값 약 ${base}회`:''}<br>안정 시에도 지속되면 병원 상담을 권해요`)});
+      } else if(base && maxRr >= base + 5) {
+        feedbacks.push({priority:3, ...makeFeedback('warn','📈','수면 호흡수가 평소보다 올라왔어요',
+          `수면 중 ${maxRr}회/분 · 평소값 약 ${base}회<br>추이를 지켜보고, 계속 오르면 병원 상담을 권해요`)});
       }
     }
 
@@ -4256,7 +4323,7 @@ function renderDailySummary(catName) {
     // 안정 피드백
     if(!feedbacks.some(f=>f.priority<=3)) {
       const rrAvg = rr3sleep.length ? Math.min(...rr3sleep) : null;
-      if(rrAvg && rrAvg < 30) {
+      if(rrAvg && rrAvg < SRR_TH.warn) {
         feedbacks.push({priority:10, ...makeFeedback('ok','✅','호흡수 안정적이에요',
           `수면 중 최저 ${rrAvg}회/분 · 정상 범위예요 🫁`)});
       }
@@ -4330,6 +4397,23 @@ function renderDailySummary(catName) {
       if(dropPct >= 5) {
         feedbacks.push({priority:3, ...makeFeedback('warn','📉','체중이 계속 줄고 있어요',
           `2주간 ${first}→${last2}kg (-${dropPct}%)<br>CKD 아이의 체중 감소는 근육 소실 신호일 수 있어요`)});
+      }
+    }
+  }
+
+  // 체중 30일 완만한 감소 (전 고양이 공통 — 만성질환 근육소실·악액질 조기 신호)
+  {
+    const wt30 = getRecentDays(30).map(day => {
+      const ws = getRec(cat, day).weights || [];
+      return ws.length ? ws[ws.length-1].weight : null;
+    }).filter(v => v !== null);
+    if(wt30.length >= 4) {
+      const oldest = wt30[wt30.length-1], newest = wt30[0];
+      const dropPct = oldest > 0 ? Math.round((oldest-newest)/oldest*100) : 0;
+      const alreadyWeightFb = feedbacks.some(f => (f.title||'').includes('체중'));
+      if(dropPct >= 5 && !alreadyWeightFb) {
+        feedbacks.push({priority:4, ...makeFeedback('warn','📉','체중이 지난 한 달간 줄었어요',
+          `30일간 ${oldest}→${newest}kg (-${dropPct}%)<br>만성질환에서 체중 감소는 근육 소실 신호일 수 있어요. 병원 방문 시 알려주세요`)});
       }
     }
   }
@@ -4606,7 +4690,7 @@ function renderDailySummary(catName) {
   });
   if(rec.rr&&rec.rr.length) {
     const last = rec.rr[rec.rr.length-1];
-    const rrColor = last.rr>=40?'var(--coral)':last.rr>=30?'var(--amber)':'var(--teal)';
+    const rrColor = SRR_TONE[srrTier(last.rr)].color;
     const rrSLbl = last.stateLabel?'('+last.stateLabel+')':"";
     items.push({ts:last.ts, time:last.time, html:`🫁 <span style="color:${rrColor};font-weight:600">${last.rr}회/분</span> <span style="color:var(--text3);font-size:11px">${rrSLbl} ${last.time}</span>`});
   }
@@ -4772,7 +4856,7 @@ function renderDailySummary(catName) {
     var tmd=document.getElementById('tileMedStatus');
     if(tmd){var tdn=_routineDoneSet(tRec).size;if(tdn>0){tmd.textContent=tdn+'개 완료';tmd.dataset.tone='good';_tit('med','good');}else{tmd.textContent='투약 전';tmd.dataset.tone='muted';_tit('med','muted');}}
     var tbr=document.getElementById('tileBreathStatus');
-    if(tbr){var trrA=tRec.rr||[],tlr=trrA.length?trrA[trrA.length-1]:null;if(tlr){var _tbrT=tlr.rr>=40?'alert':tlr.rr>=30?'warn':'good';tbr.textContent=tlr.rr+' 회/분';tbr.dataset.tone=_tbrT;_tit('breath',_tbrT);}else{tbr.textContent='측정 전';tbr.dataset.tone='muted';_tit('breath','muted');}}
+    if(tbr){var trrA=tRec.rr||[],tlr=trrA.length?trrA[trrA.length-1]:null;if(tlr){var _tbrTier=srrTier(tlr.rr),_tbrT=(_tbrTier==='emerg'||_tbrTier==='obs')?'alert':_tbrTier==='warn'?'warn':'good';tbr.textContent=tlr.rr+' 회/분';tbr.dataset.tone=_tbrT;_tit('breath',_tbrT);}else{tbr.textContent='측정 전';tbr.dataset.tone='muted';_tit('breath','muted');}}
     var twg=document.getElementById('tileWeightStatus');
     if(twg){var tlwt=(tRec.weights||[]).slice(-1)[0];if(tlwt){twg.textContent=tlwt.weight+' kg';twg.dataset.tone='good';_tit('weight','good');}else{twg.textContent='기록 전';twg.dataset.tone='muted';_tit('weight','muted');}}
     var tml=document.getElementById('tileMealStatus');
@@ -5198,7 +5282,7 @@ function renderHistory(){
     else if(item.type==='mixgroup'){dot='ld-m';txt=`[혼합] ${d.time} | ${d.mixName} · 총 ${d.amt}g${d.kcal?' · '+d.kcal+'kcal':''} · 재료 ${d.members.length}개 ▸`;}
     else if(item.type==='wt'){dot='ld-wt';txt=`[체중] ${d.time} | ${d.weight}kg${d.note?' · '+d.note:''}`;}
     else if(item.type==='routine'){dot='ld-m';const _rNm=(d.items||[]).join(', ')+(d.slot?` (예정 ${d.slot})`:'');const _rTxt=(d.ml&&d.ml>0)?`${_rNm} ${d.ml}ml${d.fluidType?' · '+d.fluidType:''}`:_rNm;txt=`[투약·루틴] ${d.time} | ${_rTxt}${d.memo?' · '+d.memo:''}`;}
-    else if(item.type==='rr'){dot=d.rr>=40?'ld-d':d.rr>=30?'ld-w':'ld-n';const sLbl=d.stateLabel||'';txt=`[호흡수] ${d.time} | ${d.rr}회/분 ${sLbl?'('+sLbl+')':''}${d.rr>=40?' ⚠️위험':d.rr>=30?' △주의':''}`;}
+    else if(item.type==='rr'){const _rt=srrTier(d.rr);dot=(_rt==='emerg'||_rt==='obs')?'ld-d':_rt==='warn'?'ld-w':'ld-n';const sLbl=d.stateLabel||'';txt=`[호흡수] ${d.time} | ${d.rr}회/분 ${sLbl?'('+sLbl+')':''}${_rt==='emerg'?' ⚠️응급':_rt==='obs'?' 관찰↑':_rt==='warn'?' △주의':''}`;}
     else if(item.type==='water'){dot='ld-n';txt=`[음수] ${d.time} | ${d.ml}ml`;}
     else if(item.type==='urine'){dot=d.amount==='혈뇨'?'ld-d':d.amount==='핍뇨'||d.amount==='소량'?'ld-w':'ld-n';txt=`[소변] ${d.time} | ${d.amount}`;}
     else if(item.type==='poop'){dot=d.type==='혈변'||d.type==='설사'?'ld-d':d.type==='무름'||d.type==='무변'?'ld-w':'ld-n';txt=`[대변] ${d.time} | ${d.type}`;}
@@ -5487,7 +5571,7 @@ function renderGraphs(){
     {k:'rr',label:`호흡수 (회/분) — ${periodLabel}`,color:'#235B43',type:'line',
      yMin:0,yMax:60,
      multiDataset: true,
-     annotations:[{value:40,color:'#BB5538',label:'40 위험'},{value:30,color:'rgba(35,91,67,0.45)',label:'30 주의'}],
+     annotations:[{value:40,color:'#BB5538',label:'40 응급'},{value:30,color:'rgba(187,85,56,0.7)',label:'30 관찰'},{value:27,color:'rgba(35,91,67,0.4)',label:'27 주의'}],
      fn:d=>{const r=getRec(state.activeCat,d);const arr=(r.rr||[]).map(x=>x.rr).filter(x=>x>0);return arr.length?Math.min(...arr):null}, // ACVIM 수면중 최솟값
      fnByState:(d,st)=>{const r=getRec(state.activeCat,d);const arr=(r.rr||[]).filter(x=>x.state===st).map(x=>x.rr).filter(x=>x>0);return arr.length?Math.min(...arr):null}},
     {k:'water',label:`음수량 (ml) — ${periodLabel}`,type:'bar',stackedWater:true,
