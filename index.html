@@ -652,7 +652,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.59</span>
+      <span class="cm-beta">v0.7.60</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -2079,6 +2079,7 @@ function filterAIAnalysisText(raw){
 }
 let state={cats:[],activeCat:'',records:{},catProfiles:{}};
 let btData=[],fdData=[];
+let careEvents=[]; // 병원 카드(케어 이벤트) — {id,cat,type,hospital,start,end,reason,diagnosis,treatment,procedures[],cost,note,ts}
 let _fdViewData=null;
 let btEditMode=false,btEditOriginals={};
 let favFoods=[];
@@ -2091,6 +2092,7 @@ try{const _ffd=localStorage.getItem('favFoods_v1');if(_ffd){const _r=JSON.parse(
 try{const d=localStorage.getItem(SK);if(d)state=JSON.parse(d)}catch(e){}
 try{const d=localStorage.getItem(SK_BT);if(d){const raw=JSON.parse(d);btData=raw.map(r=>({...r,items:normalizeBTItems(r.items||[])}));}}catch(e){}
 try{const d=localStorage.getItem(SK_FD);if(d)fdData=JSON.parse(d)}catch(e){}
+try{const d=localStorage.getItem('careEvents_v1');if(d)careEvents=JSON.parse(d)}catch(e){}
 /* 일일 레코드에 기록이 하나라도 있는지 (빈 값 덮어쓰기 가드 공용 헬퍼) */
 // poop·vomits 포함 (v0.7.37) — poop 누락은 기존 결함: 대변만 있는 날이 "빈 레코드"로 취급돼 DB upsert가 차단됐음
 const REC_ARRAY_KEYS=['bg','ins','meals','weights','routines','water','urine','rr','poop','vomits'];
@@ -5643,6 +5645,7 @@ function renderGraphs(){
 
       const inst=new Chart(document.getElementById('gc_'+def.k),{
         type:'line',data:{labels,datasets},
+        plugins:[careAdmissionBandPlugin(state.activeCat, days)],
         options:{responsive:true,maintainAspectRatio:false,
           plugins:{legend:{display:false},
             tooltip:{callbacks:{label:ctx=>ctx.dataset.label&&ctx.parsed.y!==null?`${ctx.dataset.label}: ${ctx.parsed.y}회/분`:''}}},
@@ -5677,6 +5680,7 @@ function renderGraphs(){
       ];
       const inst=new Chart(document.getElementById('gc_water'),{
         type:'bar',data:{labels,datasets},
+        plugins:[careAdmissionBandPlugin(state.activeCat, days)],
         options:{responsive:true,maintainAspectRatio:false,
           plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>ctx.parsed.y>0?`${ctx.dataset.label}: ${ctx.parsed.y}ml`:''}}},
           scales:{x:{grid:{color:gc},ticks:{color:tc,font:{size:10},maxTicksLimit:days.length>60?8:15},stacked:true},y:{grid:{color:gc},ticks:{color:tc,font:{size:10}},stacked:true}}
@@ -5723,6 +5727,7 @@ function renderGraphs(){
     const inst=new Chart(document.getElementById('gc_'+def.k),{
       type:def.type||'line',
       data:{labels,datasets},
+      plugins:[careAdmissionBandPlugin(state.activeCat, days)],
       options:{responsive:true,maintainAspectRatio:false,
         plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>ctx.parsed.y!==null?`${ctx.parsed.y}`:''}}},
         scales:{x:{grid:{color:gc},ticks:{color:tc,font:{size:10},maxTicksLimit:days.length>60?8:15}},y:yOpts}
@@ -10550,6 +10555,11 @@ function renderBTHistoryList() {
       const highCount = (bt.items||[]).filter(it=>it.refHigh!==null&&it.value>it.refHigh).length;
       const lowCount = (bt.items||[]).filter(it=>it.refLow!==null&&it.value<it.refLow).length;
       const dotColor = highCount+lowCount===0 ? 'var(--cm-green-500)' : 'var(--cm-clay)';
+      const _ev = getEventForDate(bt.cat, bt.date);
+      const _evBadge = _ev
+        ? ' <span style="display:inline-block;font-size:10px;font-weight:700;color:#3A66A6;background:rgba(58,102,166,.10);padding:1px 6px;border-radius:6px;margin-left:3px;vertical-align:middle">'
+          + ((_ev.type==='입원'&&!_ev.end)?'입원 중':_ev.type) + (_ev.hospital?' · '+_vEsc(_ev.hospital):'') + '</span>'
+        : '';
       let flagsHtml = '';
       if(highCount) flagsHtml += '<span class="flag flag--hi">↑'+highCount+'</span>';
       if(lowCount) flagsHtml += '<span class="flag flag--lo">↓'+lowCount+'</span>';
@@ -10558,7 +10568,7 @@ function renderBTHistoryList() {
       item.className = 'blh';
       item.innerHTML = '<span class="blh__dot" style="background:'+dotColor+'"></span>'
         +'<div class="blh__m">'
-        +'<div class="blh__d">'+bt.date+'</div>'
+        +'<div class="blh__d">'+bt.date+_evBadge+'</div>'
         +'<div class="blh__sub">'+bt.cat+'  '+(bt.items||[]).length+'개 항목</div>'
         +'</div>'
         +'<div class="blh__flags">'+flagsHtml+'</div>'
@@ -10954,6 +10964,7 @@ function openBTCatSheet(cat) {
         try {
           btCatSheetInst.push(new Chart(canvas, {
             type: 'line',
+            plugins: [careAdmissionBandPlugin(cat, dates)],
             data: {
               labels: dates.map(d=>d.slice(5)),
               datasets: [{
@@ -11547,9 +11558,260 @@ function dismissVetBanner(){
   const el = document.getElementById('vetVisitBanner');
   if(el) el.style.display = 'none';
 }
+/* ════════════════════════════════════════════════════════════
+   병원 카드(케어 이벤트) — 스펙 ③ 1단계 (v0.7.60)
+   type: 통원(당일) | 입원(기간) | 응급. 입원중 = end 없음(열린 이벤트).
+   저장: careEvents_v1(localStorage) + care_events 테이블(DB). 소급 입력 지원.
+   ════════════════════════════════════════════════════════════ */
+const CARE_TYPES = ['통원','입원','응급'];
+function saveCareEventsLocal(){ try{ localStorage.setItem('careEvents_v1', JSON.stringify(careEvents)); }catch(e){} }
+function getCareEvents(cat){ return careEvents.filter(e=>e.cat===cat).sort((a,b)=> (a.start<b.start?1:a.start>b.start?-1:0)); }
+function careEventById(id){ return careEvents.find(e=>e.id===id) || null; }
+// 이벤트 기간의 끝: 명시 end > (입원이면 오늘=진행중) > 당일(start)
+function careEventEnd(ev){ return ev.end || (ev.type==='입원' ? today() : ev.start); }
+function careEventContains(ev, date){ if(!ev||!ev.start||!date) return false; return date>=ev.start && date<=careEventEnd(ev); }
+function getOpenAdmission(cat){ return getCareEvents(cat).find(e=>e.type==='입원' && !e.end) || null; }
+// 특정 날짜가 속한 이벤트(입원>응급>통원 우선, 최근 start 우선) — 혈검·모니터링 맥락 부여
+function getEventForDate(cat, date){
+  const rank={'입원':0,'응급':1,'통원':2};
+  const cands=getCareEvents(cat).filter(e=>careEventContains(e,date));
+  if(!cands.length) return null;
+  cands.sort((a,b)=> (rank[a.type]??3)-(rank[b.type]??3) || (a.start<b.start?1:-1));
+  return cands[0];
+}
+function _newEventId(){ try{ if(crypto&&crypto.randomUUID) return crypto.randomUUID(); }catch(e){} return 'ce_'+Date.now()+'_'+Math.random().toString(36).slice(2); }
+
+// 그래프 입원 구간 음영 밴드 — 카테고리 x축(raw 날짜 배열)에서 입원 이벤트 구간을 표시
+function careAdmissionBandPlugin(cat, rawDates){
+  return {
+    id:'careAdmBand',
+    beforeDatasetsDraw(chart){
+      try{
+        const adms=getCareEvents(cat).filter(e=>e.type==='입원');
+        if(!adms.length || !rawDates || !rawDates.length) return;
+        const x=chart.scales.x, area=chart.chartArea; if(!x||!area) return;
+        const gap = rawDates.length>1 ? Math.abs(x.getPixelForValue(1)-x.getPixelForValue(0)) : 24;
+        const ctx=chart.ctx; ctx.save();
+        adms.forEach(ev=>{
+          const end=careEventEnd(ev);
+          const idxs=[]; rawDates.forEach((d,i)=>{ if(d>=ev.start && d<=end) idxs.push(i); });
+          if(!idxs.length) return;
+          let L=x.getPixelForValue(Math.min(...idxs))-gap/2;
+          let R=x.getPixelForValue(Math.max(...idxs))+gap/2;
+          L=Math.max(L,area.left); R=Math.min(R,area.right);
+          if(R<=L) return;
+          ctx.fillStyle='rgba(58,102,166,0.10)';
+          ctx.fillRect(L,area.top,R-L,area.bottom-area.top);
+          ctx.fillStyle='rgba(58,102,166,0.8)'; ctx.font='700 9px sans-serif'; ctx.textAlign='left';
+          ctx.fillText('입원',L+3,area.top+10);
+        });
+        ctx.restore();
+      }catch(e){}
+    }
+  };
+}
+
+async function addCareEvent(ev){
+  const rec=Object.assign({id:_newEventId(), ts:Date.now(), procedures:[]}, ev);
+  careEvents.unshift(rec);
+  saveCareEventsLocal();
+  try{ await saveCareEventToDB(rec); }catch(e){ console.warn('care_event 저장 오류', e); }
+  return rec;
+}
+async function updateCareEvent(id, patch){
+  const i=careEvents.findIndex(e=>e.id===id); if(i<0) return null;
+  careEvents[i]=Object.assign({}, careEvents[i], patch);
+  saveCareEventsLocal();
+  try{ await saveCareEventToDB(careEvents[i]); }catch(e){ console.warn('care_event 갱신 오류', e); }
+  return careEvents[i];
+}
+async function deleteCareEvent(id){
+  const i=careEvents.findIndex(e=>e.id===id); if(i<0) return;
+  careEvents.splice(i,1);
+  saveCareEventsLocal();
+  try{ await deleteCareEventFromDB(id); }catch(e){ console.warn('care_event 삭제 오류', e); }
+}
+
+async function saveCareEventToDB(ev){
+  if(!sbClient || !currentUser || !ev) return;
+  let prof=(state.catProfiles||{})[ev.cat];
+  if(!prof?.dbId && ev.cat){ await upsertCatToDB(ev.cat); prof=(state.catProfiles||{})[ev.cat]; }
+  if(!prof?.dbId){ console.warn('care_event 저장 실패: cat_id 없음', ev.cat); return; }
+  const row={ id:ev.id, cat_id:prof.dbId, user_id:currentUser.id, type:ev.type||'통원',
+    hospital:ev.hospital||null, start_date:ev.start, end_date:ev.end||null,
+    reason:ev.reason||null, diagnosis:ev.diagnosis||null, treatment:ev.treatment||null,
+    procedures:ev.procedures||[], cost:(ev.cost!==''&&ev.cost!=null)?ev.cost:null, note:ev.note||null };
+  const {error}=await sbClient.from('care_events').upsert(row,{onConflict:'id'});
+  if(error) console.warn('care_events upsert 오류:', error.message||error);
+}
+async function deleteCareEventFromDB(id){
+  if(!sbClient || !currentUser) return;
+  const {error}=await sbClient.from('care_events').delete().eq('id', id);
+  if(error) console.warn('care_events delete 오류:', error.message||error);
+}
+async function loadCareEvents(){
+  if(!sbClient || !currentUser) return;
+  const {data,error}=await sbClient.from('care_events').select('*, cats(name)')
+    .eq('user_id', currentUser.id).order('start_date',{ascending:false});
+  if(error){ // 테이블 미생성(킷 미실행) 등 — 로컬만 사용
+    if(!/relation .* does not exist/i.test(error.message||'')) console.warn('care_events 조회 오류:', error.message||error);
+    return;
+  }
+  const mapped=(data||[]).map(r=>({
+    id:r.id,
+    cat: r.cats?.name || Object.keys(state.catProfiles||{}).find(k=>(state.catProfiles||{})[k]?.dbId===r.cat_id) || state.activeCat || '',
+    type:r.type||'통원', hospital:r.hospital||'', start:r.start_date, end:r.end_date||'',
+    reason:r.reason||'', diagnosis:r.diagnosis||'', treatment:r.treatment||'',
+    procedures:r.procedures||[], cost:(r.cost!=null?r.cost:''), note:r.note||'',
+    ts: r.created_at ? new Date(r.created_at).getTime() : Date.now()
+  }));
+  const merged=[...mapped];
+  for(const local of careEvents){ if(!merged.some(m=>m.id===local.id)) merged.push(local); }
+  careEvents=merged.sort((a,b)=> (a.start<b.start?1:a.start>b.start?-1:0));
+  saveCareEventsLocal();
+  try{ if(document.getElementById('vetManageModal')?.style.display==='flex') renderVetManage(); }catch(e){}
+}
+
 /* ── 병원 관리 화면 (v0.7.40) — 진료일 관리와 리포트 만들기 분리 ──
    병원 타일 → 관리(일상 진입: 예정일 확인·수정 + 진료 이력 + 리포트 버튼)
    기록탭 '병원에 공유하기' → 리포트 4단계 직행(진료 임박 진입). 두 곳 모두에서 리포트 생성 가능 */
+/* ── 병원 카드 UI (스펙 ③ 1단계) ── */
+function _careTypeBadge(ev){
+  const open = ev.type==='입원' && !ev.end;
+  const map={'입원':['#3A66A6','rgba(58,102,166,.10)'],'응급':['#C0492E','rgba(192,73,46,.10)'],'통원':['#2F7D4F','rgba(47,125,79,.10)']};
+  const [c,bg]=map[ev.type]||map['통원'];
+  return '<span style="font-size:10.5px;font-weight:800;color:'+c+';background:'+bg+';padding:2px 8px;border-radius:999px;flex:0 0 auto">'+(open?'입원 중':ev.type)+'</span>';
+}
+function _carePeriodText(ev){
+  if(ev.type==='통원') return ev.start;
+  if(!ev.end) return ev.start+' ~ 진행 중';
+  if(ev.end===ev.start) return ev.start;
+  return ev.start+' ~ '+ev.end;
+}
+function renderCareEventsSection(cat){
+  const evs=getCareEvents(cat);
+  const open=getOpenAdmission(cat);
+  let html='<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap"><div style="flex:1;min-width:80px;font-size:12.5px;font-weight:700;color:var(--cm-ink-soft)">병원 기록</div>';
+  if(open) html+='<button type="button" onclick="careDischarge(\''+open.id+'\')" style="padding:7px 12px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;background:var(--cm-green-700);color:#fff;border:none">퇴원 처리</button>';
+  else html+='<button type="button" onclick="openCareEventForm(null,\'입원\')" style="padding:7px 12px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;background:var(--cm-surface-2);color:var(--cm-ink-soft);border:1px solid var(--cm-line)">입원 등록</button>';
+  html+='<button type="button" onclick="openCareEventForm(null,\'통원\')" style="padding:7px 12px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;background:var(--cm-surface-2);color:var(--cm-ink-soft);border:1px solid var(--cm-line)">기록 추가</button></div>';
+  if(open) html+='<div style="font-size:11px;color:#3A66A6;background:rgba(58,102,166,.08);border:1px solid rgba(58,102,166,.2);border-radius:10px;padding:8px 11px;margin-bottom:8px;line-height:1.5">현재 <b>'+_vEsc(open.hospital||'병원')+'</b> 입원 중 ('+open.start+' ~) · 이 기간 혈검은 자동 연결돼요.</div>';
+  if(!evs.length){
+    html+='<div style="font-size:12px;color:var(--cm-faint);padding:2px 2px 4px;line-height:1.5">아직 병원 기록이 없어요. 입원·통원을 등록하면 혈검·그래프에 자동으로 연결돼요.</div>';
+    return html;
+  }
+  html+=evs.map(ev=>{
+    const linked=btData.filter(b=>b.cat===cat && careEventContains(ev,b.date)).length;
+    return '<div style="background:var(--cm-surface);border:1px solid var(--cm-line);border-radius:12px;padding:11px 12px;margin-bottom:7px">'
+      +'<div style="display:flex;align-items:center;gap:7px;margin-bottom:5px">'+_careTypeBadge(ev)
+      +'<span style="font-size:13px;font-weight:700;color:var(--cm-ink);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+_vEsc(ev.hospital||'병원 미입력')+'</span>'
+      +'<button type="button" onclick="openCareEventForm(\''+ev.id+'\')" style="padding:5px 11px;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;background:var(--cm-surface-2);border:1px solid var(--cm-line);color:var(--cm-ink-soft);flex:0 0 auto">수정</button></div>'
+      +'<div style="font-size:12px;color:var(--cm-ink-soft);margin-bottom:2px">'+_carePeriodText(ev)+'</div>'
+      +(ev.reason?'<div style="font-size:12px;color:var(--cm-faint)">사유: '+_vEsc(ev.reason)+'</div>':'')
+      +(ev.treatment?'<div style="font-size:12px;color:var(--cm-faint)">처치: '+_vEsc(ev.treatment)+'</div>':'')
+      +(linked?'<div style="font-size:11px;color:var(--cm-green-700);margin-top:4px">이 기간 혈액검사 '+linked+'건 연결</div>':'')
+      +'</div>';
+  }).join('');
+  return html;
+}
+
+let _careFormId=null, _careFormType='통원';
+function openCareEventForm(id, presetType){
+  const cat=state.activeCat; if(!cat){ toast('고양이를 먼저 등록해주세요','#BA7517'); return; }
+  const ev=id?careEventById(id):null;
+  _careFormId=id||null; _careFormType=ev?ev.type:(presetType||'통원');
+  let modal=document.getElementById('careFormModal');
+  if(!modal){
+    modal=document.createElement('div'); modal.id='careFormModal';
+    modal.style.cssText='position:fixed;inset:0;background:rgba(42,37,29,0.55);z-index:10001;display:flex;align-items:flex-end;justify-content:center';
+    modal.innerHTML='<div id="careFormBox" style="background:var(--cm-bg);border-radius:20px 20px 0 0;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:1.25rem 1.1rem 1.5rem;box-sizing:border-box"></div>';
+    modal.addEventListener('click',e=>{ if(e.target===modal) closeCareForm(); });
+    document.body.appendChild(modal);
+  }
+  modal.style.display='flex'; document.body.style.overflow='hidden';
+  renderCareForm(ev);
+}
+function closeCareForm(){ const m=document.getElementById('careFormModal'); if(m) m.style.display='none'; document.body.style.overflow=''; }
+function careFormSelectType(t){
+  _careFormType=t;
+  document.querySelectorAll('.cf-type-btn').forEach(b=>{
+    const on=b.dataset.t===t;
+    b.style.border='1px solid '+(on?'var(--cm-green-700)':'var(--cm-line)');
+    b.style.background=on?'var(--cm-green-tint)':'var(--cm-surface-2)';
+    b.style.color=on?'var(--cm-green-ink)':'var(--cm-ink-soft)';
+    b.style.fontWeight=on?'700':'500';
+  });
+  _careToggleEndRow();
+}
+function _careToggleEndRow(){
+  const row=document.getElementById('cfEndRow');
+  if(row) row.style.display = _careFormType==='입원' ? 'block' : 'none';
+  const lbl=document.getElementById('cfStartLabel');
+  if(lbl) lbl.textContent = _careFormType==='입원' ? '입원일' : '방문일';
+}
+function renderCareForm(ev){
+  const box=document.getElementById('careFormBox'); if(!box) return;
+  const inS='padding:10px 12px;border:1px solid var(--cm-line);border-radius:11px;font-size:14px;background:var(--cm-surface);color:var(--cm-ink);font-family:inherit;box-sizing:border-box;width:100%;min-height:44px';
+  const dateS=inS+';-webkit-appearance:none;appearance:none;display:block;text-align:left';
+  const lblS='font-size:12px;font-weight:700;color:var(--cm-ink-soft);margin:12px 0 5px';
+  const typeBtn=(t)=>{ const on=_careFormType===t; return '<button type="button" class="cf-type-btn" data-t="'+t+'" onclick="careFormSelectType(\''+t+'\')" style="flex:1;padding:9px 4px;border-radius:10px;border:1px solid '+(on?'var(--cm-green-700)':'var(--cm-line)')+';background:'+(on?'var(--cm-green-tint)':'var(--cm-surface-2)')+';color:'+(on?'var(--cm-green-ink)':'var(--cm-ink-soft)')+';font-size:13px;font-weight:'+(on?'700':'500')+';cursor:pointer;font-family:inherit">'+t+'</button>'; };
+  const ongoing = ev ? (ev.type==='입원' && !ev.end) : false;
+  box.innerHTML=
+    '<div style="display:flex;align-items:center;margin-bottom:10px"><div style="flex:1;font-size:16px;font-weight:800;color:var(--cm-ink)">'+(_careFormId?'병원 기록 수정':'병원 기록 추가')+'</div>'
+    +'<button type="button" onclick="closeCareForm()" style="background:none;border:none;font-size:20px;color:var(--cm-faint);cursor:pointer;padding:4px 8px;font-family:inherit">×</button></div>'
+    +'<div style="display:flex;gap:6px;margin-bottom:2px">'+typeBtn('통원')+typeBtn('입원')+typeBtn('응급')+'</div>'
+    +'<div style="'+lblS+'">병원명</div><input type="text" id="cfHospital" placeholder="예: 품 동물의료센터" value="'+_vEsc(ev?.hospital||'')+'" style="'+inS+'">'
+    +'<div id="cfStartLabel" style="'+lblS+'">'+(_careFormType==='입원'?'입원일':'방문일')+'</div><input type="date" id="cfStart" value="'+_vEsc(ev?.start||today())+'" style="'+dateS+'">'
+    +'<div id="cfEndRow" style="display:'+(_careFormType==='입원'?'block':'none')+'"><div style="'+lblS+'">퇴원일</div><input type="date" id="cfEnd" value="'+_vEsc(ev?.end||'')+'" style="'+dateS+'">'
+    +'<label style="display:flex;align-items:center;gap:7px;margin-top:7px;font-size:12.5px;color:var(--cm-ink-soft);cursor:pointer"><input type="checkbox" id="cfOngoing" '+(ongoing?'checked':'')+' onchange="document.getElementById(\'cfEnd\').disabled=this.checked;if(this.checked)document.getElementById(\'cfEnd\').value=\'\'" style="width:16px;height:16px"> 아직 입원 중 (퇴원 전)</label></div>'
+    +'<div style="'+lblS+'">사유 / 주호소</div><input type="text" id="cfReason" placeholder="예: 호흡곤란, 식욕부진" value="'+_vEsc(ev?.reason||'')+'" style="'+inS+'">'
+    +'<div style="'+lblS+'">진단 <span style="font-weight:400;color:var(--cm-faint)">(선택)</span></div><input type="text" id="cfDiagnosis" value="'+_vEsc(ev?.diagnosis||'')+'" style="'+inS+'">'
+    +'<div style="'+lblS+'">처치 요약 <span style="font-weight:400;color:var(--cm-faint)">(예: 고압산소, 푸로세마이드)</span></div><textarea id="cfTreatment" rows="2" style="'+inS+';resize:none;min-height:56px">'+_vEsc(ev?.treatment||'')+'</textarea>'
+    +'<div style="'+lblS+'">비용 <span style="font-weight:400;color:var(--cm-faint)">(선택, 원)</span></div><input type="number" id="cfCost" step="any" value="'+(ev&&ev.cost!==''&&ev.cost!=null?ev.cost:'')+'" style="'+inS+'">'
+    +'<div style="'+lblS+'">메모 <span style="font-weight:400;color:var(--cm-faint)">(선택)</span></div><textarea id="cfNote" rows="2" style="'+inS+';resize:none;min-height:56px">'+_vEsc(ev?.note||'')+'</textarea>'
+    +'<div style="display:flex;gap:8px;margin-top:16px">'
+    +(_careFormId?'<button type="button" onclick="confirmDeleteCareEvent(\''+_careFormId+'\')" style="padding:12px 16px;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;background:none;color:var(--cm-clay-ink,#B4472A);border:1px solid var(--cm-line)">삭제</button>':'')
+    +'<button type="button" onclick="saveCareEventForm()" style="flex:1;padding:12px;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;background:var(--cm-green-700);color:#fff;border:none">저장</button></div>'
+    +'<div style="font-size:11px;color:var(--cm-faint);margin-top:9px;text-align:center;line-height:1.5">지난 입원·통원도 소급 입력할 수 있어요. 앱은 기록만 하며 진단하지 않아요.</div>';
+}
+async function saveCareEventForm(){
+  const cat=state.activeCat; const g=id=>document.getElementById(id);
+  const type=_careFormType;
+  const start=g('cfStart')?.value||'';
+  if(!start){ toast('시작일(방문일/입원일)을 입력해주세요','#D85A30'); return; }
+  let end='';
+  if(type==='입원'){
+    const ongoing=g('cfOngoing')?.checked;
+    end = ongoing ? '' : (g('cfEnd')?.value||'');
+    if(end && end<start){ toast('퇴원일이 입원일보다 빠를 수 없어요','#D85A30'); return; }
+  } else { end=start; }
+  const costV=g('cfCost')?.value;
+  const patch={ cat, type, hospital:g('cfHospital')?.value.trim()||'', start, end,
+    reason:g('cfReason')?.value.trim()||'', diagnosis:g('cfDiagnosis')?.value.trim()||'',
+    treatment:g('cfTreatment')?.value.trim()||'', note:g('cfNote')?.value.trim()||'',
+    cost:(costV!==''&&costV!=null)?parseFloat(costV):'' };
+  if(_careFormId) await updateCareEvent(_careFormId, patch);
+  else await addCareEvent(patch);
+  closeCareForm();
+  try{ renderVetManage(); }catch(e){}
+  try{ if(document.getElementById('tab-graph')?.classList.contains('active')) renderBTTrend(); }catch(e){}
+  try{ renderBTHistoryList(); }catch(e){}
+  toast(_careFormId?'병원 기록을 수정했어요 ✅':'병원 기록을 저장했어요 ✅','#1D9E75');
+}
+function careDischarge(id){
+  openCareEventForm(id);
+  setTimeout(()=>{ const e=document.getElementById('cfEnd'), o=document.getElementById('cfOngoing');
+    if(o) o.checked=false; if(e){ e.disabled=false; if(!e.value) e.value=today(); }
+    const t=document.getElementById('cfTreatment'); if(t) t.focus(); }, 30);
+}
+async function confirmDeleteCareEvent(id){
+  if(!confirm('이 병원 기록을 삭제할까요?')) return;
+  await deleteCareEvent(id);
+  closeCareForm(); try{ renderVetManage(); }catch(e){}
+  try{ if(document.getElementById('tab-graph')?.classList.contains('active')) renderBTTrend(); }catch(e){}
+  toast('병원 기록을 삭제했어요','#BA7517');
+}
+
 let _vetManageEdit = false;
 function openVetManage(){
   const cat = state.activeCat;
@@ -11633,6 +11895,8 @@ function renderVetManage(){
     + '<div style="font-size:12.5px;font-weight:700;color:var(--cm-ink-soft);margin-bottom:10px">다음 진료 예정일</div>'
     + dateHtml
     + '</div>'
+    + renderCareEventsSection(cat)
+    + '<div style="height:14px"></div>'
     + '<div style="font-size:12.5px;font-weight:700;color:var(--cm-ink-soft);margin-bottom:8px">최근 진료 이력</div>'
     + histHtml
     + '<button type="button" onclick="vetManageMakeReport()" style="width:100%;margin-top:14px;padding:13px;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;background:var(--cm-green-700);color:#fff;border:none">병원용 리포트 만들기</button>'
@@ -13730,6 +13994,7 @@ async function syncFromDB() {
         state.records = localRecordsBackup;
       })),
       _tw('blood_tests',    loadBloodTests().catch(e => console.warn('혈액검사 로드 오류:', e))),
+      _tw('care_events',    loadCareEvents().catch(e => console.warn('케어이벤트 로드 오류:', e))),
       _tw('graph_hidden',   loadGraphHiddenFromDB().catch(e => console.warn('그래프 설정 로드 오류:', e))),
       _tw('routine',        loadRoutineForCat(state.activeCat).catch(e => console.warn('루틴 로드 오류:', e))),
       _tw('cgm',            loadCGMForCat(state.activeCat).catch(e => console.warn('CGM 로드 오류:', e))),
