@@ -652,7 +652,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.64</span>
+      <span class="cm-beta">v0.7.65</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -7357,6 +7357,8 @@ function _isVersionedRoutineDate(cat, date){
   return getRoutineVersions(cat).some(v=>v.to && (!v.from||v.from<=date) && date<=v.to);
 }
 // 처방 변경: 현행 루틴을 effectiveDate 전날까지 이력으로 마감 (삭제 아님 — 새 버전은 현행 목록을 이어서 편집)
+// 자동 보관(auto) 이력이 이미 변경일을 덮고 있으면 삭제 대신 적용 기간을 변경일 기준으로 당겨 조정
+// (루틴을 먼저 수정한 뒤 소급 기록하는 흐름 — 케이 사례)
 function closeRoutineVersionAt(cat, effectiveDate){
   const c=cat||state.activeCat;
   if(!c) return {ok:false, msg:'고양이를 선택해주세요'};
@@ -7364,13 +7366,51 @@ function closeRoutineVersionAt(cat, effectiveDate){
   if(effectiveDate>today()) return {ok:false, msg:'미래 날짜는 선택할 수 없어요'};
   const vers=getRoutineVersions(c);
   const last=vers.length?vers[vers.length-1]:null;
-  if(last && last.to && effectiveDate<=last.to) return {ok:false, msg:last.to+' 이전은 이미 이력으로 마감돼 있어요'};
+  if(last && last.to && effectiveDate<=last.to){
+    const dPrev=_dayShift(effectiveDate,-1);
+    if(last.auto && (!last.from || last.from<=dPrev)){
+      last.to=dPrev;
+      delete last.auto;   // 사용자가 날짜를 확정 → 명시 이력으로 승격
+      last.changed_at=Date.now(); last.changed_on=today();
+      saveRoutineVersions(c, vers);
+      return {ok:true, adjusted:true};
+    }
+    return {ok:false, msg:last.to+' 이전은 이미 이력으로 마감돼 있어요'};
+  }
   const cur=routineItemsFor(c, today());
   if(!cur.length) return {ok:false, msg:'보관할 루틴 항목이 없어요'};
   vers.push({from: last&&last.to?_dayShift(last.to,1):null, to:_dayShift(effectiveDate,-1),
-    items: JSON.parse(JSON.stringify(cur)), changed_at: Date.now()});
+    items: JSON.parse(JSON.stringify(cur)), changed_at: Date.now(), changed_on: today()});
   saveRoutineVersions(c, vers);
   return {ok:true};
+}
+// 루틴 편집 자동 스냅샷 — 사용자 편집(항목·예정시간 변경) 직전 호출.
+// 현행 루틴이 어제까지 유효했던 상태라면 편집 전 상태를 어제까지 자동 마감해
+// 명시적 처방 변경 기록 없이 편집해도 과거 날짜의 루틴이 유실되지 않게 한다.
+// 스킵: 이미 오늘 경계까지 이력 있음(last.to>=어제) / 오늘 기록·조정된 버전 있음(같은 날 편집은
+// 새 처방 입력 과정으로 간주 — 소급 기록 직후 재스냅샷으로 새 기간을 옛 루틴으로 덮는 사고 방지).
+// 시스템성 변경(자동추가·레거시 정리)에서는 호출하지 않음 — 이력 노이즈 방지.
+function _autoSnapshotRoutine(cat){
+  const c=cat||state.activeCat;
+  if(!c) return;
+  try{
+    const vers=getRoutineVersions(c);
+    const last=vers.length?vers[vers.length-1]:null;
+    const yd=_dayShift(today(),-1);
+    if(last && (last.to>=yd || last.changed_on===today())) return;
+    const cur=routineItemsFor(c, today());
+    if(!cur.length) return;
+    if(last && JSON.stringify(last.items)===JSON.stringify(cur)){
+      // 내용이 직전 이력과 같으면 새 버전 대신 기간만 연장 (중복 이력 방지)
+      last.to=yd; last.changed_at=Date.now(); last.changed_on=today();
+      saveRoutineVersions(c, vers);
+      return;
+    }
+    vers.push({from: last&&last.to?_dayShift(last.to,1):null, to:yd,
+      items: JSON.parse(JSON.stringify(cur)), changed_at: Date.now(), changed_on: today(), auto:true});
+    saveRoutineVersions(c, vers);
+    try{renderRxVersionList();}catch(e){}
+  }catch(e){ console.warn('루틴 자동 스냅샷 오류:', e); }
 }
 
 // 비상이뇨제 상태 — DB(user_settings) 진실원천 + localStorage 캐시
@@ -7842,6 +7882,7 @@ function addRoutineTime(itemIdx){
   if(!v){toast('시간을 선택해주세요','#BA7517');return;}
   if(!Array.isArray(item.times))item.times=[];
   if(item.times.includes(v)){toast('이미 있는 시간이에요','#BA7517');return;}
+  _autoSnapshotRoutine(currentProfileCat||state.activeCat);   // 편집 전 상태 자동 보관
   item.times.push(v);item.times.sort();
   saveRT(currentProfileCat||state.activeCat);
   renderRoutineEditList();
@@ -7852,6 +7893,7 @@ function addRoutineTime(itemIdx){
 function removeRoutineTime(itemIdx, t){
   const item=routineItems[itemIdx];
   if(!item||!Array.isArray(item.times))return;
+  _autoSnapshotRoutine(currentProfileCat||state.activeCat);   // 편집 전 상태 자동 보관
   item.times=item.times.filter(x=>x!==t);
   saveRT(currentProfileCat||state.activeCat);
   renderRoutineEditList();
@@ -7941,14 +7983,21 @@ function applyPrescriptionChange(){
   const dEl = document.getElementById('rxChangeDate');
   const d = dEl && dEl.value;
   if(!d){ toast('변경일을 선택해주세요','#D85A30'); return; }
-  if(!confirm('변경일 '+d+' 기준으로 처방 변경을 기록할까요?\n'+_dayShift(d,-1)+'까지의 현재 루틴이 이력으로 보관되고,\n기록 후 루틴 목록을 새 처방에 맞게 수정하면 돼요.')) return;
+  // 자동 보관된 이력이 변경일을 덮고 있으면: 새 이력 생성 대신 적용 기간 조정 흐름 (편집 먼저 한 경우)
+  const _vers = getRoutineVersions(c);
+  const _last = _vers.length?_vers[_vers.length-1]:null;
+  const _willAdjust = !!(_last && _last.to && d<=_last.to && _last.auto && (!_last.from || _last.from<=_dayShift(d,-1)));
+  const _msg = _willAdjust
+    ? '변경일 '+d+' 기준으로 적용 기간을 조정할까요?\n자동 보관된 이전 루틴이 '+_dayShift(d,-1)+'까지로 조정되고,\n'+d+'부터는 현재 루틴 기준으로 표시돼요.'
+    : '변경일 '+d+' 기준으로 처방 변경을 기록할까요?\n'+_dayShift(d,-1)+'까지의 현재 루틴이 이력으로 보관되고,\n기록 후 루틴 목록을 새 처방에 맞게 수정하면 돼요.';
+  if(!confirm(_msg)) return;
   const r = closeRoutineVersionAt(c, d);
   if(!r.ok){ toast(r.msg,'#D85A30'); return; }
   if(dEl) dEl.value='';
   renderRxVersionList();
   try{renderRoutineChecklist();}catch(e){}
   try{renderRoutineSchedule();}catch(e){}
-  toast('처방 변경이 기록됐어요. 루틴 목록을 새 처방에 맞게 수정해주세요','#1D9E75');
+  toast(r.adjusted?'이전 루틴의 적용 기간을 변경일 기준으로 조정했어요':'처방 변경이 기록됐어요. 루틴 목록을 새 처방에 맞게 수정해주세요','#1D9E75');
 }
 function renderRxVersionList(){
   const el = document.getElementById('rxVersionList');
@@ -7960,7 +8009,8 @@ function renderRxVersionList(){
   // 최신 이력이 위로
   vers.slice().reverse().forEach((v, ri)=>{
     const vi = vers.length - 1 - ri;
-    const period = (v.from||'처음') + ' ~ ' + v.to;
+    const period = (v.from||'처음') + ' ~ ' + v.to
+      + (v.auto?' <span style="font-size:10px;font-weight:600;color:var(--cm-faint);background:var(--cm-surface-2);border-radius:6px;padding:1px 6px;vertical-align:1px">자동 보관</span>':'');
     const items = Array.isArray(v.items)?v.items:[];
     const chips = items.map((it,ii)=>'<span style="display:inline-flex;align-items:center;gap:2px;background:var(--cm-surface-2);color:var(--cm-ink-soft);border-radius:7px;padding:2px 4px 2px 8px;font-size:12px;margin:2px 3px 2px 0">'
       + it.name + (it.cat==='fluid'?' (수액)':'')
@@ -8463,6 +8513,7 @@ function addRoutineItem(){
   const catVal=document.getElementById('newRoutineCat').value;
   if(catVal==='fluid'){
     if(routineItems.find(i=>i.cat==='fluid')){toast('피하수액은 이미 있어요','#BA7517');return}
+    _autoSnapshotRoutine(currentProfileCat||state.activeCat);   // 편집 전 상태 자동 보관
     routineItems.push({name:'피하수액',cat:'fluid',hasValue:true,unit:'ml',defaultVal:120,
       hasType:true,typeOptions:['하트만','0.9% NS','0.45% NS','플라즈마솔루션','기타']});
     // 수동 추가 시 삭제마커 해제(다시 쓰겠다는 의사) — 비-신장질환 고양이도 가능
@@ -8470,6 +8521,7 @@ function addRoutineItem(){
   } else {
     if(!name){toast('항목명을 입력해주세요','#D85A30');return}
     if(routineItems.find(i=>i.name===name)){toast('이미 있는 항목이에요','#BA7517');return}
+    _autoSnapshotRoutine(currentProfileCat||state.activeCat);   // 편집 전 상태 자동 보관
     if(name==='비상이뇨제'){
       // 수동 추가 시 배뇨추적 플래그 부여 + 삭제마커 해제(다시 쓰겠다는 의사)
       routineItems.push({name:'비상이뇨제',cat:'med',diuretic:'emergency'});
@@ -8498,6 +8550,7 @@ function addRoutineItem(){
 function deleteRoutineItem(idx){
   const item=routineItems[idx];
   if(!confirm(item.name+'을(를) 삭제할까요?'))return;
+  _autoSnapshotRoutine(currentProfileCat||state.activeCat);   // 편집 전 상태 자동 보관
   routineItems.splice(idx,1);
   saveRT(currentProfileCat||state.activeCat);
   routineSelected.delete(item.name);
@@ -12089,7 +12142,7 @@ async function saveCareEventForm(){
   if(_isDischarge){
     toast('퇴원 처리됐어요 ✅','#1D9E75');
     setTimeout(()=>{
-      if(confirm('퇴원 후 처방이 바뀌었다면 "처방 변경 기록"으로 이전 루틴을 이력으로 보관하고 새 처방을 입력하는 게 좋아요.\n지금 투약 관리 화면으로 갈까요?')){
+      if(confirm('퇴원 후 처방이 바뀌었다면 변경일(퇴원일)을 기록하고 새 처방을 입력하는 게 좋아요.\n지금 투약 관리 화면으로 갈까요?')){
         try{
           openCatProfile(cat, 'med');
           setTimeout(()=>{
@@ -15400,8 +15453,8 @@ async function uploadFoodDataToDB(cat) {
   </div>
   <div id="routineItemList"></div>
   <div class="cm-card" id="rxChangeCard" style="margin-top:20px;padding:14px 15px">
-    <div style="font-size:13px;font-weight:700;color:var(--cm-ink);margin-bottom:6px">처방 변경 기록</div>
-    <div style="font-size:11px;color:var(--cm-faint);line-height:1.6;margin-bottom:10px">처방이 바뀌었을 때(예: 퇴원 후) 변경일을 기록하면 그 전날까지의 루틴이 이력으로 보관돼요. 과거 기록·리포트는 당시 루틴 기준으로 표시돼요. 기록 후 위 목록을 새 처방에 맞게 수정하세요.</div>
+    <div style="font-size:13px;font-weight:700;color:var(--cm-ink);margin-bottom:6px">처방 변경일 기록</div>
+    <div style="font-size:11px;color:var(--cm-faint);line-height:1.6;margin-bottom:10px">루틴을 수정하면 이전 상태가 자동으로 이력에 보관되고, 과거 기록·리포트는 당시 루틴 기준으로 표시돼요. 처방이 바뀐 날이 오늘이 아니라면(예: 퇴원일) 변경일을 기록해 적용 시점을 정확히 남기세요.</div>
     <div style="display:flex;gap:6px">
       <input type="date" id="rxChangeDate" style="flex:1;padding:9px 10px;border:1px solid var(--cm-line);border-radius:9px;font-size:13px;background:var(--cm-bg);color:var(--cm-ink);font-family:inherit;-webkit-appearance:none;appearance:none">
       <button type="button" onclick="applyPrescriptionChange()" class="cm-btn" style="padding:9px 16px;white-space:nowrap;border-radius:9px">변경 기록</button>
