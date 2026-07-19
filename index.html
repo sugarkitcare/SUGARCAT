@@ -652,7 +652,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.63</span>
+      <span class="cm-beta">v0.7.64</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -4637,8 +4637,9 @@ function renderDailySummary(catName) {
     // 투약 순응도 — 예정 시간이 있는 약만, 오늘, 저녁(21시) 이후 미완료 시 (오탐 방지)
     if(d === today()) {
       let sched=0, done=0;
-      const _dset = _routineDoneSet(rec);
-      (routineItems||[]).forEach(it=>{
+      const _effAd = routineItemsFor(cat, d);   // 조회 날짜에 유효한 루틴 (처방 변경 이력 반영)
+      const _dset = _routineDoneSet(rec, _effAd);
+      (_effAd||[]).forEach(it=>{
         if(!_routineUsesTimes(it)) return;
         (it.times||[]).forEach(s=>{ sched++; if(_dset.has(_slotKey(it.name, s))) done++; });
       });
@@ -4651,6 +4652,13 @@ function renderDailySummary(catName) {
         } else if(missing===0) {
           feedbacks.push({priority:10, ...makeFeedback('ok','',`오늘 투약 완료`,`예정 투약 ${sched}건 모두 기록했어요`)});
         }
+      }
+      // 약별 관찰 권고 항목 (스펙: watch items) — 부작용 단정 금지, 관찰 권고 톤
+      const _wMeds=(_effAd||[]).filter(it=>it.cat==='med'&&Array.isArray(it.watch)&&it.watch.length);
+      if(_wMeds.length){
+        const _wTxt=_wMeds.slice(0,4).map(it=>it.name+': '+it.watch.join('·')).join(' / ');
+        feedbacks.push({priority:8, ...makeFeedback('info','','복용 중 관찰 권고 항목',
+          _wTxt+' — 수의사 안내 기준으로 꾸준히 관찰해 주세요')});
       }
     }
   }
@@ -5063,7 +5071,8 @@ function renderRoutineSchedule(date) {
   if(dateEl) dateEl.textContent = schedDate;
 
   const rec = getRec(state.activeCat, schedDate);
-  const doneSet = _routineDoneSet(rec);
+  const effSched = routineItemsFor(state.activeCat, schedDate);   // 그 날짜에 유효했던 루틴 (처방 변경 이력 반영)
+  const doneSet = _routineDoneSet(rec, effSched);
 
   const _pill = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 4.5 19.5 13.5a4.243 4.243 0 0 1-6 6L4.5 10.5a4.243 4.243 0 0 1 6-6Z"/><line x1="9" y1="15" x2="15" y2="9"/></svg>';
   const _bowl = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.6 11.5h18.8a9.4 9.4 0 0 1-18.8 0Z"/><path d="M12 4.2c0 1.4-1.4 1.4-1.4 2.8M15.2 5.2c0 1.1-1.1 1.1-1.1 2.2"/></svg>';
@@ -5080,7 +5089,7 @@ function renderRoutineSchedule(date) {
 
   let totalDone = 0, totalAll = 0;
   catDef.forEach(c => {
-    routineItems.filter(i=>i.cat===c.key).forEach(it=>{
+    effSched.filter(i=>i.cat===c.key).forEach(it=>{
       const slots = _itemSlots(it);
       totalAll += slots.length;
       totalDone += slots.filter(s=>doneSet.has(_slotKey(it.name, s))).length;
@@ -5097,7 +5106,11 @@ function renderRoutineSchedule(date) {
   const pct = Math.round(totalDone / totalAll * 100);
 
   // 진행률 바
-  let html = '<div style="margin-bottom:.85rem">'
+  let html = '';
+  if(_isVersionedRoutineDate(state.activeCat, schedDate)){
+    html += '<div style="font-size:11px;color:var(--cm-faint);background:var(--cm-surface-2);border-radius:8px;padding:6px 10px;margin-bottom:.6rem">이 날짜는 당시 처방(루틴) 기준으로 표시돼요</div>';
+  }
+  html += '<div style="margin-bottom:.85rem">'
     + '<div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--cm-faint);margin-bottom:.4rem">'
     + '<span style="font-weight:700;color:var(--cm-ink)">' + totalDone + ' / ' + totalAll + '</span>'
     + '<span style="font-weight:600;color:' + (pct===100?'var(--cm-green-700)':'var(--cm-faint)') + '">' + pct + '%</span>'
@@ -5135,7 +5148,7 @@ function renderRoutineSchedule(date) {
 
   // 카테고리 그룹
   catDef.forEach(c => {
-    const allItems = routineItems.filter(i=>i.cat===c.key);
+    const allItems = effSched.filter(i=>i.cat===c.key);
     if(!allItems.length) return;
 
     // (약, 슬롯) 페어 전개 — 시간순 정렬, times 없으면 단일 슬롯(slot=undefined)
@@ -5164,7 +5177,7 @@ function renderRoutineSchedule(date) {
       filtered.forEach(p => {
         const item = p.item, slot = p.slot;
         const done = _isDoneP(p);
-        const fluidRec = _findRoutineRec(rec, item.name, slot);
+        const fluidRec = _findRoutineRec(rec, item.name, slot, effSched);
         // 미기록 시 마지막 저장값 프리필, 없으면 기존 기본값 (v0.7.42) — 목록에 없는 종류는 무시
         const _liF = getLastInputs(state.activeCat).fluid || {};
         const _liType = (item.typeOptions||[]).includes(_liF.type) ? _liF.type : '';
@@ -5215,7 +5228,7 @@ function renderRoutineSchedule(date) {
       filtered.forEach(p => {
         const item = p.item, slot = p.slot;
         const done = _isDoneP(p);
-        const doneRec = done ? _findRoutineRec(rec, item.name, slot) : null;
+        const doneRec = done ? _findRoutineRec(rec, item.name, slot, effSched) : null;
         html += '<div onclick="toggleScheduleCheck(this)" data-item="'+item.name+'" data-slot="'+(slot||'')+'" data-date="'+schedDate+'"'
           + ' style="display:flex;flex-direction:column;gap:6px;padding:10px 10px 8px;border-radius:12px;cursor:pointer;'
           + 'min-width:0;box-sizing:border-box;'
@@ -5254,7 +5267,7 @@ function toggleScheduleCheck(el) {
   const slot = el.dataset.slot || undefined;
   const rec = getRec(state.activeCat, date);
   if(!rec.routines) rec.routines = [];
-  const existIdx = _findRoutineIdx(rec, itemName, slot);
+  const existIdx = _findRoutineIdx(rec, itemName, slot, routineItemsFor(state.activeCat, date));
   if(existIdx > -1) {
     rec.routines.splice(existIdx, 1);
   } else {
@@ -7257,6 +7270,24 @@ const defaultItems=[
   // 구토는 v0.7.37부터 별도 상태 기록 카드(수분 밸런스 카드 내) — 루틴 기본 세트에서 제외
   {name:'병원 방문',cat:'other'}
 ];
+
+/* ── 약별 관찰 항목 (watch items) ──
+   톤 원칙(AI 안전 재설계와 동일): 부작용 단정 금지 — "복용 중 관찰 권고 항목(수의사 안내 기준)" 표현만 사용.
+   보수적 큐레이션 템플릿: 약 이름 키워드 매칭 시 관찰 권고 항목 자동 연결(사용자가 편집·삭제 가능).
+   커스텀: 주치의가 관찰하라고 한 항목을 보호자가 직접 추가. item.watch = string[] */
+const WATCH_SUGGEST = ['식욕','호흡수','기력','음수량','소변','구토','설사','체중'];
+const MED_WATCH_TEMPLATES = [
+  {match:['강심','피모벤단','베트메딘','vetmedin','pimobendan'], watch:['식욕','호흡수','기력']},
+  {match:['이뇨','푸로세미드','후로세미드','라식스','토르세미드','furosemide','lasix','torsemide'], watch:['음수량','소변','식욕','기력']},
+  {match:['스테로이드','프레드니','prednisolone'], watch:['음수량','식욕','구토']},
+  {match:['항생제','아목시','클라불','콘베니아','바이트릴','convenia','amoxicillin'], watch:['식욕','구토','설사']},
+  {match:['암로디핀','텔미사르탄','세민트라','노바스크','혈압','amlodipine','telmisartan','semintra'], watch:['기력','식욕']},
+];
+function _medWatchTemplate(name){
+  const n = String(name||'').toLowerCase();
+  if(!n) return null;
+  return MED_WATCH_TEMPLATES.find(t=>t.match.some(m=>n.includes(m.toLowerCase()))) || null;
+}
 let routineItems=defaultItems;
 let _rtItemsCat=null;   // 현재 전역 routineItems가 어느 고양이 것인지 (loadRoutineForCat 완료 시 기록)
 let _rtLoadSeq=0;       // 루틴 로드 시퀀스 — 늦게 끝난 stale 로드가 저장·렌더하지 못하게 가드
@@ -7286,6 +7317,62 @@ const saveRT=(catName, itemsArg)=>{
     });
   }
 };
+
+/* ── 약 루틴 시점 버전 (처방 변경 이력) ──
+   마감된 과거 버전만 routineVersions_v1_<cat>에 저장. 현행 루틴은 기존 routineItems_v1_<cat> 그대로
+   (버전 이력 없는 고양이는 기존과 100% 동일 동작 — 마이그레이션 불필요).
+   버전 형태: {from:'YYYY-MM-DD'|null(처음부터), to:'YYYY-MM-DD', items:[...], changed_at:ts}
+   읽기는 localStorage 직행(lastInputs 패턴) — loadRoutineForCat이 DB→localStorage 미러링 */
+const SK_RTV='routineVersions_v1';
+function getRoutineVersions(cat){
+  const c=cat||state.activeCat; if(!c) return [];
+  try{const l=localStorage.getItem(SK_RTV+'_'+c);const v=l?JSON.parse(l):[];return Array.isArray(v)?v:[];}catch(e){return [];}
+}
+function saveRoutineVersions(cat, versions){
+  const c=cat||state.activeCat; if(!c) return;
+  try{localStorage.setItem(SK_RTV+'_'+c, JSON.stringify(versions));}catch(e){}
+  if(sbClient && currentUser){
+    sbClient.from('user_settings').upsert({
+      user_id: currentUser.id, key: 'routine_versions_'+c, value: versions, updated_at: new Date().toISOString()
+    }, {onConflict:'user_id,key'}).then(({error})=>{
+      if(error) console.warn('루틴 버전 DB 저장 오류:', error);
+    });
+  }
+}
+function _dayShift(dateStr, delta){
+  const d=new Date(dateStr+'T00:00:00Z'); d.setUTCDate(d.getUTCDate()+delta); return d.toISOString().slice(0,10);
+}
+// 특정 날짜에 유효했던 루틴 항목 목록 — 마감 버전이 덮는 날짜면 그 버전, 아니면 현행
+function routineItemsFor(cat, date){
+  const c=cat||state.activeCat;
+  const d=date||today();
+  const hit=getRoutineVersions(c).find(v=>v.to && (!v.from||v.from<=d) && d<=v.to);
+  if(hit) return Array.isArray(hit.items)?hit.items:[];
+  if(c===_rtItemsCat) return routineItems;
+  try{const l=localStorage.getItem(SK_RT+'_'+c); if(l){const p=JSON.parse(l); if(Array.isArray(p)) return p;}}catch(e){}
+  return c===state.activeCat ? routineItems : [];
+}
+// 이 날짜가 마감된 과거 버전으로 표시되는지 (UI 안내용)
+function _isVersionedRoutineDate(cat, date){
+  return getRoutineVersions(cat).some(v=>v.to && (!v.from||v.from<=date) && date<=v.to);
+}
+// 처방 변경: 현행 루틴을 effectiveDate 전날까지 이력으로 마감 (삭제 아님 — 새 버전은 현행 목록을 이어서 편집)
+function closeRoutineVersionAt(cat, effectiveDate){
+  const c=cat||state.activeCat;
+  if(!c) return {ok:false, msg:'고양이를 선택해주세요'};
+  if(!effectiveDate) return {ok:false, msg:'변경일을 선택해주세요'};
+  if(effectiveDate>today()) return {ok:false, msg:'미래 날짜는 선택할 수 없어요'};
+  const vers=getRoutineVersions(c);
+  const last=vers.length?vers[vers.length-1]:null;
+  if(last && last.to && effectiveDate<=last.to) return {ok:false, msg:last.to+' 이전은 이미 이력으로 마감돼 있어요'};
+  const cur=routineItemsFor(c, today());
+  if(!cur.length) return {ok:false, msg:'보관할 루틴 항목이 없어요'};
+  vers.push({from: last&&last.to?_dayShift(last.to,1):null, to:_dayShift(effectiveDate,-1),
+    items: JSON.parse(JSON.stringify(cur)), changed_at: Date.now()});
+  saveRoutineVersions(c, vers);
+  return {ok:true};
+}
+
 // 비상이뇨제 상태 — DB(user_settings) 진실원천 + localStorage 캐시
 //   값: {migrated:true, deleted:bool}  / null = 미마이그레이션(기존 고양이)
 //   deleted=true → 자동 추가 안 함(보호자 삭제 의사 영속). localStorage-only 가드의 다기기/ITP 증발 문제 해결.
@@ -7391,6 +7478,16 @@ async function loadRoutineForCat(catName) {
       // 구버전 키(SK_RT 직접) 데이터는 무시
       items = local ? JSON.parse(local) : [...defaultItems];
     } catch(e) { items = [...defaultItems]; }
+  }
+  // 처방 변경 이력(버전) DB→localStorage 미러링 — 읽기는 항상 localStorage 직행이므로 여기서만 갱신
+  if(sbClient && currentUser) {
+    try {
+      const {data: vd} = await sbClient.from('user_settings')
+        .select('value').eq('user_id', currentUser.id).eq('key', 'routine_versions_' + cat).maybeSingle();
+      if(vd?.value && Array.isArray(vd.value)) {
+        try{localStorage.setItem(SK_RTV + '_' + cat, JSON.stringify(vd.value));}catch(e){}
+      }
+    } catch(e) { /* 버전 이력은 부가 정보 — 실패해도 루틴 로드는 계속 */ }
   }
   // 비상이뇨제 — HCM 전용 자동추가 + DB 영속 삭제 가드
   try {
@@ -7500,6 +7597,7 @@ async function loadRoutineForCat(catName) {
   renderRoutineChecklist();
   try{renderRoutineEditList();}catch(e){}
   try{renderRoutineSchedule();}catch(e){}
+  try{renderRxVersionList();}catch(e){}
 }
 
 const catColor={med:'#534AB7',food:'#BA7517',other:'#1D9E75',fluid:'#2A7A5A'};
@@ -7515,12 +7613,16 @@ function renderRoutineChecklist(){
   if(!cl) return;
   const today_date = document.getElementById('routineDate')?.value || today();
   const rec = getRec(state.activeCat, today_date);
-  const doneSet = _routineDoneSet(rec);
+  const effItems = routineItemsFor(state.activeCat, today_date);   // 그 날짜에 유효했던 루틴 (처방 변경 이력 반영)
+  const doneSet = _routineDoneSet(rec, effItems);
   const catLabel2 = {med:'약 및 보조제', food:'간식', other:'기타루틴'};
   const cats2 = ['med','food','other'];
   let html = '';
+  if(_isVersionedRoutineDate(state.activeCat, today_date)){
+    html += '<div style="font-size:11px;color:var(--cm-faint);background:var(--cm-surface-2);border-radius:8px;padding:6px 10px;margin-bottom:.5rem">이 날짜는 당시 처방(루틴) 기준으로 표시돼요</div>';
+  }
   cats2.forEach(cat=>{
-    const items = _routineSortByTime(routineItems.filter(i=>i.cat===cat));
+    const items = _routineSortByTime(effItems.filter(i=>i.cat===cat));
     if(!items.length) return;
     html += '<div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:.4rem;margin-top:.5rem">'+catLabel2[cat]+'</div>';
     html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:.25rem">';
@@ -7543,7 +7645,7 @@ function renderRoutineChecklist(){
     html += '</div>';
   });
   // 💧 수분 공급 (fluid) - 전체너비 카드, ml입력 + 종류 드롭다운
-  const fluidItems = routineItems.filter(i=>i.cat==='fluid');
+  const fluidItems = effItems.filter(i=>i.cat==='fluid');
   if(fluidItems.length) {
     html += '<div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:.4rem;margin-top:.5rem">피하수액</div>';
     fluidItems.forEach(item=>{
@@ -7597,8 +7699,9 @@ function toggleRoutineCheck(itemName, slot){
   const today_date = document.getElementById('routineDate')?.value || today();
   const rec = getRec(state.activeCat, today_date);
   if(!rec.routines) rec.routines = [];
+  const _effT = routineItemsFor(state.activeCat, today_date);
   // 이미 이 슬롯(약+시간) 기록이 있는지 확인 (레거시 slot없는 기록은 첫 슬롯에 귀속)
-  const existIdx = _findRoutineIdx(rec, itemName, slot);
+  const existIdx = _findRoutineIdx(rec, itemName, slot, _effT);
   if(existIdx > -1){
     // 체크 해제
     rec.routines.splice(existIdx, 1);
@@ -7612,7 +7715,7 @@ function toggleRoutineCheck(itemName, slot){
   renderRoutineChecklist();
   renderHistory();
   try{renderDailySummary();}catch(e){}
-  const isDone = _findRoutineIdx(rec, itemName, slot) > -1;
+  const isDone = _findRoutineIdx(rec, itemName, slot, _effT) > -1;
   if(isDone) toast('✅ '+itemName+(slot?' '+slot:'')+' 저장됐어요','#1D9E75');
   // 비상이뇨제 체크 시 소변 알림 트리거
   const emergItem = routineItems.find(i=>i.name===itemName&&i.diuretic==='emergency');
@@ -7638,7 +7741,7 @@ function saveFluidRoutine(itemName, slot, dateOverride, idSuffix) {
   const fluidType = typeEl?.value || '';
   if(!ml || ml <= 0) { toast('수액량을 입력해주세요', '#D85A30'); return; }
   // 회차(약+slot) 단위로 기존 기록만 교체 — med의 toggleScheduleCheck와 동일하게 _findRoutineIdx 사용
-  const existIdx = _findRoutineIdx(rec, itemName, slot);
+  const existIdx = _findRoutineIdx(rec, itemName, slot, routineItemsFor(state.activeCat, today_date));
   if(existIdx > -1) rec.routines.splice(existIdx, 1);
   const rObj = {items:[itemName], ml, fluidType, memo:'', time:nowTime(), ts:Date.now()};
   if(slot) rObj.slot = slot;
@@ -7657,7 +7760,7 @@ function toggleFluidCheck(itemName, slot, dateOverride, idSuffix) {
   const date = dateOverride || document.getElementById('routineDate')?.value || today();
   const rec = getRec(state.activeCat, date);
   if(!rec.routines) rec.routines = [];
-  const existIdx = _findRoutineIdx(rec, itemName, slot);
+  const existIdx = _findRoutineIdx(rec, itemName, slot, routineItemsFor(state.activeCat, date));
   if(existIdx > -1) {
     // 언체크 — 해당 회차 기록만 삭제
     rec.routines.splice(existIdx, 1);
@@ -7670,7 +7773,7 @@ function toggleFluidCheck(itemName, slot, dateOverride, idSuffix) {
     // 체크: 현재 입력값으로 저장, 빈값이면 defaultVal 적용
     const mlEl = document.getElementById(_fluidElId('fluidMl_', itemName, slot, _sfx));
     if(mlEl && (!mlEl.value || parseInt(mlEl.value) <= 0)) {
-      const itemDef = routineItems.find(i=>i.name===itemName);
+      const itemDef = routineItemsFor(state.activeCat, date).find(i=>i.name===itemName);
       const _liFluid = getLastInputs(state.activeCat).fluid || {};   // 마지막 저장값 우선 (v0.7.42)
       mlEl.value = String(_liFluid.amount || itemDef?.defaultVal || 120);
     }
@@ -7704,12 +7807,14 @@ function _itemSlots(item){
 // 슬롯 키: slot 있으면 name@HH:MM, 없으면 name
 function _slotKey(name, slot){ return slot ? name+'@'+slot : name; }
 // rec.routines → 완료된 슬롯키 Set (레거시 slot없는 기록은 해당 약 첫 슬롯 완료로 간주)
-function _routineDoneSet(rec){
+// itemsArg: 그 날짜에 유효한 항목 정의(routineItemsFor) — 미전달 시 현행(routineItems)
+function _routineDoneSet(rec, itemsArg){
+  const defs = itemsArg || routineItems;
   const s = new Set();
   ((rec&&rec.routines)||[]).forEach(r=>{
     (r.items||[]).forEach(nm=>{
       if(r.slot){ s.add(nm+'@'+r.slot); return; }
-      const def = routineItems.find(i=>i.name===nm);
+      const def = defs.find(i=>i.name===nm);
       if(def && def.times && def.times.length) s.add(nm+'@'+def.times[0]); // 레거시→첫 슬롯
       else s.add(nm);
     });
@@ -7717,14 +7822,14 @@ function _routineDoneSet(rec){
   return s;
 }
 // 특정 약+슬롯의 기록 찾기 (레거시 slot없는 기록은 첫 슬롯에 귀속)
-function _findRoutineRec(rec, name, slot){
-  const def = routineItems.find(i=>i.name===name);
+function _findRoutineRec(rec, name, slot, itemsArg){
+  const def = (itemsArg || routineItems).find(i=>i.name===name);
   const isFirst = !!(slot && def && def.times && def.times[0]===slot);
   return ((rec&&rec.routines)||[]).find(r=>r.items?.length===1 && r.items[0]===name && (slot ? (r.slot===slot || (isFirst && !r.slot)) : !r.slot));
 }
 // 특정 약+슬롯 기록의 인덱스 (토글용)
-function _findRoutineIdx(rec, name, slot){
-  const def = routineItems.find(i=>i.name===name);
+function _findRoutineIdx(rec, name, slot, itemsArg){
+  const def = (itemsArg || routineItems).find(i=>i.name===name);
   const isFirst = !!(slot && def && def.times && def.times[0]===slot);
   return ((rec&&rec.routines)||[]).findIndex(r=>r.items?.length===1 && r.items[0]===name && (slot ? (r.slot===slot || (isFirst && !r.slot)) : !r.slot));
 }
@@ -7782,12 +7887,137 @@ function renderRoutineEditList(){
           <input type="time" id="rtTime_${i}" style="padding:4px 6px;border:1px solid var(--cm-line);border-radius:7px;font-size:12px;background:var(--cm-bg);color:var(--cm-ink);font-family:inherit">
           <button type="button" onclick="addRoutineTime(${i})" style="padding:4px 10px;border:0.5px solid var(--cm-green-edge);border-radius:7px;background:var(--cm-green-tint);color:var(--cm-green-700);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap">+추가</button>
         </div>`:''}
+        ${cat==='med'?_watchRowHtml(item, i):''}
       </div>`;
     });
   });
   if(!html) html='<div style="text-align:center;padding:1rem;color:var(--cm-faint);font-size:12px">등록된 항목이 없어요</div>';
   list.innerHTML=html;
   updateCatMedBadge();
+}
+
+/* ── 약별 관찰 항목 편집 (수의사 안내 기준 — 부작용 단정 아님) ── */
+function _watchRowHtml(item, i){
+  const ws = Array.isArray(item.watch)?item.watch:[];
+  const chips = ws.map(w=>`<span style="display:inline-flex;align-items:center;gap:2px;background:var(--cm-surface-2);color:var(--cm-ink-soft);border-radius:7px;padding:2px 4px 2px 8px;font-size:12px;font-weight:600">${w}<button type="button" onclick="removeWatchItem(${i},'${w}')" style="background:none;border:none;cursor:pointer;color:var(--cm-faint);padding:0 2px;font-size:14px;line-height:1">×</button></span>`).join('');
+  const opts = WATCH_SUGGEST.filter(w=>!ws.includes(w)).map(w=>`<option value="${w}">${w}</option>`).join('');
+  return `<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-top:8px">
+    <span style="font-size:11px;color:var(--cm-faint);flex-shrink:0">관찰 항목</span>
+    ${chips}
+    <select id="rtWatch_${i}" style="padding:4px 6px;border:1px solid var(--cm-line);border-radius:7px;font-size:12px;background:var(--cm-bg);color:var(--cm-ink);font-family:inherit">
+      ${opts}<option value="__custom">직접 입력</option>
+    </select>
+    <button type="button" onclick="addWatchItem(${i})" style="padding:4px 10px;border:0.5px solid var(--cm-green-edge);border-radius:7px;background:var(--cm-green-tint);color:var(--cm-green-700);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap">+추가</button>
+    <span style="flex-basis:100%;font-size:10px;color:var(--cm-faint)">복용 중 관찰 권고 항목 — 수의사 안내 기준으로 관리하세요</span>
+  </div>`;
+}
+function addWatchItem(itemIdx){
+  const item=routineItems[itemIdx];
+  if(!item)return;
+  const sel=document.getElementById('rtWatch_'+itemIdx);
+  let v=sel&&sel.value;
+  if(v==='__custom'){
+    v=prompt('관찰할 항목을 입력해주세요 (예: 잇몸 색)');
+    v=v&&v.trim();
+  }
+  if(!v)return;
+  if(!Array.isArray(item.watch))item.watch=[];
+  if(item.watch.includes(v)){toast('이미 있는 항목이에요','#BA7517');return;}
+  item.watch.push(v);
+  saveRT(currentProfileCat||state.activeCat);
+  renderRoutineEditList();
+}
+function removeWatchItem(itemIdx, w){
+  const item=routineItems[itemIdx];
+  if(!item||!Array.isArray(item.watch))return;
+  item.watch=item.watch.filter(x=>x!==w);
+  saveRT(currentProfileCat||state.activeCat);
+  renderRoutineEditList();
+}
+
+/* ── 처방 변경 기록 · 이력 (루틴 시점 버전) ── */
+function applyPrescriptionChange(){
+  const c = currentProfileCat || state.activeCat;
+  const dEl = document.getElementById('rxChangeDate');
+  const d = dEl && dEl.value;
+  if(!d){ toast('변경일을 선택해주세요','#D85A30'); return; }
+  if(!confirm('변경일 '+d+' 기준으로 처방 변경을 기록할까요?\n'+_dayShift(d,-1)+'까지의 현재 루틴이 이력으로 보관되고,\n기록 후 루틴 목록을 새 처방에 맞게 수정하면 돼요.')) return;
+  const r = closeRoutineVersionAt(c, d);
+  if(!r.ok){ toast(r.msg,'#D85A30'); return; }
+  if(dEl) dEl.value='';
+  renderRxVersionList();
+  try{renderRoutineChecklist();}catch(e){}
+  try{renderRoutineSchedule();}catch(e){}
+  toast('처방 변경이 기록됐어요. 루틴 목록을 새 처방에 맞게 수정해주세요','#1D9E75');
+}
+function renderRxVersionList(){
+  const el = document.getElementById('rxVersionList');
+  if(!el) return;
+  const c = currentProfileCat || state.activeCat;
+  const vers = getRoutineVersions(c);
+  if(!vers.length){ el.innerHTML=''; return; }
+  let html = '<div style="font-size:12px;font-weight:700;color:var(--cm-faint);margin:16px 0 8px">이전 처방 이력</div>';
+  // 최신 이력이 위로
+  vers.slice().reverse().forEach((v, ri)=>{
+    const vi = vers.length - 1 - ri;
+    const period = (v.from||'처음') + ' ~ ' + v.to;
+    const items = Array.isArray(v.items)?v.items:[];
+    const chips = items.map((it,ii)=>'<span style="display:inline-flex;align-items:center;gap:2px;background:var(--cm-surface-2);color:var(--cm-ink-soft);border-radius:7px;padding:2px 4px 2px 8px;font-size:12px;margin:2px 3px 2px 0">'
+      + it.name + (it.cat==='fluid'?' (수액)':'')
+      + '<button type="button" onclick="rxvRemoveItem('+vi+','+ii+')" style="background:none;border:none;cursor:pointer;color:var(--cm-faint);padding:0 2px;font-size:14px;line-height:1">×</button></span>').join('');
+    html += '<div style="background:var(--cm-surface);border:1px solid var(--cm-line);border-radius:12px;padding:12px 14px;margin-bottom:8px">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'
+      + '<span style="font-size:12px;font-weight:700;color:var(--cm-ink)">'+period+'</span>'
+      + '<button type="button" onclick="rxvDeleteVersion('+vi+')" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--cm-faint);display:flex;align-items:center">'
+      + '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4.5 6.5h15M9 6.5V4.5h6v2M6.5 6.5 7.5 20h9l1-13.5"/></svg></button>'
+      + '</div>'
+      + '<div style="display:flex;flex-wrap:wrap;align-items:center">'+ (chips||'<span style="font-size:12px;color:var(--cm-faint)">항목 없음</span>') +'</div>'
+      + '<div style="display:flex;gap:5px;margin-top:8px;align-items:center">'
+      + '<input type="text" id="rxvAdd_'+vi+'" placeholder="이 기간에 있었던 항목 추가" style="flex:1;min-width:0;padding:6px 8px;border:1px solid var(--cm-line);border-radius:7px;font-size:12px;background:var(--cm-bg);color:var(--cm-ink);font-family:inherit">'
+      + '<button type="button" onclick="rxvAddItem('+vi+')" style="padding:6px 10px;border:0.5px solid var(--cm-green-edge);border-radius:7px;background:var(--cm-green-tint);color:var(--cm-green-700);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap">+추가</button>'
+      + '</div>'
+      + '<div style="font-size:10px;color:var(--cm-faint);margin-top:6px">이 기간의 기록·리포트에 표시되는 루틴 목록이에요. 실제 투약 기록은 바뀌지 않아요.</div>'
+      + '</div>';
+  });
+  el.innerHTML = html;
+}
+function rxvRemoveItem(vi, ii){
+  const c = currentProfileCat || state.activeCat;
+  const vers = getRoutineVersions(c);
+  if(!vers[vi] || !Array.isArray(vers[vi].items) || !vers[vi].items[ii]) return;
+  if(!confirm('"'+vers[vi].items[ii].name+'"을(를) 이 기간 이력에서 제외할까요?')) return;
+  vers[vi].items.splice(ii,1);
+  saveRoutineVersions(c, vers);
+  renderRxVersionList();
+  try{renderRoutineChecklist();}catch(e){}
+  try{renderRoutineSchedule();}catch(e){}
+}
+function rxvAddItem(vi){
+  const c = currentProfileCat || state.activeCat;
+  const inp = document.getElementById('rxvAdd_'+vi);
+  const name = inp && inp.value.trim();
+  if(!name){ toast('항목명을 입력해주세요','#D85A30'); return; }
+  const vers = getRoutineVersions(c);
+  if(!vers[vi]) return;
+  if(!Array.isArray(vers[vi].items)) vers[vi].items = [];
+  if(vers[vi].items.some(i=>i.name===name)){ toast('이미 있는 항목이에요','#BA7517'); return; }
+  vers[vi].items.push({name, cat:'med'});
+  saveRoutineVersions(c, vers);
+  renderRxVersionList();
+  try{renderRoutineChecklist();}catch(e){}
+  try{renderRoutineSchedule();}catch(e){}
+}
+function rxvDeleteVersion(vi){
+  const c = currentProfileCat || state.activeCat;
+  const vers = getRoutineVersions(c);
+  if(!vers[vi]) return;
+  const period = (vers[vi].from||'처음')+' ~ '+vers[vi].to;
+  if(!confirm('이력('+period+')을 삭제할까요?\n이 기간의 기록·리포트는 현행 루틴 기준으로 표시돼요.\n실제 투약 기록은 삭제되지 않아요.')) return;
+  vers.splice(vi,1);
+  saveRoutineVersions(c, vers);
+  renderRxVersionList();
+  try{renderRoutineChecklist();}catch(e){}
+  try{renderRoutineSchedule();}catch(e){}
 }
 
 
@@ -8245,13 +8475,24 @@ function addRoutineItem(){
       routineItems.push({name:'비상이뇨제',cat:'med',diuretic:'emergency'});
       try{setEmergState(currentProfileCat||state.activeCat,{migrated:true,deleted:false});}catch(e){}
     } else {
-      routineItems.push({name,cat:catVal});
+      const newItem={name,cat:catVal};
+      // 약이면 보수적 큐레이션 템플릿으로 관찰 권고 항목 자동 연결 (부작용 단정 아님 — 편집·삭제 가능)
+      if(catVal==='med'){
+        const tpl=_medWatchTemplate(name);
+        if(tpl) newItem.watch=tpl.watch.slice();
+      }
+      routineItems.push(newItem);
     }
   }
   saveRT(currentProfileCat||state.activeCat);
   document.getElementById('newRoutineName').value='';
   renderRoutineChecklist();renderRoutineEditList();
-  toast((catVal==='fluid'?'피하수액':name)+' 추가 완료!');
+  const _addedIt=routineItems[routineItems.length-1];
+  if(_addedIt && Array.isArray(_addedIt.watch) && _addedIt.watch.length){
+    toast(name+' 추가 완료 · 관찰 권고 항목 연결: '+_addedIt.watch.join('·'),'#1D9E75');
+  } else {
+    toast((catVal==='fluid'?'피하수액':name)+' 추가 완료!');
+  }
 }
 
 function deleteRoutineItem(idx){
@@ -11848,9 +12089,15 @@ async function saveCareEventForm(){
   if(_isDischarge){
     toast('퇴원 처리됐어요 ✅','#1D9E75');
     setTimeout(()=>{
-      if(confirm('퇴원 후 처방이 바뀌었다면 투약 루틴을 업데이트하는 게 좋아요.\n지금 투약 관리 화면으로 갈까요?')){
-        try{ const b=document.querySelector('.cm-tab[data-tab="daily"]')||document.querySelector('[data-tab="daily"]'); showTab('daily', b);
-          setTimeout(()=>{ const el=document.getElementById('routineScheduleList'); if(el) el.scrollIntoView({behavior:'smooth',block:'center'}); }, 250);
+      if(confirm('퇴원 후 처방이 바뀌었다면 "처방 변경 기록"으로 이전 루틴을 이력으로 보관하고 새 처방을 입력하는 게 좋아요.\n지금 투약 관리 화면으로 갈까요?')){
+        try{
+          openCatProfile(cat, 'med');
+          setTimeout(()=>{
+            const dEl=document.getElementById('rxChangeDate');
+            if(dEl && end) dEl.value = end;   // 변경일 = 퇴원일 프리필
+            const card=document.getElementById('rxChangeCard');
+            if(card) card.scrollIntoView({behavior:'smooth',block:'center'});
+          }, 300);
         }catch(e){}
       }
     }, 350);
@@ -12591,6 +12838,19 @@ function buildVetReportText(d, inc, memo){
     L.push('[투약·루틴]');
     if(d.meds.length) d.meds.slice(0,12).forEach(m=>L.push('- '+m.name+': 기간 내 '+m.count+'회'));
     else L.push('기록 없음');
+    // 약별 관찰 권고 항목 + 기간 내 관찰값 (수의사 안내 기준 — 부작용 단정 아님)
+    const _wm = routineItemsFor(d.cat, d.toStr).filter(it=>it.cat==='med'&&Array.isArray(it.watch)&&it.watch.length);
+    if(_wm.length){
+      L.push('');
+      L.push('[복용 중 관찰 권고 항목] (수의사 안내 기준 · '+d.toStr+' 시점 루틴)');
+      _wm.forEach(it=>L.push('- '+it.name+': '+it.watch.join(', ')));
+      const _wSet=[...new Set(_wm.flatMap(it=>it.watch))];
+      const _wObs=_wSet.map(w=>{const ln=_watchObsLine(w,d); return ln?('- '+w+': '+ln):null;}).filter(Boolean);
+      if(_wObs.length){
+        L.push('기간 내 관찰값:');
+        _wObs.forEach(x=>L.push(x));
+      }
+    }
   }
   if(inc.cgm && d.cgm){
     L.push('');
@@ -12623,6 +12883,20 @@ function buildVetReportText(d, inc, memo){
   return L.join('\n');
 }
 
+/* 관찰 항목 → 기간 집계 관찰값 요약 한 줄 (리포트용, 기존 d 집계 재사용 — 중복 입력 없음) */
+function _watchObsLine(w, d){
+  try{
+    if(w==='식욕') return d.meal&&d.meal.days ? '평균 급여 '+Math.round(d.meal.kcalAvg)+' kcal/일 ('+d.meal.days+'일 기록)' : '급여 기록 없음';
+    if(w==='호흡수') return d.rr&&d.rr.n ? '평균 '+d.rr.avg+'회/분'+(d.rr.sleepN?' · 수면 중 평균 '+d.rr.sleepAvg+'회/분':'')+' (측정 '+d.rr.n+'회)' : '측정 기록 없음';
+    if(w==='음수량'){ const t=(d.water&&((d.water.intakeAvg||0)+(d.water.fluidAvg||0)))||0; return t?('평균 '+Math.round(t)+'ml/일'):'기록 없음'; }
+    if(w==='소변'){ if(!d.urine||!d.urine.days) return '기록 없음'; const abn=Object.values(d.urine.abn||{}).reduce((a,b)=>a+b,0); return '평균 '+_vrNum(d.urine.avg,1)+'회/일'+(abn?' · 이상 소견 기록 '+abn+'회':''); }
+    if(w==='구토') return '기간 내 '+((d.vomits||[]).length)+'회';
+    if(w==='설사'){ const c=(d.poop&&d.poop.abn&&d.poop.abn['설사'])||0; return c?('기간 내 '+c+'회 기록'):'기록 없음'; }
+    if(w==='체중'){ if(!d.weight||!d.weight.last) return '기록 없음'; const f=d.weight.first,l=d.weight.last; return (f&&f.date!==l.date)?(f.weight+'kg → '+l.weight+'kg'):(l.weight+'kg'); }
+  }catch(e){}
+  return null; // 기력 등 수치화되지 않는 항목은 값 생략(항목명만 표기)
+}
+
 /* ── 이미지 리포트 (Canvas 2D 직접 렌더 — 요약용, 브랜딩 포함) ── */
 function renderVetReportCanvas(d, inc, memo){
   const W = 1080, PAD = 56, CW = W - PAD*2;
@@ -12652,7 +12926,12 @@ function renderVetReportCanvas(d, inc, memo){
     if(d.rr.sleepN) rrLines.push('수면 중 평균 '+d.rr.sleepAvg+' · 최고 '+d.rr.sleepMax+'회/분');
     secs.push({t:'호흡수', lines:rrLines, warn:d.rr.sleepN&&d.rr.sleepMax>=40}); // 40회/분 = 기존 앱 임계값 재사용
   }
-  if(inc.med && d.meds.length) secs.push({t:'투약·루틴', lines:[d.meds.slice(0,4).map(m=>m.name).join(' · ')+(d.meds.length>4?' 외 '+(d.meds.length-4)+'종':'')]});
+  if(inc.med && d.meds.length){
+    const _mLines=[d.meds.slice(0,4).map(m=>m.name).join(' · ')+(d.meds.length>4?' 외 '+(d.meds.length-4)+'종':'')];
+    const _wm=routineItemsFor(d.cat, d.toStr).filter(it=>it.cat==='med'&&Array.isArray(it.watch)&&it.watch.length);
+    if(_wm.length) _mLines.push('관찰 권고: '+[...new Set(_wm.flatMap(it=>it.watch))].slice(0,6).join('·')+' (수의사 안내 기준)');
+    secs.push({t:'투약·루틴', lines:_mLines});
+  }
   if(inc.cgm && d.cgm) secs.push({t:'연속혈당(CGM)', lines:['평균 '+d.cgm.avg+' · 최저 '+d.cgm.min+' · 최고 '+d.cgm.max+' mg/dL','80~200 범위 내 '+d.cgm.tir+'%']});
   if(inc.bt && d.bt){
     const outs = d.bt.items.filter(i=>i.out);
@@ -13029,6 +13308,7 @@ function openCatProfile(cat, initialTab) {
   // 루틴 항목 목록도 렌더링
   // 해당 고양이 루틴 불러오기
   try{ loadRoutineForCat(cat); }catch(e){}
+  try{ renderRxVersionList(); }catch(e){}
   try{ renderCardOrderUI(cat); }catch(e){}
   const _tabName = initialTab || 'info';
   let _tabBtn = null;
@@ -15119,6 +15399,15 @@ async function uploadFoodDataToDB(cat) {
     </div>
   </div>
   <div id="routineItemList"></div>
+  <div class="cm-card" id="rxChangeCard" style="margin-top:20px;padding:14px 15px">
+    <div style="font-size:13px;font-weight:700;color:var(--cm-ink);margin-bottom:6px">처방 변경 기록</div>
+    <div style="font-size:11px;color:var(--cm-faint);line-height:1.6;margin-bottom:10px">처방이 바뀌었을 때(예: 퇴원 후) 변경일을 기록하면 그 전날까지의 루틴이 이력으로 보관돼요. 과거 기록·리포트는 당시 루틴 기준으로 표시돼요. 기록 후 위 목록을 새 처방에 맞게 수정하세요.</div>
+    <div style="display:flex;gap:6px">
+      <input type="date" id="rxChangeDate" style="flex:1;padding:9px 10px;border:1px solid var(--cm-line);border-radius:9px;font-size:13px;background:var(--cm-bg);color:var(--cm-ink);font-family:inherit;-webkit-appearance:none;appearance:none">
+      <button type="button" onclick="applyPrescriptionChange()" class="cm-btn" style="padding:9px 16px;white-space:nowrap;border-radius:9px">변경 기록</button>
+    </div>
+  </div>
+  <div id="rxVersionList"></div>
 </div>
 
 <div id="catSeg-data" class="cat-seg" style="display:none;padding:16px 16px 40px">
