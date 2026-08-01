@@ -652,7 +652,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.66</span>
+      <span class="cm-beta">v0.7.67</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -12905,14 +12905,14 @@ function buildVetReportText(d, inc, memo){
   }
   if(inc.water){
     L.push('');
+    // 리포트는 "충분히 섭취하고 있나" 전달이 목적 — 총 수분 + 자발음수 2줄로 축약 (v0.7.67).
+    // 자발음수는 총량이 같아도 자발이 줄고 보조로 채워지는 변화가 임상 정보라 유지.
+    // 강급·사료 분리 표기는 앱 내부(그래프·수분 카드)에만. 피하수액은 경구 아님 — 합산 금지, 시행 시에만 별도 줄.
     L.push('[수분 섭취]');
     const tot = d.water.intakeAvg||0;
-    L.push('총 수분(경구): '+(tot?'평균 '+Math.round(tot)+'ml/일 ('+d.water.intakeDays+'일 기록)':'기록 없음')+(d.water.target?' (참고 목표 '+d.water.target+'ml)':''));
-    if(d.water.natAvg!=null) L.push('- 자발음수: 평균 '+Math.round(d.water.natAvg)+'ml/일');
-    if(d.water.tubeAvg!=null) L.push('- 강급 수분: 평균 '+Math.round(d.water.tubeAvg)+'ml/일');
-    if(d.water.wetAvg!=null) L.push('- 사료 수분: 평균 '+Math.round(d.water.wetAvg)+'ml/일 (수분함량 등록 사료만)');
-    if(d.water.wetUnknownDays>0) L.push('- 수분함량 미등록 사료 급여 '+d.water.wetUnknownDays+'일 — 해당 사료 수분은 미포함');
-    if(d.water.fluidCount>0) L.push('- 피하수액(경구 합계와 별도): 평균 '+Math.round(d.water.fluidAvg)+'ml/일 · 총 '+d.water.fluidCount+'회'+(d.water.fluidMlAvg?' (회당 약 '+d.water.fluidMlAvg+'ml'+(d.water.fluidTypeMain?', '+d.water.fluidTypeMain:'')+')':''));
+    L.push('총 수분 섭취: '+(tot?'평균 '+Math.round(tot)+'ml/일 (경구, '+d.water.intakeDays+'일 기록)':'기록 없음')+(d.water.target?' (참고 목표 '+d.water.target+'ml)':''));
+    if(d.water.natAvg!=null) L.push('- 그중 자발음수: 평균 '+Math.round(d.water.natAvg)+'ml/일');
+    if(d.water.fluidCount>0) L.push('피하수액: 평균 '+Math.round(d.water.fluidAvg)+'ml/일 · 총 '+d.water.fluidCount+'회'+(d.water.fluidMlAvg?' (회당 약 '+d.water.fluidMlAvg+'ml'+(d.water.fluidTypeMain?', '+d.water.fluidTypeMain:'')+')':''));
   }
   if(inc.urine){
     L.push('');
@@ -13035,14 +13035,11 @@ function renderVetReportCanvas(d, inc, memo){
     if(obs.length) secs.push({t:'최근 관찰 지표', lines: obs.slice(0,4).map(o=>o.title).concat(['텍스트 리포트가 함께 전송되지 않았다면','보호자에게 요청해주세요']), warn:false});
   }
   if(inc.water){
+    // 텍스트 리포트와 동일하게 총 수분 + 자발음수 2줄 축약 (v0.7.67) — 분리 내역은 앱 내부에만
     const tot = d.water.intakeAvg||0;
-    const lines = ['총 수분(경구) 평균 '+(tot?Math.round(tot):'—')+'ml/일'+(d.water.target?' / 참고 목표 '+d.water.target+'ml':'')];
-    const segs = [];
-    if(d.water.natAvg!=null) segs.push('자발 '+Math.round(d.water.natAvg)+'ml');
-    if(d.water.tubeAvg!=null) segs.push('강급 '+Math.round(d.water.tubeAvg)+'ml');
-    if(d.water.wetAvg!=null) segs.push('사료 '+Math.round(d.water.wetAvg)+'ml');
-    if(segs.length>1) lines.push(segs.join(' · '));
-    if(d.water.fluidCount>0) lines.push('피하수액(별도) 평균 '+Math.round(d.water.fluidAvg||0)+'ml/일');
+    const lines = ['총 수분 섭취 평균 '+(tot?Math.round(tot):'—')+'ml/일 (경구)'+(d.water.target?' / 참고 목표 '+d.water.target+'ml':'')];
+    if(d.water.natAvg!=null) lines.push('그중 자발음수 '+Math.round(d.water.natAvg)+'ml/일');
+    if(d.water.fluidCount>0) lines.push('피하수액 평균 '+Math.round(d.water.fluidAvg||0)+'ml/일');
     secs.push({t:'수분 섭취', lines, bar: d.water.target&&tot?Math.min(1.5,tot/d.water.target):null});
   }
   if(inc.urine) secs.push({t:'소변', lines:[(d.urine.days?('평균 '+_vrNum(d.urine.avg,1)+'회/일'):'기록 없음')+(Object.keys(d.urine.abn).length?' · 이상 '+Object.values(d.urine.abn).reduce((a,b)=>a+b,0)+'회':'')], warn:Object.keys(d.urine.abn).length>0});
