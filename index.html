@@ -652,7 +652,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.74</span>
+      <span class="cm-beta">v0.7.75</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -699,6 +699,8 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
 <div class="sec active" id="tab-daily" style="display:block">
   <!-- 챌린지 진행바 -->
   <div id="challengeBar" style="display:none;margin-bottom:.5rem"></div>
+  <!-- 기억하기 카드 (v0.7.75) — 추모 상태에서 오늘 화면 전체를 대체 -->
+  <div id="memorialCard" style="display:none"></div>
   <!-- 오늘 상태 피드백 카드 -->
   <!-- 🐾 오늘 상태 피드백 카드 -->
   <!-- 다음 진료 D-day 배너 (v0.7.39) — 히어로 위, 텍스트만 (이모지 금지) -->
@@ -781,7 +783,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div id="dailyFeedbackList" style="display:none;margin-bottom:.75rem"></div>
 
   <!-- ══ 기록 타일 그리드 ══ -->
-  <div class="cm-sechead" style="padding:2px 0 0;margin-bottom:10px">
+  <div class="cm-sechead" id="dailyTileHead" style="padding:2px 0 0;margin-bottom:10px">
     <div>
       <div class="cm-sechead__t">기록 항목</div>
       <div class="cm-sechead__s">탭하면 바로 입력해요</div>
@@ -2313,18 +2315,26 @@ function setMemorialState(cat, is, date){
 async function loadMemorials(){
   if(!sbClient || !currentUser || !state.cats.length) return;
   try{
-    const keys = state.cats.map(c=>'memorial_'+c);
+    const keys = state.cats.flatMap(c=>['memorial_'+c, 'memorial_msg_'+c]);
     const {data} = await sbClient.from('user_settings').select('key,value')
       .eq('user_id', currentUser.id).in('key', keys);
     (data||[]).forEach(row=>{
-      const cat = row.key.replace('memorial_','');
       try{
-        if(row.value && row.value.is) localStorage.setItem('memorial_v1_'+cat, JSON.stringify({is:true, date:row.value.date||null}));
-        else localStorage.removeItem('memorial_v1_'+cat);
+        if(row.key.startsWith('memorial_msg_')){
+          const cat = row.key.replace('memorial_msg_','');
+          const msg = (row.value && row.value.msg) || '';
+          if(msg) localStorage.setItem('memorialMsg_v1_'+cat, msg);
+          else localStorage.removeItem('memorialMsg_v1_'+cat);
+        } else {
+          const cat = row.key.replace('memorial_','');
+          if(row.value && row.value.is) localStorage.setItem('memorial_v1_'+cat, JSON.stringify({is:true, date:row.value.date||null}));
+          else localStorage.removeItem('memorial_v1_'+cat);
+        }
       }catch(e){}
     });
     _memorialAutoSwitch();
     renderCatBar();
+    try{ renderDailySummary(); }catch(e){}   // 로드 후 활성 고양이가 추모면 기억 카드로 전환
   }catch(e){ console.warn('기억하기 로드 오류:', e); }
 }
 // 기본 선택 고양이가 추모 상태면 다른 아이로 자동 변경 (P0 — 앱을 열 때마다 떠난 아이 화면이 먼저 뜨지 않게)
@@ -2541,6 +2551,175 @@ function renderMemorialBox(cat){
       + '<button type="button" onclick="unmemorializeCat(\''+cat.replace(/'/g,"\\'")+'\')" style="padding:9px 16px;border-radius:11px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:none;border:1px solid var(--cm-line);color:var(--cm-ink-soft)">되돌리기</button>'
       + '</div>';
   }
+}
+
+/* ── 기억하기 카드 (v0.7.75) — 빈 자리를 보여주지 말고, 함께한 기록을 보여준다.
+   톤 원칙(스펙 확정): 무지개다리·별·하늘 등의 표현을 앱이 먼저 쓰지 않는다. 위로 문구를 얹지 않는다 —
+   담담한 사실만. 통계는 "얼마나 돌봤는지"의 증거(만성질환 보호자의 죄책감 대비).
+   한 줄 메시지는 기본 비어 있음 — 앱이 대신 채우지 않고, 쓰지 않는 것도 자연스러운 선택. */
+// 보호자가 남긴 한 줄 — 개인적인 글이므로 memorial 상태와 분리 저장: 되돌리기(해제) 후에도 유지.
+// user_settings에 미러되므로 향후 Export 구현 시 서버 데이터에 포함됨.
+function getMemorialMsg(cat){ try{ return localStorage.getItem('memorialMsg_v1_'+cat)||''; }catch(e){ return ''; } }
+function saveMemorialMsg(cat, msg){
+  msg = (msg||'').trim();
+  try{
+    if(msg) localStorage.setItem('memorialMsg_v1_'+cat, msg);
+    else localStorage.removeItem('memorialMsg_v1_'+cat);
+  }catch(e){}
+  if(sbClient && currentUser){
+    sbClient.from('user_settings').upsert({
+      user_id: currentUser.id, key: 'memorial_msg_'+cat,
+      value: {msg: msg||null}, updated_at: new Date().toISOString()
+    }, {onConflict:'user_id,key'}).then(({error})=>{ if(error) console.warn('기억 메시지 저장 오류:', error); })
+      .catch(e=>console.warn('기억 메시지 저장 reject:', e));
+  }
+}
+// 지구별 여행한 날 — 생년월일~떠난 날 (앱 사용 기간이 아니라 아이의 삶 전체)
+function _memorialJourney(cat){
+  const prof = (state.catProfiles||{})[cat]||{};
+  const m = getMemorial(cat)||{};
+  const birth = prof.birth||'';
+  let end = m.date||null, endApprox = false;
+  if(!end){
+    // 떠난 날 미입력 — 마지막 기록일 기준, '약'으로 표기
+    const rd = Object.keys((state.records||{})[cat]||{}).filter(k=>/^\d{4}-\d{2}-\d{2}$/.test(k)).sort();
+    const bd = btData.filter(b=>b.cat===cat&&b.date).map(b=>b.date).sort();
+    const last = [rd[rd.length-1], bd[bd.length-1]].filter(Boolean).sort().reverse()[0];
+    if(last){ end = last; endApprox = true; }
+  }
+  if(!birth || !end) return {mode:'appOnly'};
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(birth)){
+    // 생일이 연도만 등록 — 정확한 일수를 낼 수 없어 '약 N년'으로만
+    const y = parseInt(birth.slice(0,4)), ey = parseInt(end.slice(0,4));
+    if(!y || !ey || ey<y) return {mode:'appOnly'};
+    return {mode:'approxYears', years: ey-y, end, endApprox};
+  }
+  const days = Math.round((new Date(end+'T00:00:00Z')-new Date(birth+'T00:00:00Z'))/86400000);
+  if(!(days>0)) return {mode:'appOnly'};
+  let y = parseInt(end.slice(0,4))-parseInt(birth.slice(0,4));
+  let mo = parseInt(end.slice(5,7))-parseInt(birth.slice(5,7));
+  if(parseInt(end.slice(8,10)) < parseInt(birth.slice(8,10))) mo--;
+  if(mo<0){ y--; mo+=12; }
+  return {mode:'exact', days, years:y, months:mo, birth, end, endApprox};
+}
+// 생일 미등록 시 대체 — 케어마스터즈와 함께한 기간(첫 기록~마지막 기록)
+function _memorialAppSpan(cat){
+  const keys = Object.keys((state.records||{})[cat]||{}).filter(k=>/^\d{4}-\d{2}-\d{2}$/.test(k)).sort();
+  if(!keys.length) return null;
+  const days = Math.round((new Date(keys[keys.length-1]+'T00:00:00Z')-new Date(keys[0]+'T00:00:00Z'))/86400000)+1;
+  return {from:keys[0], to:keys[keys.length-1], days};
+}
+function _memorialStats(cat){
+  const recs = (state.records||{})[cat]||{};
+  const KEYS = ['bg','ins','meals','weights','routines','water','urine','rr','poop','vomits'];
+  const recDays = Object.keys(recs).filter(k=>KEYS.some(x=>Array.isArray((recs[k]||{})[x])&&recs[k][x].length)).length;
+  return { recDays, bt: btData.filter(b=>b.cat===cat).length, ce: getCareEvents(cat).length };
+}
+function _memKDate(s){ return parseInt(s.slice(0,4))+'년 '+parseInt(s.slice(5,7))+'월 '+parseInt(s.slice(8,10))+'일'; }
+// 추모 상태에서 오늘탭 화면 전환 — 오늘 지표·날짜 넘김·기록 항목 편집을 숨기고 기억 카드만
+function _applyMemorialDailyView(cat, on){
+  const els = {challengeBar:'none', dailySummaryCard:'', dailyTileHead:'', dailyTileGrid:''};
+  Object.keys(els).forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display = on?'none':els[id]; });
+  const card = document.getElementById('memorialCard');
+  if(!card) return;
+  if(on){ renderMemorialCard(cat); card.style.display=''; }
+  else card.style.display='none';
+}
+var _memMsgEdit = false;
+function memorialMsgEdit(){ _memMsgEdit = true; renderMemorialCard(state.activeCat); const t=document.getElementById('memMsgInput'); if(t){ t.focus(); } }
+function memorialMsgCancel(){ _memMsgEdit = false; renderMemorialCard(state.activeCat); }
+function memorialMsgSave(){
+  const t = document.getElementById('memMsgInput');
+  saveMemorialMsg(state.activeCat, t ? t.value : '');
+  _memMsgEdit = false;
+  renderMemorialCard(state.activeCat);
+}
+function _memGoTab(tab){
+  if(tab==='report'){ openVetReport(); return; }
+  const btn = document.querySelector('.cm-tab[data-tab="'+tab+'"]');
+  if(btn) showTab(tab, btn);
+}
+function renderMemorialCard(cat){
+  const card = document.getElementById('memorialCard');
+  if(!card) return;
+  const prof = (state.catProfiles||{})[cat]||{};
+  const sub = [prof.breed, (prof.diseases||[]).join('·')].filter(Boolean).join(' · ');
+  const j = _memorialJourney(cat);
+  const nf = n => n.toLocaleString('ko-KR');
+  // 여정 블록
+  let journey = '';
+  if(j.mode==='exact'){
+    journey = '<div style="text-align:center;padding:18px 0 4px">'
+      + '<div style="font-size:12.5px;color:var(--cm-faint)">'+_vEsc(cat)+'가 지구별을 여행한 날</div>'
+      + '<div style="font-size:34px;font-weight:800;color:var(--cm-ink);margin:4px 0 2px">'+(j.endApprox?'약 ':'')+nf(j.days)+'일</div>'
+      + '<div style="font-size:12px;color:var(--cm-faint)">'+_memKDate(j.birth)+' ~ '+_memKDate(j.end)+(j.endApprox?' 무렵':'')+' · '+j.years+'년'+(j.months?' '+j.months+'개월':'')+'</div>'
+      + '</div>';
+  } else if(j.mode==='approxYears'){
+    journey = '<div style="text-align:center;padding:18px 0 4px">'
+      + '<div style="font-size:12.5px;color:var(--cm-faint)">'+_vEsc(cat)+'가 지구별을 여행한 날</div>'
+      + '<div style="font-size:34px;font-weight:800;color:var(--cm-ink);margin:4px 0 2px">약 '+j.years+'년</div>'
+      + '</div>';
+  } else {
+    const span = _memorialAppSpan(cat);
+    if(span){
+      journey = '<div style="text-align:center;padding:18px 0 4px">'
+        + '<div style="font-size:12.5px;color:var(--cm-faint)">케어마스터즈와 함께한 기간</div>'
+        + '<div style="font-size:34px;font-weight:800;color:var(--cm-ink);margin:4px 0 2px">'+nf(span.days)+'일</div>'
+        + '<div style="font-size:12px;color:var(--cm-faint)">'+_memKDate(span.from)+' ~ '+_memKDate(span.to)+'</div>'
+        + '</div>';
+    }
+  }
+  // 보호자가 남긴 한 줄 — 세리프 서체로 앱 UI 문구와 구분
+  const serif = "font-family:Georgia,'Nanum Myeongjo','Noto Serif KR',serif";
+  const msg = getMemorialMsg(cat);
+  let msgHtml;
+  if(_memMsgEdit){
+    msgHtml = '<div style="margin:14px 0 4px">'
+      + '<textarea id="memMsgInput" maxlength="500" placeholder="남기고 싶은 말이 있다면 여기에 적어주세요" style="width:100%;box-sizing:border-box;min-height:84px;padding:12px;border:1px solid var(--cm-line);border-radius:13px;font-size:14px;'+serif+';color:var(--cm-ink);background:var(--cm-surface);resize:vertical;line-height:1.7;text-align:center">'+_vEsc(msg)+'</textarea>'
+      + '<div style="display:flex;gap:8px;justify-content:center;margin-top:8px">'
+      + '<button type="button" onclick="memorialMsgSave()" style="padding:8px 18px;border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;background:var(--cm-green-700);color:#fff;border:none">저장</button>'
+      + '<button type="button" onclick="memorialMsgCancel()" style="padding:8px 14px;border-radius:11px;font-size:13px;cursor:pointer;font-family:inherit;background:none;border:1px solid var(--cm-line);color:var(--cm-faint)">취소</button>'
+      + '</div>'
+      + '<div style="font-size:10.5px;color:var(--cm-faint);text-align:center;margin-top:6px">비워두고 저장하면 지워져요. 쓰지 않아도 괜찮아요.</div>'
+      + '</div>';
+  } else if(msg){
+    msgHtml = '<div onclick="memorialMsgEdit()" style="margin:14px 0 4px;cursor:pointer">'
+      + '<div style="'+serif+';font-size:15.5px;color:var(--cm-ink);text-align:center;white-space:pre-line;line-height:1.8;padding:6px 8px">'+_vEsc(msg)+'</div>'
+      + '<div style="font-size:10.5px;color:var(--cm-faint);text-align:center;margin-top:4px">보호자가 남긴 한 줄 · 탭하면 수정</div>'
+      + '</div>';
+  } else {
+    msgHtml = '<div onclick="memorialMsgEdit()" style="margin:14px 0 4px;border:1.5px dashed var(--cm-line);border-radius:13px;padding:16px 12px;cursor:pointer">'
+      + '<div style="font-size:12.5px;color:var(--cm-faint);text-align:center;line-height:1.6">남기고 싶은 말이 있다면 여기에 적어주세요</div>'
+      + '</div>';
+  }
+  // 앱 기록 통계 — 아이의 삶(여정)보다 아래, 보조 정보
+  const st = _memorialStats(cat);
+  const tiles = [];
+  if(st.recDays) tiles.push([nf(st.recDays), '기록한 날']);
+  if(st.bt) tiles.push([nf(st.bt), '혈액검사']);
+  if(st.ce) tiles.push([nf(st.ce), '병원 기록']);
+  const statsHtml = tiles.length
+    ? '<div style="margin:14px 0 4px"><div style="font-size:11.5px;color:var(--cm-faint);text-align:center;margin-bottom:8px">케어마스터즈에 남긴 기록</div>'
+      + '<div style="display:flex;gap:8px">'
+      + tiles.map(t=>'<div style="flex:1;text-align:center;background:var(--cm-surface-2);border:1px solid var(--cm-line);border-radius:13px;padding:10px 4px"><div style="font-size:18px;font-weight:800;color:var(--cm-ink)">'+t[0]+'</div><div style="font-size:11px;color:var(--cm-faint);margin-top:2px">'+t[1]+'</div></div>').join('')
+      + '</div></div>'
+    : '';
+  const linkS = 'flex:1;padding:9px 4px;border-radius:11px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;background:var(--cm-surface);border:1px solid var(--cm-line);color:var(--cm-ink-soft);white-space:nowrap';
+  card.innerHTML =
+    '<div class="cm-card" style="padding:16px 15px;margin-bottom:.75rem">'
+    + '<div style="font-size:17px;font-weight:800;color:var(--cm-ink)">기억 속의 '+_vEsc(cat)+'</div>'
+    + (sub?'<div style="font-size:12px;color:var(--cm-faint);margin-top:2px">'+_vEsc(sub)+'</div>':'')
+    + journey
+    + msgHtml
+    + statsHtml
+    + '<div style="font-size:11.5px;color:var(--cm-faint);text-align:center;margin:14px 0 10px;line-height:1.6">알림과 일일 기록은 멈춰 있어요. 지난 기록은 그대로 보관돼 있어요.</div>'
+    + '<div style="display:flex;gap:6px">'
+    + '<button type="button" onclick="_memGoTab(\'history\')" style="'+linkS+'">기록 보기</button>'
+    + '<button type="button" onclick="_memGoTab(\'graph\')" style="'+linkS+'">그래프</button>'
+    + '<button type="button" onclick="_memGoTab(\'bloodtest\')" style="'+linkS+'">혈액검사</button>'
+    + '<button type="button" onclick="_memGoTab(\'report\')" style="'+linkS+'">리포트</button>'
+    + '</div>'
+    + '</div>';
 }
 
 /* 고양이 바 */
@@ -4310,6 +4489,14 @@ function renderDailySummary(catName) {
   const d = heroDateStr();
   // 렌더 시작 시점의 고양이를 로컬로 캡처 — 함수 내내 이 값만 사용 (stale activeCat 방어, v0.7.35)
   const cat = catName || state.activeCat;
+  // 기억하기 (v0.7.75): 떠난 아이에게는 '오늘'이 없다 — 오늘 화면을 그리지 않고 기억 카드로 전환.
+  // 빈 값·미기록 표시는 "오늘도 못 챙겼다"로 읽힘. 함께한 기록을 보여준다.
+  const _isMem = isMemorial(cat);
+  try{ _applyMemorialDailyView(cat, _isMem); }catch(e){}
+  if(_isMem){
+    if(window._heroFeedTimer){ clearInterval(window._heroFeedTimer); window._heroFeedTimer = null; }
+    return;
+  }
   const rec = getRec(cat, d);
   const prof = (state.catProfiles||{})[cat] || {};
   const diseases = prof.diseases || [];
@@ -4953,14 +5140,7 @@ function renderDailySummary(catName) {
       '모든 수치가 정상 범위예요 😊')});
   }
 
-  // 기억하기 상태 (v0.7.72 P0): 관찰 경고·미기록 안내·순응도·수분 목표 등 모든 알림을
-  // 담담한 안내 한 장으로 대체. 히어로 슬라이더도 이 배열을 쓰므로 여기서 함께 중지됨
-  if(isMemorial(cat)){
-    feedbacks.length = 0;
-    feedbacks.push({priority:10, ...makeFeedback('info','', '기억 속의 '+cat,
-      '알림과 일일 기록 안내가 멈춰 있어요. 지난 기록·그래프·리포트는 계속 볼 수 있어요.')});
-    if(waterBarEl) waterBarEl.style.display = 'none';
-  }
+  // (기억하기 상태는 함수 상단에서 조기 전환 — 여기까지 오지 않음, v0.7.75)
   // 피드백 우선순위 정렬 후 표시
   feedbacks.sort((a,b) => a.priority - b.priority);
   if(feedbackEl) {
@@ -15671,21 +15851,11 @@ function renderTileGrid(cat) {
   var grid = document.getElementById('dailyTileGrid');
   if(!grid) return;
   var c = cat || state.activeCat;
-  // 기억하기 (v0.7.72): 일일 기록 입력 타일을 매일 흐름에서 제외 — 지난 기록·그래프·리포트 탭은 그대로
-  var _memNote = document.getElementById('memorialTileNotice');
+  // 기억하기 (v0.7.75): 그리드 섹션 자체가 _applyMemorialDailyView로 숨겨짐 — 타일만 정리하고 종료
   if(isMemorial(c)){
     grid.querySelectorAll('.tile[data-tile]').forEach(function(t){ t.style.display='none'; });
-    if(!_memNote){
-      _memNote = document.createElement('div');
-      _memNote.id = 'memorialTileNotice';
-      _memNote.style.cssText = 'grid-column:1/-1;padding:14px 15px;border-radius:13px;background:var(--cm-surface-2);border:1px solid var(--cm-line);font-size:12.5px;color:var(--cm-ink-soft);line-height:1.65';
-      grid.appendChild(_memNote);
-    }
-    _memNote.textContent = c+'의 기록은 그대로 보관돼 있어요. 기록·그래프 탭과 병원 리포트에서 계속 볼 수 있어요.';
-    _memNote.style.display = '';
     return;
   }
-  if(_memNote) _memNote.style.display = 'none';
   var cfg = loadTileConfig(c);
   var order = cfg.order.slice();
   var hidden = cfg.hidden || [];
