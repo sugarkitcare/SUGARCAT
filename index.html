@@ -652,7 +652,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.76</span>
+      <span class="cm-beta">v0.7.77</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -2293,7 +2293,8 @@ document.getElementById('btDate').value=today();
    ⚠ 설계 금지사항 (스펙): 자동 감지·확인 프롬프트 금지 — 오직 보호자가 프로필에서 직접
    설정할 때만 동작. 추모 상태를 다른 기능(알림·추천·마케팅)의 트리거로 쓰지 않는다.
    문구는 담담하게 — 과한 위로 문구 금지.
-   ※ 로컬 푸시 알림 도입 시: 전환 즉시 해당 고양이의 예약된 알림 전부 취소할 것 (P0). */
+   ※ 로컬 알림 연동 완료 (v0.7.77): memorializeCat이 medNotifResyncCat을 즉시 호출해
+   예약된 알림을 전부 취소한다. 새 알림 종류를 추가하면 같은 P0 취소 경로에 연결할 것. */
 function getMemorial(cat){
   try{ const v=JSON.parse(localStorage.getItem('memorial_v1_'+cat)||'null'); return (v&&v.is)?v:null; }catch(e){ return null; }
 }
@@ -2347,6 +2348,8 @@ function memorializeCat(cat){
   if(!confirm('기억하기로 전환하면 알림과 일일 기록 안내가 멈춥니다.\n기록은 그대로 보관됩니다.')) return;
   const dEl = document.getElementById('cpMemorialDate');
   setMemorialState(cat, true, (dEl&&dEl.value)||null);
+  // P0: 예약된 로컬 알림 즉시 전부 취소 — 스케줄만 끄고 예약 건이 남아 울리는 일 금지 (v0.7.77)
+  try{ medNotifResyncCat(cat); }catch(e){}
   if(state.activeCat===cat){
     const alt = state.cats.find(c=>c!==cat && !isMemorial(c));
     if(alt) switchCat(alt);
@@ -2360,6 +2363,7 @@ function memorializeCat(cat){
 }
 function unmemorializeCat(cat){
   setMemorialState(cat, false, null);
+  try{ medNotifResyncCat(cat); }catch(e){}   // 되돌리기: 알림 설정이 켜져 있었다면 재예약 (v0.7.77)
   renderCatBar();
   try{ renderMemorialBox(cat); }catch(e){}
   try{ renderDailySummary(); }catch(e){}
@@ -2731,6 +2735,203 @@ function renderMemorialCard(cat){
     + '</div>'
     + '</div>';
 }
+
+/* ── 약 루틴 로컬 알림 (v0.7.77, 설치형 앱 전용) ─────────────────
+   Capacitor @capacitor/local-notifications — 기기가 스스로 띄우는 로컬 알림. 서버 푸시 아님.
+   웹(PWA)에선 _lnPlugin()이 null → 전 기능 무동작(안내만 노출).
+   설계: 같은 (고양이, 시각)은 알림 1건으로 묶고(알림 폭탄 방지) schedule.on(매일 반복)으로
+   등록 — 개별 건 대량 생성 금지(iOS 64개·Android 상한). 예약 ID는 medNotifIds_v1에 보관해
+   취소·재예약을 정확히. 재설치·기기 변경 대비 앱 시작 시 전체 재동기화(멱등).
+   문구는 담담하게 — 죄책감 유발 문구 금지. */
+function _lnPlugin(){
+  try{
+    if(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform()
+       && Capacitor.Plugins && Capacitor.Plugins.LocalNotifications) return Capacitor.Plugins.LocalNotifications;
+  }catch(e){}
+  return null;
+}
+function medNotifEnabled(cat){ try{ return localStorage.getItem('medNotif_v1_'+cat)==='1'; }catch(e){ return false; } }
+function setMedNotifEnabled(cat, on){
+  try{ if(on) localStorage.setItem('medNotif_v1_'+cat,'1'); else localStorage.removeItem('medNotif_v1_'+cat); }catch(e){}
+  if(sbClient && currentUser){
+    sbClient.from('user_settings').upsert({
+      user_id: currentUser.id, key: 'med_notif_'+cat,
+      value: {on:!!on}, updated_at: new Date().toISOString()
+    }, {onConflict:'user_id,key'}).then(({error})=>{ if(error) console.warn('알림 설정 저장 오류:', error); })
+      .catch(e=>console.warn('알림 설정 저장 reject:', e));
+  }
+}
+async function loadMedNotifSettings(){
+  if(!sbClient || !currentUser || !state.cats.length) return;
+  try{
+    const keys = state.cats.map(c=>'med_notif_'+c);
+    const {data} = await sbClient.from('user_settings').select('key,value')
+      .eq('user_id', currentUser.id).in('key', keys);
+    (data||[]).forEach(row=>{
+      const cat = row.key.replace('med_notif_','');
+      try{ if(row.value && row.value.on) localStorage.setItem('medNotif_v1_'+cat,'1'); else localStorage.removeItem('medNotif_v1_'+cat); }catch(e){}
+    });
+    medNotifResyncAll().catch(()=>{});
+  }catch(e){ console.warn('알림 설정 로드 오류:', e); }
+}
+// 고양이의 현행 루틴에서 예정 시간 수집 — 같은 시각은 하나로 묶음
+function _medNotifSlots(cat){
+  let items = [];
+  try{ items = JSON.parse(localStorage.getItem(SK_RT+'_'+cat)||'[]'); }catch(e){}
+  const byTime = {};
+  (Array.isArray(items)?items:[]).forEach(it=>{
+    if(!_routineUsesTimes(it)) return;
+    (it.times||[]).forEach(t=>{ if(/^\d{2}:\d{2}$/.test(t)) (byTime[t]=byTime[t]||[]).push(it.name); });
+  });
+  return Object.keys(byTime).sort().map(t=>({time:t, names:byTime[t]}));
+}
+function _lnTimeLabel(t){
+  const h = parseInt(t.slice(0,2)), m = parseInt(t.slice(3,5));
+  const h12 = h%12===0 ? 12 : h%12;
+  return (h<12?'오전':'오후')+' '+h12+'시'+(m?' '+m+'분':'');
+}
+// 결정적 알림 ID (양수 32bit int) — 같은 (고양이,시각)이면 항상 같은 ID
+function _lnId(cat, time){
+  const s = cat+'@'+time;
+  let h = 0;
+  for(let i=0;i<s.length;i++) h = (h*31 + s.charCodeAt(i))|0;
+  return (Math.abs(h)%2000000000) + 100000;
+}
+// 한 고양이의 예약 전체 재동기화: 보관된 ID 전부 취소 → (켜짐·비추모일 때만) 재등록.
+// ⚠ 기억하기(추모) P0: 전환 즉시 이 함수가 호출돼 예약이 '취소'까지 된다 — 스케줄만 끄는 것 금지
+async function medNotifResyncCat(cat){
+  const ln = _lnPlugin(); if(!ln || !cat) return;
+  let map = {};
+  try{ map = JSON.parse(localStorage.getItem('medNotifIds_v1')||'{}'); }catch(e){}
+  const old = (map[cat]||[]).map(id=>({id}));
+  if(old.length){ try{ await ln.cancel({notifications: old}); }catch(e){} }
+  map[cat] = [];
+  if(medNotifEnabled(cat) && !isMemorial(cat) && state.cats.includes(cat)){
+    const notifs = _medNotifSlots(cat).map(s=>{
+      const id = _lnId(cat, s.time);
+      map[cat].push(id);
+      return {
+        id,
+        title: cat+' · 투약 시간이에요',
+        body: _lnTimeLabel(s.time)+' 투약 '+s.names.length+'건',
+        schedule: { on: { hour: parseInt(s.time.slice(0,2)), minute: parseInt(s.time.slice(3,5)) }, allowWhileIdle: true },
+        extra: { cat }
+      };
+    });
+    if(notifs.length){ try{ await ln.schedule({notifications: notifs}); }catch(e){ console.warn('알림 예약 오류:', e); } }
+  }
+  try{ localStorage.setItem('medNotifIds_v1', JSON.stringify(map)); }catch(e){}
+}
+async function medNotifResyncAll(){
+  if(!_lnPlugin()) return;
+  // 삭제된 고양이의 잔여 예약도 정리 (map에 남은 키 전부 순회)
+  let map = {};
+  try{ map = JSON.parse(localStorage.getItem('medNotifIds_v1')||'{}'); }catch(e){}
+  const cats = [...new Set([...state.cats, ...Object.keys(map)])];
+  for(const c of cats){ await medNotifResyncCat(c); }
+}
+// UI 토글 — 켤 때 권한 요청, 거부 시 상태 표시 + 설정 유도
+async function medNotifToggle(cat){
+  const ln = _lnPlugin();
+  if(!ln){ toast('투약 알림은 설치형 앱(안드로이드)에서 동작해요'); return; }
+  const on = !medNotifEnabled(cat);
+  if(on){
+    try{
+      const p = await ln.requestPermissions();
+      if(!p || p.display!=='granted'){
+        toast('알림 권한이 꺼져 있어요. 기기 설정 > 앱 > 케어마스터즈 > 알림에서 허용해주세요', '#BA7517', 4200);
+        renderMedNotifCard(cat);
+        return;
+      }
+      // Android 12+ 정확한 알람 — 약 알림은 밀리면 안 됨. 거부 상태면 설정 화면 유도
+      if(ln.checkExactNotificationSetting){
+        const ex = await ln.checkExactNotificationSetting().catch(()=>null);
+        if(ex && ex.exact_alarm && ex.exact_alarm !== 'granted' && ln.changeExactNotificationSetting){
+          if(confirm('정확한 시각에 울리려면 "알람 및 리마인더" 권한이 필요해요.\n설정 화면을 열까요? (허용하지 않으면 알림이 늦게 올 수 있어요)')){
+            await ln.changeExactNotificationSetting().catch(()=>{});
+          }
+        }
+      }
+    }catch(e){ console.warn('알림 권한 요청 오류:', e); }
+  }
+  setMedNotifEnabled(cat, on);
+  await medNotifResyncCat(cat);
+  renderMedNotifCard(cat);
+  toast(on ? '투약 알림을 켰어요. 예정 시간에 알려드릴게요' : '투약 알림을 껐어요');
+}
+// 테스트 알림 — 제조사 절전 기능 진단용: 화면을 끄고도 오는지 사용자가 직접 확인
+async function medNotifTest(){
+  const ln = _lnPlugin();
+  if(!ln){ toast('투약 알림은 설치형 앱(안드로이드)에서 동작해요'); return; }
+  try{
+    const p = await ln.requestPermissions();
+    if(!p || p.display!=='granted'){ toast('알림 권한이 꺼져 있어요. 기기 설정에서 허용해주세요', '#BA7517', 4000); return; }
+    await ln.schedule({notifications:[{
+      id: 990001, title: '케어마스터즈 테스트 알림',
+      body: '알림이 잘 도착했어요. 투약 알림도 이렇게 와요.',
+      schedule: { at: new Date(Date.now()+7000), allowWhileIdle: true }
+    }]});
+    toast('7초 뒤 테스트 알림이 와요. 화면을 꺼두고 확인해보세요');
+  }catch(e){ console.warn('테스트 알림 오류:', e); toast('테스트 알림을 보내지 못했어요', '#BA7517'); }
+}
+// 프로필 > 투약 관리 상단의 알림 카드
+function renderMedNotifCard(cat){
+  const box = document.getElementById('medNotifCard');
+  if(!box) return;
+  const c = cat || currentProfileCat || state.activeCat;
+  const ln = _lnPlugin();
+  const wrap = s => '<div class="cm-card" style="margin-bottom:16px;padding:14px 15px">'+s+'</div>';
+  if(!ln){
+    box.innerHTML = wrap('<div style="font-size:13px;font-weight:700;color:var(--cm-ink);margin-bottom:4px">투약 알림</div>'
+      + '<div style="font-size:12px;color:var(--cm-faint);line-height:1.6">설치형 앱(안드로이드)에서 예정 시간에 알림을 보내드려요. 웹에서는 동작하지 않아요.</div>');
+    return;
+  }
+  if(isMemorial(c)){
+    box.innerHTML = wrap('<div style="font-size:13px;font-weight:700;color:var(--cm-ink);margin-bottom:4px">투약 알림</div>'
+      + '<div style="font-size:12px;color:var(--cm-faint);line-height:1.6">기억하기 상태에서는 알림이 멈춰 있어요.</div>');
+    return;
+  }
+  const on = medNotifEnabled(c);
+  const slots = _medNotifSlots(c);
+  box.innerHTML = wrap(
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">'
+    + '<div style="flex:1"><div style="font-size:13px;font-weight:700;color:var(--cm-ink)">투약 알림</div>'
+    + '<div id="medNotifStatus" style="font-size:11.5px;color:var(--cm-faint);margin-top:2px">'
+    + (slots.length ? '예정 시간 '+slots.map(s=>_lnTimeLabel(s.time)).join(' · ') : '예정 시간이 있는 약이 없어요 — 약에 시간을 등록하면 알림을 보낼 수 있어요')
+    + '</div></div>'
+    + '<button type="button" onclick="medNotifToggle(\''+c.replace(/'/g,"\\'")+'\')" style="padding:8px 16px;border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;'
+    + (on ? 'background:var(--cm-green-700);color:#fff;border:none' : 'background:var(--cm-surface-2);color:var(--cm-ink-soft);border:1px solid var(--cm-line)')
+    + '">'+(on?'켜짐':'꺼짐')+'</button></div>'
+    + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+    + '<button type="button" onclick="medNotifTest()" style="padding:7px 13px;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;background:none;border:1px solid var(--cm-line);color:var(--cm-ink-soft)">테스트 알림 보내기</button>'
+    + '</div>'
+    + '<div style="font-size:11px;color:var(--cm-faint);margin-top:8px;line-height:1.55">알림이 늦게 오면: 기기 설정에서 케어마스터즈의 배터리 사용을 "제한 없음"으로 두고, "알람 및 리마인더"를 허용해주세요.</div>'
+  );
+  // 권한 상태 비동기 표시 (거부 상태 안내)
+  ln.checkPermissions().then(p=>{
+    if(p && p.display && p.display!=='granted' && on){
+      const st = document.getElementById('medNotifStatus');
+      if(st) st.innerHTML = '<span style="color:var(--cm-clay-ink);font-weight:600">알림 권한이 꺼져 있어요 — 기기 설정 > 앱 > 케어마스터즈 > 알림 허용</span>';
+    }
+  }).catch(()=>{});
+}
+// 부팅 초기화 — 탭 리스너 + 시작 시 예약 검증·복구 (웹에선 전부 no-op)
+function initMedNotifications(){
+  const ln = _lnPlugin(); if(!ln) return;
+  try{
+    ln.addListener('localNotificationActionPerformed', ev=>{
+      try{
+        const cat = ev && ev.notification && ev.notification.extra && ev.notification.extra.cat;
+        if(cat && state.cats.includes(cat) && state.activeCat!==cat) switchCat(cat);
+        const btn = document.querySelector('.cm-tab[data-tab="daily"]');
+        if(btn) showTab('daily', btn);
+        setTimeout(()=>{ try{ if(!isMemorial(state.activeCat)) openDailySheet('med'); }catch(e){} }, 400);
+      }catch(e){ console.warn('알림 탭 처리 오류:', e); }
+    });
+  }catch(e){}
+  setTimeout(()=>{ medNotifResyncAll().catch(()=>{}); }, 2500);
+}
+initMedNotifications();
 
 /* 고양이 바 */
 function renderCatBar(){
@@ -3787,6 +3988,8 @@ window.deleteCat = function(c) {
   if(state.records[c])delete state.records[c];
   if(state.catProfiles[c])delete state.catProfiles[c];
   if(state.activeCat===c)state.activeCat=state.cats[0]||'';
+  // 삭제된 고양이의 예약 알림 정리 (v0.7.77) — 설정 끄고 취소 (state.cats에서 빠져 재등록 안 됨)
+  try{ setMedNotifEnabled(c, false); medNotifResyncCat(c); }catch(e){}
   saveS();
   renderCatBar();updateMetrics();
   if(sbClient&&currentUser&&delProfile?.dbId){
@@ -7802,6 +8005,8 @@ const saveRT=(catName, itemsArg)=>{
   // localStorage: 고양이별 키로 저장
   const lsKey = SK_RT + '_' + cat;
   try{localStorage.setItem(lsKey, JSON.stringify(items))}catch(e){}
+  // 스케줄 변경 시 알림 재예약 (v0.7.77) — 추가·삭제·시간 변경 모두 이 저장 경로를 지남
+  try{ medNotifResyncCat(cat); }catch(e){}
   // DB: 고양이별 키로 저장
   if(sbClient && currentUser && cat) {
     sbClient.from('user_settings').upsert({
@@ -14357,6 +14562,7 @@ function openCatProfile(cat, initialTab) {
   }
   document.getElementById('cpBirth').value=profile.birth||'';
   try{ renderMemorialBox(cat); }catch(e){}   // 순서 편집은 칩 리스트 '순서' 버튼으로 이동 (v0.7.73)
+  try{ renderMedNotifCard(cat); }catch(e){}  // 투약 알림 카드 (v0.7.77)
   document.getElementById('cpGender').value=profile.gender||'';
   document.getElementById('cpNeuter').value=profile.neuter||'';
   document.getElementById('cpActivity').value=profile.activity||'';
@@ -15414,6 +15620,7 @@ async function syncFromDB() {
       _tw('next_visit',     loadNextVisits().catch(e => console.warn('nextVisit 로드 오류:', e))),
       _tw('memorial',       loadMemorials().catch(e => console.warn('memorial 로드 오류:', e))),
       _tw('cat_order',      loadCatOrder().catch(e => console.warn('catOrder 로드 오류:', e))),
+      _tw('med_notif',      loadMedNotifSettings().catch(e => console.warn('medNotif 로드 오류:', e))),
       _tw('vet_questions',  loadVetQuestions().catch(e => console.warn('vetQuestions 로드 오류:', e))),
       _tw('last_inputs',    loadLastInputs().catch(e => console.warn('lastInputs 로드 오류:', e))),
     ]);
@@ -16467,6 +16674,7 @@ async function uploadFoodDataToDB(cat) {
 </div>
 
 <div id="catSeg-med" class="cat-seg" style="display:none;padding:16px 16px 40px">
+  <div id="medNotifCard"></div>
   <div class="cm-card" style="margin-bottom:16px;padding:14px 15px">
     <div style="font-size:13px;font-weight:700;color:var(--cm-ink);margin-bottom:10px">항목 추가</div>
     <input type="text" id="newRoutineName" placeholder="항목명 (예: 오메가3)"

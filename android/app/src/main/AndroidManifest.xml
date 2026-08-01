@@ -38,4 +38,12 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- 투약 로컬 알림 (v0.7.77) -->
+    <!-- API 33+ 런타임 알림 권한 -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- 정확한 시각 알림 (API 31+, 사용자 허용형) — 약 알림은 지연되면 안 됨.
+         USE_EXACT_ALARM은 Play 정책상 알람시계·캘린더 전용이라 선언하지 않음 -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <!-- 재부팅 후 예약 복원 (플러그인 리시버가 사용) -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 </manifest>
