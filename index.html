@@ -652,7 +652,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.70</span>
+      <span class="cm-beta">v0.7.71</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -12445,6 +12445,19 @@ function _vrCovList(pairs, unit, max){
   const m = max||6;
   return '기록 '+pairs.length+'일 — '+pairs.slice(0,m).map(p=>p.d.slice(5)+': '+p.v+unit).join(', ')+(pairs.length>m?' 외 '+(pairs.length-m)+'일':'');
 }
+// 마지막 배변일 (v0.7.71) — CKD 변비 관찰 지표. '무변' 기록은 배변이 아니므로 제외. anchor 이전 전체 검색
+function _lastPoopInfo(cat, anchor){
+  const recs = state.records[cat]||{};
+  const key = Object.keys(recs).filter(k=>k<=anchor && (recs[k].poop||[]).some(p=>p.type!=='무변')).sort().reverse()[0];
+  if(!key) return null;
+  const daysAgo = Math.round((new Date(anchor+'T00:00:00Z')-new Date(key+'T00:00:00Z'))/86400000);
+  return {date:key, daysAgo};
+}
+// 마지막 배변 표기 한 줄 — 3일 이상이면 기록 공백 가능성 안내 동봉 (기록 부재≠무변 원칙)
+function _lastPoopLine(li){
+  return '마지막 배변: '+li.date+' ('+(li.daysAgo===0?'오늘':li.daysAgo+'일 전')+')'
+    +(li.daysAgo>=3?' — 기록을 놓치신 게 아니라면 참고해주세요':'');
+}
 /* ══ OBS-BEGIN — 최근 관찰 지표 엔진 (v0.7.51) ══
    개인 기준선(최근 7일 vs 이전 4주) 대비 변화 감지 — 수치 관찰 전달만.
    진단·처방·응급 판정·용량 권고 금지 (v0.7.34 원칙), 문구 전부 하드코딩(AI 생성 아님).
@@ -12935,7 +12948,7 @@ function collectVetReportData(cat, fromStr, toStr, excludeSet){
     fluidTypeMain: Object.keys(fluidTypes).sort((a,b)=>fluidTypes[b]-fluidTypes[a])[0]||null,
     target: d.profile.weight?Math.round(d.profile.weight*40):null, list: intakeList };
   d.urine = { avg:_vrAvg(urineC), days:urineC.length, abn:urineAbn, list: urineList };
-  d.poop = { avg:_vrAvg(poopC), days:poopC.length, abn:poopAbn, list: poopList };
+  d.poop = { avg:_vrAvg(poopC), days:poopC.length, abn:poopAbn, list: poopList, lastInfo: _lastPoopInfo(cat, toStr) };
   d.meal = { kcalAvg:_vrAvg(kcal), days:kcal.length, list: kcalList,
     topFoods: Object.keys(foods).sort((a,b)=>foods[b]-foods[a]).slice(0,2) };
   d.recordedDays = recordedDaysCnt;
@@ -13068,6 +13081,7 @@ function buildVetReportText(d, inc, memo){
     else L.push('평균 '+_vrNum(d.poop.avg,1)+'회/일 ('+(_pTier==='partial'?d.homeDays+'일 중 ':'')+d.poop.days+'일 기록)');
     const abn = Object.keys(d.poop.abn).map(k=>k+' '+d.poop.abn[k]+'회').join(' · ');
     L.push('이상 기록: '+(abn||'없음'));
+    if(d.poop.lastInfo) L.push(_lastPoopLine(d.poop.lastInfo));
   }
   if(inc.vomit){
     L.push('');
@@ -13206,7 +13220,9 @@ function renderVetReportCanvas(d, inc, memo){
   }
   if(inc.poop){
     const _pT = _vrCovTier(d.poop.days, d.homeDays);
-    secs.push({t:'배변', lines:[_covLine(_pT, d.poop.days, '평균 '+_vrNum(d.poop.avg,1)+'회/일', d.poop.list, '회')+(Object.keys(d.poop.abn).length?' · 이상 '+Object.values(d.poop.abn).reduce((a,b)=>a+b,0)+'회':'')], warn:Object.keys(d.poop.abn).length>0});
+    const _pLines = [_covLine(_pT, d.poop.days, '평균 '+_vrNum(d.poop.avg,1)+'회/일', d.poop.list, '회')+(Object.keys(d.poop.abn).length?' · 이상 '+Object.values(d.poop.abn).reduce((a,b)=>a+b,0)+'회':'')];
+    if(d.poop.lastInfo) _pLines.push('마지막 배변 '+d.poop.lastInfo.date.slice(5)+' ('+(d.poop.lastInfo.daysAgo===0?'오늘':d.poop.lastInfo.daysAgo+'일 전')+')');
+    secs.push({t:'배변', lines:_pLines, warn:Object.keys(d.poop.abn).length>0 || (d.poop.lastInfo&&d.poop.lastInfo.daysAgo>=3)});
   }
   if(inc.vomit) secs.push({t:'구토', lines:['기간 내 총 '+d.vomits.length+'회'+(d.vomits.some(v=>v.danger)?' · 피/붉은색 포함':'')], warn:d.vomits.some(v=>v.danger)});
   if(inc.meal){
@@ -13345,8 +13361,8 @@ function buildIntervalReport(cat, lastVisit, incBt){
   const home = dates.filter(dy=>!ex.has(dy));
 
   // 재택 일별 추가 집계 — SRR 임계 초과일·급여량(g)·투약 순응도·소변/대변 이상
-  const srrVals=[], srrExDays=[], missed=[], abnorm=[];
-  let gSum=0, gDays=0, sched=0, done=0;
+  const srrVals=[], srrExDays=[], unrec=[], abnorm=[], medRecDays=[];
+  let gSum=0, gDays=0, sched=0, done=0, schedDayCnt=0;
   home.forEach(dy=>{
     const rec=(state.records[cat]||{})[dy]||{};
     const sl=(rec.rr||[]).filter(x=>x.state==='sleep'&&x.rr>0);
@@ -13354,14 +13370,24 @@ function buildIntervalReport(cat, lastVisit, incBt){
     const g=(rec.meals||[]).reduce((a,m)=>a+(m.amt||0),0);
     if(g>0){ gSum+=g; gDays++; }
     // 순응도: 예정 시간 있는 약만. 오늘은 예정 시간이 아직 안 지났을 수 있어 분모 제외.
-    // 앱 기록이 전혀 없는 날은 미사용일(≠미투약)이라 분모에서 빼야 수의사가 오해하지 않음
-    const hasAnyRec = ['bg','ins','meals','weights','routines','water','urine','rr','poop','vomits'].some(k=>Array.isArray(rec[k])&&rec[k].length);
-    if(dy < to && hasAnyRec){
-      const eff=routineItemsFor(cat,dy), ds=_routineDoneSet(rec,eff);
-      let s=0, dn=0;
-      (eff||[]).forEach(it=>{ if(!_routineUsesTimes(it))return; (it.times||[]).forEach(t=>{ s++; if(ds.has(_slotKey(it.name,t))) dn++; }); });
-      sched+=s; done+=dn;
-      if(s>dn) missed.push(md(dy)+' '+(s-dn)+'건');
+    // "기록 없음"≠"안 줌" 원칙 (v0.7.71): 투약 기록이 하나라도 있는 날만 집계 대상으로 삼고,
+    // 그날의 미체크 시간대는 '미기록'으로만 표기(미투약 단정 금지). 명시적 '거름' 기록 기능은
+    // 현재 데이터 모델에 없음 — 도입되면 미기록과 분리해 '거른 기록'으로 표기할 것
+    if(dy < to){
+      const eff=routineItemsFor(cat,dy);
+      let s=0;
+      (eff||[]).forEach(it=>{ if(_routineUsesTimes(it)) s+=(it.times||[]).length; });
+      if(s>0){
+        schedDayCnt++;
+        if((rec.routines||[]).length){
+          medRecDays.push(dy);
+          const ds=_routineDoneSet(rec,eff);
+          let dn=0;
+          (eff||[]).forEach(it=>{ if(!_routineUsesTimes(it))return; (it.times||[]).forEach(t=>{ if(ds.has(_slotKey(it.name,t))) dn++; }); });
+          sched+=s; done+=dn;
+          if(s>dn) unrec.push(md(dy)+' '+(s-dn)+'건');
+        }
+      }
     }
     (rec.urine||[]).forEach(u=>{ if(u.amount&&['혈뇨','핍뇨','단백뇨','뇨당'].includes(u.amount)) abnorm.push({d:dy,t:u.time||'',txt:'소변 '+u.amount}); });
     (rec.poop||[]).forEach(p=>{ if(p.type&&['설사','혈변','무변','토끼똥/변비'].includes(p.type)) abnorm.push({d:dy,t:p.time||'',txt:'대변 '+p.type}); });
@@ -13427,11 +13453,26 @@ function buildIntervalReport(cat, lastVisit, incBt){
       L.push(parts.join(' · ')+' — '+(_mT==='partial'?d.homeDays+'일 중 ':'')+Math.max(gDays,d.meal.days)+'일 기록');
     }
   }
-  if(sched>0){
+  if(schedDayCnt>0){
     L.push('');
     L.push('[투약]');
-    L.push('순응도 '+done+'/'+sched+'회 (예정 시간 기준, 기록 있는 날만·오늘 제외)');
-    if(missed.length) L.push('기록 빠진 날: '+missed.slice(0,5).join(', ')+(missed.length>5?' 외 '+(missed.length-5)+'일':''));
+    // 커버리지 낮으면 비율 미산출 — 낮은 순응도로 읽히면 약 변경·용량 결정이 왜곡될 수 있음 (v0.7.71)
+    const _cTier = _vrCovTier(medRecDays.length, schedDayCnt);
+    if(_cTier==='none'){
+      L.push('예정 투약이 등록돼 있으나 기간 내 투약 기록이 없습니다.');
+    } else if(_cTier==='low'){
+      L.push('투약 기록: '+medRecDays.length+'일 ('+medRecDays.slice(0,6).map(md).join(', ')+(medRecDays.length>6?' 외':'')+')');
+      L.push('기록된 시간대 기준 완료 '+done+'회');
+      L.push('※ 기록이 성근 기간이라 순응도는 산출하지 않았습니다.');
+    } else {
+      L.push((_cTier==='partial'?'기록된 '+medRecDays.length+'일 기준 ':'순응도 ')+done+'/'+sched+'회 (예정 시간 기준, 오늘 제외)');
+      if(unrec.length) L.push('미기록 시간대: '+unrec.slice(0,5).join(', ')+(unrec.length>5?' 외 '+(unrec.length-5)+'일':'')+' (투약 여부 확인 불가)');
+    }
+  }
+  if(d.poop.lastInfo){
+    L.push('');
+    L.push('[배변]');
+    L.push(_lastPoopLine(d.poop.lastInfo));
   }
   const wm=routineItemsFor(cat,to).filter(it=>it.cat==='med'&&Array.isArray(it.watch)&&it.watch.length);
   if(wm.length){
