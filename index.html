@@ -652,7 +652,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.69</span>
+      <span class="cm-beta">v0.7.70</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -12429,6 +12429,22 @@ function _vrAge(cat){
   if(notYet) y--;
   return y >= 0 ? y : null;
 }
+/* 기록 커버리지 3구간 (v0.7.70) — 낮은 기록률에서 평균·진행바가 "충분함"으로 오독되는 것 방지.
+   기록이 없다는 사실 자체가 임상 정보 → low 구간은 평균 대신 실측값 나열.
+   FULL(70%↑) 현행 유지 / PARTIAL(30~70%) 평균만·진행바 제거·분모 강조 / low(30%↓) 실측 나열.
+   NOTICE(50%↓)는 리포트 상단 안내 기준. 임계값 상수 분리 — 수의사 자문 후 조정 용이 */
+const VR_COV = { FULL:0.7, PARTIAL:0.3, NOTICE:0.5 };
+function _vrCovTier(n, homeDays){
+  if(!n) return 'none';
+  if(!homeDays) return 'low';
+  const c = n/homeDays;
+  return c>=VR_COV.FULL ? 'full' : c>=VR_COV.PARTIAL ? 'partial' : 'low';
+}
+// low 구간용 실측값 나열: '기록 2일 — 07-20: 217ml, 07-25: 180ml'
+function _vrCovList(pairs, unit, max){
+  const m = max||6;
+  return '기록 '+pairs.length+'일 — '+pairs.slice(0,m).map(p=>p.d.slice(5)+': '+p.v+unit).join(', ')+(pairs.length>m?' 외 '+(pairs.length-m)+'일':'');
+}
 /* ══ OBS-BEGIN — 최근 관찰 지표 엔진 (v0.7.51) ══
    개인 기준선(최근 7일 vs 이전 4주) 대비 변화 감지 — 수치 관찰 전달만.
    진단·처방·응급 판정·용량 권고 금지 (v0.7.34 원칙), 문구 전부 하드코딩(AI 생성 아님).
@@ -12858,14 +12874,17 @@ function collectVetReportData(cat, fromStr, toStr, excludeSet){
     _adms.forEach(e=>{ const end=careEventEnd(e); dates.forEach(dy=>{ if(dy>=e.start && dy<=end) excludeSet.add(dy); }); });
   }
   d.admissions = _adms.map(e=>({start:e.start, end:careEventEnd(e), ongoing:(e.type==='입원'&&!e.end)}));
+  d.homeDays = dates.filter(dy=>!excludeSet.has(dy)).length;   // 커버리지 분모 = 기간 - 입원 제외 (v0.7.70)
   const intake = [], natArr = [], tubeArr = [], wetArr = [], fluid = [], fluidDates = [], urineC = [], poopC = [], kcal = [], rrAll = [], rrSleep = [];
+  const intakeList = [], kcalList = [], urineList = [], poopList = [];
   const urineAbn = {}, poopAbn = {}, fluidTypes = {}, foods = {}, medCount = {};
-  let fluidCount = 0, fluidMlSum = 0, wetUnknownDays = 0, rrWarnDays = 0, rrObsDays = 0;
+  let fluidCount = 0, fluidMlSum = 0, wetUnknownDays = 0, rrWarnDays = 0, rrObsDays = 0, recordedDaysCnt = 0;
   d.vomits = []; d.weights = [];
   dates.forEach(day=>{
     if(excludeSet && excludeSet.has(day)) return;
     const rec = (state.records[cat]||{})[day];
     if(!rec) return;
+    if(['bg','ins','meals','weights','routines','water','urine','rr','poop','vomits'].some(k=>Array.isArray(rec[k])&&rec[k].length)) recordedDaysCnt++;
     // 수분 출처 분리 집계 (v0.7.66) — 총 수분(경구)=자발+강급+습식수분, 피하수액 별도
     const natSum = (rec.water||[]).filter(w=>w.src!=='tube').reduce((a,b)=>a+(b.ml||0),0);
     const tubeSum = (rec.water||[]).filter(w=>w.src==='tube').reduce((a,b)=>a+(b.ml||0),0);
@@ -12877,18 +12896,18 @@ function collectVetReportData(cat, fromStr, toStr, excludeSet){
     if(natSum>0) natArr.push(natSum);
     if(tubeSum>0) tubeArr.push(tubeSum);
     if(wetSum>0) wetArr.push(wetSum);
-    if(wSum>0) intake.push(wSum);
+    if(wSum>0){ intake.push(wSum); intakeList.push({d:day, v:Math.round(wSum)}); }
     if(fSum>0){ fluid.push(fSum); fluidDates.push(day); }
     fArr.forEach(r=>{ fluidCount++; fluidMlSum+=r.ml; if(r.fluidType) fluidTypes[r.fluidType]=(fluidTypes[r.fluidType]||0)+1; });
     const uArr = rec.urine||[];
-    if(uArr.length) urineC.push(uArr.length);
+    if(uArr.length){ urineC.push(uArr.length); urineList.push({d:day, v:uArr.length}); }
     uArr.forEach(u=>{ if(u.amount && u.amount!=='정상' && u.amount!=='다량') urineAbn[u.amount]=(urineAbn[u.amount]||0)+1; });
     const pArr = rec.poop||[];
-    if(pArr.length) poopC.push(pArr.length);
+    if(pArr.length){ poopC.push(pArr.length); poopList.push({d:day, v:pArr.length}); }
     pArr.forEach(p=>{ if(p.type && p.type!=='정상') poopAbn[p.type]=(poopAbn[p.type]||0)+1; });
     (rec.vomits||[]).forEach(v=>d.vomits.push({date:day, time:v.time||'', label:_vomitLabel(v), danger:_vomitDanger(v), memo:v.memo||''}));
     const kSum = (rec.meals||[]).reduce((a,m)=>a+(m.kcal||0),0);
-    if(kSum>0) kcal.push(kSum);
+    if(kSum>0){ kcal.push(kSum); kcalList.push({d:day, v:Math.round(kSum)}); }
     (rec.meals||[]).forEach(m=>{ if(m.name) foods[m.name]=(foods[m.name]||0)+1; });
     (rec.weights||[]).forEach(w=>{ if(w.weight) d.weights.push({date:day, weight:w.weight}); });
     (rec.rr||[]).forEach(r=>{ if(r.rr>0){ rrAll.push(r.rr); if(r.state==='sleep') rrSleep.push(r.rr); } });
@@ -12914,12 +12933,19 @@ function collectVetReportData(cat, fromStr, toStr, excludeSet){
     fluidCount, fluidMlAvg: fluidCount?Math.round(fluidMlSum/fluidCount):null,
     fluidLast: fluidDates.length?fluidDates[fluidDates.length-1]:null, fluidGap,
     fluidTypeMain: Object.keys(fluidTypes).sort((a,b)=>fluidTypes[b]-fluidTypes[a])[0]||null,
-    target: d.profile.weight?Math.round(d.profile.weight*40):null };
-  d.urine = { avg:_vrAvg(urineC), days:urineC.length, abn:urineAbn };
-  d.poop = { avg:_vrAvg(poopC), days:poopC.length, abn:poopAbn };
-  d.meal = { kcalAvg:_vrAvg(kcal), days:kcal.length,
+    target: d.profile.weight?Math.round(d.profile.weight*40):null, list: intakeList };
+  d.urine = { avg:_vrAvg(urineC), days:urineC.length, abn:urineAbn, list: urineList };
+  d.poop = { avg:_vrAvg(poopC), days:poopC.length, abn:poopAbn, list: poopList };
+  d.meal = { kcalAvg:_vrAvg(kcal), days:kcal.length, list: kcalList,
     topFoods: Object.keys(foods).sort((a,b)=>foods[b]-foods[a]).slice(0,2) };
+  d.recordedDays = recordedDaysCnt;
   d.weight = { first: d.weights.length?d.weights[0]:null, last: d.weights.length?d.weights[d.weights.length-1]:null };
+  // 기간 내 체중 기록이 없으면 마지막 측정값을 '기간 외'로 제공 — "없음"보다 유용 (v0.7.70)
+  if(!d.weight.last){
+    const _recs = state.records[cat]||{};
+    const _pk = Object.keys(_recs).filter(k=>k<fromStr && (_recs[k].weights||[]).length).sort().reverse()[0];
+    if(_pk){ const _pw=_recs[_pk].weights; d.weight.prior = {date:_pk, weight:_pw[_pw.length-1].weight}; }
+  }
   d.rr = { n: rrAll.length, avg: rrAll.length?Math.round(rrAll.reduce((a,b)=>a+b,0)/rrAll.length):null, max: rrAll.length?Math.max(...rrAll):null,
     sleepN: rrSleep.length, sleepAvg: rrSleep.length?Math.round(rrSleep.reduce((a,b)=>a+b,0)/rrSleep.length):null, sleepMax: rrSleep.length?Math.max(...rrSleep):null,
     warnDays: rrWarnDays, obsDays: rrObsDays };
@@ -12977,6 +13003,8 @@ function buildVetReportText(d, inc, memo){
   L.push('반려묘: '+d.cat+(pf.length?' ('+pf.join(', ')+')':''));
   L.push('기간: '+d.fromStr+' ~ '+d.toStr+' ('+d.days+'일)');
   if(d.admissions && d.admissions.length) L.push('입원: '+d.admissions.map(a=>a.start+' ~ '+(a.ongoing?'진행 중':a.end)).join(', ')+' — 입원 기간은 재택 기록 집계에서 제외');
+  // 전체 커버리지 낮으면 리포트 읽는 법 먼저 안내 — 보호자 탓 아닌 중립 서술 (v0.7.70)
+  if(d.homeDays>0 && d.recordedDays/d.homeDays < VR_COV.NOTICE) L.push('이 기간 기록이 적습니다 ('+d.homeDays+'일 중 '+d.recordedDays+'일 기록). 아래 수치는 참고용입니다.');
   if(inc.obs){
     // 관찰 지표 — 기준일은 리포트 종료일, 개인 기준선(최근 7일 vs 이전 4주) 대비
     const obs = computeObservations(d.cat, d.toStr);
@@ -13002,9 +13030,16 @@ function buildVetReportText(d, inc, memo){
     // 자발음수는 총량이 같아도 자발이 줄고 보조로 채워지는 변화가 임상 정보라 유지.
     // 강급·사료 분리 표기는 앱 내부(그래프·수분 카드)에만. 피하수액은 경구 아님 — 합산 금지, 시행 시에만 별도 줄.
     L.push('[수분 섭취]');
-    const tot = d.water.intakeAvg||0;
-    L.push('총 수분 섭취: '+(tot?'평균 '+Math.round(tot)+'ml/일 (경구, '+d.water.intakeDays+'일 기록)':'기록 없음')+(d.water.target?' (참고 목표 '+d.water.target+'ml)':''));
-    if(d.water.natAvg!=null) L.push('- 그중 자발음수: 평균 '+Math.round(d.water.natAvg)+'ml/일');
+    const _wTier = _vrCovTier(d.water.intakeDays, d.homeDays);
+    if(_wTier==='none') L.push('총 수분 섭취: 기록 없음');
+    else if(_wTier==='low'){
+      // 커버리지 30% 미만 — 평균이 기간 전체를 대표하지 못함 → 실측값 나열 (v0.7.70)
+      L.push('총 수분 섭취(경구): '+_vrCovList(d.water.list,'ml'));
+    } else {
+      const _wCov = _wTier==='partial' ? d.homeDays+'일 중 '+d.water.intakeDays+'일 기록' : d.water.intakeDays+'일 기록';
+      L.push('총 수분 섭취: 평균 '+Math.round(d.water.intakeAvg)+'ml/일 (경구, '+_wCov+')'+(d.water.target?' (참고 목표 '+d.water.target+'ml)':''));
+      if(d.water.natAvg!=null) L.push('- 그중 자발음수: 평균 '+Math.round(d.water.natAvg)+'ml/일');
+    }
     // 피하수액은 일평균 표기 금지(v0.7.69) — "평균 115ml/일"은 매일 투여로 읽혀 처방 조정에 위험. 횟수 기준으로만
     if(d.water.fluidCount>0){
       L.push('피하수액: 총 '+d.water.fluidCount+'회'+(d.water.fluidMlAvg?' · 회당 약 '+d.water.fluidMlAvg+'ml':'')+(d.water.fluidTypeMain?' ('+d.water.fluidTypeMain+')':''));
@@ -13017,14 +13052,20 @@ function buildVetReportText(d, inc, memo){
   if(inc.urine){
     L.push('');
     L.push('[소변]');
-    L.push(d.urine.days?('평균 '+_vrNum(d.urine.avg,1)+'회/일 ('+d.urine.days+'일 기록)'):'기록 없음');
+    const _uTier = _vrCovTier(d.urine.days, d.homeDays);
+    if(_uTier==='none') L.push('기록 없음');
+    else if(_uTier==='low') L.push(_vrCovList(d.urine.list,'회'));
+    else L.push('평균 '+_vrNum(d.urine.avg,1)+'회/일 ('+(_uTier==='partial'?d.homeDays+'일 중 ':'')+d.urine.days+'일 기록)');
     const abn = Object.keys(d.urine.abn).map(k=>k+' '+d.urine.abn[k]+'회').join(' · ');
     L.push('이상 기록: '+(abn||'없음'));
   }
   if(inc.poop){
     L.push('');
     L.push('[배변]');
-    L.push(d.poop.days?('평균 '+_vrNum(d.poop.avg,1)+'회/일 ('+d.poop.days+'일 기록)'):'기록 없음');
+    const _pTier = _vrCovTier(d.poop.days, d.homeDays);
+    if(_pTier==='none') L.push('기록 없음');
+    else if(_pTier==='low') L.push(_vrCovList(d.poop.list,'회'));
+    else L.push('평균 '+_vrNum(d.poop.avg,1)+'회/일 ('+(_pTier==='partial'?d.homeDays+'일 중 ':'')+d.poop.days+'일 기록)');
     const abn = Object.keys(d.poop.abn).map(k=>k+' '+d.poop.abn[k]+'회').join(' · ');
     L.push('이상 기록: '+(abn||'없음'));
   }
@@ -13040,7 +13081,10 @@ function buildVetReportText(d, inc, memo){
   if(inc.meal){
     L.push('');
     L.push('[급여]');
-    L.push(d.meal.days?('평균 '+Math.round(d.meal.kcalAvg)+' kcal/일 ('+d.meal.days+'일 기록)'+(d.profile.recommendedKcal?' · 참고 권장 '+d.profile.recommendedKcal+'kcal':'')):'기록 없음');
+    const _mTier = _vrCovTier(d.meal.days, d.homeDays);
+    if(_mTier==='none') L.push('기록 없음');
+    else if(_mTier==='low') L.push(_vrCovList(d.meal.list,'kcal'));
+    else L.push('평균 '+Math.round(d.meal.kcalAvg)+' kcal/일 ('+(_mTier==='partial'?d.homeDays+'일 중 ':'')+d.meal.days+'일 기록)'+(d.profile.recommendedKcal?' · 참고 권장 '+d.profile.recommendedKcal+'kcal':''));
     if(d.meal.topFoods.length) L.push('주 사료: '+d.meal.topFoods.join(' & '));
   }
   if(inc.weight){
@@ -13051,6 +13095,9 @@ function buildVetReportText(d, inc, memo){
       L.push(d.weight.first.date.slice(5)+': '+d.weight.first.weight+'kg → '+d.weight.last.date.slice(5)+': '+d.weight.last.weight+'kg ('+(diff>0?'+':'')+diff+'kg)');
     } else if(d.weight.last){
       L.push('최근: '+d.weight.last.weight+'kg ('+d.weight.last.date.slice(5)+')');
+    } else if(d.weight.prior){
+      // 기간 내 기록 없음 — '없음'보다 마지막 측정값이 유용, 기간 외임을 명시 (v0.7.70)
+      L.push('최근 측정 '+d.weight.prior.date+' · '+d.weight.prior.weight+'kg (기간 외)');
     } else L.push('기록 없음');
     if(d.profile.targetWt) L.push('목표: '+d.profile.targetWt+'kg');
   }
@@ -13139,24 +13186,40 @@ function renderVetReportCanvas(d, inc, memo){
     const obs = computeObservations(d.cat, d.toStr);
     if(obs.length) secs.push({t:'최근 관찰 지표', lines: obs.slice(0,4).map(o=>o.title), warn:false});
   }
+  // 커버리지 구간별 라인·진행바 (v0.7.70) — partial은 진행바 제거+분모 강조, low는 실측 나열
+  const _covLine = (tier, days, avgTxt, list, unit) =>
+    tier==='none' ? '기록 없음'
+    : tier==='low' ? _vrCovList(list, unit, 4)
+    : avgTxt + ' ('+(tier==='partial'?d.homeDays+'일 중 ':'')+days+'일 기록)';
   if(inc.water){
-    // 텍스트 리포트와 동일: 총 수분 + 자발음수 2줄. 분모(기록 일수)를 이미지에도 표기 (v0.7.69).
     // 피하수액은 일평균 표기 금지 — 횟수·회당 용량 기준
     const tot = d.water.intakeAvg||0;
-    const lines = ['총 수분 섭취 평균 '+(tot?Math.round(tot):'—')+'ml/일 ('+d.water.intakeDays+'일 기록)'+(d.water.target?' / 참고 목표 '+d.water.target+'ml':'')];
-    if(d.water.natAvg!=null) lines.push('그중 자발음수 '+Math.round(d.water.natAvg)+'ml/일');
+    const _wT = _vrCovTier(d.water.intakeDays, d.homeDays);
+    const lines = [_covLine(_wT, d.water.intakeDays, '총 수분 섭취 평균 '+Math.round(tot)+'ml/일', d.water.list, 'ml')+(_wT==='full'&&d.water.target?' / 참고 목표 '+d.water.target+'ml':'')];
+    if((_wT==='full'||_wT==='partial') && d.water.natAvg!=null) lines.push('그중 자발음수 '+Math.round(d.water.natAvg)+'ml/일');
     if(d.water.fluidCount>0) lines.push('피하수액 총 '+d.water.fluidCount+'회'+(d.water.fluidMlAvg?' · 회당 약 '+d.water.fluidMlAvg+'ml':''));
-    secs.push({t:'수분 섭취', lines, bar: d.water.target&&tot?Math.min(1.5,tot/d.water.target):null});
+    secs.push({t:'수분 섭취', lines, bar: (_wT==='full'&&d.water.target&&tot)?Math.min(1.5,tot/d.water.target):null});
   }
-  if(inc.urine) secs.push({t:'소변', lines:[(d.urine.days?('평균 '+_vrNum(d.urine.avg,1)+'회/일 ('+d.urine.days+'일 기록)'):'기록 없음')+(Object.keys(d.urine.abn).length?' · 이상 '+Object.values(d.urine.abn).reduce((a,b)=>a+b,0)+'회':'')], warn:Object.keys(d.urine.abn).length>0});
-  if(inc.poop) secs.push({t:'배변', lines:[(d.poop.days?('평균 '+_vrNum(d.poop.avg,1)+'회/일 ('+d.poop.days+'일 기록)'):'기록 없음')+(Object.keys(d.poop.abn).length?' · 이상 '+Object.values(d.poop.abn).reduce((a,b)=>a+b,0)+'회':'')], warn:Object.keys(d.poop.abn).length>0});
+  if(inc.urine){
+    const _uT = _vrCovTier(d.urine.days, d.homeDays);
+    secs.push({t:'소변', lines:[_covLine(_uT, d.urine.days, '평균 '+_vrNum(d.urine.avg,1)+'회/일', d.urine.list, '회')+(Object.keys(d.urine.abn).length?' · 이상 '+Object.values(d.urine.abn).reduce((a,b)=>a+b,0)+'회':'')], warn:Object.keys(d.urine.abn).length>0});
+  }
+  if(inc.poop){
+    const _pT = _vrCovTier(d.poop.days, d.homeDays);
+    secs.push({t:'배변', lines:[_covLine(_pT, d.poop.days, '평균 '+_vrNum(d.poop.avg,1)+'회/일', d.poop.list, '회')+(Object.keys(d.poop.abn).length?' · 이상 '+Object.values(d.poop.abn).reduce((a,b)=>a+b,0)+'회':'')], warn:Object.keys(d.poop.abn).length>0});
+  }
   if(inc.vomit) secs.push({t:'구토', lines:['기간 내 총 '+d.vomits.length+'회'+(d.vomits.some(v=>v.danger)?' · 피/붉은색 포함':'')], warn:d.vomits.some(v=>v.danger)});
-  if(inc.meal) secs.push({t:'급여', lines:[d.meal.days?('평균 '+Math.round(d.meal.kcalAvg)+' kcal/일 ('+d.meal.days+'일 기록)'+(d.profile.recommendedKcal?' / 참고 권장 '+d.profile.recommendedKcal:'')):'기록 없음'], bar: (d.meal.days&&d.profile.recommendedKcal)?Math.min(1.5,d.meal.kcalAvg/d.profile.recommendedKcal):null});
-  if(inc.weight && d.weight.last){
-    // 측정일 표기 (v0.7.69) — 기간 말과 측정일이 다르면 최신값으로 오해될 수 있음
-    const wl = d.weight.first&&d.weight.first.date!==d.weight.last.date
-      ? d.weight.first.weight+'kg ('+d.weight.first.date.slice(5)+') → '+d.weight.last.weight+'kg ('+d.weight.last.date.slice(5)+')'
-      : d.weight.last.weight+'kg (최근 측정 '+d.weight.last.date.slice(5)+')';
+  if(inc.meal){
+    const _mT = _vrCovTier(d.meal.days, d.homeDays);
+    secs.push({t:'급여', lines:[_covLine(_mT, d.meal.days, '평균 '+Math.round(d.meal.kcalAvg)+' kcal/일', d.meal.list, 'kcal')+(_mT==='full'&&d.profile.recommendedKcal?' / 참고 권장 '+d.profile.recommendedKcal:'')], bar: (_mT==='full'&&d.meal.days&&d.profile.recommendedKcal)?Math.min(1.5,d.meal.kcalAvg/d.profile.recommendedKcal):null});
+  }
+  if(inc.weight && (d.weight.last || d.weight.prior)){
+    // 측정일 표기 (v0.7.69) · 기간 내 기록 없으면 기간 외 마지막 값 — 섹션 생략하지 않음 (v0.7.70)
+    const wl = d.weight.last
+      ? (d.weight.first&&d.weight.first.date!==d.weight.last.date
+        ? d.weight.first.weight+'kg ('+d.weight.first.date.slice(5)+') → '+d.weight.last.weight+'kg ('+d.weight.last.date.slice(5)+')'
+        : d.weight.last.weight+'kg (최근 측정 '+d.weight.last.date.slice(5)+')')
+      : '최근 측정 '+d.weight.prior.date+' · '+d.weight.prior.weight+'kg (기간 외)';
     secs.push({t:'체중', lines:[wl+(d.profile.targetWt?' / 목표 '+d.profile.targetWt+'kg':'')]});
   }
   if(inc.rr && d.rr.n){
@@ -13183,8 +13246,9 @@ function renderVetReportCanvas(d, inc, memo){
     secs.push({t:'혈액검사 ('+d.bt.date+')', lines:[outs.length?('참고범위 밖 '+outs.length+'개 항목 — 텍스트 상세 참조'):'전 항목 참고범위 내'], warn:outs.length>0});
   }
   const SEC_H = s => 64 + s.lines.length*40 + (s.bar!=null?36:0) + 20;
-  // +40: 입원 표기 줄 · 하단 안내 2줄(+36, 관찰 카드에서 이동) 반영 (v0.7.69)
-  const H = 250 + ((d.admissions&&d.admissions.length)?40:0) + secs.reduce((a,s)=>a+SEC_H(s)+18,0) + (memo&&memo.trim()?110:0) + 166;
+  const _lowCov = d.homeDays>0 && d.recordedDays/d.homeDays < VR_COV.NOTICE;   // 전체 커버리지 안내 (v0.7.70)
+  // +40: 입원 표기 줄 · +40: 커버리지 안내 줄 · 하단 안내 2줄(+36, 관찰 카드에서 이동) 반영
+  const H = 250 + ((d.admissions&&d.admissions.length)?40:0) + (_lowCov?40:0) + secs.reduce((a,s)=>a+SEC_H(s)+18,0) + (memo&&memo.trim()?110:0) + 166;
   const cv = document.createElement('canvas');
   cv.width = W; cv.height = H;
   const x = cv.getContext('2d');
@@ -13211,6 +13275,11 @@ function renderVetReportCanvas(d, inc, memo){
   if(d.admissions && d.admissions.length){
     x.fillStyle = '#3A66A6'; x.font = '600 26px '+F;
     x.fillText('입원 '+d.admissions.map(a=>a.start.slice(5)+'~'+(a.ongoing?'진행 중':a.end.slice(5))).join(', ')+' — 재택 기록 집계에서 제외', PAD, y);
+    y += 40;
+  }
+  if(_lowCov){
+    x.fillStyle = '#BA7517'; x.font = '600 26px '+F;
+    x.fillText('이 기간 기록이 적습니다 ('+d.homeDays+'일 중 '+d.recordedDays+'일 기록) · 아래 수치는 참고용입니다', PAD, y);
     y += 40;
   }
   secs.forEach(s=>{
@@ -13261,7 +13330,7 @@ function guessLastVisit(cat){
   btData.filter(b=>b.cat===cat && b.date && b.date < today()).forEach(b=>cands.push(b.date));
   return cands.length ? cands.sort().reverse()[0] : null;
 }
-function buildIntervalReport(cat, lastVisit){
+function buildIntervalReport(cat, lastVisit, incBt){
   const to = today();
   const d0 = new Date(lastVisit+'T00:00:00Z'); d0.setUTCDate(d0.getUTCDate()+1);
   let from = d0.toISOString().slice(0,10);
@@ -13310,6 +13379,7 @@ function buildIntervalReport(cat, lastVisit){
   L.push('기간: '+from+' ~ '+to+' ('+dates.length+'일)');
   L.push('지난 진료: '+lastVisit);
   if(adms.length) L.push('입원 기간 제외: '+adms.map(e=>md(e.start)+'~'+md(careEventEnd(e))).join(', '));
+  if(d.homeDays>0 && d.recordedDays/d.homeDays < VR_COV.NOTICE) L.push('이 기간 기록이 적습니다 ('+d.homeDays+'일 중 '+d.recordedDays+'일 기록). 아래 수치는 참고용입니다.');
   if(srrVals.length){
     L.push('');
     L.push('[수면 호흡수]');
@@ -13317,20 +13387,29 @@ function buildIntervalReport(cat, lastVisit){
     L.push('평균 '+avg+'회/분 (범위 '+Math.min(...srrVals)+'~'+Math.max(...srrVals)+', 측정 '+srrVals.length+'회)');
     if(srrExDays.length) L.push(SRR_TH.obs+'회/분 이상: '+srrExDays.length+'일 ('+srrExDays.slice(0,4).map(md).join(', ')+(srrExDays.length>4?' 외':'')+')');
   }
-  if(d.weight.last){
+  if(d.weight.last || d.weight.prior){
     L.push('');
     L.push('[체중]');
-    let ln='현재 '+d.weight.last.weight+'kg ('+md(d.weight.last.date)+')';
-    if(baseWt){ const p=(d.weight.last.weight-baseWt)/baseWt*100; ln+=' · 지난 진료 무렵 '+baseWt+'kg 대비 '+(p>=0?'+':'')+p.toFixed(1)+'%'; }
-    L.push(ln);
+    if(d.weight.last){
+      let ln='현재 '+d.weight.last.weight+'kg ('+md(d.weight.last.date)+')';
+      if(baseWt){ const p=(d.weight.last.weight-baseWt)/baseWt*100; ln+=' · 지난 진료 무렵 '+baseWt+'kg 대비 '+(p>=0?'+':'')+p.toFixed(1)+'%'; }
+      L.push(ln);
+    } else {
+      L.push('최근 측정 '+d.weight.prior.date+' · '+d.weight.prior.weight+'kg (기간 외)');
+    }
   }
   if(d.water.intakeAvg!=null || d.water.fluidCount>0){
     L.push('');
     L.push('[수분]');
     if(d.water.intakeAvg!=null){
-      let ln='총 수분 평균 '+Math.round(d.water.intakeAvg)+'ml/일 (경구, '+d.water.intakeDays+'일 기록)';
-      if(d.water.natAvg!=null) ln+=' · 그중 자발음수 '+Math.round(d.water.natAvg)+'ml';
-      L.push(ln);
+      const _wT = _vrCovTier(d.water.intakeDays, d.homeDays);
+      if(_wT==='low'){
+        L.push('총 수분(경구): '+_vrCovList(d.water.list,'ml'));
+      } else {
+        let ln='총 수분 평균 '+Math.round(d.water.intakeAvg)+'ml/일 (경구, '+(_wT==='partial'?d.homeDays+'일 중 ':'')+d.water.intakeDays+'일 기록)';
+        if(d.water.natAvg!=null) ln+=' · 그중 자발음수 '+Math.round(d.water.natAvg)+'ml';
+        L.push(ln);
+      }
     }
     // 피하수액 일평균 표기 금지 (v0.7.69) — 횟수·회당 용량 기준
     if(d.water.fluidCount>0) L.push('피하수액: 총 '+d.water.fluidCount+'회'+(d.water.fluidMlAvg?' · 회당 약 '+d.water.fluidMlAvg+'ml':''));
@@ -13338,10 +13417,15 @@ function buildIntervalReport(cat, lastVisit){
   if(d.meal.days || gDays){
     L.push('');
     L.push('[식사]');
-    const parts=[];
-    if(gDays) parts.push('평균 '+Math.round(gSum/gDays)+'g/일');
-    if(d.meal.days) parts.push('평균 '+Math.round(d.meal.kcalAvg)+'kcal/일'+(d.profile.recommendedKcal?' (참고 권장 '+d.profile.recommendedKcal+'kcal)':''));
-    L.push(parts.join(' · ')+' — '+Math.max(gDays,d.meal.days)+'일 기록');
+    const _mT = _vrCovTier(Math.max(gDays,d.meal.days), d.homeDays);
+    if(_mT==='low' && d.meal.list.length){
+      L.push(_vrCovList(d.meal.list,'kcal'));
+    } else {
+      const parts=[];
+      if(gDays) parts.push('평균 '+Math.round(gSum/gDays)+'g/일');
+      if(d.meal.days) parts.push('평균 '+Math.round(d.meal.kcalAvg)+'kcal/일'+(d.profile.recommendedKcal?' (참고 권장 '+d.profile.recommendedKcal+'kcal)':''));
+      L.push(parts.join(' · ')+' — '+(_mT==='partial'?d.homeDays+'일 중 ':'')+Math.max(gDays,d.meal.days)+'일 기록');
+    }
   }
   if(sched>0){
     L.push('');
@@ -13365,6 +13449,18 @@ function buildIntervalReport(cat, lastVisit){
     L.push('[특이사항]');
     abnorm.slice(0,12).forEach(x=>L.push('- '+md(x.d)+(x.t?' '+x.t:'')+' '+x.txt));
     if(abnorm.length>12) L.push('- 외 '+(abnorm.length-12)+'건');
+  }
+  // 혈액검사 — 주치의가 직접 시행한 검사라 기본 미포함(스펙 ③ Phase 3-A). 타 병원 검사 공유용 옵트인만 (v0.7.70)
+  if(incBt && d.bt){
+    L.push('');
+    L.push('[혈액검사] ('+d.bt.date+' 검사'+(d.bt.prevDate?', 전회 '+d.bt.prevDate+' 대비':'')+') — 타 병원 검사 공유용');
+    const _outs = d.bt.items.filter(i=>i.out);
+    _outs.forEach(i=>{
+      let ln = '- '+i.abbr+': '+i.value+i.unit+' (참고 '+(i.refLow!=null?i.refLow:'')+'~'+(i.refHigh!=null?i.refHigh:'')+') 범위 밖·'+i.out;
+      if(i.delta && i.delta.dir!=='동일') ln += ' · 전회 '+i.delta.prev+' 대비 '+i.delta.dir;
+      L.push(ln);
+    });
+    if(d.bt.items.length-_outs.length>0) L.push('- 범위 내 항목 '+(d.bt.items.length-_outs.length)+'개 (상세 검사지 참조)');
   }
   const qs=getVetQuestions(cat);
   if(qs.length){
@@ -13404,6 +13500,7 @@ function openVetReport(){
   _vetRep = {
     cat, step: 1,
     rtype: 'interval',   // 'interval' 정기 진료용(재택 기록·텍스트) | 'full' 전체 요약(이미지+텍스트)
+    incBt: false,        // 인터벌 리포트 혈액검사 포함 — 기본 꺼짐(주치의가 직접 한 검사), 타 병원 검사 공유용 옵트인
     lastVisit: guessLastVisit(cat) || '',
     nextVisit: saved || predicted || '',
     predicted: !saved && !!predicted,
@@ -13517,10 +13614,13 @@ function renderVetReportStep(){
       + '<div style="font-size:11px;color:var(--cm-faint);margin-top:8px;line-height:1.5">다음 날부터 오늘까지의 재택 기록이 담겨요. 기간 중 입원이 있으면 그 구간은 자동으로 빼요.'+(auto?'':'<br>병원 기록(통원·퇴원)을 등록해두면 다음부터 자동으로 채워져요.')+'</div>'
       + '</div>'
       + _vetQCardHtml('vrQInput', 'renderVetReportStep', inputStyle)
+      + '<label style="display:flex;align-items:center;gap:8px;padding:11px 13px;border-radius:13px;background:var(--cm-surface);border:1px solid var(--cm-line);font-size:13px;color:var(--cm-ink);cursor:pointer;margin-bottom:14px">'
+      + '<input type="checkbox" '+(R.incBt?'checked':'')+' onchange="vetRepSet(\'incBt\',this.checked)" style="accent-color:var(--cm-green-700);width:16px;height:16px">'
+      + '혈액검사 포함 <span style="font-size:11px;color:var(--cm-faint)">(다른 병원에서 받은 검사 공유용)</span></label>'
       + '<div style="display:flex;gap:8px">'+_vrBtn('이전','vetRepGo(1)',false)+_vrBtn('미리보기','vetRepGo(\'i3\')',true)+'</div>';
   } else if(R.step === 'i3'){
     let text='';
-    try{ text = buildIntervalReport(R.cat, R.lastVisit); }catch(e){ console.warn('인터벌 리포트 생성 오류:', e); text='리포트를 만들지 못했어요. 잠시 후 다시 시도해주세요.'; }
+    try{ text = buildIntervalReport(R.cat, R.lastVisit, R.incBt); }catch(e){ console.warn('인터벌 리포트 생성 오류:', e); text='리포트를 만들지 못했어요. 잠시 후 다시 시도해주세요.'; }
     R._text = text;
     box.innerHTML = head('미리보기', '복사해서 병원 카톡·채널에 붙여넣어 주세요')
       + '<pre style="white-space:pre-wrap;word-break:break-word;background:var(--cm-surface);border:1px solid var(--cm-line);border-radius:13px;padding:12px;font-size:12px;line-height:1.6;color:var(--cm-ink);font-family:inherit;max-height:300px;overflow-y:auto;margin:0 0 12px">'+_vEsc(text)+'</pre>'
