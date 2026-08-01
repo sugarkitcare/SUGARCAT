@@ -652,7 +652,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.73</span>
+      <span class="cm-beta">v0.7.74</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -683,7 +683,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
     <button type="button" id="catDel3" onclick="deleteCat(document.getElementById('catName3').dataset.cat)" style="font-size:15px;background:none;border:none;cursor:pointer;padding:2px 5px;min-width:26px;min-height:26px;color:inherit;opacity:0.6">×</button>
   </div>
   <div id="catAddSlot"></div>
-  <button type="button" id="catOrderEditBtn" onclick="openCatOrderSheet()" class="cat-chip" style="display:none;border-style:dashed;color:var(--text3);background:transparent">순서</button>
+  <button type="button" id="catOrderEditBtn" onclick="toggleCatOrderEdit()" class="cat-chip" style="display:none;border-style:dashed;color:var(--text3);background:transparent">순서</button>
 </div>
 <div class="cm-tabs" id="mainNav">
   <button class="cm-tab active" data-tab="daily" onclick="showTab('daily',this)">오늘</button>
@@ -2396,100 +2396,124 @@ async function loadCatOrder(){
     }
   }catch(e){ console.warn('칩 순서 로드 오류:', e); }
 }
-/* 순서 편집 시트 (v0.7.73) — 진입점은 칩 리스트의 '순서' 버튼, 정렬은 바텀시트 세로 리스트 +
-   드래그 핸들(Pointer Events). 가로 칩 직접 드래그는 가로 스크롤과 충돌해 세로 시트 방식 채택
-   (스펙 대안 경로). HTML5 drag-and-drop API는 모바일 불안정 — 사용 금지.
-   시트 열린 동안 body 스크롤 잠금, 핸들은 touch-action:none으로 브라우저 제스처 차단.
-   고양이 최대 4마리라 자동 스크롤은 불필요(시트 안에 다 들어옴). */
+/* 칩 순서 인라인 편집 (v0.7.74) — 오늘탭 '기록 항목 편집'(toggleTileEditMode)과 동일 패턴:
+   같은 wig 흔들림(.tile--edit), 같은 pointerdown+setPointerCapture+elementFromPoint 드래그,
+   같은 진동·드롭 인디케이터. 편집 중 칩 스트립 가로 스크롤 잠금(overflow-x hidden + touch-action:none).
+   드롭 즉시 저장(catOrder_v1 + user_settings.cat_order). 바텀시트 방식(v0.7.73)은 제거됨. */
 function _catOrderCommit(seq){
   // 비추모 우선 그룹 규칙 유지 — 드래그로 추모 아이를 앞에 놓아도 그룹 재정렬로 맨 앞에 오지 않음
   state.cats = seq.filter(c=>!isMemorial(c)).concat(seq.filter(c=>isMemorial(c)));
   saveS();
   saveCatOrder();
 }
-function openCatOrderSheet(){
-  let modal = document.getElementById('catOrderModal');
-  if(!modal){
-    modal = document.createElement('div');
-    modal.id = 'catOrderModal';
-    modal.style.cssText = 'position:fixed;inset:0;background:rgba(42,37,29,0.5);z-index:9999;display:flex;align-items:flex-end;justify-content:center';
-    modal.innerHTML = '<div style="background:var(--cm-bg);border-radius:20px 20px 0 0;width:100%;max-width:520px;max-height:70vh;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:1.25rem 1.1rem 1.5rem;box-sizing:border-box">'
-      + '<div style="display:flex;align-items:center;margin-bottom:4px"><div style="flex:1"><div style="font-size:17px;font-weight:800;color:var(--cm-ink)">고양이 순서</div><div style="font-size:12px;color:var(--cm-faint);margin-top:2px">줄을 잡고 위아래로 끌어 순서를 바꿔요</div></div>'
-      + '<button type="button" onclick="closeCatOrderSheet()" style="background:none;border:none;font-size:20px;color:var(--cm-faint);cursor:pointer;padding:4px 8px;font-family:inherit">×</button></div>'
-      + '<div id="catOrderList" style="margin:10px 0 6px"></div>'
-      + '<div style="font-size:11px;color:var(--cm-faint);margin-bottom:12px;line-height:1.5">첫 번째 아이가 로그인 시 기본으로 선택돼요. 기억 속 아이는 뒤쪽에 표시돼요.</div>'
-      + '<button type="button" onclick="closeCatOrderSheet()" class="cm-btn cm-btn--block">완료</button>'
-      + '</div>';
-    modal.addEventListener('click', e=>{ if(e.target===modal) closeCatOrderSheet(); });
-    document.body.appendChild(modal);
+var _chipEditMode = false;
+var _chipDragSrc = null;
+function _chipSlots(bar){
+  return Array.from(bar.querySelectorAll('.cm-pet')).filter(s=>s.style.display!=='none');
+}
+// 슬롯 DOM을 표시 순서(비추모 먼저 + 배열 순)에 맞게 재배열 — 편집 중 상태(핸들러·스타일)는 유지됨
+function _chipReflowDom(bar){
+  const byCat = {};
+  _chipSlots(bar).forEach(s=>{ const b=s.querySelector('button[id^="catName"]'); if(b) byCat[b.dataset.cat]=s; });
+  const disp = state.cats.filter(c=>!isMemorial(c)).concat(state.cats.filter(c=>isMemorial(c)));
+  disp.forEach(c=>{ if(byCat[c]) bar.appendChild(byCat[c]); });
+  const addSlot=document.getElementById('catAddSlot'); if(addSlot) bar.appendChild(addSlot);
+  const btn=document.getElementById('catOrderEditBtn'); if(btn) bar.appendChild(btn);
+}
+function toggleCatOrderEdit(){
+  const bar = document.getElementById('catBar');
+  const btn = document.getElementById('catOrderEditBtn');
+  if(!bar || !btn) return;
+  _chipEditMode = !_chipEditMode;
+  const addSlot = document.getElementById('catAddSlot');
+  if(_chipEditMode){
+    btn.textContent = '완료';
+    btn.style.borderStyle = 'solid';
+    btn.style.color = 'var(--teal)';
+    bar.style.overflowX = 'hidden';   // 편집 중 가로 스크롤 잠금 — 드래그와 충돌 방지
+    if(addSlot) addSlot.style.display = 'none';
+    _chipSlots(bar).forEach(function(slot){
+      slot.classList.add('tile--edit');   // 오늘탭 기록항목 편집과 같은 흔들림
+      slot.style.touchAction = 'none';
+      slot.style.cursor = 'grab';
+      // 편집 중 탭 오동작 방지 — 전환은 막고, 설정·삭제 버튼은 숨김
+      const nameBtn = slot.querySelector('button[id^="catName"]');
+      if(nameBtn){ nameBtn.style.pointerEvents = 'none'; }
+      slot.querySelectorAll('button[id^="catSettings"],button[id^="catDel"]').forEach(function(b){ b.style.display='none'; });
+      (function(s){
+        var _prev = null;
+        s._phStart = function(e){
+          _chipDragSrc = s;
+          try{ s.setPointerCapture(e.pointerId); }catch(err){}
+          s.style.cssText += ';opacity:0.4;transform:scale(1.06);z-index:10;position:relative';
+          if(navigator.vibrate) navigator.vibrate(10);
+          e.stopPropagation(); e.preventDefault();
+        };
+        s._phMove = function(e){
+          if(_chipDragSrc !== s) return;
+          e.preventDefault();
+          var el = document.elementFromPoint(e.clientX, e.clientY);
+          var target = el ? el.closest('#catBar .cm-pet') : null;
+          if(target !== _prev){
+            if(_prev && _prev !== s) _prev.style.boxShadow = '';
+            if(target && target !== s) target.style.boxShadow = '0 0 0 2px var(--cm-green-700)';
+            _prev = target;
+          }
+          if(target && target !== s){
+            var slots = _chipSlots(bar);
+            var si = slots.indexOf(s), di = slots.indexOf(target);
+            if(si < di) bar.insertBefore(s, target.nextSibling);
+            else bar.insertBefore(s, target);
+          }
+        };
+        s._phEnd = function(){
+          if(_chipDragSrc !== s) return;
+          if(_prev && _prev !== s) _prev.style.boxShadow = '';
+          _prev = null;
+          s.style.opacity = ''; s.style.zIndex = ''; s.style.position = '';
+          s.style.transform = 'scale(1.06)';
+          if(navigator.vibrate) navigator.vibrate(15);
+          setTimeout(function(){ s.style.transform = ''; }, 150);
+          _chipDragSrc = null;
+          // 드롭 즉시 저장 (현행 유지)
+          var seq = _chipSlots(bar).map(function(x){ var b=x.querySelector('button[id^="catName"]'); return b?b.dataset.cat:null; }).filter(Boolean);
+          _catOrderCommit(seq);
+          var disp = state.cats.filter(c=>!isMemorial(c)).concat(state.cats.filter(c=>isMemorial(c)));
+          if(JSON.stringify(seq) !== JSON.stringify(disp)){
+            // 추모 아이를 앞으로 끈 경우 — 아무 말 없이 튕기면 버그처럼 보임 → 담담한 안내 한 줄과 함께 제자리로
+            _chipReflowDom(bar);
+            toast('기억 속 아이는 뒤쪽에 표시돼요');
+          }
+        };
+        s.addEventListener('pointerdown', s._phStart);
+        s.addEventListener('pointermove', s._phMove, {passive:false});
+        s.addEventListener('pointerup', s._phEnd);
+        s.addEventListener('pointercancel', s._phEnd);
+      })(slot);
+    });
+  } else {
+    // 편집 종료 — 핸들러·스타일 정리 후 슬롯을 id 순서로 복원하고 재렌더 (renderCatBar는 인덱스 기반)
+    btn.textContent = '순서';
+    btn.style.borderStyle = 'dashed';
+    btn.style.color = 'var(--text3)';
+    bar.style.overflowX = '';
+    if(addSlot) addSlot.style.display = '';
+    bar.querySelectorAll('.cm-pet').forEach(function(s){
+      s.classList.remove('tile--edit');
+      s.style.touchAction = ''; s.style.cursor = '';
+      s.style.opacity=''; s.style.transform=''; s.style.boxShadow=''; s.style.position=''; s.style.zIndex='';
+      const nameBtn = s.querySelector('button[id^="catName"]');
+      if(nameBtn) nameBtn.style.pointerEvents = '';
+      s.querySelectorAll('button[id^="catSettings"],button[id^="catDel"]').forEach(function(b){ b.style.display=''; });
+      if(s._phStart){ s.removeEventListener('pointerdown', s._phStart); delete s._phStart; }
+      if(s._phMove){ s.removeEventListener('pointermove', s._phMove); delete s._phMove; }
+      if(s._phEnd){ s.removeEventListener('pointerup', s._phEnd); s.removeEventListener('pointercancel', s._phEnd); delete s._phEnd; }
+    });
+    for(let i=0;i<4;i++){ const sl=document.getElementById('catSlot'+i); if(sl) bar.appendChild(sl); }
+    if(addSlot) bar.appendChild(addSlot);
+    bar.appendChild(btn);
+    renderCatBar();
   }
-  modal.style.display = 'flex';
-  document.body.style.overflow = 'hidden';   // 시트 열린 동안 배경 스크롤 잠금
-  renderCatOrderSheet();
-}
-function closeCatOrderSheet(){
-  const m = document.getElementById('catOrderModal');
-  if(m) m.style.display = 'none';
-  document.body.style.overflow = '';
-}
-function renderCatOrderSheet(){
-  const list = document.getElementById('catOrderList');
-  if(!list) return;
-  const ordered = state.cats.filter(c=>!isMemorial(c)).concat(state.cats.filter(c=>isMemorial(c)));
-  list.innerHTML = '';
-  ordered.forEach(c=>{
-    const mem = isMemorial(c);
-    const row = document.createElement('div');
-    row.dataset.cat = c;
-    row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:12px 8px;border-bottom:0.5px solid var(--cm-line);background:var(--cm-bg);border-radius:10px;user-select:none;-webkit-user-select:none';
-    row.innerHTML = '<span class="co-handle" style="touch-action:none;cursor:grab;padding:4px 12px;color:var(--cm-faint);font-size:16px;letter-spacing:2px">≡</span>'
-      + '<span style="flex:1;font-size:14px;font-weight:600;color:var(--cm-ink)'+(mem?';opacity:.55':'')+'">'+_vEsc(c)+(mem?' <span style="font-size:10.5px;font-weight:500;color:var(--cm-faint)">기억</span>':'')+'</span>';
-    row.querySelector('.co-handle').addEventListener('pointerdown', ev=>_coDragStart(ev, row));
-    list.appendChild(row);
-  });
-}
-let _coDrag = null;
-function _coDragStart(ev, row){
-  if(_coDrag) return;
-  ev.preventDefault();
-  const handle = ev.currentTarget;
-  _coDrag = { row, list: row.parentNode, handle };
-  try{ handle.setPointerCapture(ev.pointerId); }catch(e){}
-  row.style.background = 'var(--cm-surface-2)';
-  row.style.boxShadow = '0 2px 12px rgba(0,0,0,0.14)';
-  row.style.position = 'relative';
-  row.style.zIndex = '1';
-  const mv = e=>_coDragMove(e);
-  const up = e=>_coDragEnd(e, mv, up);
-  handle.addEventListener('pointermove', mv);
-  handle.addEventListener('pointerup', up);
-  handle.addEventListener('pointercancel', up);
-}
-function _coDragMove(e){
-  if(!_coDrag) return;
-  const { row, list } = _coDrag;
-  const y = e.clientY;
-  // 포인터 Y가 형제 행의 중간선을 넘으면 그 앞으로 이동 — DOM 재배치로 리스트가 즉시 따라옴
-  const sibs = [...list.children].filter(r=>r!==row);
-  let target = null;
-  for(const s of sibs){
-    const r = s.getBoundingClientRect();
-    if(y < r.top + r.height/2){ target = s; break; }
-  }
-  if(target){ if(target !== row.nextSibling && target !== row) list.insertBefore(row, target); }
-  else if(list.lastElementChild !== row) list.appendChild(row);
-}
-function _coDragEnd(e, mv, up){
-  if(!_coDrag) return;
-  const { row, list, handle } = _coDrag;
-  handle.removeEventListener('pointermove', mv);
-  handle.removeEventListener('pointerup', up);
-  handle.removeEventListener('pointercancel', up);
-  row.style.background = ''; row.style.boxShadow = ''; row.style.position = ''; row.style.zIndex = '';
-  _coDrag = null;
-  _catOrderCommit([...list.children].map(r=>r.dataset.cat));
-  renderCatBar();
-  renderCatOrderSheet();   // 그룹 규칙(비추모 우선) 적용 결과 즉시 반영
 }
 // 프로필 화면의 기억하기 카드 — 떠난 날짜는 선택 입력(강제하지 않음)
 function renderMemorialBox(cat){
@@ -2521,6 +2545,7 @@ function renderMemorialBox(cat){
 
 /* 고양이 바 */
 function renderCatBar(){
+  if(_chipEditMode) return;   // 순서 편집 중엔 백그라운드 재렌더가 편집 상태(핸들러·스타일)를 지우지 않게 (v0.7.74)
   // 슬롯 방식 업데이트 - 버튼은 HTML에 고정, 내용만 JS로 채움
   // 표시 순서: 곁에 있는 아이 먼저, 기억 속 아이는 뒤쪽 (v0.7.72 — 데이터 순서는 유지, 표시만)
   const MAX_SLOTS = 4;
