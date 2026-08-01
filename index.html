@@ -652,7 +652,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.71</span>
+      <span class="cm-beta">v0.7.72</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -2283,18 +2283,191 @@ try { applyRRFeedbackUI(); } catch(e) {}
 ['bgDate','wtDate','insDate','foodDate','routineDate','rrDate','waterDate'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=today();});
 document.getElementById('btDate').value=today();
 
+/* ── 기억하기(추모) 상태 (v0.7.72) ─────────────────────────────
+   아이가 떠났을 때 삭제 대신 선택할 수 있는 상태. 기록은 100% 보존, 알림·일일 흐름만 중지.
+   저장: localStorage memorial_v1_<cat> + user_settings memorial_<cat> (nextVisit 패턴 —
+   catProfiles는 syncFromDB가 재구축하므로 임의 필드가 소실됨).
+   ⚠ 설계 금지사항 (스펙): 자동 감지·확인 프롬프트 금지 — 오직 보호자가 프로필에서 직접
+   설정할 때만 동작. 추모 상태를 다른 기능(알림·추천·마케팅)의 트리거로 쓰지 않는다.
+   문구는 담담하게 — 과한 위로 문구 금지.
+   ※ 로컬 푸시 알림 도입 시: 전환 즉시 해당 고양이의 예약된 알림 전부 취소할 것 (P0). */
+function getMemorial(cat){
+  try{ const v=JSON.parse(localStorage.getItem('memorial_v1_'+cat)||'null'); return (v&&v.is)?v:null; }catch(e){ return null; }
+}
+function isMemorial(cat){ return !!getMemorial(cat); }
+function setMemorialState(cat, is, date){
+  if(!cat) return;
+  try{
+    if(is) localStorage.setItem('memorial_v1_'+cat, JSON.stringify({is:true, date:date||null}));
+    else localStorage.removeItem('memorial_v1_'+cat);
+  }catch(e){}
+  if(sbClient && currentUser){
+    sbClient.from('user_settings').upsert({
+      user_id: currentUser.id, key: 'memorial_'+cat,
+      value: {is:!!is, date:(is&&date)||null}, updated_at: new Date().toISOString()
+    }, {onConflict:'user_id,key'}).then(({error})=>{ if(error) console.warn('기억하기 저장 오류:', error); })
+      .catch(e=>console.warn('기억하기 저장 reject:', e));
+  }
+}
+async function loadMemorials(){
+  if(!sbClient || !currentUser || !state.cats.length) return;
+  try{
+    const keys = state.cats.map(c=>'memorial_'+c);
+    const {data} = await sbClient.from('user_settings').select('key,value')
+      .eq('user_id', currentUser.id).in('key', keys);
+    (data||[]).forEach(row=>{
+      const cat = row.key.replace('memorial_','');
+      try{
+        if(row.value && row.value.is) localStorage.setItem('memorial_v1_'+cat, JSON.stringify({is:true, date:row.value.date||null}));
+        else localStorage.removeItem('memorial_v1_'+cat);
+      }catch(e){}
+    });
+    _memorialAutoSwitch();
+    renderCatBar();
+  }catch(e){ console.warn('기억하기 로드 오류:', e); }
+}
+// 기본 선택 고양이가 추모 상태면 다른 아이로 자동 변경 (P0 — 앱을 열 때마다 떠난 아이 화면이 먼저 뜨지 않게)
+function _memorialAutoSwitch(){
+  if(!isMemorial(state.activeCat)) return;
+  const alt = state.cats.find(c=>!isMemorial(c));
+  if(alt && alt!==state.activeCat){ try{ switchCat(alt); }catch(e){ state.activeCat=alt; } }
+}
+function memorializeCat(cat){
+  if(!confirm('기억하기로 전환하면 알림과 일일 기록 안내가 멈춥니다.\n기록은 그대로 보관됩니다.')) return;
+  const dEl = document.getElementById('cpMemorialDate');
+  setMemorialState(cat, true, (dEl&&dEl.value)||null);
+  if(state.activeCat===cat){
+    const alt = state.cats.find(c=>c!==cat && !isMemorial(c));
+    if(alt) switchCat(alt);
+  }
+  renderCatBar();
+  try{ renderMemorialBox(cat); }catch(e){}
+  try{ renderDailySummary(); }catch(e){}
+  try{ renderTileGrid(state.activeCat); }catch(e){}
+  try{ renderVetVisitBanner(); renderVetTileStatus(); }catch(e){}
+  toast('기억하기로 전환했어요. 기록은 그대로 보관돼요.', '#1D9E75');
+}
+function unmemorializeCat(cat){
+  setMemorialState(cat, false, null);
+  renderCatBar();
+  try{ renderMemorialBox(cat); }catch(e){}
+  try{ renderDailySummary(); }catch(e){}
+  try{ renderTileGrid(state.activeCat); }catch(e){}
+  try{ renderVetVisitBanner(); renderVetTileStatus(); }catch(e){}
+  toast('기억하기를 해제했어요. 알림과 기록 흐름이 원래대로 돌아왔어요.', '#1D9E75');
+}
+function saveMemorialDate(cat){
+  if(!isMemorial(cat)) return;
+  const dEl = document.getElementById('cpMemorialDate');
+  setMemorialState(cat, true, (dEl&&dEl.value)||null);
+}
+/* ── 고양이 칩 순서 (v0.7.72, 스펙 A) — state.cats 배열 순서가 곧 칩 순서.
+   localStorage catOrder_v1 + user_settings cat_order 로 sync 재구축(생성일 순) 후에도 유지.
+   표시는 renderCatBar에서 곁의 아이 먼저 + 그룹 내 이 순서. 첫 번째(비추모) 아이가 로그인 시 기본 선택 */
+function getSavedCatOrder(){
+  try{ const a=JSON.parse(localStorage.getItem('catOrder_v1')||'[]'); return Array.isArray(a)?a:[]; }catch(e){ return []; }
+}
+function applyCatOrder(){
+  const ord = getSavedCatOrder();
+  if(!ord.length) return;
+  state.cats.sort((a,b)=>{ const ia=ord.indexOf(a), ib=ord.indexOf(b); return (ia===-1?999:ia)-(ib===-1?999:ib); });
+}
+function saveCatOrder(){
+  try{ localStorage.setItem('catOrder_v1', JSON.stringify(state.cats)); }catch(e){}
+  if(sbClient && currentUser){
+    sbClient.from('user_settings').upsert({
+      user_id: currentUser.id, key: 'cat_order',
+      value: {list: state.cats.slice()}, updated_at: new Date().toISOString()
+    }, {onConflict:'user_id,key'}).then(({error})=>{ if(error) console.warn('칩 순서 저장 오류:', error); })
+      .catch(e=>console.warn('칩 순서 저장 reject:', e));
+  }
+}
+async function loadCatOrder(){
+  if(!sbClient || !currentUser) return;
+  try{
+    const {data} = await sbClient.from('user_settings').select('value')
+      .eq('user_id', currentUser.id).eq('key','cat_order');
+    const list = data && data[0] && data[0].value && Array.isArray(data[0].value.list) ? data[0].value.list : null;
+    if(list){
+      try{ localStorage.setItem('catOrder_v1', JSON.stringify(list)); }catch(e){}
+      applyCatOrder();
+      renderCatBar();
+    }
+  }catch(e){ console.warn('칩 순서 로드 오류:', e); }
+}
+function moveCatOrder(cat, dir){
+  const i = state.cats.indexOf(cat), j = i + dir;
+  if(i < 0 || j < 0 || j >= state.cats.length) return;
+  const t = state.cats[i]; state.cats[i] = state.cats[j]; state.cats[j] = t;
+  saveS();
+  saveCatOrder();
+  renderCatBar();
+  try{ renderCatOrderBox(); }catch(e){}
+}
+// 프로필 화면의 순서 편집 카드 — 고양이 2마리 이상일 때만
+function renderCatOrderBox(){
+  const box = document.getElementById('cpCatOrderBox');
+  if(!box) return;
+  if(state.cats.length < 2){ box.innerHTML=''; return; }
+  const btnS = 'padding:4px 10px;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;background:var(--cm-surface);border:1px solid var(--cm-line);color:var(--cm-ink-soft)';
+  box.innerHTML =
+    '<div style="font-size:11px;font-weight:500;color:var(--text2);margin-bottom:.4rem">고양이 순서</div>'
+    + '<div style="background:var(--cm-surface-2);border:1px solid var(--cm-line);border-radius:13px;padding:11px 13px;margin-bottom:1rem">'
+    + state.cats.map((c,i)=>{
+        const mem = isMemorial(c);
+        const esc = c.replace(/'/g,"\\'");
+        return '<div style="display:flex;align-items:center;gap:8px;padding:5px 0'+(i<state.cats.length-1?';border-bottom:0.5px solid var(--cm-line)':'')+'">'
+          + '<span style="flex:1;font-size:13px;color:var(--cm-ink)'+(mem?';opacity:.55':'')+'">'+c+(mem?' <span style="font-size:10.5px;color:var(--cm-faint)">기억</span>':'')+'</span>'
+          + '<button type="button" onclick="moveCatOrder(\''+esc+'\',-1)" '+(i===0?'disabled style="'+btnS+';opacity:.3;cursor:default"':'style="'+btnS+'"')+'>위</button>'
+          + '<button type="button" onclick="moveCatOrder(\''+esc+'\',1)" '+(i===state.cats.length-1?'disabled style="'+btnS+';opacity:.3;cursor:default"':'style="'+btnS+'"')+'>아래</button>'
+          + '</div>';
+      }).join('')
+    + '<div style="font-size:11px;color:var(--cm-faint);margin-top:8px;line-height:1.5">첫 번째 아이가 로그인 시 기본으로 선택돼요. 기억 속 아이는 칩에서 뒤쪽에 표시돼요.</div>'
+    + '</div>';
+}
+// 프로필 화면의 기억하기 카드 — 떠난 날짜는 선택 입력(강제하지 않음)
+function renderMemorialBox(cat){
+  const box = document.getElementById('cpMemorialBox');
+  if(!box) return;
+  const m = getMemorial(cat);
+  const lbl = 'font-size:11px;font-weight:500;color:var(--text2);margin-bottom:.4rem';
+  if(!m){
+    box.innerHTML =
+      '<div style="'+lbl+'">기억하기</div>'
+      + '<div style="background:var(--cm-surface-2);border:1px solid var(--cm-line);border-radius:13px;padding:13px 14px;margin-bottom:1rem">'
+      + '<div style="font-size:12px;color:var(--cm-ink-soft);line-height:1.65;margin-bottom:10px">아이가 세상을 떠났을 때, 기록은 그대로 두고 알림과 일일 기록 안내만 멈출 수 있어요. 언제든 되돌릴 수 있어요.</div>'
+      + '<button type="button" onclick="memorializeCat(\''+cat.replace(/'/g,"\\'")+'\')" style="padding:9px 16px;border-radius:11px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:none;border:1px solid var(--cm-line);color:var(--cm-ink-soft)">기억하기로 전환</button>'
+      + '</div>';
+  } else {
+    box.innerHTML =
+      '<div style="'+lbl+'">기억하기</div>'
+      + '<div style="background:var(--cm-surface-2);border:1px solid var(--cm-line);border-radius:13px;padding:13px 14px;margin-bottom:1rem">'
+      + '<div style="font-size:13px;font-weight:700;color:var(--cm-ink);margin-bottom:6px">기억 속의 '+cat+'</div>'
+      + '<div style="font-size:12px;color:var(--cm-ink-soft);line-height:1.65;margin-bottom:10px">알림과 일일 기록 안내가 멈춰 있어요. 지난 기록·그래프·리포트는 계속 볼 수 있어요.</div>'
+      + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">'
+      + '<span style="font-size:12px;color:var(--cm-faint)">떠난 날 (선택)</span>'
+      + '<input type="date" id="cpMemorialDate" value="'+(m.date||'')+'" onchange="saveMemorialDate(\''+cat.replace(/'/g,"\\'")+'\')" style="padding:7px 10px;border:1px solid var(--cm-line);border-radius:9px;font-size:13px;background:var(--cm-surface);color:var(--cm-ink);font-family:inherit">'
+      + '</div>'
+      + '<button type="button" onclick="unmemorializeCat(\''+cat.replace(/'/g,"\\'")+'\')" style="padding:9px 16px;border-radius:11px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:none;border:1px solid var(--cm-line);color:var(--cm-ink-soft)">되돌리기</button>'
+      + '</div>';
+  }
+}
+
 /* 고양이 바 */
 function renderCatBar(){
   // 슬롯 방식 업데이트 - 버튼은 HTML에 고정, 내용만 JS로 채움
+  // 표시 순서: 곁에 있는 아이 먼저, 기억 속 아이는 뒤쪽 (v0.7.72 — 데이터 순서는 유지, 표시만)
   const MAX_SLOTS = 4;
+  const _ordered = state.cats.filter(c=>!isMemorial(c)).concat(state.cats.filter(c=>isMemorial(c)));
   for(let i=0;i<MAX_SLOTS;i++){
     const slot=document.getElementById('catSlot'+i);
     const nameBtn=document.getElementById('catName'+i);
     if(!slot||!nameBtn)continue;
-    const c=state.cats[i];
+    const c=_ordered[i];
     if(c){
       nameBtn.textContent=c;
       nameBtn.dataset.cat=c;
+      nameBtn.style.opacity = isMemorial(c) ? '0.55' : '';
       document.getElementById('catSettings'+i).style.display='';
       document.getElementById('catDel'+i).style.display='';
       slot.style.display='flex';
@@ -2367,6 +2540,8 @@ function renderCatBar(){
   if(addSlotEl2) addSlotEl2.appendChild(wrap);
   else bar.appendChild(wrap);
 }
+try{ applyCatOrder(); }catch(e){}         // 부팅 시 저장된 칩 순서 적용
+try{ _memorialAutoSwitch(); }catch(e){}   // 부팅 시 기본 선택이 추모 상태면 다른 아이로 (P0)
 renderCatBar();
 
 // 페이지 로드 시 body 스타일 초기화 (iOS 모달 버· 방지)
@@ -3322,7 +3497,8 @@ window.switchCat = function(c) {
 };
 
 window.deleteCat = function(c) {
-  if(!confirm(c+'를 삭제할까요? 모든 기록이 삭제돼요.'))return;
+  // 삭제로 유도하지 않기 (스펙 금지사항 3) — 기록 보존 대안(기억하기)을 확인 문구에서 안내
+  if(!confirm(c+'를 삭제할까요? 모든 기록이 삭제돼요.\n\n기록을 남기고 알림만 멈추려면, 프로필 화면의 "기억하기"를 사용할 수 있어요.'))return;
   const delProfile=(state.catProfiles||{})[c];
   state.cats=state.cats.filter(x=>x!==c);
   if(state.records[c])delete state.records[c];
@@ -4683,6 +4859,14 @@ function renderDailySummary(catName) {
       '모든 수치가 정상 범위예요 😊')});
   }
 
+  // 기억하기 상태 (v0.7.72 P0): 관찰 경고·미기록 안내·순응도·수분 목표 등 모든 알림을
+  // 담담한 안내 한 장으로 대체. 히어로 슬라이더도 이 배열을 쓰므로 여기서 함께 중지됨
+  if(isMemorial(cat)){
+    feedbacks.length = 0;
+    feedbacks.push({priority:10, ...makeFeedback('info','', '기억 속의 '+cat,
+      '알림과 일일 기록 안내가 멈춰 있어요. 지난 기록·그래프·리포트는 계속 볼 수 있어요.')});
+    if(waterBarEl) waterBarEl.style.display = 'none';
+  }
   // 피드백 우선순위 정렬 후 표시
   feedbacks.sort((a,b) => a.priority - b.priority);
   if(feedbackEl) {
@@ -8532,6 +8716,7 @@ function deleteUrine(idx, date) {
 function renderDiureticAlert(date) {
   const alertEl = document.getElementById('diureticAlert');
   if(!alertEl) return;
+  if(isMemorial(state.activeCat)){ alertEl.style.display='none'; return; }   // 기억하기: 비상이뇨제 알림 중지 (v0.7.72)
   const rec = getRec(state.activeCat, date || today());
   const urineArr = rec.urine || [];
 
@@ -12001,6 +12186,7 @@ function renderVetVisitBanner(){
   const el = document.getElementById('vetVisitBanner');
   if(!el) return;
   const cat = state.activeCat;
+  if(cat && isMemorial(cat)){ el.style.display='none'; return; }   // 기억하기: 진료 D-3 알림 중지 (v0.7.72)
   const nv = cat ? getNextVisit(cat) : null;
   if(!nv){ el.style.display = 'none'; return; }
   try{ if(localStorage.getItem('vetBannerDismiss_'+today()) === '1'){ el.style.display = 'none'; return; } }catch(e){}
@@ -12396,6 +12582,7 @@ function renderVetTileStatus(){
   const el = document.getElementById('tileVetStatus');
   if(!el) return;
   const cat = state.activeCat;
+  if(cat && isMemorial(cat)){ el.textContent='—'; el.dataset.tone='muted'; return; }   // 기억하기: D-N 알림 톤 중지
   const nv = cat ? getNextVisit(cat) : null;
   let diff = null;
   if(nv) diff = Math.round((new Date(nv+'T00:00:00') - new Date(today()+'T00:00:00')) / 86400000);
@@ -13868,6 +14055,8 @@ function openCatProfile(cat, initialTab) {
     };
   }
   document.getElementById('cpBirth').value=profile.birth||'';
+  try{ renderMemorialBox(cat); }catch(e){}
+  try{ renderCatOrderBox(); }catch(e){}
   document.getElementById('cpGender').value=profile.gender||'';
   document.getElementById('cpNeuter').value=profile.neuter||'';
   document.getElementById('cpActivity').value=profile.activity||'';
@@ -14853,7 +15042,8 @@ async function syncFromDB() {
     if(cats && cats.length > 0) {
       // DB 기준으로 완전 덮어씌우기 (로컬 중복 제거)
       state.cats = [...new Set(cats.map(c => c.name).filter(n => n && n.trim() !== ''))]; // 중복 제거 + 이름 없는 고양이 필터링
-      state.activeCat = state.cats[0];
+      try{ applyCatOrder(); }catch(e){}                                    // 저장된 칩 순서 적용 (v0.7.72)
+      state.activeCat = state.cats.find(c=>!isMemorial(c)) || state.cats[0]; // 기억 속 아이는 로그인 기본 선택에서 제외 (P0)
       state.catProfiles = {};
       cats.forEach(c => {
         state.catProfiles[c.name] = {
@@ -14922,6 +15112,8 @@ async function syncFromDB() {
       _tw('tile_config',    loadTileConfigFromDB(state.activeCat).catch(e => console.warn('타일설정 로드 오류:', e))),
       _tw('food_sync',      syncFoodDataFromDB(state.activeCat).catch(e => console.warn('사료 DB 로드 오류:', e))),
       _tw('next_visit',     loadNextVisits().catch(e => console.warn('nextVisit 로드 오류:', e))),
+      _tw('memorial',       loadMemorials().catch(e => console.warn('memorial 로드 오류:', e))),
+      _tw('cat_order',      loadCatOrder().catch(e => console.warn('catOrder 로드 오류:', e))),
       _tw('vet_questions',  loadVetQuestions().catch(e => console.warn('vetQuestions 로드 오류:', e))),
       _tw('last_inputs',    loadLastInputs().catch(e => console.warn('lastInputs 로드 오류:', e))),
     ]);
@@ -15386,6 +15578,21 @@ function renderTileGrid(cat) {
   var grid = document.getElementById('dailyTileGrid');
   if(!grid) return;
   var c = cat || state.activeCat;
+  // 기억하기 (v0.7.72): 일일 기록 입력 타일을 매일 흐름에서 제외 — 지난 기록·그래프·리포트 탭은 그대로
+  var _memNote = document.getElementById('memorialTileNotice');
+  if(isMemorial(c)){
+    grid.querySelectorAll('.tile[data-tile]').forEach(function(t){ t.style.display='none'; });
+    if(!_memNote){
+      _memNote = document.createElement('div');
+      _memNote.id = 'memorialTileNotice';
+      _memNote.style.cssText = 'grid-column:1/-1;padding:14px 15px;border-radius:13px;background:var(--cm-surface-2);border:1px solid var(--cm-line);font-size:12.5px;color:var(--cm-ink-soft);line-height:1.65';
+      grid.appendChild(_memNote);
+    }
+    _memNote.textContent = c+'의 기록은 그대로 보관돼 있어요. 기록·그래프 탭과 병원 리포트에서 계속 볼 수 있어요.';
+    _memNote.style.display = '';
+    return;
+  }
+  if(_memNote) _memNote.style.display = 'none';
   var cfg = loadTileConfig(c);
   var order = cfg.order.slice();
   var hidden = cfg.hidden || [];
@@ -15962,6 +16169,8 @@ async function uploadFoodDataToDB(cat) {
   </div>
   <div class="ig" style="margin-bottom:1rem"><label>메모</label><input type="text" id="cpMemo" placeholder="특이사항, 알레르기 등"></div>
 
+  <div id="cpMemorialBox"></div>
+  <div id="cpCatOrderBox"></div>
   <div id="cardOrderUI" style="display:none"></div>
   <div style="position:sticky;bottom:0;padding:12px 0 20px;background:var(--cm-bg-soft);border-top:1px solid var(--cm-line);margin-top:8px">
     <button onclick="saveCatProfile()" class="cm-btn cm-btn--block">저장</button>
