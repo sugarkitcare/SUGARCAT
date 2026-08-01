@@ -652,7 +652,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.65</span>
+      <span class="cm-beta">v0.7.66</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -732,7 +732,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
         </svg>
         <div class="cmb-ring__c">
           <div class="cmb-ring__v" id="heroWaterMl">0</div>
-          <div class="cmb-ring__l">음수량 ml</div>
+          <div class="cmb-ring__l">총 수분 ml</div>
           <div class="cmb-ring__g" id="heroWaterTarget">목표 —</div>
         </div>
       </div>
@@ -4341,19 +4341,19 @@ function renderDailySummary(catName) {
   // 3. CKD 피드백
   // ════════════════════════════════
   if(!_admitted && hasCKD) {
-    // 음수량 목표 vs 실제
+    // 수분 목표 vs 실제 — 총 수분(자발+강급+사료수분) 기준, 피하수액 제외 (v0.7.66)
     const latestWt = getLatestWeight(cat);
-    const todayWater = (rec.water||[]).reduce((a,b)=>a+b.ml, 0);
+    const todayWater = waterBreakdown(cat, d).oral;
     if(latestWt) {
       const minGoal = Math.round(latestWt * 40);
       const maxGoal = Math.round(latestWt * 60);
       const pct = Math.round(todayWater / minGoal * 100);
       if(todayWater < minGoal * 0.5) {
-        feedbacks.push({priority:2, ...makeFeedback('danger','🚨','음수량이 많이 부족해요',
-          `${cat} 체중 ${latestWt}kg 기준 ${minGoal}~${maxGoal}ml 필요<br>오늘 ${todayWater}ml (목표의 ${pct}%) — ${minGoal-todayWater}ml 더 필요해요`)});
+        feedbacks.push({priority:2, ...makeFeedback('danger','🚨','수분 섭취가 많이 부족해요',
+          `${cat} 체중 ${latestWt}kg 기준 ${minGoal}~${maxGoal}ml 필요<br>오늘 총 수분 ${todayWater}ml (목표의 ${pct}%) — ${minGoal-todayWater}ml 더 필요해요`)});
       } else if(todayWater < minGoal * 0.7) {
-        feedbacks.push({priority:3, ...makeFeedback('warn','⚠️','음수량이 부족해요',
-          `${cat} 체중 ${latestWt}kg 기준 ${minGoal}~${maxGoal}ml 필요<br>오늘 ${todayWater}ml (목표의 ${pct}%) — ${minGoal-todayWater}ml 더 필요해요`)});
+        feedbacks.push({priority:3, ...makeFeedback('warn','⚠️','수분 섭취가 부족해요',
+          `${cat} 체중 ${latestWt}kg 기준 ${minGoal}~${maxGoal}ml 필요<br>오늘 총 수분 ${todayWater}ml (목표의 ${pct}%) — ${minGoal-todayWater}ml 더 필요해요`)});
       }
     }
 
@@ -4471,25 +4471,33 @@ function renderDailySummary(catName) {
   // 4. 음수량 목표 진행바 (체중 있을 때)
   // ════════════════════════════════
   const latestWt2 = getLatestWeight(cat);
-  const todayFluidMl = (rec.routines||[]).filter(r=>r.ml&&r.ml>0).reduce((a,r)=>a+r.ml,0);
-  const todayWetMl = parseFloat(((rec.meals||[]).filter(m=>m.moisture!=null&&m.moisture>=60).reduce((a,m)=>a+(m.amt||0)*m.moisture/100,0)).toFixed(1));
-  const todayWaterTotal = (rec.water||[]).reduce((a,b)=>a+b.ml,0) + todayFluidMl + todayWetMl;
+  // 총 수분(경구) = 자발 + 강급 + 습식사료 수분. 피하수액은 경구 섭취가 아니므로 합산 제외, 별도 표기 (v0.7.66)
+  const _wbDay = waterBreakdown(cat, d);
+  const todayWaterTotal = _wbDay.oral;
   if(waterBarEl) {
     if(latestWt2) {
       const minGoal = Math.round(latestWt2 * 40);
       const maxGoal = Math.round(latestWt2 * 60);
       const pct = Math.min(100, Math.round(todayWaterTotal / minGoal * 100));
       const barColor = pct >= 100 ? 'var(--teal)' : pct >= 70 ? 'var(--blue)' : pct >= 50 ? 'var(--amber)' : 'var(--coral)';
-      const msg = pct >= 100 ? '✅ 오늘 목표 달성했어요!' : pct >= 70 ? `💧 거의 다 왔어요! ${minGoal-todayWaterTotal}ml 더 필요해요` : pct >= 50 ? `⚠️ 목표량의 절반 수준이에요. ${minGoal-todayWaterTotal}ml 더 필요해요` : `🚨 음수량이 많이 부족해요. ${minGoal-todayWaterTotal}ml 더 필요해요`;
+      const msg = pct >= 100 ? '✅ 오늘 목표 달성했어요!' : pct >= 70 ? `💧 거의 다 왔어요! ${minGoal-todayWaterTotal}ml 더 필요해요` : pct >= 50 ? `⚠️ 목표량의 절반 수준이에요. ${minGoal-todayWaterTotal}ml 더 필요해요` : `🚨 수분 섭취가 많이 부족해요. ${minGoal-todayWaterTotal}ml 더 필요해요`;
+      const bkParts = [`자발 ${_wbDay.nat}ml`];
+      if(_wbDay.tube > 0) bkParts.push(`강급 ${_wbDay.tube}ml`);
+      if(_wbDay.wet > 0) bkParts.push(`사료 ${_wbDay.wet}ml`);
+      else if(_wbDay.wetUnknown) bkParts.push('사료 수분 미포함');
+      let bkLine = bkParts.join(' + ');
+      if(_wbDay.wet > 0 && _wbDay.wetUnknown) bkLine += ' (일부 사료 수분 미포함)';
+      if(_wbDay.fluid > 0) bkLine += ` · 피하수액 ${_wbDay.fluid}ml 별도`;
       waterBarEl.style.display = 'block';
       waterBarEl.innerHTML = `
         <div style="font-size:11px;color:var(--text2);margin-bottom:3px">
-          💧 음수 목표 <span style="color:var(--text3)">${cat} ${latestWt2}kg 기준 ${minGoal}~${maxGoal}ml</span>
+          💧 수분 목표 <span style="color:var(--text3)">${cat} ${latestWt2}kg 기준 ${minGoal}~${maxGoal}ml</span>
         </div>
         <div style="background:var(--bg2);border-radius:6px;height:8px;overflow:hidden;margin-bottom:4px">
           <div style="width:${pct}%;height:100%;background:${barColor};border-radius:6px;transition:width .3s"></div>
         </div>
-        <div style="font-size:11px;color:${barColor};font-weight:600">${todayWaterTotal}ml / ${minGoal}ml ${msg}</div>`;
+        <div style="font-size:11px;color:${barColor};font-weight:600">${todayWaterTotal}ml / ${minGoal}ml ${msg}</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:2px">${bkLine}</div>`;
     } else {
       waterBarEl.style.display = 'none';
     }
@@ -4702,8 +4710,8 @@ function renderDailySummary(catName) {
     if(lastIns) parts.push(`인슐린 <span style="font-weight:600">${lastIns.dose}U</span>`);
     const lastWt = (rec.weights||[]).slice(-1)[0];
     if(lastWt) parts.push(`체중 <span style="font-weight:600">${lastWt.weight}kg</span>`);
-    const todayWaterTotalLine = (rec.water||[]).reduce((a,b)=>a+b.ml,0);
-    if(todayWaterTotalLine>0) parts.push(`음수 <span style="font-weight:600">${todayWaterTotalLine}ml</span>`);
+    const _wbLine = waterBreakdown(cat, d);
+    if(_wbLine.oral>0) parts.push(`수분 <span style="font-weight:600">${_wbLine.oral}ml</span>`);
     metricLineEl.innerHTML = parts.length ? parts.join(' &nbsp;·&nbsp; ') : '';
   }
 
@@ -4744,7 +4752,7 @@ function renderDailySummary(catName) {
     items.push({ts:last.ts, time:last.time, html:`🫁 <span style="color:${rrColor};font-weight:600">${last.rr}회/분</span> <span style="color:var(--text3);font-size:11px">${rrSLbl} ${last.time}</span>`});
   }
   (rec.water||[]).forEach(r => {
-    items.push({ts:r.ts, time:r.time, html:`💧 <span style="font-weight:600">+${r.ml}ml</span> <span style="color:var(--text3);font-size:11px">${r.time}</span>`});
+    items.push({ts:r.ts, time:r.time, html:`💧 ${r.src==='tube'?'강급 ':''}<span style="font-weight:600">+${r.ml}ml</span> <span style="color:var(--text3);font-size:11px">${r.time}</span>`});
   });
   (rec.urine||[]).forEach(r => {
     const uc = r.amount==='혈뇨'?'var(--coral)':r.amount==='핍뇨'?'var(--amber)':'var(--teal)';
@@ -4895,7 +4903,7 @@ function renderDailySummary(catName) {
   try {
     var tRec=getRec(cat,d);
     var tw=document.getElementById('tileWaterStatus');
-    if(tw){var twt=(tRec.water||[]).reduce(function(a,b){return a+b.ml;},0);if(twt>0){tw.textContent=twt+'ml';tw.dataset.tone='good';_tit('water','good');}else{tw.textContent='기록 전';tw.dataset.tone='muted';_tit('water','muted');}}
+    if(tw){var twt=waterBreakdown(cat,d).oral;if(twt>0){tw.textContent=twt+'ml';tw.dataset.tone='good';_tit('water','good');}else{tw.textContent='기록 전';tw.dataset.tone='muted';_tit('water','muted');}}
     var tex=document.getElementById('tileExcretaStatus');
     if(tex){var tuc=(tRec.urine||[]).length,tpc=(tRec.poop||[]).length;if(tuc||tpc){tex.textContent='소변 '+tuc+'회 · 대변 '+tpc+'회';tex.dataset.tone='good';_tit('excreta','good');}else{tex.textContent='기록 전';tex.dataset.tone='muted';_tit('excreta','muted');}}
     // 구토 타일 아이콘은 카테고리 정체성 — 기록 심각도와 무관하게 항상 기본(딥그린) 고정.
@@ -5337,7 +5345,7 @@ function renderHistory(){
     else if(item.type==='wt'){dot='ld-wt';txt=`[체중] ${d.time} | ${d.weight}kg${d.note?' · '+d.note:''}`;}
     else if(item.type==='routine'){dot='ld-m';const _rNm=(d.items||[]).join(', ')+(d.slot?` (예정 ${d.slot})`:'');const _rTxt=(d.ml&&d.ml>0)?`${_rNm} ${d.ml}ml${d.fluidType?' · '+d.fluidType:''}`:_rNm;txt=`[투약·루틴] ${d.time} | ${_rTxt}${d.memo?' · '+d.memo:''}`;}
     else if(item.type==='rr'){const _rt=srrTier(d.rr);dot=(_rt==='emerg'||_rt==='obs')?'ld-d':_rt==='warn'?'ld-w':'ld-n';const sLbl=d.stateLabel||'';txt=`[호흡수] ${d.time} | ${d.rr}회/분 ${sLbl?'('+sLbl+')':''}${_rt==='emerg'?' ⚠️응급':_rt==='obs'?' 관찰↑':_rt==='warn'?' △주의':''}`;}
-    else if(item.type==='water'){dot='ld-n';txt=`[음수] ${d.time} | ${d.ml}ml`;}
+    else if(item.type==='water'){dot='ld-n';txt=`[음수${d.src==='tube'?'·강급':''}] ${d.time} | ${d.ml}ml`;}
     else if(item.type==='urine'){dot=d.amount==='혈뇨'?'ld-d':d.amount==='핍뇨'||d.amount==='소량'?'ld-w':'ld-n';txt=`[소변] ${d.time} | ${d.amount}`;}
     else if(item.type==='poop'){dot=d.type==='혈변'||d.type==='설사'?'ld-d':d.type==='무름'||d.type==='무변'?'ld-w':'ld-n';txt=`[대변] ${d.time} | ${d.type}`;}
     else if(item.type==='vomit'){dot=_vomitDanger(d)?'ld-d':'ld-w';txt=`[구토] ${d.time} | ${_vomitLabel(d)}${d.memo?' ('+d.memo+')':''}`;}
@@ -5629,7 +5637,8 @@ function renderGraphs(){
      fn:d=>{const r=getRec(state.activeCat,d);const arr=(r.rr||[]).map(x=>x.rr).filter(x=>x>0);return arr.length?Math.min(...arr):null}, // ACVIM 수면중 최솟값
      fnByState:(d,st)=>{const r=getRec(state.activeCat,d);const arr=(r.rr||[]).filter(x=>x.state===st).map(x=>x.rr).filter(x=>x>0);return arr.length?Math.min(...arr):null}},
     {k:'water',label:`음수량 (ml) — ${periodLabel}`,type:'bar',stackedWater:true,
-     fnNatural:d=>{const r=getRec(state.activeCat,d);const v=(r.water||[]).reduce((a,b)=>a+b.ml,0);return v>0?v:null},
+     fnNatural:d=>{const r=getRec(state.activeCat,d);const v=(r.water||[]).filter(w=>w.src!=='tube').reduce((a,b)=>a+b.ml,0);return v>0?v:null},
+     fnTube:d=>{const r=getRec(state.activeCat,d);const v=(r.water||[]).filter(w=>w.src==='tube').reduce((a,b)=>a+b.ml,0);return v>0?v:null},
      fnFluid:d=>{const r=getRec(state.activeCat,d);const v=(r.routines||[]).filter(x=>x.ml&&x.ml>0).reduce((a,x)=>a+x.ml,0);return v>0?v:null},
      fnWet:d=>{const r=getRec(state.activeCat,d);const v=(r.meals||[]).filter(m=>m.moisture!=null&&m.moisture>=60).reduce((a,m)=>a+(m.amt||0)*m.moisture/100,0);return v>0?parseFloat(v.toFixed(1)):null}},
   ];
@@ -5706,26 +5715,31 @@ function renderGraphs(){
       return;
     }
 
-    // water: 피하수액 + 습식수분 + 자발음수 stacked bar (3색)
+    // water: 피하수액 + 습식수분 + 강급수분 + 자발음수 stacked bar (4색, v0.7.66)
     if(def.stackedWater) {
       const natData=days.map(def.fnNatural);
+      const tubeData=days.map(def.fnTube);
       const fluidData=days.map(def.fnFluid);
       const wetData=days.map(def.fnWet);
-      const hasAny=natData.some(v=>v!==null)||fluidData.some(v=>v!==null)||wetData.some(v=>v!==null);
+      const hasAny=natData.some(v=>v!==null)||tubeData.some(v=>v!==null)||fluidData.some(v=>v!==null)||wetData.some(v=>v!==null);
       const card=document.createElement('div');card.className='cm-card cm-card--flat';
       const _hd_w='<div class="cm-sechead" style="margin-bottom:.5rem"><div class="cm-ic cm-ic--sm">'+_gcIcons.water+'</div><div><div class="cm-sechead__t">음수량 <span style="font-size:11px;font-weight:500;color:var(--cm-faint)">ml</span></div></div><div class="cm-sechead__r" style="font-size:12px;color:var(--cm-faint)">'+periodLabel+'</div></div>';
       if(!hasAny){card.innerHTML=_hd_w+'<div style="text-align:center;padding:1.5rem;color:var(--cm-faint);font-size:12px">아직 기록이 없어요<br><span style="font-size:11px">오늘 기록 탭에서 입력하면 그래프가 그려져요</span></div>';wrap.appendChild(card);return;}
       const hasFluid=fluidData.some(v=>v!==null);
       const hasWet=wetData.some(v=>v!==null);
-      const leg='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:.4rem;font-size:10px;color:var(--cm-faint)"><span style="color:#235B43;font-weight:600"><span style="display:inline-block;width:12px;height:8px;background:#235B43;border-radius:2px;vertical-align:middle;margin-right:3px"></span>자발음수</span>'+(hasWet?'<span style="color:#4A8B70;font-weight:600"><span style="display:inline-block;width:12px;height:8px;background:#4A8B70;border-radius:2px;vertical-align:middle;margin-right:3px"></span>습식수분</span>':'')+(hasFluid?'<span style="color:#6BAF8B;font-weight:600"><span style="display:inline-block;width:12px;height:8px;background:#6BAF8B;border-radius:2px;vertical-align:middle;margin-right:3px"></span>피하수액</span>':'')+'</div>';
+      const hasTube=tubeData.some(v=>v!==null);
+      const _lgChip=(c,t)=>'<span style="color:'+c+';font-weight:600"><span style="display:inline-block;width:12px;height:8px;background:'+c+';border-radius:2px;vertical-align:middle;margin-right:3px"></span>'+t+'</span>';
+      const leg='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:.4rem;font-size:10px;color:var(--cm-faint)">'+_lgChip('#235B43','자발음수')+(hasTube?_lgChip('#B8823B','강급수분'):'')+(hasWet?_lgChip('#4A8B70','습식수분'):'')+(hasFluid?_lgChip('#6BAF8B','피하수액'):'')+'</div>';
       card.innerHTML=_hd_w+leg+'<div class="chart-wrap" style="height:160px"><canvas id="gc_water"></canvas></div>';
       wrap.appendChild(card);
       const nat0=natData.map(v=>v||0);
+      const tube0=tubeData.map(v=>v||0);
       const flu0=fluidData.map(v=>v||0);
       const wet0=wetData.map(v=>v||0);
       const datasets=[
         {label:'피하수액',data:flu0,backgroundColor:'rgba(107,175,139,0.75)',borderWidth:0},
         {label:'습식수분',data:wet0,backgroundColor:'rgba(74,139,112,0.75)',borderWidth:0},
+        {label:'강급수분',data:tube0,backgroundColor:'rgba(184,130,59,0.75)',borderWidth:0},
         {label:'자발음수',data:nat0,backgroundColor:'rgba(35,91,67,0.75)',borderWidth:0},
       ];
       const inst=new Chart(document.getElementById('gc_water'),{
@@ -8072,6 +8086,29 @@ function rxvDeleteVersion(vi){
 
 
 /* ── 수분 밸런스 (음수량 + 소변) ── */
+/* 하루 수분 섭취 분리 집계 (v0.7.66) — 총 수분(경구) = 자발음수 + 강급 수분 + 습식사료 수분.
+   피하수액(fluid)은 경구 섭취와 성격이 달라 합산하지 않고 별도 필드로만 반환.
+   습식 수분은 moisture(수분%) 있는 사료만 계산(추정 금지) — moisture 미상 사료 급여 시 wetUnknown.
+   water[].src: 'tube'=강급(주사기), 없으면 자발(기존 데이터 하위호환). */
+function waterBreakdown(cat, date) {
+  const rec = getRec(cat, date);
+  let nat = 0, tube = 0;
+  (rec.water||[]).forEach(w => { if(w.src === 'tube') tube += (w.ml||0); else nat += (w.ml||0); });
+  const wet = parseFloat(((rec.meals||[]).filter(m=>m.moisture!=null&&m.moisture>=60).reduce((a,m)=>a+(m.amt||0)*m.moisture/100,0)).toFixed(1));
+  const wetUnknown = (rec.meals||[]).some(m=>(m.amt||0)>0 && m.moisture==null);
+  const fluid = (rec.routines||[]).filter(r=>r.ml&&r.ml>0).reduce((a,r)=>a+r.ml,0);
+  const oral = Math.round((nat + tube + wet)*10)/10;
+  return { nat, tube, wet, wetUnknown, fluid, oral };
+}
+var _waterSrc = 'nat';   // 음수 기록 출처 선택 상태 — 'nat' 자발음수 | 'tube' 강급(주사기)
+window.setWaterSrc = function(src){
+  _waterSrc = (src === 'tube') ? 'tube' : 'nat';
+  var on  = 'flex:1;padding:9px 0;border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid var(--cm-green-700);background:var(--cm-green-700);color:#fff';
+  var off = 'flex:1;padding:9px 0;border-radius:11px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;border:1px solid var(--cm-line);background:var(--cm-surface-2);color:var(--cm-faint)';
+  var bn = document.getElementById('waterSrcNat'), bt = document.getElementById('waterSrcTube');
+  if(bn) bn.style.cssText = _waterSrc==='nat' ? on : off;
+  if(bt) bt.style.cssText = _waterSrc==='tube' ? on : off;
+};
 
 function addWater() {
   var sheetMlEl = document.getElementById('sheetWaterMl');
@@ -8086,12 +8123,15 @@ function addWater() {
   var time = (timeInput && timeInput.value) ? timeInput.value : nowTime();
   var rec = getRec(state.activeCat, date);
   if(!rec.water) rec.water = [];
-  rec.water.push({ml:ml, time:time, ts: Date.now()});
+  var entry = {ml:ml, time:time, ts: Date.now()};
+  // 출처 토글은 바텀시트에만 있음 — 레거시 카드 입력은 항상 자발음수 (기존 동작 유지)
+  if(sheetMlEl && _waterSrc === 'tube') entry.src = 'tube';
+  rec.water.push(entry);
   saveS(date);
   if(input) input.value = '';
   if(timeInput) timeInput.value = nowTime();
   renderWaterLog();
-  toast(ml + 'ml 기록됐어요', '#1D9E75');
+  toast((entry.src==='tube'?'강급 수분 ':'') + ml + 'ml 기록됐어요', '#1D9E75');
   try{renderDailySummary();}catch(e){}
 }
 
@@ -8327,18 +8367,33 @@ function renderWaterLog() {
   const wtInput = document.getElementById('waterTimeInput');
   if(wtInput && !wtInput.value) wtInput.value = nowTime();
 
-  // 음수량
+  // 음수량 — 출처별 분리 집계 (v0.7.66): 총 수분(경구) = 자발 + 강급 + 사료수분, 피하수액 별도
   const waterArr = rec.water || [];
-  const totalMl = waterArr.reduce((a, b) => a + b.ml, 0);
+  const wb = waterBreakdown(state.activeCat, date);
   const waterTotalEl = document.getElementById('waterTotal');
   const waterLogEl = document.getElementById('waterLog');
-  if(waterTotalEl) waterTotalEl.textContent = totalMl > 0 ? '오늘 총 ' + totalMl + 'ml' : '아직 기록 없어요';
+  if(waterTotalEl) {
+    if(wb.oral > 0) {
+      const parts = [];
+      if(wb.nat > 0) parts.push('자발 ' + wb.nat + 'ml');
+      if(wb.tube > 0) parts.push('강급 ' + wb.tube + 'ml');
+      if(wb.wet > 0) parts.push('사료 ' + wb.wet + 'ml');
+      else if(wb.wetUnknown) parts.push('사료 수분 미포함');
+      let txt = '오늘 총 수분 ' + wb.oral + 'ml — ' + parts.join(' · ');
+      if(wb.wet > 0 && wb.wetUnknown) txt += ' (일부 사료 수분 미포함)';
+      if(wb.fluid > 0) txt += ' · 피하수액 ' + wb.fluid + 'ml 별도';
+      waterTotalEl.textContent = txt;
+    } else {
+      waterTotalEl.textContent = '아직 기록 없어요';
+    }
+  }
   if(waterLogEl) {
     if(waterArr.length === 0) {
       waterLogEl.innerHTML = '';
     } else {
       waterLogEl.innerHTML = waterArr.map((w, i) =>
         `<span data-widx="${i}" style="margin-right:4px;margin-bottom:4px;display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap">${w.time} +${w.ml}ml`
+        + (w.src==='tube' ? ' <span style="font-size:9px;font-weight:700;color:var(--amber-d)">강급</span>' : '')
         + ` <span onclick="editWater(${i},'${date}')" style="color:var(--amber);cursor:pointer;font-size:10px">✎</span>`
         + ` <span onclick="deleteWater(${i},'${date}')" style="color:var(--coral);cursor:pointer;font-size:10px">✕</span></span>`
       ).join('');
@@ -8385,7 +8440,7 @@ function renderWaterLog() {
   if(summaryEl) {
     const vomitArr = rec.vomits || [];
     let txt = '';
-    if(totalMl > 0) txt += '음수 ' + totalMl + 'ml';
+    if(wb.oral > 0) txt += '수분 ' + wb.oral + 'ml';
     if(urineArr.length > 0) txt += (txt?' · ':'') + '소변 ' + urineArr.length + '회';
     if(poopArr.length > 0) txt += (txt?' · ':'') + '대변 ' + poopArr.length + '회';
     if(vomitArr.length > 0) txt += (txt?' · ':'') + '구토 ' + vomitArr.length + '회';
@@ -8408,6 +8463,9 @@ function editWater(idx, date) {
   target.innerHTML =
     `<input type="number" id="weml${idx}" value="${w.ml}" min="1"
       style="width:58px;padding:3px 6px;border:1px solid var(--teal);border-radius:6px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit">ml `
+    + `<select id="wesrc${idx}"
+      style="padding:3px 6px;border:1px solid var(--teal);border-radius:6px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit">
+      <option value=""${w.src!=='tube'?' selected':''}>자발</option><option value="tube"${w.src==='tube'?' selected':''}>강급</option></select> `
     + `<input type="time" id="wetime${idx}" value="${w.time}"
       style="padding:3px 6px;border:1px solid var(--teal);border-radius:6px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit"> `
     + `<span onclick="saveEditWater(${idx},'${date}')" style="color:var(--teal);cursor:pointer;font-size:11px;font-weight:600">저장</span> `
@@ -8417,11 +8475,13 @@ function editWater(idx, date) {
 function saveEditWater(idx, date) {
   const ml = parseInt(document.getElementById('weml'+idx)?.value);
   const time = document.getElementById('wetime'+idx)?.value;
+  const src = document.getElementById('wesrc'+idx)?.value;
   if(!ml || ml <= 0) { toast('올바른 수치를 입력해주세요', '#D85A30'); return; }
   const rec = getRec(state.activeCat, date);
   if(rec.water && rec.water[idx]) {
     rec.water[idx].ml = ml;
     if(time) rec.water[idx].time = time;
+    if(src === 'tube') rec.water[idx].src = 'tube'; else delete rec.water[idx].src;
     saveS(date); renderWaterLog();
     toast('💧 음수량이 수정됐어요', '#1D9E75');
   }
@@ -10634,6 +10694,8 @@ function editLogItem(type, ts, date) {
   } else if(type==='water') {
     fields = `<label style="font-size:11px;color:var(--text3)">음수량(ml)</label>
       <input type="number" id="ei_ml" value="${item.ml||''}" min="1" style="width:65px;padding:5px 8px;border:1px solid var(--teal);border-radius:7px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit">
+      <label style="font-size:11px;color:var(--text3)">출처</label>
+      <select id="ei_src" style="padding:5px 8px;border:1px solid var(--teal);border-radius:7px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit"><option value=""${item.src!=='tube'?' selected':''}>자발</option><option value="tube"${item.src==='tube'?' selected':''}>강급</option></select>
       <label style="font-size:11px;color:var(--text3)">시간</label>
       <input type="time" id="ei_time" value="${item.time||''}" style="padding:5px 8px;border:1px solid var(--teal);border-radius:7px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit">`;
   } else if(type==='urine') {
@@ -10720,6 +10782,8 @@ function saveEditLog(type, ts, date) {
     const item = (rec.water||[]).find(r=>r.ts===ts); if(!item) return;
     const ml = document.getElementById('ei_ml')?.value;
     if(ml) item.ml = parseInt(ml);
+    const src = document.getElementById('ei_src')?.value;
+    if(src === 'tube') item.src = 'tube'; else delete item.src;
     if(time) item.time = time;
   } else if(type==='urine') {
     const item = (rec.urine||[]).find(r=>r.ts===ts); if(!item) return;
@@ -12421,13 +12485,13 @@ function computeObservations(cat, anchor){
   const dz=_obsDiseases(cat);
   const out=[];
 
-  // 1) 음수량 급증 (자발음수 rec.water 합계 — 수액·습식수분 제외: 보호자 급여분은 다음(多飮) 신호 아님)
-  const wt=_obsTrend(cat, anchor, r=>{ const s=(r.water||[]).reduce((a,b)=>a+(b.ml||0),0); return s>0?s:null; });
+  // 1) 음수량 급증 (자발음수만 — src:'tube' 강급·수액·습식수분 제외: 보호자 급여분은 다음(多飮) 신호 아님)
+  const wt=_obsTrend(cat, anchor, r=>{ const s=(r.water||[]).filter(w=>w.src!=='tube').reduce((a,b)=>a+(b.ml||0),0); return s>0?s:null; });
   if(wt.recentDays>=3 && wt.priorDays>=8 && wt.recentDays+wt.priorDays>=14 && wt.pct!=null && wt.pct>=OBS_TH.waterPct){
-    // 표기 통일: 리포트 [음수량] 섹션은 섭취+수액 합산이라 기준 차이를 문구로 명시 (수의사 혼란 방지)
+    // 표기 통일: 리포트 [수분 섭취] 섹션은 자발+강급+사료 분리 표기·수액 별도라 기준 차이를 문구로 명시 (수의사 혼란 방지)
     out.push({ key:'water', mag:wt.pct,
-      title:'이번 주 음수 섭취량 '+wt.pct+'% 증가 (수액 제외)',
-      lines:['이번 주 평균 '+Math.round(wt.recentAvg)+'ml/일 (수액 제외)','지난 4주 평균 '+Math.round(wt.priorAvg)+'ml/일 대비 '+wt.pct+'% 증가'],
+      title:'이번 주 자발음수량 '+wt.pct+'% 증가 (수액·강급 제외)',
+      lines:['이번 주 평균 '+Math.round(wt.recentAvg)+'ml/일 (자발음수만)','지난 4주 평균 '+Math.round(wt.priorAvg)+'ml/일 대비 '+wt.pct+'% 증가'],
       hint: dz.ckd ? '음수량 증가는 CKD 아이에서 관찰되는 변화 중 하나예요. 신장 기능 변화와 관련될 수 있어요.'
           : dz.dm  ? '음수량 증가는 DM 아이에서 관찰되는 변화 중 하나예요. 혈당 관리 상태와 관련될 수 있어요.'
           : dz.hcm ? '음수량 증가는 다양한 원인으로 나타날 수 있어요. 이뇨제 복용 중이시면 반응과 관련될 수 있어요.'
@@ -12436,11 +12500,11 @@ function computeObservations(cat, anchor){
 
   // 1-C) 단일일 음수량 급증 — 하루 스파이크가 7일 평균에 희석돼 추세 지표가 놓치는 신호 보완
   {
-    const sp=_obsSpike(cat, anchor, r=>{ const s=(r.water||[]).reduce((a,b)=>a+(b.ml||0),0); return s>0?s:null; }, OBS_TH.waterSpikePct);
+    const sp=_obsSpike(cat, anchor, r=>{ const s=(r.water||[]).filter(w=>w.src!=='tube').reduce((a,b)=>a+(b.ml||0),0); return s>0?s:null; }, OBS_TH.waterSpikePct);
     if(sp){
       out.push({ key:'waterSpike', mag:sp.mag,
-        title:sp.day.slice(5)+' 하루 음수 섭취량 '+Math.round(sp.value)+'ml 급증 (수액 제외)',
-        lines:[sp.day+' 음수 섭취량 '+Math.round(sp.value)+'ml (수액 제외)',
+        title:sp.day.slice(5)+' 하루 자발음수량 '+Math.round(sp.value)+'ml 급증 (수액·강급 제외)',
+        lines:[sp.day+' 자발음수량 '+Math.round(sp.value)+'ml (수액·강급 제외)',
                '평소(4주 평균 '+Math.round(sp.base)+'ml) 대비 '+(sp.pct!=null?sp.pct+'% 증가':'증가')+(sp.isMax?' · 최근 4주 중 최대':'')],
         hint: dz.ckd ? '하루 음수량이 크게 늘어난 날이 있어요. 일시적 변화일 수도 있지만, 음수량 증가는 CKD 아이에서 관찰되는 변화 중 하나예요.'
             : dz.dm  ? '하루 음수량이 크게 늘어난 날이 있어요. 일시적 변화일 수도 있지만, 음수량 증가는 DM 아이에서 관찰되는 변화 중 하나예요.'
@@ -12717,16 +12781,24 @@ function collectVetReportData(cat, fromStr, toStr){
     weight: getLatestWeight(cat), diseases: (prof.diseases||[]).join('·'),
     targetWt: prof.targetWt || null, recommendedKcal: prof.recommendedKcal || null
   };
-  const intake = [], fluid = [], urineC = [], poopC = [], kcal = [], rrAll = [], rrSleep = [];
+  const intake = [], natArr = [], tubeArr = [], wetArr = [], fluid = [], urineC = [], poopC = [], kcal = [], rrAll = [], rrSleep = [];
   const urineAbn = {}, poopAbn = {}, fluidTypes = {}, foods = {}, medCount = {};
-  let fluidCount = 0, fluidMlSum = 0;
+  let fluidCount = 0, fluidMlSum = 0, wetUnknownDays = 0;
   d.vomits = []; d.weights = [];
   dates.forEach(day=>{
     const rec = (state.records[cat]||{})[day];
     if(!rec) return;
-    const wSum = (rec.water||[]).reduce((a,b)=>a+(b.ml||0),0);
+    // 수분 출처 분리 집계 (v0.7.66) — 총 수분(경구)=자발+강급+습식수분, 피하수액 별도
+    const natSum = (rec.water||[]).filter(w=>w.src!=='tube').reduce((a,b)=>a+(b.ml||0),0);
+    const tubeSum = (rec.water||[]).filter(w=>w.src==='tube').reduce((a,b)=>a+(b.ml||0),0);
+    const wetSum = (rec.meals||[]).filter(m=>m.moisture!=null&&m.moisture>=60).reduce((a,m)=>a+(m.amt||0)*m.moisture/100,0);
+    if((rec.meals||[]).some(m=>(m.amt||0)>0&&m.moisture==null)) wetUnknownDays++;
+    const wSum = natSum + tubeSum + wetSum;
     const fArr = (rec.routines||[]).filter(r=>r.ml&&r.ml>0);
     const fSum = fArr.reduce((a,r)=>a+r.ml,0);
+    if(natSum>0) natArr.push(natSum);
+    if(tubeSum>0) tubeArr.push(tubeSum);
+    if(wetSum>0) wetArr.push(wetSum);
     if(wSum>0) intake.push(wSum);
     if(fSum>0) fluid.push(fSum);
     fArr.forEach(r=>{ fluidCount++; fluidMlSum+=r.ml; if(r.fluidType) fluidTypes[r.fluidType]=(fluidTypes[r.fluidType]||0)+1; });
@@ -12747,7 +12819,8 @@ function collectVetReportData(cat, fromStr, toStr){
       medCount[nm] = (medCount[nm]||0) + 1;
     }));
   });
-  d.water = { intakeAvg:_vrAvg(intake), fluidAvg:_vrAvg(fluid), intakeDays:intake.length, fluidDays:fluid.length,
+  d.water = { intakeAvg:_vrAvg(intake), natAvg:_vrAvg(natArr), tubeAvg:_vrAvg(tubeArr), wetAvg:_vrAvg(wetArr),
+    wetUnknownDays, fluidAvg:_vrAvg(fluid), intakeDays:intake.length, fluidDays:fluid.length,
     fluidCount, fluidMlAvg: fluidCount?Math.round(fluidMlSum/fluidCount):null,
     fluidTypeMain: Object.keys(fluidTypes).sort((a,b)=>fluidTypes[b]-fluidTypes[a])[0]||null,
     target: d.profile.weight?Math.round(d.profile.weight*40):null };
@@ -12832,11 +12905,14 @@ function buildVetReportText(d, inc, memo){
   }
   if(inc.water){
     L.push('');
-    L.push('[음수량]');
-    const tot = (d.water.intakeAvg||0)+(d.water.fluidAvg||0);
-    L.push('평균: '+(tot?Math.round(tot):'—')+'ml/일'+(d.water.target?' (참고 목표 '+d.water.target+'ml)':''));
-    L.push('- 섭취: '+(d.water.intakeAvg!=null?'평균 '+Math.round(d.water.intakeAvg)+'ml/일 ('+d.water.intakeDays+'일 기록)':'기록 없음'));
-    if(d.water.fluidCount>0) L.push('- 수액: 평균 '+Math.round(d.water.fluidAvg)+'ml/일 · 총 '+d.water.fluidCount+'회'+(d.water.fluidMlAvg?' (회당 약 '+d.water.fluidMlAvg+'ml'+(d.water.fluidTypeMain?', '+d.water.fluidTypeMain:'')+')':''));
+    L.push('[수분 섭취]');
+    const tot = d.water.intakeAvg||0;
+    L.push('총 수분(경구): '+(tot?'평균 '+Math.round(tot)+'ml/일 ('+d.water.intakeDays+'일 기록)':'기록 없음')+(d.water.target?' (참고 목표 '+d.water.target+'ml)':''));
+    if(d.water.natAvg!=null) L.push('- 자발음수: 평균 '+Math.round(d.water.natAvg)+'ml/일');
+    if(d.water.tubeAvg!=null) L.push('- 강급 수분: 평균 '+Math.round(d.water.tubeAvg)+'ml/일');
+    if(d.water.wetAvg!=null) L.push('- 사료 수분: 평균 '+Math.round(d.water.wetAvg)+'ml/일 (수분함량 등록 사료만)');
+    if(d.water.wetUnknownDays>0) L.push('- 수분함량 미등록 사료 급여 '+d.water.wetUnknownDays+'일 — 해당 사료 수분은 미포함');
+    if(d.water.fluidCount>0) L.push('- 피하수액(경구 합계와 별도): 평균 '+Math.round(d.water.fluidAvg)+'ml/일 · 총 '+d.water.fluidCount+'회'+(d.water.fluidMlAvg?' (회당 약 '+d.water.fluidMlAvg+'ml'+(d.water.fluidTypeMain?', '+d.water.fluidTypeMain:'')+')':''));
   }
   if(inc.urine){
     L.push('');
@@ -12941,7 +13017,7 @@ function _watchObsLine(w, d){
   try{
     if(w==='식욕') return d.meal&&d.meal.days ? '평균 급여 '+Math.round(d.meal.kcalAvg)+' kcal/일 ('+d.meal.days+'일 기록)' : '급여 기록 없음';
     if(w==='호흡수') return d.rr&&d.rr.n ? '평균 '+d.rr.avg+'회/분'+(d.rr.sleepN?' · 수면 중 평균 '+d.rr.sleepAvg+'회/분':'')+' (측정 '+d.rr.n+'회)' : '측정 기록 없음';
-    if(w==='음수량'){ const t=(d.water&&((d.water.intakeAvg||0)+(d.water.fluidAvg||0)))||0; return t?('평균 '+Math.round(t)+'ml/일'):'기록 없음'; }
+    if(w==='음수량'){ const t=(d.water&&d.water.intakeAvg)||0; return t?('평균 '+Math.round(t)+'ml/일 (경구, 수액 별도)'):'기록 없음'; }
     if(w==='소변'){ if(!d.urine||!d.urine.days) return '기록 없음'; const abn=Object.values(d.urine.abn||{}).reduce((a,b)=>a+b,0); return '평균 '+_vrNum(d.urine.avg,1)+'회/일'+(abn?' · 이상 소견 기록 '+abn+'회':''); }
     if(w==='구토') return '기간 내 '+((d.vomits||[]).length)+'회';
     if(w==='설사'){ const c=(d.poop&&d.poop.abn&&d.poop.abn['설사'])||0; return c?('기간 내 '+c+'회 기록'):'기록 없음'; }
@@ -12959,10 +13035,15 @@ function renderVetReportCanvas(d, inc, memo){
     if(obs.length) secs.push({t:'최근 관찰 지표', lines: obs.slice(0,4).map(o=>o.title).concat(['텍스트 리포트가 함께 전송되지 않았다면','보호자에게 요청해주세요']), warn:false});
   }
   if(inc.water){
-    const tot = (d.water.intakeAvg||0)+(d.water.fluidAvg||0);
-    const lines = ['평균 '+(tot?Math.round(tot):'—')+'ml/일'+(d.water.target?' / 참고 목표 '+d.water.target+'ml':'')];
-    if(d.water.fluidCount>0) lines.push('섭취 '+Math.round(d.water.intakeAvg||0)+'ml · 수액 '+Math.round(d.water.fluidAvg||0)+'ml');
-    secs.push({t:'음수량', lines, bar: d.water.target&&tot?Math.min(1.5,tot/d.water.target):null});
+    const tot = d.water.intakeAvg||0;
+    const lines = ['총 수분(경구) 평균 '+(tot?Math.round(tot):'—')+'ml/일'+(d.water.target?' / 참고 목표 '+d.water.target+'ml':'')];
+    const segs = [];
+    if(d.water.natAvg!=null) segs.push('자발 '+Math.round(d.water.natAvg)+'ml');
+    if(d.water.tubeAvg!=null) segs.push('강급 '+Math.round(d.water.tubeAvg)+'ml');
+    if(d.water.wetAvg!=null) segs.push('사료 '+Math.round(d.water.wetAvg)+'ml');
+    if(segs.length>1) lines.push(segs.join(' · '));
+    if(d.water.fluidCount>0) lines.push('피하수액(별도) 평균 '+Math.round(d.water.fluidAvg||0)+'ml/일');
+    secs.push({t:'수분 섭취', lines, bar: d.water.target&&tot?Math.min(1.5,tot/d.water.target):null});
   }
   if(inc.urine) secs.push({t:'소변', lines:[(d.urine.days?('평균 '+_vrNum(d.urine.avg,1)+'회/일'):'기록 없음')+(Object.keys(d.urine.abn).length?' · 이상 '+Object.values(d.urine.abn).reduce((a,b)=>a+b,0)+'회':'')], warn:Object.keys(d.urine.abn).length>0});
   if(inc.poop) secs.push({t:'배변', lines:[(d.poop.days?('평균 '+_vrNum(d.poop.avg,1)+'회/일'):'기록 없음')+(Object.keys(d.poop.abn).length?' · 이상 '+Object.values(d.poop.abn).reduce((a,b)=>a+b,0)+'회':'')], warn:Object.keys(d.poop.abn).length>0});
@@ -15007,6 +15088,10 @@ function _dsDateTimeRow(dateId, timeId) {
 }
 function _dsWaterBodyHtml() {
   return _dsDateTimeRow('sheetWaterDate','sheetWaterTime') +
+    '<div style="display:flex;gap:8px;margin-bottom:12px">' +
+      '<button type="button" id="waterSrcNat" onclick="setWaterSrc(\'nat\')">자발음수</button>' +
+      '<button type="button" id="waterSrcTube" onclick="setWaterSrc(\'tube\')">강급(주사기)</button>' +
+    '</div>' +
     '<div style="display:flex;align-items:center;gap:12px;background:var(--cm-surface-2);border:1px solid var(--cm-line);border-radius:13px;padding:14px 16px;margin-bottom:12px">' +
       '<input type="number" id="sheetWaterMl" placeholder="0" min="0" step="1" style="flex:1;border:none;background:none;font-family:inherit;font-size:36px;font-weight:800;color:var(--cm-ink);text-align:center;min-width:0">' +
       '<span style="font-size:14px;font-weight:700;color:var(--cm-faint)">ml</span>' +
@@ -15102,6 +15187,7 @@ window.openDailySheet = function(type) {
     if(sheetFoot) sheetFoot.innerHTML = '<button class="cm-btn cm-btn--block" onclick="addWater()" type="button">기록하기</button>';
     var wd = document.getElementById('sheetWaterDate'); if(wd) wd.value = today();
     var wt2 = document.getElementById('sheetWaterTime'); if(wt2) wt2.value = nowTime();
+    setWaterSrc('nat');   // 시트 열 때마다 자발음수로 초기화 (잔상 방지)
   } else if(type === 'excreta') {
     sheetBody.innerHTML = _dsExcretaBodyHtml();
     if(sheetFoot) sheetFoot.innerHTML = '';
