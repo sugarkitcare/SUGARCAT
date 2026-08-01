@@ -652,7 +652,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.75</span>
+      <span class="cm-beta">v0.7.76</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -1474,7 +1474,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
     <input type="date" id="histDatePicker"
       style="flex:1;border:none;background:transparent;font-size:13px;font-weight:500;color:var(--text);font-family:inherit;text-align:center;cursor:pointer"
       onchange="renderHistory()">
-    <button type="button" onclick="histNavDate(1)"
+    <button type="button" id="histNextBtn" onclick="histNavDate(1)"
       style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text2);padding:0 4px">›</button>
     <button type="button" onclick="document.getElementById('histDatePicker').value=today();renderHistory();"
       style="padding:3px 10px;border:0.5px solid var(--bd);border-radius:7px;background:transparent;color:var(--teal);font-size:11px;cursor:pointer;font-family:inherit">오늘</button>
@@ -2608,6 +2608,16 @@ function _memorialAppSpan(cat){
   if(!keys.length) return null;
   const days = Math.round((new Date(keys[keys.length-1]+'T00:00:00Z')-new Date(keys[0]+'T00:00:00Z'))/86400000)+1;
   return {from:keys[0], to:keys[keys.length-1], days};
+}
+/* 기억하기 진입 기준 (v0.7.76): "오늘"이 아니라 "마지막 기록". 추모 아이는 오늘 기록이 없어
+   매번 빈 화면부터 보게 됨 — 안내 문구 없이 조용히 기본값만 바꾼다(설명이 오히려 환기시킴).
+   비추모 아이는 null 반환 → 기존 오늘 기준 그대로. */
+function _memLastDailyDate(cat){
+  if(!cat || !isMemorial(cat)) return null;
+  const recs = (state.records||{})[cat]||{};
+  const KEYS = ['bg','ins','meals','weights','routines','water','urine','rr','poop','vomits'];
+  const days = Object.keys(recs).filter(k=>/^\d{4}-\d{2}-\d{2}$/.test(k) && KEYS.some(x=>Array.isArray((recs[k]||{})[x])&&recs[k][x].length)).sort();
+  return days.length ? days[days.length-1] : null;
 }
 function _memorialStats(cat){
   const recs = (state.records||{})[cat]||{};
@@ -3749,7 +3759,7 @@ window.switchCat = function(c) {
   try{Promise.all([loadCGMForCat(c),loadCgmCsvForCat(c)]).then(()=>{
     const at=document.querySelector('.cm-tab.active')?.dataset?.tab;
     if(at==='cgm')renderCgmHistory();
-    if(at==='graph')try{renderTimelineChart(document.getElementById('timelineDatePicker')?.value||today());}catch(e){}
+    if(at==='graph')try{renderTimelineChart(document.getElementById('timelineDatePicker')?.value||_memLastDailyDate(c)||today());}catch(e){}
   });}catch(e){}
   try{
     const at=document.querySelector('.cm-tab.active')?.dataset?.tab;
@@ -5499,7 +5509,7 @@ window.showTab = function showTab(tab, btn) {
 
     // 렌더링
     if(tab==='cgm') try{const cc=document.getElementById('cgmCat');if(cc)cc.value=state.activeCat||'';Promise.all([loadCGMForCat(state.activeCat),loadCgmCsvForCat(state.activeCat)]).then(()=>renderCgmHistory());}catch(e){console.warn(e);}
-    if(tab==='graph') try{loadGraphHiddenFromDB().then(()=>{applyGraphCards();});renderGraphs();renderBTTrend();const tlDate=document.getElementById('timelineDatePicker');if(tlDate&&!tlDate.value)tlDate.value=today();try{renderTimelineChart(document.getElementById('timelineDatePicker')?.value||today());}catch(e2){console.warn(e2);}}catch(e){console.warn(e);}
+    if(tab==='graph') try{loadGraphHiddenFromDB().then(()=>{applyGraphCards();});renderGraphs();renderBTTrend();const _tlDef=_memLastDailyDate(state.activeCat)||today();const tlDate=document.getElementById('timelineDatePicker');if(tlDate&&!tlDate.value)tlDate.value=_tlDef;try{renderTimelineChart(document.getElementById('timelineDatePicker')?.value||_tlDef);}catch(e2){console.warn(e2);}}catch(e){console.warn(e);}
     if(tab==='history') try{renderHistory();renderRoutineSchedule();}catch(e){console.warn(e);}
     if(tab==='bloodtest') try{renderBTGraphs();renderBTHistoryList();}catch(e){console.warn(e);}
     if(tab==='food') try{renderFdHistory();autoSetFdMode(state.activeCat);initCalcResult();}catch(e){console.warn(e);}
@@ -5515,7 +5525,10 @@ function histNavDate(delta){
   if(!picker)return;
   const d=new Date(picker.value||today());
   d.setDate(d.getDate()+delta);
-  picker.value=d.toISOString().slice(0,10);
+  const nd=d.toISOString().slice(0,10);
+  const _ml=_memLastDailyDate(state.activeCat);
+  if(_ml && nd>_ml) return;   // 기억하기: 마지막 기록일이 마지막 화면 — 빈 날짜가 이어지지 않게 (v0.7.76)
+  picker.value=nd;
   renderHistory();
   renderRoutineSchedule();
 }
@@ -5763,8 +5776,18 @@ function _recTimeCompareAsc(a,b){
 }
 
 function renderHistory(){
+  // 기억하기 (v0.7.76): 기본 진입 = 마지막 기록일, 이후 날짜는 클램프 (비추모는 _ml=null → 무변경)
+  const _ml=_memLastDailyDate(state.activeCat);
+  const _hp=document.getElementById('histDatePicker');
+  if(_hp){
+    if(_ml){ if(!_hp.value || _hp.value>_ml) _hp.value=_ml; _hp.max=_ml; }
+    else _hp.removeAttribute('max');
+  }
   const histDate=document.getElementById('histDatePicker')?.value||today();
   if(!document.getElementById('histDatePicker')?.value){const el=document.getElementById('histDatePicker');if(el)el.value=today();}
+  // 다음 버튼: 마지막 기록일에서 흐리게 — 문구 없이 조용히
+  const _hn=document.getElementById('histNextBtn');
+  if(_hn){ const _dis=!!(_ml && histDate>=_ml); _hn.disabled=_dis; _hn.style.opacity=_dis?'0.25':''; _hn.style.cursor=_dis?'default':'pointer'; }
   const rec=getRec(state.activeCat,histDate);const list=document.getElementById('logList');
   const all=[];
   rec.bg.forEach(r=>all.push({ts:r.ts,type:'bg',d:r}));
@@ -6048,21 +6071,23 @@ function getAllDates(){
 }
 
 function getDateRange(){
+  // 기억하기 (v0.7.76): 그래프 구간을 오늘이 아니라 마지막 기록일에 앵커 — 사후 빈 꼬리 구간 방지 (비추모 null=현행)
+  const _anchor=_memLastDailyDate(state.activeCat);
   if(gPeriod===0){
     const all=getAllDates();
-    if(!all.length)return getLast(30);
+    if(!all.length)return getLast(30,_anchor);
     const start=new Date(all[0]);
-    const end=kstNow();
+    const end=_anchor?new Date(_anchor+'T00:00:00Z'):kstNow();
     const days=[];
     for(let d=new Date(start);d<=end;d.setUTCDate(d.getUTCDate()+1)){
       days.push(d.toISOString().slice(0,10));
     }
     return days;
   }
-  return getLast(gPeriod);
+  return getLast(gPeriod,_anchor);
 }
 
-function getLast(n){const d=[];for(let i=n-1;i>=0;i--){const dt=kstNow();dt.setUTCDate(dt.getUTCDate()-i);d.push(dt.toISOString().slice(0,10))}return d}
+function getLast(n,anchor){const d=[];for(let i=n-1;i>=0;i--){const dt=anchor?new Date(anchor+'T00:00:00Z'):kstNow();dt.setUTCDate(dt.getUTCDate()-i);d.push(dt.toISOString().slice(0,10))}return d}
 
 
 function renderGraphs(){
@@ -13808,7 +13833,8 @@ function guessLastVisit(cat){
   return cands.length ? cands.sort().reverse()[0] : null;
 }
 function buildIntervalReport(cat, lastVisit, incBt){
-  const to = today();
+  // 기억하기 (v0.7.76): 종료일을 마지막 기록일에 앵커 — 사후 빈 기간이 기본값이 되지 않게 (비추모=오늘)
+  const to = _memLastDailyDate(cat) || today();
   const d0 = new Date(lastVisit+'T00:00:00Z'); d0.setUTCDate(d0.getUTCDate()+1);
   let from = d0.toISOString().slice(0,10);
   if(from > to) from = to;
@@ -14006,7 +14032,7 @@ function openVetReport(){
     lastVisit: guessLastVisit(cat) || '',
     nextVisit: saved || predicted || '',
     predicted: !saved && !!predicted,
-    period: '2w', customFrom: '', customTo: today(),
+    period: '2w', customFrom: '', customTo: _memLastDailyDate(cat) || today(),
     inc: _vetIncDefaults(cat), memo: ''
   };
   let modal = document.getElementById('vetReportModal');
@@ -14029,7 +14055,8 @@ function closeVetReport(){
   _vetRep = null;
 }
 function _vrPeriodRange(){
-  const to = today();
+  // 기억하기 (v0.7.76): 기간 종료를 마지막 기록일에 앵커 (비추모 null → 오늘, 현행)
+  const to = (_vetRep && _memLastDailyDate(_vetRep.cat)) || today();
   if(_vetRep.period === 'custom'){
     return { from: _vetRep.customFrom || to, to: _vetRep.customTo || to };
   }
