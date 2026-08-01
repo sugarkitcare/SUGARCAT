@@ -7,3 +7,6 @@ node_modules/
 www/
 *.keystore
 *.jks
+
+# 로컬 회귀 테스트 하니스 (index.html에서 함수 추출해 검증 — 커밋 불필요)
+tmp_*.mjs
