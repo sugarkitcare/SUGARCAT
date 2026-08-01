@@ -652,7 +652,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.72</span>
+      <span class="cm-beta">v0.7.73</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -683,6 +683,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
     <button type="button" id="catDel3" onclick="deleteCat(document.getElementById('catName3').dataset.cat)" style="font-size:15px;background:none;border:none;cursor:pointer;padding:2px 5px;min-width:26px;min-height:26px;color:inherit;opacity:0.6">×</button>
   </div>
   <div id="catAddSlot"></div>
+  <button type="button" id="catOrderEditBtn" onclick="openCatOrderSheet()" class="cat-chip" style="display:none;border-style:dashed;color:var(--text3);background:transparent">순서</button>
 </div>
 <div class="cm-tabs" id="mainNav">
   <button class="cm-tab active" data-tab="daily" onclick="showTab('daily',this)">오늘</button>
@@ -2395,35 +2396,100 @@ async function loadCatOrder(){
     }
   }catch(e){ console.warn('칩 순서 로드 오류:', e); }
 }
-function moveCatOrder(cat, dir){
-  const i = state.cats.indexOf(cat), j = i + dir;
-  if(i < 0 || j < 0 || j >= state.cats.length) return;
-  const t = state.cats[i]; state.cats[i] = state.cats[j]; state.cats[j] = t;
+/* 순서 편집 시트 (v0.7.73) — 진입점은 칩 리스트의 '순서' 버튼, 정렬은 바텀시트 세로 리스트 +
+   드래그 핸들(Pointer Events). 가로 칩 직접 드래그는 가로 스크롤과 충돌해 세로 시트 방식 채택
+   (스펙 대안 경로). HTML5 drag-and-drop API는 모바일 불안정 — 사용 금지.
+   시트 열린 동안 body 스크롤 잠금, 핸들은 touch-action:none으로 브라우저 제스처 차단.
+   고양이 최대 4마리라 자동 스크롤은 불필요(시트 안에 다 들어옴). */
+function _catOrderCommit(seq){
+  // 비추모 우선 그룹 규칙 유지 — 드래그로 추모 아이를 앞에 놓아도 그룹 재정렬로 맨 앞에 오지 않음
+  state.cats = seq.filter(c=>!isMemorial(c)).concat(seq.filter(c=>isMemorial(c)));
   saveS();
   saveCatOrder();
-  renderCatBar();
-  try{ renderCatOrderBox(); }catch(e){}
 }
-// 프로필 화면의 순서 편집 카드 — 고양이 2마리 이상일 때만
-function renderCatOrderBox(){
-  const box = document.getElementById('cpCatOrderBox');
-  if(!box) return;
-  if(state.cats.length < 2){ box.innerHTML=''; return; }
-  const btnS = 'padding:4px 10px;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;background:var(--cm-surface);border:1px solid var(--cm-line);color:var(--cm-ink-soft)';
-  box.innerHTML =
-    '<div style="font-size:11px;font-weight:500;color:var(--text2);margin-bottom:.4rem">고양이 순서</div>'
-    + '<div style="background:var(--cm-surface-2);border:1px solid var(--cm-line);border-radius:13px;padding:11px 13px;margin-bottom:1rem">'
-    + state.cats.map((c,i)=>{
-        const mem = isMemorial(c);
-        const esc = c.replace(/'/g,"\\'");
-        return '<div style="display:flex;align-items:center;gap:8px;padding:5px 0'+(i<state.cats.length-1?';border-bottom:0.5px solid var(--cm-line)':'')+'">'
-          + '<span style="flex:1;font-size:13px;color:var(--cm-ink)'+(mem?';opacity:.55':'')+'">'+c+(mem?' <span style="font-size:10.5px;color:var(--cm-faint)">기억</span>':'')+'</span>'
-          + '<button type="button" onclick="moveCatOrder(\''+esc+'\',-1)" '+(i===0?'disabled style="'+btnS+';opacity:.3;cursor:default"':'style="'+btnS+'"')+'>위</button>'
-          + '<button type="button" onclick="moveCatOrder(\''+esc+'\',1)" '+(i===state.cats.length-1?'disabled style="'+btnS+';opacity:.3;cursor:default"':'style="'+btnS+'"')+'>아래</button>'
-          + '</div>';
-      }).join('')
-    + '<div style="font-size:11px;color:var(--cm-faint);margin-top:8px;line-height:1.5">첫 번째 아이가 로그인 시 기본으로 선택돼요. 기억 속 아이는 칩에서 뒤쪽에 표시돼요.</div>'
-    + '</div>';
+function openCatOrderSheet(){
+  let modal = document.getElementById('catOrderModal');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = 'catOrderModal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(42,37,29,0.5);z-index:9999;display:flex;align-items:flex-end;justify-content:center';
+    modal.innerHTML = '<div style="background:var(--cm-bg);border-radius:20px 20px 0 0;width:100%;max-width:520px;max-height:70vh;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:1.25rem 1.1rem 1.5rem;box-sizing:border-box">'
+      + '<div style="display:flex;align-items:center;margin-bottom:4px"><div style="flex:1"><div style="font-size:17px;font-weight:800;color:var(--cm-ink)">고양이 순서</div><div style="font-size:12px;color:var(--cm-faint);margin-top:2px">줄을 잡고 위아래로 끌어 순서를 바꿔요</div></div>'
+      + '<button type="button" onclick="closeCatOrderSheet()" style="background:none;border:none;font-size:20px;color:var(--cm-faint);cursor:pointer;padding:4px 8px;font-family:inherit">×</button></div>'
+      + '<div id="catOrderList" style="margin:10px 0 6px"></div>'
+      + '<div style="font-size:11px;color:var(--cm-faint);margin-bottom:12px;line-height:1.5">첫 번째 아이가 로그인 시 기본으로 선택돼요. 기억 속 아이는 뒤쪽에 표시돼요.</div>'
+      + '<button type="button" onclick="closeCatOrderSheet()" class="cm-btn cm-btn--block">완료</button>'
+      + '</div>';
+    modal.addEventListener('click', e=>{ if(e.target===modal) closeCatOrderSheet(); });
+    document.body.appendChild(modal);
+  }
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';   // 시트 열린 동안 배경 스크롤 잠금
+  renderCatOrderSheet();
+}
+function closeCatOrderSheet(){
+  const m = document.getElementById('catOrderModal');
+  if(m) m.style.display = 'none';
+  document.body.style.overflow = '';
+}
+function renderCatOrderSheet(){
+  const list = document.getElementById('catOrderList');
+  if(!list) return;
+  const ordered = state.cats.filter(c=>!isMemorial(c)).concat(state.cats.filter(c=>isMemorial(c)));
+  list.innerHTML = '';
+  ordered.forEach(c=>{
+    const mem = isMemorial(c);
+    const row = document.createElement('div');
+    row.dataset.cat = c;
+    row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:12px 8px;border-bottom:0.5px solid var(--cm-line);background:var(--cm-bg);border-radius:10px;user-select:none;-webkit-user-select:none';
+    row.innerHTML = '<span class="co-handle" style="touch-action:none;cursor:grab;padding:4px 12px;color:var(--cm-faint);font-size:16px;letter-spacing:2px">≡</span>'
+      + '<span style="flex:1;font-size:14px;font-weight:600;color:var(--cm-ink)'+(mem?';opacity:.55':'')+'">'+_vEsc(c)+(mem?' <span style="font-size:10.5px;font-weight:500;color:var(--cm-faint)">기억</span>':'')+'</span>';
+    row.querySelector('.co-handle').addEventListener('pointerdown', ev=>_coDragStart(ev, row));
+    list.appendChild(row);
+  });
+}
+let _coDrag = null;
+function _coDragStart(ev, row){
+  if(_coDrag) return;
+  ev.preventDefault();
+  const handle = ev.currentTarget;
+  _coDrag = { row, list: row.parentNode, handle };
+  try{ handle.setPointerCapture(ev.pointerId); }catch(e){}
+  row.style.background = 'var(--cm-surface-2)';
+  row.style.boxShadow = '0 2px 12px rgba(0,0,0,0.14)';
+  row.style.position = 'relative';
+  row.style.zIndex = '1';
+  const mv = e=>_coDragMove(e);
+  const up = e=>_coDragEnd(e, mv, up);
+  handle.addEventListener('pointermove', mv);
+  handle.addEventListener('pointerup', up);
+  handle.addEventListener('pointercancel', up);
+}
+function _coDragMove(e){
+  if(!_coDrag) return;
+  const { row, list } = _coDrag;
+  const y = e.clientY;
+  // 포인터 Y가 형제 행의 중간선을 넘으면 그 앞으로 이동 — DOM 재배치로 리스트가 즉시 따라옴
+  const sibs = [...list.children].filter(r=>r!==row);
+  let target = null;
+  for(const s of sibs){
+    const r = s.getBoundingClientRect();
+    if(y < r.top + r.height/2){ target = s; break; }
+  }
+  if(target){ if(target !== row.nextSibling && target !== row) list.insertBefore(row, target); }
+  else if(list.lastElementChild !== row) list.appendChild(row);
+}
+function _coDragEnd(e, mv, up){
+  if(!_coDrag) return;
+  const { row, list, handle } = _coDrag;
+  handle.removeEventListener('pointermove', mv);
+  handle.removeEventListener('pointerup', up);
+  handle.removeEventListener('pointercancel', up);
+  row.style.background = ''; row.style.boxShadow = ''; row.style.position = ''; row.style.zIndex = '';
+  _coDrag = null;
+  _catOrderCommit([...list.children].map(r=>r.dataset.cat));
+  renderCatBar();
+  renderCatOrderSheet();   // 그룹 규칙(비추모 우선) 적용 결과 즉시 반영
 }
 // 프로필 화면의 기억하기 카드 — 떠난 날짜는 선택 입력(강제하지 않음)
 function renderMemorialBox(cat){
@@ -2539,6 +2605,9 @@ function renderCatBar(){
   const addSlotEl2=document.getElementById('catAddSlot');
   if(addSlotEl2) addSlotEl2.appendChild(wrap);
   else bar.appendChild(wrap);
+  // 순서 편집 진입점 — 2마리 이상일 때만 (v0.7.73)
+  const orderBtn=document.getElementById('catOrderEditBtn');
+  if(orderBtn) orderBtn.style.display = state.cats.length>=2 ? '' : 'none';
 }
 try{ applyCatOrder(); }catch(e){}         // 부팅 시 저장된 칩 순서 적용
 try{ _memorialAutoSwitch(); }catch(e){}   // 부팅 시 기본 선택이 추모 상태면 다른 아이로 (P0)
@@ -14055,8 +14124,7 @@ function openCatProfile(cat, initialTab) {
     };
   }
   document.getElementById('cpBirth').value=profile.birth||'';
-  try{ renderMemorialBox(cat); }catch(e){}
-  try{ renderCatOrderBox(); }catch(e){}
+  try{ renderMemorialBox(cat); }catch(e){}   // 순서 편집은 칩 리스트 '순서' 버튼으로 이동 (v0.7.73)
   document.getElementById('cpGender').value=profile.gender||'';
   document.getElementById('cpNeuter').value=profile.neuter||'';
   document.getElementById('cpActivity').value=profile.activity||'';
@@ -16170,7 +16238,6 @@ async function uploadFoodDataToDB(cat) {
   <div class="ig" style="margin-bottom:1rem"><label>메모</label><input type="text" id="cpMemo" placeholder="특이사항, 알레르기 등"></div>
 
   <div id="cpMemorialBox"></div>
-  <div id="cpCatOrderBox"></div>
   <div id="cardOrderUI" style="display:none"></div>
   <div style="position:sticky;bottom:0;padding:12px 0 20px;background:var(--cm-bg-soft);border-top:1px solid var(--cm-line);margin-top:8px">
     <button onclick="saveCatProfile()" class="cm-btn cm-btn--block">저장</button>
