@@ -652,7 +652,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.67</span>
+      <span class="cm-beta">v0.7.68</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -11806,6 +11806,68 @@ async function loadNextVisits(){
   }catch(e){ console.warn('nextVisit 로드 오류:', e); }
 }
 
+/* ── 여쭤볼 것 (진료 전 질문 목록, v0.7.68) — nextVisit 패턴: localStorage 원본 + user_settings 미러.
+   평소 떠오를 때마다 병원 관리 화면에서 추가 → 정기 진료용 리포트에 자동 포함 ── */
+function getVetQuestions(cat){
+  try{ const a = JSON.parse(localStorage.getItem('vetQuestions_v1_'+cat)||'[]'); return Array.isArray(a)?a:[]; }catch(e){ return []; }
+}
+function saveVetQuestions(cat, arr){
+  if(!cat) return;
+  try{ localStorage.setItem('vetQuestions_v1_'+cat, JSON.stringify(arr||[])); }catch(e){}
+  if(sbClient && currentUser){
+    sbClient.from('user_settings').upsert({
+      user_id: currentUser.id, key: 'vet_questions_'+cat,
+      value: {list: arr||[]}, updated_at: new Date().toISOString()
+    }, {onConflict:'user_id,key'}).then(({error})=>{ if(error) console.warn('질문 목록 저장 오류:', error); })
+      .catch(e=>console.warn('질문 목록 저장 reject:', e));
+  }
+}
+async function loadVetQuestions(){
+  if(!sbClient || !currentUser || !state.cats.length) return;
+  try{
+    const keys = state.cats.map(c => 'vet_questions_'+c);
+    const {data} = await sbClient.from('user_settings').select('key,value')
+      .eq('user_id', currentUser.id).in('key', keys);
+    (data||[]).forEach(row=>{
+      const cat = row.key.replace('vet_questions_','');
+      const list = (row.value && Array.isArray(row.value.list)) ? row.value.list : [];
+      try{ localStorage.setItem('vetQuestions_v1_'+cat, JSON.stringify(list)); }catch(e){}
+    });
+  }catch(e){ console.warn('질문 목록 로드 오류:', e); }
+}
+function vetQAdd(inputId, rerender){
+  const el = document.getElementById(inputId);
+  const t = ((el && el.value) || '').trim();
+  if(!t) return;
+  const cat = state.activeCat;
+  const list = getVetQuestions(cat);
+  list.push({text: t.slice(0,200), ts: Date.now()});
+  saveVetQuestions(cat, list);
+  if(el) el.value = '';
+  try{ (window[rerender]||function(){})(); }catch(e){}
+}
+function vetQDel(idx, rerender){
+  const cat = state.activeCat;
+  const list = getVetQuestions(cat);
+  list.splice(idx, 1);
+  saveVetQuestions(cat, list);
+  try{ (window[rerender]||function(){})(); }catch(e){}
+}
+// 질문 목록 편집 카드 — 병원 관리 화면·리포트 마법사(정기 진료용)에서 공용
+function _vetQCardHtml(inputId, rerender, inputStyle){
+  const cat = state.activeCat;
+  const qs = getVetQuestions(cat);
+  return '<div style="background:var(--cm-surface-2);border:1px solid var(--cm-line);border-radius:13px;padding:14px;margin-bottom:14px">'
+    + '<div style="font-size:12.5px;font-weight:700;color:var(--cm-ink-soft);margin-bottom:8px">여쭤볼 것 <span style="font-weight:500;color:var(--cm-faint)">(다음 진료 때 · 리포트에 포함)</span></div>'
+    + (qs.length
+      ? qs.map((q,i)=>'<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:0.5px solid var(--cm-line)"><span style="flex:1;font-size:13px;color:var(--cm-ink);line-height:1.5">'+_vEsc(q.text)+'</span><button type="button" onclick="vetQDel('+i+',\''+rerender+'\')" style="background:none;border:none;color:var(--cm-clay);font-size:12px;cursor:pointer;font-family:inherit;padding:2px 6px;flex:0 0 auto">삭제</button></div>').join('')
+      : '<div style="font-size:12px;color:var(--cm-faint);padding:2px 0 4px;line-height:1.5">떠오를 때마다 적어두면 진료 때 잊지 않아요.</div>')
+    + '<div style="display:flex;gap:8px;margin-top:10px">'
+    + '<input type="text" id="'+inputId+'" maxlength="200" placeholder="예: 밥 먹고 구토하는데 괜찮을까요?" style="'+inputStyle+';flex:1;min-width:0" onkeydown="if(event.key===\'Enter\')vetQAdd(\''+inputId+'\',\''+rerender+'\')">'
+    + '<button type="button" onclick="vetQAdd(\''+inputId+'\',\''+rerender+'\')" style="padding:10px 16px;border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;background:var(--cm-green-700);color:#fff;border:none;flex:0 0 auto">추가</button>'
+    + '</div></div>';
+}
+
 /* ── 마지막 입력값 자동 프리필 (v0.7.42) ──
    각 아이별 마지막 저장값(수액 종류·양 / 몸무게 / 사료명·급여량)을 기억해 다음 입력 시 프리필.
    catProfiles는 syncFromDB가 DB 기준 재구축(임의 필드 소실)하므로
@@ -12319,6 +12381,7 @@ function renderVetManage(){
     + '<div style="font-size:12.5px;font-weight:700;color:var(--cm-ink-soft);margin-bottom:10px">다음 진료 예정일</div>'
     + dateHtml
     + '</div>'
+    + _vetQCardHtml('vmQInput', 'renderVetManage', inputStyle)
     + renderCareEventsSection(cat)
     + '<div style="height:14px"></div>'
     + '<div style="font-size:12.5px;font-weight:700;color:var(--cm-ink-soft);margin-bottom:8px">최근 진료 이력</div>'
@@ -12772,7 +12835,8 @@ function computeObservations(cat, anchor){
 }
 /* ══ OBS-END ══ */
 
-function collectVetReportData(cat, fromStr, toStr){
+function collectVetReportData(cat, fromStr, toStr, excludeSet){
+  // excludeSet: 집계에서 제외할 날짜 Set — 인터벌 리포트의 입원 구간(재택 데이터 아님) 제외용 (v0.7.68)
   const prof = (state.catProfiles||{})[cat] || {};
   const dates = _vrDates(fromStr, toStr);
   const d = { cat, fromStr, toStr, days: dates.length, prof };
@@ -12786,6 +12850,7 @@ function collectVetReportData(cat, fromStr, toStr){
   let fluidCount = 0, fluidMlSum = 0, wetUnknownDays = 0;
   d.vomits = []; d.weights = [];
   dates.forEach(day=>{
+    if(excludeSet && excludeSet.has(day)) return;
     const rec = (state.records[cat]||{})[day];
     if(!rec) return;
     // 수분 출처 분리 집계 (v0.7.66) — 총 수분(경구)=자발+강급+습식수분, 피하수액 별도
@@ -13126,6 +13191,150 @@ function renderVetReportCanvas(d, inc, memo){
 
 /* ── 리포트 만들기 4단계 모달 ── */
 let _vetRep = null;
+/* ════ 정기 진료용 인터벌 리포트 (스펙 ③ Phase 3-A, v0.7.68) ════
+   받는 사람 = 이력을 이미 아는 주치의 → 혈검·입원 경과 요약은 넣지 않는다(주치의가 직접 한 일).
+   수의사가 진료실에서 볼 수 없는 재택 데이터만, 카톡 붙여넣기용 텍스트 한 덩어리.
+   데이터 없는 섹션은 줄 자체를 생략(길이 관리). 전부 관찰 서술 — 해석·진단 문구 금지. */
+// 직전 진료일 자동 추정 — care_events(통원일·퇴원일)와 혈검일 중 가장 최근. 진행 중 입원은 제외
+function guessLastVisit(cat){
+  const cands = [];
+  getCareEvents(cat).forEach(e=>{
+    const end = e.end || (e.type==='통원' ? e.start : null);
+    if(end && end < today()) cands.push(end);
+  });
+  btData.filter(b=>b.cat===cat && b.date && b.date < today()).forEach(b=>cands.push(b.date));
+  return cands.length ? cands.sort().reverse()[0] : null;
+}
+function buildIntervalReport(cat, lastVisit){
+  const to = today();
+  const d0 = new Date(lastVisit+'T00:00:00Z'); d0.setUTCDate(d0.getUTCDate()+1);
+  let from = d0.toISOString().slice(0,10);
+  if(from > to) from = to;
+  const dates = _vrDates(from, to);
+  const md = s=>s.slice(5).replace('-','/');
+  // 기간 내 입원 구간은 재택 데이터에서 제외하고 한 줄 표기만
+  const adms = getCareEvents(cat).filter(e=>e.type==='입원' && e.start<=to && careEventEnd(e)>=from);
+  const ex = new Set();
+  adms.forEach(e=>{ const end=careEventEnd(e); dates.forEach(dy=>{ if(dy>=e.start && dy<=end) ex.add(dy); }); });
+  const d = collectVetReportData(cat, from, to, ex);
+  const home = dates.filter(dy=>!ex.has(dy));
+
+  // 재택 일별 추가 집계 — SRR 임계 초과일·급여량(g)·투약 순응도·소변/대변 이상
+  const srrVals=[], srrExDays=[], missed=[], abnorm=[];
+  let gSum=0, gDays=0, sched=0, done=0;
+  home.forEach(dy=>{
+    const rec=(state.records[cat]||{})[dy]||{};
+    const sl=(rec.rr||[]).filter(x=>x.state==='sleep'&&x.rr>0);
+    if(sl.length){ sl.forEach(x=>srrVals.push(x.rr)); if(sl.some(x=>x.rr>=SRR_TH.obs)) srrExDays.push(dy); }
+    const g=(rec.meals||[]).reduce((a,m)=>a+(m.amt||0),0);
+    if(g>0){ gSum+=g; gDays++; }
+    // 순응도: 예정 시간 있는 약만. 오늘은 예정 시간이 아직 안 지났을 수 있어 분모 제외.
+    // 앱 기록이 전혀 없는 날은 미사용일(≠미투약)이라 분모에서 빼야 수의사가 오해하지 않음
+    const hasAnyRec = ['bg','ins','meals','weights','routines','water','urine','rr','poop','vomits'].some(k=>Array.isArray(rec[k])&&rec[k].length);
+    if(dy < to && hasAnyRec){
+      const eff=routineItemsFor(cat,dy), ds=_routineDoneSet(rec,eff);
+      let s=0, dn=0;
+      (eff||[]).forEach(it=>{ if(!_routineUsesTimes(it))return; (it.times||[]).forEach(t=>{ s++; if(ds.has(_slotKey(it.name,t))) dn++; }); });
+      sched+=s; done+=dn;
+      if(s>dn) missed.push(md(dy)+' '+(s-dn)+'건');
+    }
+    (rec.urine||[]).forEach(u=>{ if(u.amount&&['혈뇨','핍뇨','단백뇨','뇨당'].includes(u.amount)) abnorm.push({d:dy,t:u.time||'',txt:'소변 '+u.amount}); });
+    (rec.poop||[]).forEach(p=>{ if(p.type&&['설사','혈변','무변','토끼똥/변비'].includes(p.type)) abnorm.push({d:dy,t:p.time||'',txt:'대변 '+p.type}); });
+  });
+  // 체중 비교 기준: 지난 진료일 이전 60일 내 마지막 기록 (절대값만 주면 수의사가 다시 계산해야 함)
+  let baseWt=null;
+  for(let i=0;i<60;i++){
+    const dd=new Date(lastVisit+'T00:00:00Z'); dd.setUTCDate(dd.getUTCDate()-i);
+    const ws=((state.records[cat]||{})[dd.toISOString().slice(0,10)]||{}).weights||[];
+    if(ws.length){ baseWt=ws[ws.length-1].weight; break; }
+  }
+
+  const L=[];
+  L.push('['+cat+' 재택 관찰 기록 - 정기 진료용]');
+  L.push('기간: '+from+' ~ '+to+' ('+dates.length+'일)');
+  L.push('지난 진료: '+lastVisit);
+  if(adms.length) L.push('입원 기간 제외: '+adms.map(e=>md(e.start)+'~'+md(careEventEnd(e))).join(', '));
+  if(srrVals.length){
+    L.push('');
+    L.push('[수면 호흡수]');
+    const avg=Math.round(srrVals.reduce((a,b)=>a+b,0)/srrVals.length);
+    L.push('평균 '+avg+'회/분 (범위 '+Math.min(...srrVals)+'~'+Math.max(...srrVals)+', 측정 '+srrVals.length+'회)');
+    if(srrExDays.length) L.push(SRR_TH.obs+'회/분 이상: '+srrExDays.length+'일 ('+srrExDays.slice(0,4).map(md).join(', ')+(srrExDays.length>4?' 외':'')+')');
+  }
+  if(d.weight.last){
+    L.push('');
+    L.push('[체중]');
+    let ln='현재 '+d.weight.last.weight+'kg ('+md(d.weight.last.date)+')';
+    if(baseWt){ const p=(d.weight.last.weight-baseWt)/baseWt*100; ln+=' · 지난 진료 무렵 '+baseWt+'kg 대비 '+(p>=0?'+':'')+p.toFixed(1)+'%'; }
+    L.push(ln);
+  }
+  if(d.water.intakeAvg!=null || d.water.fluidCount>0){
+    L.push('');
+    L.push('[수분]');
+    if(d.water.intakeAvg!=null){
+      let ln='총 수분 평균 '+Math.round(d.water.intakeAvg)+'ml/일 (경구)';
+      if(d.water.natAvg!=null) ln+=' · 그중 자발음수 '+Math.round(d.water.natAvg)+'ml';
+      L.push(ln);
+    }
+    if(d.water.fluidCount>0) L.push('피하수액: 평균 '+Math.round(d.water.fluidAvg)+'ml/일 · 총 '+d.water.fluidCount+'회');
+  }
+  if(d.meal.days || gDays){
+    L.push('');
+    L.push('[식사]');
+    const parts=[];
+    if(gDays) parts.push('평균 '+Math.round(gSum/gDays)+'g/일');
+    if(d.meal.days) parts.push('평균 '+Math.round(d.meal.kcalAvg)+'kcal/일'+(d.profile.recommendedKcal?' (참고 권장 '+d.profile.recommendedKcal+'kcal)':''));
+    L.push(parts.join(' · ')+' — '+Math.max(gDays,d.meal.days)+'일 기록');
+  }
+  if(sched>0){
+    L.push('');
+    L.push('[투약]');
+    L.push('순응도 '+done+'/'+sched+'회 (예정 시간 기준, 기록 있는 날만·오늘 제외)');
+    if(missed.length) L.push('기록 빠진 날: '+missed.slice(0,5).join(', ')+(missed.length>5?' 외 '+(missed.length-5)+'일':''));
+  }
+  const wm=routineItemsFor(cat,to).filter(it=>it.cat==='med'&&Array.isArray(it.watch)&&it.watch.length);
+  if(wm.length){
+    L.push('');
+    L.push('[복용 중 관찰 권고] (수의사 안내 기준)');
+    wm.forEach(it=>L.push('- '+it.name+': '+it.watch.join(', ')));
+    const ws=[...new Set(wm.flatMap(it=>it.watch))];
+    const wo=ws.map(w=>{const ln=_watchObsLine(w,d); return ln?('- '+w+': '+ln):null;}).filter(Boolean);
+    if(wo.length){ L.push('기간 내 관찰값:'); wo.forEach(x=>L.push(x)); }
+  }
+  d.vomits.forEach(v=>abnorm.push({d:v.date,t:v.time||'',txt:'구토 '+v.label+(v.danger?' (주의)':'')}));
+  if(abnorm.length){
+    abnorm.sort((a,b)=>(a.d+' '+a.t)<(b.d+' '+b.t)?-1:1);
+    L.push('');
+    L.push('[특이사항]');
+    abnorm.slice(0,12).forEach(x=>L.push('- '+md(x.d)+(x.t?' '+x.t:'')+' '+x.txt));
+    if(abnorm.length>12) L.push('- 외 '+(abnorm.length-12)+'건');
+  }
+  const qs=getVetQuestions(cat);
+  if(qs.length){
+    L.push('');
+    L.push('[여쭤볼 것]');
+    qs.forEach((q,i)=>L.push((i+1)+'. '+q.text));
+  }
+  L.push('');
+  L.push('— 케어마스터즈 재택 기록 · 진단·처방이 아닌 보호자 관찰 기록입니다');
+  return L.join('\n');
+}
+async function copyIntervalReport(){
+  if(!_vetRep || !_vetRep._text) return;
+  if(_vetRep.nextVisit) setNextVisit(_vetRep.cat, _vetRep.nextVisit);
+  let ok=false;
+  try{ await navigator.clipboard.writeText(_vetRep._text); ok=true; }catch(e){
+    // 클립보드 API 실패(권한·비보안 컨텍스트) 폴백
+    try{
+      const ta=document.createElement('textarea'); ta.value=_vetRep._text;
+      ta.style.cssText='position:fixed;left:-9999px;top:0'; document.body.appendChild(ta);
+      ta.select(); ok=document.execCommand('copy'); ta.remove();
+    }catch(e2){}
+  }
+  if(ok){ toast('리포트가 복사됐어요. 병원 채팅에 붙여넣어 주세요', '#1D9E75', 3000); vetRepGo(4); }
+  else toast('복사가 안 됐어요. 미리보기 텍스트를 길게 눌러 직접 복사해주세요', '#BA7517', 3600);
+}
+
 function _vetIncDefaults(cat){
   const isDM = ((state.catProfiles||{})[cat]?.diseases||[]).some(x=>String(x).includes('DM'));
   return { obs:true, profile:true, water:true, urine:true, poop:true, vomit:true, meal:true, weight:true, rr:true, med:true, cgm:isDM, bt:false };
@@ -13137,6 +13346,8 @@ function openVetReport(){
   const predicted = predictNextVisit(cat);
   _vetRep = {
     cat, step: 1,
+    rtype: 'interval',   // 'interval' 정기 진료용(재택 기록·텍스트) | 'full' 전체 요약(이미지+텍스트)
+    lastVisit: guessLastVisit(cat) || '',
     nextVisit: saved || predicted || '',
     predicted: !saved && !!predicted,
     period: '2w', customFrom: '', customTo: today(),
@@ -13176,6 +13387,14 @@ function _vrBtn(label, onclick, primary){
     (primary?'background:var(--cm-green-700);color:#fff;border:none':'background:none;color:var(--cm-faint);border:1px solid var(--cm-line)')+'">'+label+'</button>';
 }
 function vetRepSet(key, val){ if(_vetRep) _vetRep[key] = val; }
+// 리포트 종류 전환 — 재렌더 전에 입력 중이던 진료 예정일 보존
+function vetRepType(key){
+  if(!_vetRep) return;
+  const d = document.getElementById('vrNextVisit');
+  if(d) _vetRep.nextVisit = d.value;
+  _vetRep.rtype = key;
+  renderVetReportStep();
+}
 function vetRepToggle(key){
   if(!_vetRep) return;
   _vetRep.inc[key] = !_vetRep.inc[key];
@@ -13185,6 +13404,12 @@ function vetRepGo(step){
   if(_vetRep.step === 1){
     const dEl = document.getElementById('vrNextVisit');
     if(dEl) _vetRep.nextVisit = dEl.value;
+  }
+  // 인터벌 리포트: 지난 진료일 확인 (오늘 이전이어야 기간이 성립)
+  if(_vetRep.step === 'i2' && step === 'i3'){
+    const lv = document.getElementById('vrLastVisit');
+    if(lv) _vetRep.lastVisit = lv.value;
+    if(!_vetRep.lastVisit || _vetRep.lastVisit >= today()){ toast('지난 진료일을 확인해주세요 (오늘 이전 날짜)', '#BA7517'); return; }
   }
   if(_vetRep.step === 2 && step === 3 && _vetRep.period === 'custom'){
     const f = document.getElementById('vrFrom'), t = document.getElementById('vrTo');
@@ -13203,22 +13428,47 @@ function renderVetReportStep(){
   const box = document.getElementById('vetReportBox');
   if(!box || !_vetRep) return;
   const R = _vetRep;
+  const _stepNo = R.step==='i2' ? 2 : R.step==='i3' ? 3 : R.step;
   const head = (t,sub) => '<div style="display:flex;align-items:center;margin-bottom:4px"><div style="flex:1"><div style="font-size:17px;font-weight:800;color:var(--cm-ink)">'+t+'</div><div style="font-size:12px;color:var(--cm-faint);margin-top:2px">'+sub+'</div></div>'+
     '<button type="button" onclick="closeVetReport()" style="background:none;border:none;font-size:20px;color:var(--cm-faint);cursor:pointer;padding:4px 8px;font-family:inherit">×</button></div>'+
-    '<div style="font-size:11px;color:var(--cm-faint);margin-bottom:14px">'+_vEsc(R.cat)+' · 단계 '+R.step+'/4</div>';
+    '<div style="font-size:11px;color:var(--cm-faint);margin-bottom:14px">'+_vEsc(R.cat)+' · 단계 '+_stepNo+'/4</div>';
   const inputStyle = 'padding:10px 12px;border:1px solid var(--cm-line);border-radius:11px;font-size:14px;background:var(--cm-surface);color:var(--cm-ink);font-family:inherit;box-sizing:border-box';
   // iOS Safari: date input은 네이티브 appearance인 동안 UA 내부 에디터의 고유 폭이 CSS width를 무시하고
   // 카드 폭을 뚫음 → appearance 제거(B안)로 폭 제어권 회수 + min-height로 높이 붕괴 방지. 네이티브 피커는 유지됨
   const dateStyle = inputStyle + ';-webkit-appearance:none;appearance:none;display:block;width:100%;max-width:100%;min-width:0;min-height:44px;text-align:left';
   if(R.step === 1){
-    box.innerHTML = head('병원에 공유하기', '다음 진료 예정일을 확인해주세요')
+    // 리포트 2종 (스펙 ③ Phase 3): 정기 진료용 = 주치의에게 재택 데이터만 · 전체 요약 = 전원·상세 공유용
+    const tCard=(key,title,sub)=>'<button type="button" onclick="vetRepType(\''+key+'\')" style="flex:1;min-width:0;text-align:left;padding:12px;border-radius:13px;cursor:pointer;font-family:inherit;border:1.5px solid '+(R.rtype===key?'var(--cm-green-700);background:var(--cm-green-tint)':'var(--cm-line);background:var(--cm-surface)')+'"><div style="font-size:13.5px;font-weight:800;color:var(--cm-ink)">'+title+'</div><div style="font-size:11px;color:var(--cm-faint);margin-top:3px;line-height:1.45">'+sub+'</div></button>';
+    box.innerHTML = head('병원에 공유하기', '리포트 종류를 선택해주세요')
+      + '<div style="display:flex;gap:8px;margin-bottom:12px">'
+      + tCard('interval','정기 진료용','지난 진료 이후 재택 기록만 · 텍스트 복사')
+      + tCard('full','전체 요약','기간 요약 + 리포트 사진 · 전원·상세 공유용')
+      + '</div>'
       + '<div style="background:var(--cm-surface-2);border:1px solid var(--cm-line);border-radius:13px;padding:14px;margin-bottom:12px">'
       + '<div style="font-size:12.5px;font-weight:700;color:var(--cm-ink-soft);margin-bottom:8px">다음 진료 예정일'+(R.predicted?' <span style="font-weight:500;color:var(--cm-faint)">(혈검 주기 기반 자동 예측)</span>':'')+'</div>'
       + '<div style="width:100%;overflow:hidden;border-radius:11px"><input type="date" id="vrNextVisit" value="'+_vEsc(R.nextVisit)+'" style="'+dateStyle+'"></div>'
       + '<div style="font-size:11px;color:var(--cm-faint);margin-top:8px;line-height:1.5">진료 예정일 D-3부터 오늘탭에서 알려드려요. 비워두면 알림 없이 리포트만 만들어요.</div>'
       + '</div>'
-      + '<div style="display:flex;gap:8px">'+_vrBtn('다음','vetRepGo(2)',true)+'</div>'
+      + '<div style="display:flex;gap:8px">'+_vrBtn('다음','vetRepGo('+(R.rtype==='interval'?'\'i2\'':'2')+')',true)+'</div>'
       + '<div style="font-size:11px;color:var(--cm-faint);margin-top:8px;text-align:center;line-height:1.5">진료 전 병원 카톡에 공유하시면 진료가 편해져요.</div>';
+  } else if(R.step === 'i2'){
+    const auto = guessLastVisit(R.cat);
+    box.innerHTML = head('정기 진료용 리포트', '지난 진료 이후의 재택 기록만 담아요')
+      + '<div style="background:var(--cm-surface-2);border:1px solid var(--cm-line);border-radius:13px;padding:14px;margin-bottom:14px">'
+      + '<div style="font-size:12.5px;font-weight:700;color:var(--cm-ink-soft);margin-bottom:8px">지난 진료일'+(auto&&R.lastVisit===auto?' <span style="font-weight:500;color:var(--cm-faint)">(병원 기록 기반 자동)</span>':'')+'</div>'
+      + '<div style="width:100%;overflow:hidden;border-radius:11px"><input type="date" id="vrLastVisit" value="'+_vEsc(R.lastVisit||'')+'" max="'+today()+'" onchange="vetRepSet(\'lastVisit\',this.value)" style="'+dateStyle+'"></div>'
+      + '<div style="font-size:11px;color:var(--cm-faint);margin-top:8px;line-height:1.5">다음 날부터 오늘까지의 재택 기록이 담겨요. 기간 중 입원이 있으면 그 구간은 자동으로 빼요.'+(auto?'':'<br>병원 기록(통원·퇴원)을 등록해두면 다음부터 자동으로 채워져요.')+'</div>'
+      + '</div>'
+      + _vetQCardHtml('vrQInput', 'renderVetReportStep', inputStyle)
+      + '<div style="display:flex;gap:8px">'+_vrBtn('이전','vetRepGo(1)',false)+_vrBtn('미리보기','vetRepGo(\'i3\')',true)+'</div>';
+  } else if(R.step === 'i3'){
+    let text='';
+    try{ text = buildIntervalReport(R.cat, R.lastVisit); }catch(e){ console.warn('인터벌 리포트 생성 오류:', e); text='리포트를 만들지 못했어요. 잠시 후 다시 시도해주세요.'; }
+    R._text = text;
+    box.innerHTML = head('미리보기', '복사해서 병원 카톡·채널에 붙여넣어 주세요')
+      + '<pre style="white-space:pre-wrap;word-break:break-word;background:var(--cm-surface);border:1px solid var(--cm-line);border-radius:13px;padding:12px;font-size:12px;line-height:1.6;color:var(--cm-ink);font-family:inherit;max-height:300px;overflow-y:auto;margin:0 0 12px">'+_vEsc(text)+'</pre>'
+      + '<div style="display:flex;gap:8px">'+_vrBtn('이전','vetRepGo(\'i2\')',false)+_vrBtn('텍스트 복사','copyIntervalReport()',true)+'</div>'
+      + '<div style="font-size:11px;color:var(--cm-faint);margin-top:8px;text-align:center;line-height:1.5">카카오톡 채널은 공유 목록에 뜨지 않아서 복사 후 붙여넣기가 가장 빨라요.</div>';
   } else if(R.step === 2){
     const per = [['1w','1주'],['2w','2주'],['1m','1개월'],['3m','3개월'],['custom','직접 지정']];
     const incDefs = [['obs','최근 관찰 지표'],['profile','프로필'],['water','음수량'],['urine','소변'],['poop','배변'],['vomit','구토'],['meal','급여'],['weight','체중'],['rr','호흡수'],['med','투약·루틴']];
@@ -14474,6 +14724,7 @@ async function syncFromDB() {
       _tw('tile_config',    loadTileConfigFromDB(state.activeCat).catch(e => console.warn('타일설정 로드 오류:', e))),
       _tw('food_sync',      syncFoodDataFromDB(state.activeCat).catch(e => console.warn('사료 DB 로드 오류:', e))),
       _tw('next_visit',     loadNextVisits().catch(e => console.warn('nextVisit 로드 오류:', e))),
+      _tw('vet_questions',  loadVetQuestions().catch(e => console.warn('vetQuestions 로드 오류:', e))),
       _tw('last_inputs',    loadLastInputs().catch(e => console.warn('lastInputs 로드 오류:', e))),
     ]);
     console.log(`[Perf] Promise.all 전체: ${(performance.now()-_parallelT0).toFixed(0)}ms`);
