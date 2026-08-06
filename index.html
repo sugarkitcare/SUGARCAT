@@ -662,7 +662,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.87</span>
+      <span class="cm-beta">v0.7.88</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -9887,14 +9887,25 @@ function updateRecommendedKcal(cat,wt){
   if(!cat||!wt||isNaN(wt)||wt<=0)return;
   const prof=(state.catProfiles||{})[cat]||{};
   const age=getBirthAgeGroup(cat)||'young';
-  const dis=new Set();
-  (prof.diseases||[]).forEach(d=>{
-    if(d.includes('DM'))dis.add('dm');
-    if(d.includes('CKD'))dis.add('ckd');
-    if(d.includes('PKD')){dis.add('ckd');dis.add('pkd');}
-    if(d==='췌장염')dis.add('panc');
-  });
-  const _calc=calcRecommendedKcal(wt,age,prof.neuter||'yes',prof.activity||'normal',prof.bcs||'ideal',dis);
+  // 계산기(calcCalorie)와 동일 조건으로 통일 (v0.7.88 — 화면 간 권장 칼로리 불일치 수정):
+  // ① 계산기에서 저장한 질환·상태 태그(calcDiseases — obese_tx·recovery 등 포함)를 우선 사용,
+  //    없으면 프로필 질환명 폴백(기존 동작) ② 목표 체중(targetWt)을 전달해 비만·과체중이면
+  //    목표 체중 기준 RER — 이 두 입력이 빠져 체중 기록 순간 다른 값으로 덮어쓰던 것이 원인
+  let dis;
+  if(Array.isArray(prof.calcDiseases)&&prof.calcDiseases.length){
+    dis=new Set(prof.calcDiseases);
+  }else{
+    dis=new Set();
+    (prof.diseases||[]).forEach(d=>{
+      if(d.includes('DM'))dis.add('dm');
+      if(d.includes('CKD'))dis.add('ckd');
+      if(d.includes('PKD')){dis.add('ckd');dis.add('pkd');}
+      if(d==='췌장염')dis.add('panc');
+    });
+  }
+  if(dis.has('ckd')&&(prof.diseases||[]).includes('PKD(다낭신)'))dis.add('pkd');   // calcCalorie의 enrich와 동일
+  const _targetWt=(prof.targetWt!=null&&parseFloat(prof.targetWt)>0)?parseFloat(prof.targetWt):NaN;
+  const _calc=calcRecommendedKcal(wt,age,prof.neuter||'yes',prof.activity||'normal',prof.bcs||'ideal',dis,_targetWt);
   if(!_calc)return;
   if(!state.catProfiles)state.catProfiles={};
   if(!state.catProfiles[cat])state.catProfiles[cat]={};
@@ -11247,6 +11258,25 @@ function renderCgmExtracted(d){
     </div>`;
   }else{pastaMetEl.innerHTML=''}
 
+  // AI 추출 요약값 수정 (v0.7.88, 사용자 피드백) — 혈검·사료 추출의 수정 패턴과 동일.
+  // readings(곡선)는 원본 유지, 요약값(최저·최고·평균)만 사용자 수정 허용(statsEdited 표식) —
+  // AI가 그래프 피크를 놓친 경우 수정값이 readings에 없을 수 있어 재계산하면 수정이 무효화되기 때문.
+  // TIR는 화면 표시값·readings 기반 그대로. CSV 데이터는 계산값이라 수정 UI 미노출.
+  let statEditEl=document.getElementById('cgmStatEdit');
+  if(!statEditEl){statEditEl=document.createElement('div');statEditEl.id='cgmStatEdit';pastaMetEl.after(statEditEl);}
+  if(d.source!=='csv'){
+    const _inS='width:64px;padding:4px 6px;border:1.5px solid var(--teal);border-radius:7px;font-size:13px;font-weight:700;background:var(--bg);color:var(--text);font-family:inherit;text-align:center';
+    statEditEl.innerHTML=`<div style="background:var(--bg2);border-radius:9px;padding:.5rem .75rem;margin:.5rem 0">
+      <div style="font-size:11px;color:var(--text3);margin-bottom:.4rem">AI 추출값이에요. 실제 값과 다르면 수정 후 저장하세요.</div>
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+        <span style="font-size:12px;color:var(--text2)">최저</span><input type="number" id="cgmEditMin" value="${min}" style="${_inS}">
+        <span style="font-size:12px;color:var(--text2)">최고</span><input type="number" id="cgmEditMax" value="${max}" style="${_inS}">
+        <span style="font-size:12px;color:var(--text2)">평균</span><input type="number" id="cgmEditAvg" value="${avg}" style="${_inS}">
+        <button type="button" onclick="applyCgmStatEdit()" style="padding:5px 14px;background:#1a6b43;color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0">수정 반영</button>
+      </div>${d.statsEdited?'<div style="font-size:10.5px;color:var(--text3);margin-top:.35rem">수정됨 — 그래프 곡선(측정점)은 원본 유지, 요약값만 반영돼요.</div>':''}
+    </div>`;
+  }else{statEditEl.innerHTML='';}
+
   // TIR 게이지 삽입 (cgmBanner 앞에)
   let tirEl=document.getElementById('cgmTirGauge');
   if(!tirEl){tirEl=document.createElement('div');tirEl.id='cgmTirGauge';document.getElementById('cgmBanner').before(tirEl);}
@@ -11323,6 +11353,23 @@ function renderCgmExtracted(d){
 
   document.getElementById('cgmResultCard').style.display='block';
 }
+
+/* 요약값(최저·최고·평균) 사용자 수정 반영 (v0.7.88) — 저장 전 추출 결과 화면에서 수정 */
+window.applyCgmStatEdit=function(){
+  if(!cgmExtracted){toast('추출 결과가 없어요','#D85A30');return;}
+  const nMin=parseFloat(document.getElementById('cgmEditMin')?.value);
+  const nMax=parseFloat(document.getElementById('cgmEditMax')?.value);
+  const nAvg=parseFloat(document.getElementById('cgmEditAvg')?.value);
+  if([nMin,nMax,nAvg].some(v=>isNaN(v)||v<20||v>800)){toast('20~800 사이 숫자로 입력해주세요','#D85A30');return;}
+  if(nMin>nMax){toast('최저가 최고보다 클 수 없어요','#D85A30');return;}
+  if(nAvg<nMin||nAvg>nMax){toast('평균은 최저와 최고 사이여야 해요','#D85A30');return;}
+  cgmExtracted.min=Math.round(nMin);
+  cgmExtracted.max=Math.round(nMax);
+  cgmExtracted.avg=Math.round(nAvg);
+  cgmExtracted.statsEdited=true;   // 요약값 수정 표식 — readings(곡선)와의 차이 허용 근거
+  renderCgmExtracted(cgmExtracted);
+  toast('요약값을 수정했어요. 저장을 누르면 기록에 반영돼요','#1D9E75');
+};
 
 // 저장
 document.getElementById('cgmSaveBtn').onclick=()=>{
