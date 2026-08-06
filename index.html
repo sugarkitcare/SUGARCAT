@@ -652,7 +652,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.77</span>
+      <span class="cm-beta">v0.7.78</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -1349,6 +1349,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
         <div style="overflow-x:auto;margin-top:.5rem">
           <table class="cgm-table"><thead><tr><th>시각</th><th>혈당</th><th>변화</th><th>판정</th></tr></thead>
           <tbody id="cgmTableBody"></tbody></table>
+          <div style="font-size:10px;color:var(--text3);margin-top:4px">* 판정 구간(60·80·200·300 mg/dL)은 앱이 설정한 참고 기준이며 진단이 아니에요.</div>
         </div>
       </details>
     </div>
@@ -1357,7 +1358,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
     <div id="cgmAiResult" style="display:none">
       <div class="card">
         <div class="card-title">🤖 AI 혈당 패턴 분석</div>
-        <div style="font-size:11.5px;line-height:1.5;padding:8px 10px;margin-bottom:.6rem;border-radius:9px;background:rgba(186,117,23,0.08);color:var(--cm-faint)">⚠️ 본 앱의 AI 분석은 참고용이며 수의사 진료를 대체하지 않습니다.</div>
+        <div style="font-size:12.5px;line-height:1.5;padding:9px 11px;margin-bottom:.6rem;border-radius:9px;background:rgba(186,117,23,0.1);color:var(--cm-ink-soft)">⚠️ 본 앱의 AI 분석은 참고용이며 수의사 진료를 대체하지 않습니다.</div>
         <div id="cgmAiBody" class="ai-analysis-body" style="font-size:13px;line-height:1.8;color:var(--text)"></div>
       </div>
     </div>
@@ -1563,7 +1564,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
         <span style="font-size:14px;font-weight:800;color:var(--cm-ink)">AI 혈액검사 분석</span>
         <span id="btAiSpinner" style="display:none" class="spin"></span>
       </div>
-      <div style="font-size:11.5px;line-height:1.5;padding:8px 10px;margin-bottom:.65rem;border-radius:9px;background:rgba(186,117,23,0.08);color:var(--cm-faint)">⚠️ 본 앱의 혈검 결과 표시는 참고용이며 진단·치료 방향은 반드시 수의사와 상담하세요.</div>
+      <div style="font-size:12.5px;line-height:1.5;padding:9px 11px;margin-bottom:.65rem;border-radius:9px;background:rgba(186,117,23,0.1);color:var(--cm-ink-soft)">⚠️ 본 앱의 혈검 결과 표시는 검사지 기재 참고범위 기준의 단순 대조이며 수의학적 진단이 아닙니다. 진단·치료 방향은 반드시 수의사와 상담하세요.</div>
       <div id="btAiCommentBody" style="font-size:13.5px;color:var(--cm-ink-soft);line-height:1.7;background:var(--cm-surface);border-radius:14px;padding:16px"></div>
     </div>
   </div>
@@ -1754,7 +1755,8 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
     <!-- CKD 스테이지 선택 -->
     <div id="ckdStageWrap" style="display:none;margin-bottom:.75rem">
       <div class="cm-card cm-card--flat">
-        <div style="font-size:11px;font-weight:600;color:var(--cm-faint);margin-bottom:.5rem">IRIS CKD 스테이지</div>
+        <div style="font-size:11px;font-weight:600;color:var(--cm-faint);margin-bottom:.25rem">IRIS CKD 스테이지</div>
+        <div style="font-size:11px;color:var(--cm-faint);margin-bottom:.5rem">담당 수의사가 알려준 병기를 선택하세요. 병기 판정은 담당 수의사의 진료 영역이에요.</div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.65rem">
           <button type="button" class="ckd-stage-btn active" data-stage="1" onclick="setCkdStage(1,this)"
             style="padding:5px 12px;border-radius:8px;border:1.5px solid var(--cm-green-700);background:var(--cm-green-700);color:#fff;font-size:12px;cursor:pointer;font-family:inherit">Stage 1</button>
@@ -1772,7 +1774,8 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
     <!-- HCM 스테이지 선택 -->
     <div id="hcmStageWrap" style="display:none;margin-bottom:.75rem">
       <div class="cm-card cm-card--flat">
-        <div style="font-size:11px;font-weight:600;color:var(--cm-faint);margin-bottom:.5rem">ACVIM HCM 스테이지</div>
+        <div style="font-size:11px;font-weight:600;color:var(--cm-faint);margin-bottom:.25rem">ACVIM HCM 스테이지</div>
+        <div style="font-size:11px;color:var(--cm-faint);margin-bottom:.5rem">담당 수의사가 알려준 병기를 선택하세요. 병기 판정은 담당 수의사의 진료 영역이에요.</div>
         <div style="display:flex;gap:6px;flex-wrap:wrap">
           <button type="button" class="hcm-stage-btn active" data-stage="B1" onclick="setHcmStage('B1',this)"
             style="padding:5px 12px;border-radius:8px;border:1.5px solid var(--teal);background:var(--teal);color:#fff;font-size:12px;cursor:pointer;font-family:inherit">Stage B1</button>
@@ -1846,7 +1849,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
       </div>
       <div id="tubeGuideBody" style="display:none;padding:0 .9rem .9rem;font-size:12.5px;line-height:1.75;color:var(--cm-ink)">
         <div style="font-weight:700;color:var(--cm-green-700);margin-bottom:.2rem">강급이란?</div>
-        <div>스스로 밥을 못 먹거나 안 먹는 아이에게 보호자가 직접 음식을 떠먹이거나 주사기로 넣어주는 것입니다. 식욕부진, 자발식 거부, 간수치 악화, 체력 저하, 아픈 후 회복기에 필요합니다. <b>특히 당뇨묘가 식사를 거부할 때는 저혈당 상황이 발생할 수 있어</b> 강급이 특히 중요합니다.</div>
+        <div>스스로 밥을 못 먹거나 안 먹는 아이에게 보호자가 직접 음식을 떠먹이거나 주사기로 넣어주는 것입니다. 식욕부진, 자발식 거부, 간 수치 상승, 체력 회복이 필요한 시기, 아픈 후 회복기에 필요합니다. <b>특히 당뇨묘가 식사를 거부할 때는 저혈당 상황이 발생할 수 있어</b> 강급이 특히 중요합니다.</div>
 
         <div style="font-weight:700;color:var(--cm-green-700);margin-top:.7rem;margin-bottom:.2rem">도구는 정답이 없습니다</div>
         <div>고양이마다 잘 받아주는 방법이 다릅니다. 주사기, 소스통, 사료환(손으로 빚기), 손가락, 숟가락 — 여러 방법을 시도해보고 우리 아이와 보호자 모두 편한 방법을 찾는 것이 좋습니다.</div>
@@ -1957,13 +1960,14 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
 <!-- ══ AI 해석 ══ -->
 <div class="sec" id="tab-ai" style="display:none">
   <div class="card" style="padding-top:.5rem">
+    <div style="font-size:12.5px;line-height:1.5;padding:9px 11px;margin:.4rem 0 .6rem;border-radius:9px;background:rgba(186,117,23,0.1);color:var(--cm-ink-soft)">⚠️ AI 답변은 일반 정보 안내이며 수의학적 진단·처방이 아닙니다. 치료 결정은 반드시 담당 수의사와 상담하세요.</div>
     <div class="ai-chat" id="aiChat">
-      <div class="ai-msg bot">안녕하세요! 오늘 기록된 수치나 케어 관련 궁금한 점을 자유롭게 입력해주세요.<br>기록을 바탕으로 함께 분석해드릴게요.</div>
+      <div class="ai-msg bot">안녕하세요! 케어 관련 궁금한 점을 자유롭게 입력해주세요.<br>일반적인 케어 정보를 안내해드릴게요.</div>
     </div>
     <button class="btn btn-teal" id="autoAnalyze" style="margin-bottom:.6rem">오늘 기록 자동 분석</button>
     <div id="aiChips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:.65rem"></div>
     <div class="ai-row">
-      <input type="text" id="aiInput" placeholder="예: 케톤이 올랐는데 어떻게 할까요?">
+      <input type="text" id="aiInput" placeholder="예: 케톤 수치는 무엇을 나타내나요?">
       <button class="ai-send" id="aiSend">전송</button>
     </div>
   </div>
@@ -4744,7 +4748,7 @@ function renderDailySummary(catName) {
       return item ? parseFloat(item.value) : null;
     };
 
-    // 비교 대상 항목 정의: [abbr, 한국어명, 방향('up'=높을수록 나쁨/'down'=낮을수록 나쁨), 위험 임계값, 악화 판단 변화율%]
+    // 비교 대상 항목 정의: [abbr, 한국어명, 방향('up'=높을수록 나쁨/'down'=낮을수록 나쁨), 위험 임계값, 변화 폭 판단 변화율%]
     const compareTargets = [
       ['CREA', '크레아티닌', 'up',  5.0, 10],
       ['BUN',  'BUN',       'up',  70,  15],
@@ -4758,9 +4762,9 @@ function renderDailySummary(catName) {
       ['HGB',  '헤모글로빈','down', 7.0, 10],
     ];
 
-    const worsened = [];  // 이전보다 악화된 항목
-    const urgent = [];    // 절대적 위험 수치 (이전 없어도)
-    const improved = [];  // 이전보다 개선된 항목
+    const worsened = [];  // 나쁜 방향으로 변화 폭이 큰 항목
+    const urgent = [];    // 앱 참고 기준을 크게 벗어난 항목 (이전 없어도)
+    const improved = [];  // 참고범위 쪽으로 변화한 항목
 
     // 절대적 응급 기준 (이전 혈검 없어도 즉시 경고)
     const urgentThresholds = [
@@ -4773,8 +4777,8 @@ function renderDailySummary(catName) {
     urgentThresholds.forEach(([abbr, dir, threshold, label]) => {
       const val = getVal(todayBT, abbr);
       if(val === null) return;
-      if(dir === 'up' && val >= threshold) urgent.push(`${label} ${val}`);
-      if(dir === 'down' && val <= threshold) urgent.push(`${label} ${val}`);
+      if(dir === 'up' && val >= threshold) urgent.push(`${label} ${val} (앱 참고 기준 ${threshold} 이상)`);
+      if(dir === 'down' && val <= threshold) urgent.push(`${label} ${val} (앱 참고 기준 ${threshold} 이하)`);
     });
 
     if(prevBT) {
@@ -4805,17 +4809,17 @@ function renderDailySummary(catName) {
 
       const isUrgentFlag = urgent.length > 0;
       if(isUrgentFlag) {
-        feedbacks.push({priority: 1, ...makeFeedback('danger','🚨','혈액검사 위험 수치',
-          urgent.join(' · ') + '<br>즉시 수의사에게 연락하세요')});
+        feedbacks.push({priority: 1, ...makeFeedback('danger','🚨','앱 참고 기준을 크게 벗어난 항목이 있어요',
+          urgent.join(' · ') + '<br>즉시 담당 수의사에게 연락하세요<br><span style="font-size:10px;color:var(--text3)">※ 이 기준은 앱이 설정한 참고값이며 진단이 아닙니다</span>')});
       }
       if(worsened.length > 0) {
         feedbacks.push({priority: isUrgentFlag ? 3 : 4, ...makeFeedback('warn','⚠️',
-          '이전 혈검보다 수치 악화',
-          worsened.join(' · ') + `<br>(${prevBT.date} 대비) 담당 수의사와 확인해 주세요`)});
+          '이전 혈검 대비 변화 폭이 큰 항목이 있어요',
+          worsened.join(' · ') + `<br>(${prevBT.date} 대비) 담당 수의사와 확인해 주세요<br><span style="font-size:10px;color:var(--text3)">※ 변화 폭 기준은 앱이 설정한 참고값입니다</span>`)});
       }
       if(improved.length > 0 && worsened.length === 0 && !isUrgentFlag) {
-        feedbacks.push({priority: 9, ...makeFeedback('ok','✅','혈액검사 수치 개선',
-          improved.join(' · ') + `<br>(${prevBT.date} 대비) 좋아지고 있어요 🎉`)});
+        feedbacks.push({priority: 9, ...makeFeedback('ok','✅','참고범위 쪽으로 변화한 항목이 있어요',
+          improved.join(' · ') + `<br>(${prevBT.date} 대비)`)});
       }
       if(urgent.length === 0 && worsened.length === 0 && improved.length === 0) {
         feedbacks.push({priority: 9, ...makeFeedback('ok','✅','혈액검사 큰 변화 없음',
@@ -4824,8 +4828,8 @@ function renderDailySummary(catName) {
     } else {
       // 이전 혈검 없음 — 절대값 기준으로만 판단
       if(urgent.length > 0) {
-        feedbacks.push({priority: 1, ...makeFeedback('danger','🚨','혈액검사 위험 수치',
-          urgent.join(' · ') + '<br>즉시 수의사에게 연락하세요')});
+        feedbacks.push({priority: 1, ...makeFeedback('danger','🚨','앱 참고 기준을 크게 벗어난 항목이 있어요',
+          urgent.join(' · ') + '<br>즉시 담당 수의사에게 연락하세요<br><span style="font-size:10px;color:var(--text3)">※ 이 기준은 앱이 설정한 참고값이며 진단이 아닙니다</span>')});
       } else {
         feedbacks.push({priority: 9, ...makeFeedback('ok','📋','오늘 혈액검사 기록됨',
           `${todayBT.items.length}개 항목 기록 · 다음 검사와 비교할게요`)});
@@ -4884,8 +4888,8 @@ function renderDailySummary(catName) {
       const thisAvg = Math.round(thisWeekMins.reduce((a,b)=>a+b,0)/thisWeekMins.length);
       const lastAvg = Math.round(lastWeekMins.reduce((a,b)=>a+b,0)/lastWeekMins.length);
       if(thisAvg - lastAvg >= 30) {
-        feedbacks.push({priority:4, ...makeFeedback('info','📈','혈당 최저점이 오르고 있어요',
-          `지난주 최저 평균 ${lastAvg} → 이번주 ${thisAvg} mg/dL<br>인슐린 효과가 줄어들고 있을 수 있어요`)});
+        feedbacks.push({priority:4, ...makeFeedback('info','📈','혈당 최저점이 지난주보다 올랐어요',
+          `지난주 최저 평균 ${lastAvg} → 이번주 ${thisAvg} mg/dL<br>담당 수의사와 상담 시 참고하실 수 있어요`)});
       }
     }
 
@@ -4906,8 +4910,8 @@ function renderDailySummary(catName) {
       const thisVar = Math.round(thisVariances.reduce((a,b)=>a+b,0)/thisVariances.length);
       const lastVar = Math.round(lastVariances.reduce((a,b)=>a+b,0)/lastVariances.length);
       if(thisVar - lastVar >= 50) {
-        feedbacks.push({priority:5, ...makeFeedback('info','📊','혈당 변동폭이 커지고 있어요',
-          `이번주 평균 편차 ±${thisVar}, 지난주 ±${lastVar} mg/dL<br>소모기 효과나 인슐린 반응 불안정일 수 있어요`)});
+        feedbacks.push({priority:5, ...makeFeedback('info','📊','혈당 변동폭이 지난주보다 커졌어요',
+          `이번주 평균 편차 ±${thisVar}, 지난주 ±${lastVar} mg/dL<br>담당 수의사와 상담 시 참고하실 수 있어요`)});
       }
     }
 
@@ -5020,10 +5024,10 @@ function renderDailySummary(catName) {
       const pct = Math.round(todayWater / minGoal * 100);
       if(todayWater < minGoal * 0.5) {
         feedbacks.push({priority:2, ...makeFeedback('danger','🚨','수분 섭취가 많이 부족해요',
-          `${cat} 체중 ${latestWt}kg 기준 ${minGoal}~${maxGoal}ml 필요<br>오늘 총 수분 ${todayWater}ml (목표의 ${pct}%) — ${minGoal-todayWater}ml 더 필요해요`)});
+          `${cat} 체중 ${latestWt}kg 기준 ${minGoal}~${maxGoal}ml 필요<br>오늘 총 수분 ${todayWater}ml (목표의 ${pct}%) — ${minGoal-todayWater}ml 더 필요해요<br><span style="font-size:10px;color:var(--text3)">※ 목표량(체중×40~60ml)은 앱이 설정한 참고 기준입니다</span>`)});
       } else if(todayWater < minGoal * 0.7) {
         feedbacks.push({priority:3, ...makeFeedback('warn','⚠️','수분 섭취가 부족해요',
-          `${cat} 체중 ${latestWt}kg 기준 ${minGoal}~${maxGoal}ml 필요<br>오늘 총 수분 ${todayWater}ml (목표의 ${pct}%) — ${minGoal-todayWater}ml 더 필요해요`)});
+          `${cat} 체중 ${latestWt}kg 기준 ${minGoal}~${maxGoal}ml 필요<br>오늘 총 수분 ${todayWater}ml (목표의 ${pct}%) — ${minGoal-todayWater}ml 더 필요해요<br><span style="font-size:10px;color:var(--text3)">※ 목표량(체중×40~60ml)은 앱이 설정한 참고 기준입니다</span>`)});
       }
     }
 
@@ -5046,8 +5050,8 @@ function renderDailySummary(catName) {
       return (r.urine||[]).some(u=>u.amount==='핍뇨');
     });
     if(pikDays.length === 3) {
-      feedbacks.push({priority:1, ...makeFeedback('danger','🚨','3일째 소변량이 적어요',
-        'CKD 아이의 핍뇨 지속은 급성 악화 신호일 수 있어요<br>즉시 수의사에게 연락하세요')});
+      feedbacks.push({priority:1, ...makeFeedback('danger','🚨','3일째 소변량이 적게 기록됐어요',
+        '3일 연속 핍뇨가 기록됐어요<br>담당 수의사에게 연락해 보시기 바랍니다')});
     }
 
     // 음수량 3일 감소
@@ -5073,7 +5077,7 @@ function renderDailySummary(catName) {
       const dropPct = Math.round((first-last2)/first*100);
       if(dropPct >= 5) {
         feedbacks.push({priority:3, ...makeFeedback('warn','📉','체중이 계속 줄고 있어요',
-          `2주간 ${first}→${last2}kg (-${dropPct}%)<br>CKD 아이의 체중 감소는 근육 소실 신호일 수 있어요`)});
+          `2주간 ${first}→${last2}kg (-${dropPct}%)<br>병원 방문 시 알려주세요`)});
       }
     }
   }
@@ -5090,7 +5094,7 @@ function renderDailySummary(catName) {
       const alreadyWeightFb = feedbacks.some(f => (f.title||'').includes('체중'));
       if(dropPct >= 5 && !alreadyWeightFb) {
         feedbacks.push({priority:4, ...makeFeedback('warn','📉','체중이 지난 한 달간 줄었어요',
-          `30일간 ${oldest}→${newest}kg (-${dropPct}%)<br>만성질환에서 체중 감소는 근육 소실 신호일 수 있어요. 병원 방문 시 알려주세요`)});
+          `30일간 ${oldest}→${newest}kg (-${dropPct}%)<br>병원 방문 시 알려주세요`)});
       }
     }
   }
@@ -5357,7 +5361,8 @@ function renderDailySummary(catName) {
   // 피드백 우선순위 정렬 후 표시
   feedbacks.sort((a,b) => a.priority - b.priority);
   if(feedbackEl) {
-    feedbackEl.innerHTML = feedbacks.map(f=>f.html).join('');
+    feedbackEl.innerHTML = feedbacks.map(f=>f.html).join('')
+      + (feedbacks.length ? '<div style="font-size:10.5px;color:var(--text3);line-height:1.5;margin-top:2px">※ 위 알림은 입력하신 기록 기반 자동 알림이며 수의학적 판단이 아닙니다.</div>' : '');
     feedbackEl.style.display = feedbacks.length ? 'block' : 'none';
   }
 
@@ -6870,28 +6875,28 @@ const CKD_CRITERIA = {
     protein: [28, 40],
     na: 0.4,
     wetRequired: false,
-    desc: '[스테이징] Creatinine <140 μmol/L — 신장 손상 초기 (IRIS 혈액 기준). [사료 참고] 인 제한 시작 권고·충분한 수분·고품질 단백질 유지 (ISFM 영양 기준).'
+    desc: '[사료 참고] 인 제한 시작 권고·충분한 수분·고품질 단백질 유지 (ISFM 영양 기준).'
   },
   2: {
     p: 0.5,
     protein: [28, 35],
     na: 0.4,
     wetRequired: false,
-    desc: '[스테이징] Creatinine 140~249 μmol/L — 경도 신부전 (IRIS 혈액 기준). [사료 참고] 인 0.5% DM 이하·단백질 제한 시작, Stage 2부터 신장 처방식 고려·습식 권장 (ISFM 영양 기준).'
+    desc: '[사료 참고] 인 0.5% DM 이하·단백질 제한 시작, Stage 2부터 신장 처방식 고려·습식 권장 (ISFM 영양 기준).'
   },
   3: {
     p: 0.4,
     protein: [24, 32],
     na: 0.3,
     wetRequired: true,
-    desc: '[스테이징] Creatinine 250~439 μmol/L — 중등도 신부전 (IRIS 혈액 기준). [사료 참고] 인 0.4% DM 이하·단백질 24~32% DM·습식 필수·나트륨 제한 (ISFM 영양 기준).'
+    desc: '[사료 참고] 인 0.4% DM 이하·단백질 24~32% DM·습식 필수·나트륨 제한 (ISFM 영양 기준).'
   },
   4: {
     p: 0.3,
     protein: [20, 28],
     na: 0.3,
     wetRequired: true,
-    desc: '[스테이징] Creatinine ≥440 μmol/L — 중증 신부전 (IRIS 혈액 기준). [사료 참고] 인 0.3% DM 이하·단백질 20~28% DM·습식 필수, 인산결합제 병용 필요할 수 있음 (ISFM 영양 기준).'
+    desc: '[사료 참고] 인 0.3% DM 이하·단백질 20~28% DM·습식 필수 (ISFM 영양 기준).'
   }
 };
 
@@ -6982,7 +6987,7 @@ const HCM_CRITERIA = {
       {icon:'✅', text:'오메가3(EPA/DHA) 보충 권장', ok:true},
       {icon:'🚫', text:'고나트륨 간식 및 사람 음식 금지', ok:false},
     ],
-    note:'※ B2부터 약물 치료(클로피도그렐 등) 시작 단계. 식이와 병행 중요.'
+    note:'※ 병기별 관리 방향은 담당 수의사와 상담하세요.'
   },
   'C': {
     color: '#D85A30',
@@ -7081,9 +7086,9 @@ function updateCkdDesc() {
     // Stage 1은 식이 제한보다 모니터링이 우선 — % 기준은 참고용으로 약하게
     desc.innerHTML =
       '<div style="background:var(--cm-green-tint);border:1px solid var(--cm-green-edge);border-radius:10px;padding:.65rem .85rem">'
-      +'<div style="font-size:11px;font-weight:700;color:var(--cm-green-700);margin-bottom:.3rem">Stage 1 — 신장 손상 초기</div>'
+      +'<div style="font-size:11px;font-weight:700;color:var(--cm-green-700);margin-bottom:.3rem">Stage 1</div>'
       +'<div style="font-size:11px;color:var(--cm-ink-soft);line-height:1.7">'
-      +'이 단계는 식이 제한보다 <b>인 수치 정기 모니터링(3~6개월)</b>과 충분한 수분이 우선이에요. 신장 처방식 전환은 보통 Stage 2부터 고려합니다.'
+      +'이 단계는 식이 제한보다 <b>인 수치 확인</b>과 충분한 수분이 우선이에요. 신장 처방식 전환은 보통 Stage 2부터 고려합니다. 검사 주기는 담당 수의사와 상의하세요.'
       +'</div>'
       +'<div style="font-size:10.5px;color:var(--cm-faint);font-style:italic;margin-top:.3rem">참고 사료 기준: 인 '+c.p+'% 이하 · 단백질 '+c.protein[0]+'~'+c.protein[1]+'% · 습식 권장</div>'
       +'</div>';
@@ -7230,7 +7235,7 @@ function renderFdResult(d){
   if(dmError&&!afSumError)warnHtml+=`<div style="background:#FAECE7;border:1px solid #D85A30;border-radius:8px;padding:.5rem .75rem;margin-bottom:.5rem;font-size:12px;color:#D85A30">⚠️ DM 100% 초과. 수분 수치를 확인해주세요.</div>`;
   _rWarn.forEach(w=>{warnHtml+=`<div style="background:#FFFBEB;border:1px solid #BA7517;border-radius:8px;padding:.5rem .75rem;margin-bottom:.5rem;font-size:12px;color:#BA7517">△ ${w}</div>`;});
   const name=d.name&&d.name!=='분석 사료'?d.name:d.foodNameInput||'분석 사료';
-  const vi={best:{ic:'★',t:`${name} — 당뇨 최적`,s:`탄수화물 DM ${cdm?.toFixed(1)}% (≤5% 충족)`},good:{ic:'○',t:`${name} — 당뇨 적합`,s:`탄수화물 DM ${cdm?.toFixed(1)}% (≤10% 이내)`},caution:{ic:'△',t:`${name} — 주의`,s:`탄수화물 DM ${cdm?.toFixed(1)}% (기준치 초과)`},bad:{ic:'✕',t:`${name} — 부적합`,s:`탄수화물 DM ${cdm?.toFixed(1)}% (고탄수화물)`}}[lv];
+  const vi={best:{ic:'★',t:`${name} — 탄수화물 매우 낮음`,s:`탄수화물 DM ${cdm?.toFixed(1)}% (앱 참고 기준 5% 이하)`},good:{ic:'○',t:`${name} — 탄수화물 낮음`,s:`탄수화물 DM ${cdm?.toFixed(1)}% (앱 참고 기준 10% 이하)`},caution:{ic:'△',t:`${name} — 탄수화물 다소 높음`,s:`탄수화물 DM ${cdm?.toFixed(1)}% (앱 참고 기준 10% 초과)`},bad:{ic:'✕',t:`${name} — 탄수화물 높음`,s:`탄수화물 DM ${cdm?.toFixed(1)}% (앱 참고 기준 15% 초과)`}}[lv];
   const ps=Math.min(100,Math.round((pdm??0)/60*100));
   const cs=cdm!==null?Math.max(0,Math.round((1-cdm/30)*100)):50;
   const tags=(d.ingredients_top5||[]).map((ing,i)=>{const lw=ing.toLowerCase();const cls=i===0?'p':lw.includes('쌀')||lw.includes('옥수수')||lw.includes('밀')||lw.includes('전분')||lw.includes('rice')||lw.includes('corn')?'c':'';return`<span class="tag ${cls}">${ing}</span>`}).join('');
@@ -7252,7 +7257,8 @@ function renderFdResult(d){
 <div class="card" style="padding:.8rem 1rem">
   <div class="sb-row"><span class="sb-lbl">단백질 점수</span><div class="sb-bg"><div class="sb-fill" style="width:${ps}%;background:#1D9E75"></div></div><span class="sb-val">${ps}점</span></div>
   <div class="sb-row"><span class="sb-lbl">저탄수 점수</span><div class="sb-bg"><div class="sb-fill" style="width:${cs}%;background:${cs>=70?'#1D9E75':cs>=40?'#BA7517':'#D85A30'}"></div></div><span class="sb-val">${cs}점</span></div>
-</div>`);
+</div>
+<div style="font-size:11px;color:var(--text3);line-height:1.6;margin-bottom:.5rem">※ 탄수화물 구간(5·10·15% DM)은 앱이 설정한 참고 기준이에요.<br>⚠️ 이 분석은 참고용이며 정확한 식이는 담당 수의사와 상담하세요.</div>`);
   }
   // 영양 수치 그리드 (항상 1회 · 나트륨은 CKD/HCM 선택 시만 노출)
   _ap(`<div class="n-grid">
@@ -7881,11 +7887,11 @@ function buildCtx(){
   if(prof.breed)ctx+=`품종: ${prof.breed}\n`;
   if(prof.birth)ctx+=`생년월일: ${prof.birth}\n`;
   if(prof.diseases?.length)ctx+=`동반질환: ${prof.diseases.join(', ')}\n`;
-  if(prof.insulin)ctx+=`인슐린: ${prof.insulin}\n`;
+  // 인슐린 제품명은 의도적 미포함 (v0.7.78) — CGM 분석과 동일: 약물명·용량 해석 유도 방지
   if(prof.memo)ctx+=`메모: ${prof.memo}\n`;
   ctx+=`\n[오늘 기록: ${today()}]\n`;
   if(lb)ctx+=`최근 혈당: ${lb.bg}mg/dL, 케톤: ${lb.ketone||'미측정'}mmol/L (${lb.time} ${lb.type})\n`;
-  if(li)ctx+=`최근 인슐린: ${li.type} ${li.dose}U (${li.time})\n`;
+  if(li)ctx+=`최근 인슐린 투여 시각: ${li.time} (종류·용량은 제공하지 않음)\n`;
   if(lw)ctx+=`오늘 체중: ${lw.weight}kg\n`;
   if(rr)ctx+=`최근 호흡수: ${rr.rr}회/분 (${rr.stateLabel||''} ${rr.time})\n`;
   if(kcal)ctx+=`오늘 총 칼로리: ${kcal}kcal\n`;
@@ -7924,11 +7930,11 @@ function renderAIChips() {
   const hasHCM  = diseases.some(d => d.includes('HCM'));
   const hasPanc = diseases.includes('췌장염');
   const chips = [];
-  if(hasDM)   chips.push('혈당이 계속 높아요', '케톤이 올랐어요', '저혈당 증상인가요?');
-  if(hasCKD)  chips.push('BUN이 높아요', '음수량이 부족해요');
-  if(hasHCM)  chips.push('호흡수가 빨라요');
-  if(hasPanc) chips.push('구토를 해요', '밥을 안 먹어요');
-  if(!chips.length) chips.push('케톤이 올랐어요', '음수량이 부족해요', 'BUN이 높아요');
+  if(hasDM)   chips.push('케톤 수치는 무엇을 나타내나요?', '혈당 곡선은 어떻게 보나요?', '저혈당이란 무엇인가요?');
+  if(hasCKD)  chips.push('BUN은 어떤 지표인가요?', '음수량은 왜 중요한가요?');
+  if(hasHCM)  chips.push('수면 호흡수는 왜 재나요?');
+  if(hasPanc) chips.push('구토 기록은 왜 중요한가요?', '식욕부진 시 일반적으로 살펴볼 점은?');
+  if(!chips.length) chips.push('케톤 수치는 무엇을 나타내나요?', '음수량은 왜 중요한가요?', 'BUN은 어떤 지표인가요?');
   el.innerHTML = chips.slice(0, 5).map(q =>
     `<button type="button" onclick="fillAIChip(${JSON.stringify(q)})"
       class="cm-chip cm-chip--good"
@@ -7949,7 +7955,11 @@ async function sendAI(msg){
   try{
     const resp=await fetch(`${API_BASE}/api/proxy`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:AI_MODEL,max_tokens:800,system:`당신은 환묘(당뇨·신부전·심근비대증·췌장염 등 복합질환 고양이) 보호자를 위한 일반 정보 안내 어시스턴트입니다.\n고양이 정보와 오늘 기록:\n${buildCtx()}\n절대 금지: 이 고양이에 대한 진단·병명 추정, 특정 약물명 언급·처방 제안, 투약 용량·시점 조정 권고(증량·감량·앞당김·늦춤 일체), 식이량 조정 수치 제시, 치료 효과 평가.\n진단·처방 질문을 받으면 거절로 끝내지 말고: 관련 일반 의학 지식(교과서 수준, 특정 개체 판단 아님)을 짧게 교육하고, 담당 수의사와 무엇을 상의하면 좋을지 안내.\n허용: 일반적·교과서적 케어 정보·원리 교육, 기록된 수치의 사실 확인, 시간적 상관관계 관찰(인과 단정 아님), 위험 수치(케톤≥2.4, 혈당≥400, 호흡수≥40 등) 시 즉시 병원 안내 최우선.\n한국어 250자 내외. 답변 끝에 "※ 참고용 정보이며 수의사 진료를 대체하지 않습니다." 포함.`,messages:[{role:'user',content:msg}]})});
     const data=await resp.json();incrementAIUsage('ai');typing.remove();
-    const bd=document.createElement('div');bd.className='ai-msg bot';bd.textContent=data.content&&data.content[0]?data.content[0].text:'응답을 받지 못했습니다.';chat.appendChild(bd);
+    // 안전 필터 적용 (v0.7.78) — 혈검·CGM 분석과 동일한 2차 방어. 전체 폐기 시 채팅용 안내로 대체
+    const _rawAI=data.content&&data.content[0]?data.content[0].text:'';
+    const _fRes=_rawAI?filterAIAnalysisText(_rawAI):null;
+    const _aiTxt=!_rawAI?'응답을 받지 못했습니다.':(_fRes.discarded?'답변에 안전 기준을 벗어난 표현이 많아 표시하지 않았어요. 이 내용은 담당 수의사와 상담해 주세요.':_fRes.text);
+    const bd=document.createElement('div');bd.className='ai-msg bot';bd.textContent=_aiTxt;chat.appendChild(bd);
   }catch(e){typing.remove();const ed=document.createElement('div');ed.className='ai-msg bot';ed.textContent='오류가 발생했습니다.';chat.appendChild(ed);}
   chat.scrollTop=chat.scrollHeight;
 }
@@ -10933,10 +10943,10 @@ function renderCgmExtracted(d){
   const banner=document.getElementById('cgmBanner');
   if(dangerCount>0){
     banner.style.display='block';banner.className='danger-banner';
-    banner.innerHTML=`⚠️ 위험 범위 수치 ${dangerCount}회 측정 (혈당 400↑ 또는 60↓) — 즉시 담당 수의사와 상담하세요`;
+    banner.innerHTML=`⚠️ 위험 범위 수치 ${dangerCount}회 측정 (혈당 400↑ 또는 60↓, 앱 참고 기준) — 즉시 담당 수의사와 상담하세요`;
   }else if(highCount>=5){
     banner.style.display='block';banner.className='warn-banner';
-    banner.innerHTML=`△ 고혈당(200 mg/dL 초과) ${highCount}회 측정됨`;
+    banner.innerHTML=`△ 200 mg/dL 초과(앱 참고 기준) ${highCount}회 측정됨`;
   }else if(avg<=200){
     banner.style.display='block';banner.className='ok-banner';
     banner.innerHTML=`✓ 전반적으로 안정적인 혈당 패턴이에요 (평균 ${avg} mg/dL)`;
@@ -12425,23 +12435,16 @@ function checkKetoneAlert(ket, bg) {
   if(!modal) return;
   
   if(ket >= 3.0) {
-    title.textContent = '🚨 케톤 위험 범위 - 응급 상황';
-    body.innerHTML = `케톤 <b>${ket} mmol/L</b> — 즉시 담당 수의사에게 연락하세요.<br><br>
-<b>지금 해야 할 일:</b><br>
-1. 즉시 동물병원으로 이동하세요<br>
-2. 이동 중 고양이 체온을 유지해주세요<br>
-3. 음식이나 물을 억지로 먹이지 마세요<br>
-4. 담당 수의사에게 연락하세요`;
+    title.textContent = '🚨 케톤 수치가 앱 참고 기준을 크게 넘었어요';
+    body.innerHTML = `케톤 <b>${ket} mmol/L</b> (앱 참고 기준: 3.0 이상)<br><br>
+지금 바로 담당 수의사에게 연락하세요.<br><br>
+<span style="font-size:11px;color:var(--text3)">※ 이 기준은 앱이 설정한 참고값이며 진단이 아닙니다. 대처는 담당 수의사의 안내에 따르세요.</span>`;
     modal.style.display = 'flex';
   } else if(ket >= 2.4) {
-    title.textContent = '⚠️ 케톤 위험 수치';
-    body.innerHTML = `케톤 <b>${ket} mmol/L</b> — 즉시 병원 상담이 필요해요.<br><br>
-<b>지금 해야 할 일:</b><br>
-1. 담당 수의사에게 즉시 연락<br>
-2. 식욕·구토·무기력증 여부 확인<br>
-3. 혈당 함께 체크 (현재: ${bg||'미측정'} mg/dL)<br>
-4. 수분 섭취 유도<br><br>
-<span style="color:var(--amber-d)">케톤 2.4 이상 측정됨 — 즉시 담당 수의사와 상담하세요</span>`;
+    title.textContent = '⚠️ 케톤 수치가 앱 참고 기준을 넘었어요';
+    body.innerHTML = `케톤 <b>${ket} mmol/L</b> (앱 참고 기준: 2.4 이상) · 혈당 ${bg||'미측정'} mg/dL<br><br>
+담당 수의사에게 연락해 안내에 따르세요.<br><br>
+<span style="font-size:11px;color:var(--text3)">※ 이 기준은 앱이 설정한 참고값이며 진단이 아닙니다.</span>`;
     modal.style.display = 'flex';
   } else if(ket >= 0.5) {
     // 주의 수준은 팝업 없이 색상만
@@ -13874,7 +13877,7 @@ function _watchObsLine(w, d){
     if(w==='식욕') return d.meal&&d.meal.days ? '평균 급여 '+Math.round(d.meal.kcalAvg)+' kcal/일 ('+d.meal.days+'일 기록)' : '급여 기록 없음';
     if(w==='호흡수') return d.rr&&d.rr.n ? '평균 '+d.rr.avg+'회/분'+(d.rr.sleepN?' · 수면 중 평균 '+d.rr.sleepAvg+'회/분':'')+' (측정 '+d.rr.n+'회)' : '측정 기록 없음';
     if(w==='음수량'){ const t=(d.water&&d.water.intakeAvg)||0; return t?('평균 '+Math.round(t)+'ml/일 (경구, 수액 별도)'):'기록 없음'; }
-    if(w==='소변'){ if(!d.urine||!d.urine.days) return '기록 없음'; const abn=Object.values(d.urine.abn||{}).reduce((a,b)=>a+b,0); return '평균 '+_vrNum(d.urine.avg,1)+'회/일'+(abn?' · 이상 소견 기록 '+abn+'회':''); }
+    if(w==='소변'){ if(!d.urine||!d.urine.days) return '기록 없음'; const abn=Object.values(d.urine.abn||{}).reduce((a,b)=>a+b,0); return '평균 '+_vrNum(d.urine.avg,1)+'회/일'+(abn?' · 이상 성상 기록 '+abn+'회':''); }
     if(w==='구토') return '기간 내 '+((d.vomits||[]).length)+'회';
     if(w==='설사'){ const c=(d.poop&&d.poop.abn&&d.poop.abn['설사'])||0; return c?('기간 내 '+c+'회 기록'):'기록 없음'; }
     if(w==='체중'){ if(!d.weight||!d.weight.last) return '기록 없음'; const f=d.weight.first,l=d.weight.last; return (f&&f.date!==l.date)?(f.weight+'kg → '+l.weight+'kg'):(l.weight+'kg'); }
