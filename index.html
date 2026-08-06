@@ -662,7 +662,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.85</span>
+      <span class="cm-beta">v0.7.86</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -15618,7 +15618,12 @@ function showApp() {
       const ab=document.getElementById('adminBtnProfile');
       if(ab)ab.style.display='block';
     }
-    syncFromDB();
+    // 알림 액션 큐는 동기화 '완료 후' 해제 (v0.7.86) — syncFromDB가 activeCat을 첫 비추모 고양이로
+    // 초기화(15916행 부근)한 뒤에 액션의 고양이 전환이 실행돼야 함. 콜드 스타트에서 +800ms 해제가
+    // sync보다 먼저 돌면 전환이 sync에 뒤덮여 첫 고양이 시트가 열리던 버그의 수정.
+    // 12초 안전망: sync가 지연·실패해도 액션이 무한 대기하지 않게 (setReady는 멱등).
+    syncFromDB().finally(()=>{ setTimeout(()=>{ try{ _notifActionsSetReady(); }catch(e){} }, 300); });
+    setTimeout(()=>{ try{ _notifActionsSetReady(); }catch(e){} }, 12000);
     try{ maybeShowConsentModal(); }catch(e){}   // 동의 취득 (v0.7.83) — 8/13부터, 미동의 시 진입마다 표시
   }
   // daily 탭 초기 렌더링
@@ -15628,8 +15633,8 @@ function showApp() {
   try { renderTileGrid(state.activeCat); } catch(e) {}
   // 비로그인: 로컬 기록만 존재 → 구토 루틴 이관을 여기서 실행 (로그인 유저는 syncFromDB merge 후 실행)
   if(!currentUser) try { migrateRoutineVomitToCard(); } catch(e) {}
-  // 알림 액션 큐 해제 (v0.7.85) — 초기 렌더 후 약간의 여유를 두고 콜드 스타트 이벤트 처리
-  setTimeout(()=>{ try{ _notifActionsSetReady(); }catch(e){} }, 800);
+  // 알림 액션 큐 해제 — 비로그인만 여기서(sync 없음). 로그인 경로는 위에서 sync 완료 후 해제 (v0.7.86)
+  if(!currentUser) setTimeout(()=>{ try{ _notifActionsSetReady(); }catch(e){} }, 800);
   console.log(`[Perf] showApp 초기렌더(동기): ${(performance.now()-_showT0).toFixed(0)}ms`);
 }
 
