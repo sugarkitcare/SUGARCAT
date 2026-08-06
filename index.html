@@ -330,6 +330,9 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
 </head>
 <body>
 
+<!-- 앱 공지 슬롯 (v0.7.81, P1-6) — 로그인·앱 화면 공통 상단. renderAppNotices()가 채움 -->
+<div id="appNoticeSlot" style="padding:0 12px"></div>
+
 <!-- 로그인 화면 -->
 <div id="loginPage" style="display:none;min-height:100vh;background:var(--cm-bg);padding:2rem 1.25rem;box-sizing:border-box;max-width:400px;margin:0 auto;font-family:'Pretendard Variable',Pretendard,-apple-system,system-ui,sans-serif;color:var(--cm-ink);-webkit-font-smoothing:antialiased;word-break:keep-all">
 
@@ -658,7 +661,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.80</span>
+      <span class="cm-beta">v0.7.81</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -2266,6 +2269,44 @@ async function saveBTManual() {
 }
 
 function kstNow(){return new Date(Date.now()+9*3600000);}
+/* ── 앱 공지 배너 (v0.7.81, P1-6) ─────────────────────────────
+   재사용 구조: APP_NOTICES에 항목을 추가하면 표시된다. until(KST, 그 날짜까지 표시) 경과 시 자동 비표시,
+   닫으면 localStorage noticeDismissed_<id>로 재표시 안 함. P0-1 재동의 팝업은 이 구조를 확장해 사용 예정. */
+const APP_NOTICES=[{
+  id:'privacy202608',
+  until:'2026-08-13',
+  title:'개인정보처리방침 변경 안내',
+  body:'2026년 8월 13일부터 개인정보처리방침이 변경됩니다.',
+  details:[
+    '건강 관련 기록이 개인정보에 해당함을 명확히 했습니다',
+    'AI 분석 기능 이용 시 국외로 전송되는 항목을 구체적으로 안내합니다',
+    '개인정보 파기 절차와 삭제 요청 방법을 명확히 했습니다',
+    '위탁업체(Vercel) 및 자동 처리 정보(인증 토큰·IP)를 추가로 안내합니다'
+  ],
+  linkHref:'/privacy', linkLabel:'개인정보처리방침'
+}];
+function dismissAppNotice(id){
+  try{localStorage.setItem('noticeDismissed_'+id,'1')}catch(e){}
+  const el=document.getElementById('appNotice_'+id); if(el) el.remove();
+}
+function renderAppNotices(){
+  const slot=document.getElementById('appNoticeSlot'); if(!slot) return;
+  const today=kstNow().toISOString().slice(0,10);
+  slot.innerHTML=APP_NOTICES.filter(n=>{
+    if(n.until && today>n.until) return false;
+    try{if(localStorage.getItem('noticeDismissed_'+n.id)) return false}catch(e){}
+    return true;
+  }).map(n=>
+    '<div id="appNotice_'+n.id+'" style="max-width:640px;margin:10px auto 0;padding:11px 34px 11px 13px;background:var(--cm-green-tint,#E6F0E7);border:1px solid var(--cm-green-edge,#BFD9C6);border-radius:12px;font-size:12.5px;line-height:1.6;color:var(--cm-green-ink,#1E5740);position:relative;box-sizing:border-box">'
+    +'<button type="button" onclick="dismissAppNotice(\''+n.id+'\')" aria-label="공지 닫기" style="position:absolute;top:8px;right:10px;background:none;border:none;font-size:15px;color:var(--cm-green-ink,#1E5740);cursor:pointer;padding:2px 6px;font-family:inherit">✕</button>'
+    +'<div style="font-weight:700;margin-bottom:2px">'+n.title+'</div>'
+    +'<div>'+n.body+'</div>'
+    +(n.details&&n.details.length?'<details style="margin-top:4px"><summary style="cursor:pointer;font-weight:600">주요 변경 사항 보기</summary><ul style="margin:6px 0 2px;padding-left:18px">'+n.details.map(d=>'<li style="margin:2px 0">'+d+'</li>').join('')+'</ul></details>':'')
+    +(n.linkHref?'<div style="margin-top:5px">자세한 내용은 <a href="'+n.linkHref+'" target="_blank" rel="noopener" style="color:var(--cm-green-700,#235B43);text-decoration:underline;font-weight:600">'+n.linkLabel+'</a>에서 확인하실 수 있습니다.</div>':'')
+    +'</div>'
+  ).join('');
+}
+try{renderAppNotices();}catch(e){}
 const today=()=>kstNow().toISOString().slice(0,10);
 function nowTime(){const n=kstNow();return String(n.getUTCHours()).padStart(2,'0')+':'+String(n.getUTCMinutes()).padStart(2,'0');}
 const nowT=nowTime;

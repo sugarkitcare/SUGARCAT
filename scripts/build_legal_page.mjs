@@ -14,7 +14,8 @@ const md = readFileSync(inPath, 'utf8').replace(/\r\n/g, '\n');
 const inline = s => s
   .replace(/&/g, '&amp;')
   .replace(/</g, '&lt;').replace(/>/g, '&gt;')
-  .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+  .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
 
 const lines = md.split('\n');
 const out = [];
@@ -51,6 +52,12 @@ while (i < lines.length) {
   if (/^## (.*)$/.test(line)) { out.push(`<h2>${inline(line.slice(3))}</h2>`); i++; continue; }
   if (/^### (.*)$/.test(line)) { out.push(`<h3>${inline(line.slice(4))}</h3>`); i++; continue; }
   if (/^---\s*$/.test(line)) { out.push('<hr>'); i++; continue; }
+  if (/^> /.test(line)) { // 인용 블록 → 안내 박스 (한시 공지 등)
+    const parts = [];
+    while (i < lines.length && /^> ?/.test(lines[i])) { const t = lines[i].replace(/^> ?/, ''); if (t.trim()) parts.push(inline(t)); i++; }
+    out.push(`<div class="notice">${parts.join('<br>')}</div>`);
+    continue;
+  }
   if (/^- /.test(line)) { collectList('ul'); continue; }
   if (/^\d+\. /.test(line)) { collectList('ol'); continue; }
   if (/^\|/.test(line)) { collectTable(); continue; }
@@ -123,6 +130,9 @@ main ol,main ul{font-size:.9rem;color:var(--ink-soft);margin:.5rem 0;padding-lef
 main li{margin:.3rem 0}
 main li ul{margin:.25rem 0 .4rem}
 main strong{color:var(--ink);font-weight:700}
+main .notice{background:var(--green-tint);border:1px solid var(--green-edge);border-radius:10px;
+  padding:.7rem .9rem;font-size:.85rem;color:var(--green-ink);margin:0 0 1.25rem;line-height:1.7}
+main .notice a{color:var(--green-700);text-decoration:underline}
 main hr{border:none;border-top:1px solid var(--line2);margin:2rem 0}
 .tablewrap{overflow-x:auto;margin:.75rem 0}
 table{border-collapse:collapse;width:100%;font-size:.85rem;background:var(--surface)}
