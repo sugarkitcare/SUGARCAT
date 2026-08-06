@@ -662,7 +662,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.86</span>
+      <span class="cm-beta">v0.7.87</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -3112,9 +3112,52 @@ const MED_SNOOZE_MAX = 3;    // 같은 시간대 하루 최대 연기 횟수 (�
 const MED_SNOOZE_MIN = 30;   // 재알림 간격(분)
 let _notifActionsReady = false;
 let _pendingNotifEvents = [];
+/* ── 쓰기 게이트 (v0.7.87) — 로딩(sync) 중 조기 입력 차단 ─────────────
+   근거(진단): sync 격리 창(state.records 임시 객체) 중 입력은 ① DB 행 적재 레이스,
+   ② 실패 시 백업 복원으로 조용히 유실될 수 있고, cats 응답의 activeCat 강제 전환과
+   겹치면 엉뚱한 고양이에 기록될 수 있다. ready 전 쓰기 진입점(오늘탭 기록 시트)만 차단,
+   열람은 비차단. ready = sync 종료(finally 기준, 성공/실패 무관) — 알림 액션 큐와 동일 신호. */
+let _appReady = false;
+let _wgFeedbackT = 0;
+function _applyWriteGateUI(){
+  const g = document.getElementById('dailyTileGrid');
+  if(g){
+    g.style.transition = 'opacity .25s';
+    g.style.opacity = _appReady ? '' : '0.55';
+  }
+  if(_appReady){ const n = document.getElementById('syncSlowNotice'); if(n) n.remove(); }
+}
+/* 차단 중 탭 — 문구 없는 짧은 시각 피드백 (완전 무반응 금지) */
+function _writeGateFeedback(){
+  const now = Date.now(); if(now - _wgFeedbackT < 350) return; _wgFeedbackT = now;
+  try{ if(navigator.vibrate) navigator.vibrate(12); }catch(e){}
+  const g = document.getElementById('dailyTileGrid');
+  if(g){ g.style.opacity = '0.3'; setTimeout(()=>{ g.style.opacity = _appReady ? '' : '0.55'; }, 160); }
+}
+function writeGateOk(){
+  if(_appReady) return true;
+  _writeGateFeedback();
+  return false;
+}
+/* 게이트 시작 — showApp에서 호출. 5초 초과 시에만 안내 + 재시도 경로 (평시엔 시각 처리만) */
+function _engageWriteGate(){
+  if(_appReady) return;
+  _applyWriteGateUI();
+  setTimeout(()=>{
+    if(_appReady || document.getElementById('syncSlowNotice')) return;
+    const g = document.getElementById('dailyTileGrid'); if(!g || !g.parentNode) return;
+    const d = document.createElement('div');
+    d.id = 'syncSlowNotice';
+    d.style.cssText = 'font-size:11.5px;color:var(--text3);text-align:center;padding:2px 0 6px';
+    d.innerHTML = '동기화가 오래 걸리고 있어요 · <button type="button" onclick="try{syncFromDB()}catch(e){}" style="background:none;border:none;padding:0;font-size:11.5px;color:var(--cm-green-700,#235B43);text-decoration:underline;cursor:pointer;font-family:inherit">다시 시도</button>';
+    g.parentNode.insertBefore(d, g);
+  }, 5000);
+}
 function _notifActionsSetReady(){
   if(_notifActionsReady) return;
   _notifActionsReady = true;
+  _appReady = true;                                  // 쓰기 게이트 해제 (v0.7.87 — 동일 신호로 통합)
+  try{ _applyWriteGateUI(); }catch(e){}
   _pendingNotifEvents.splice(0).forEach(ev=>{ try{ _processNotifEvent(ev); }catch(e){ console.warn('알림 액션 처리 오류:', e); } });
 }
 function _processNotifEvent(ev){
@@ -15612,6 +15655,7 @@ function showApp() {
   document.getElementById('onboardingPage').style.display = 'none';
   const _sw = document.getElementById('socialWelcomePage'); if(_sw) _sw.style.display = 'none';
   document.getElementById('app').style.display = 'block';
+  try{ _engageWriteGate(); }catch(e){}   // 로딩 중 쓰기 게이트 시각 처리 + 5초 지연 안내 (v0.7.87)
   if(currentUser) {
     document.getElementById('logoutBtn').style.display = 'block';
     if(currentUser.email===ADMIN_EMAIL){
@@ -16685,6 +16729,7 @@ function _dsVomitBodyHtml() {
     '<div id="vomitLog" style="font-size:11px;color:var(--text3);line-height:1.8"></div>';
 }
 window.openDailySheet = function(type) {
+  if(!writeGateOk()) return;   // 로딩 중 쓰기 차단 (v0.7.87) — 열람은 비차단, 탭 시 시각 피드백만
   var MAP = {
     water:   {title:'음수량',        sub:'하루 목표 대비',   bodyId:null},
     excreta: {title:'소변 · 대변',   sub:'소변·대변 체크',   bodyId:null},
