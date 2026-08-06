@@ -661,7 +661,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.81</span>
+      <span class="cm-beta">v0.7.82</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -15560,6 +15560,76 @@ async function handleLogout() {
   showLogin();
 }
 
+/* ── 회원 탈퇴 (v0.7.82, P0) — 방침 제3·4조 이행 경로 ──
+   서버(auth 삭제, 전 FK CASCADE 연쇄) → 로컬(예약 알림 취소 → 저장소 전체 삭제 → 초기 화면) 순서. */
+function openDeleteAccount(){
+  if(!currentUser){ toast('로그인 상태에서만 탈퇴할 수 있어요','#BA7517'); return; }
+  const m=document.getElementById('deleteAccountModal'); if(!m) return;
+  const chk=document.getElementById('delAccConfirmChk'); if(chk) chk.checked=false;
+  const btn=document.getElementById('delAccBtn'); if(btn){ btn.disabled=true; btn.style.opacity=.45; btn.textContent='탈퇴하고 모든 기록 삭제'; }
+  const msg=document.getElementById('delAccMsg'); if(msg) msg.textContent='';
+  m.style.display='block';
+}
+function closeDeleteAccount(){ const m=document.getElementById('deleteAccountModal'); if(m) m.style.display='none'; }
+/* 전체 기록 JSON 내보내기 — 탈퇴 전 백업 + 제8조 내보내기(Export) 권리 이행 */
+function exportAllDataJSON(){
+  try{
+    const dump={ app:'caremasters', exportedAt:new Date().toISOString(),
+      records:state, bloodTests:btData, careEvents:careEvents, perCatKeys:{} };
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i); if(!k) continue;
+      if(/^(fd_v2_|cgmData_v1_|tubeRecipes_v1_|favFoods_v1_|manualFoods_v1_|routineItems_v1_|routineVersions_v1_|lastInputs_v1_|nextVisit_v1_|vetQuestions_v1_)/.test(k)){
+        try{ dump.perCatKeys[k]=JSON.parse(localStorage.getItem(k)); }catch(e){ dump.perCatKeys[k]=localStorage.getItem(k); }
+      }
+    }
+    const blob=new Blob([JSON.stringify(dump,null,2)],{type:'application/json'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+    a.download='caremasters_export_'+today()+'.json'; a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href),3000);
+    toast('기록을 JSON 파일로 내보냈어요','#1D9E75');
+  }catch(e){ toast('내보내기에 실패했어요','#D85A30'); }
+}
+/* 예약된 로컬 알림 전부 취소 — 탈퇴 후 투약 알림이 울리면 안 됨 (추모 전환과 동일 요구) */
+async function cancelAllLocalNotifications(){
+  const ln=_lnPlugin(); if(!ln) return;
+  try{
+    const p=await ln.getPending();
+    if(p && p.notifications && p.notifications.length)
+      await ln.cancel({notifications:p.notifications.map(n=>({id:n.id}))});
+  }catch(e){}
+}
+async function confirmDeleteAccount(){
+  const btn=document.getElementById('delAccBtn'), msg=document.getElementById('delAccMsg');
+  if(!btn || btn.disabled) return;
+  btn.disabled=true; btn.style.opacity=.45; btn.textContent='처리 중...';
+  if(msg) msg.textContent='탈퇴 처리 중이에요. 잠시만 기다려주세요.';
+  let token='';
+  try{ const s=await sbClient.auth.getSession(); token=(s&&s.data&&s.data.session)?s.data.session.access_token:''; }catch(e){}
+  if(!token){
+    if(msg) msg.textContent='로그인 정보를 확인할 수 없어요. 다시 로그인 후 시도해주세요.';
+    btn.disabled=false; btn.style.opacity=1; btn.textContent='탈퇴하고 모든 기록 삭제'; return;
+  }
+  try{
+    const r=await fetch(API_BASE+'/api/delete-account',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token})});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok || !d.ok){
+      if(msg) msg.textContent='탈퇴 처리에 실패했어요. 잠시 후 다시 시도하시거나 caremasters.cat@gmail.com 으로 요청해주세요.';
+      btn.disabled=false; btn.style.opacity=1; btn.textContent='탈퇴하고 모든 기록 삭제'; return;
+    }
+  }catch(e){
+    if(msg) msg.textContent='네트워크 오류가 발생했어요. 잠시 후 다시 시도해주세요.';
+    btn.disabled=false; btn.style.opacity=1; btn.textContent='탈퇴하고 모든 기록 삭제'; return;
+  }
+  // 서버 삭제 완료 → 로컬 정리. 순서: 예약 알림 → 세션 정리 시도 → 저장소 전체 삭제
+  try{ await cancelAllLocalNotifications(); }catch(e){}
+  try{ await sbClient.auth.signOut(); }catch(e){}   // 토큰은 이미 무효 — 실패 무시
+  try{ localStorage.clear(); }catch(e){}
+  try{ sessionStorage.clear(); }catch(e){}
+  currentUser=null;
+  if(msg) msg.textContent='탈퇴가 완료됐어요. 모든 기록이 삭제됐습니다.';
+  setTimeout(()=>{ location.href='/'; }, 1500);
+}
+
 /* ── DB 동기화 ── */
 let _syncFromDBRunning = false; // 재진입 가드: 동기화 겹침 시 격리 창 플래그가 엇갈리는 것 방지
 /* 오늘탭 전체를 현재 activeCat 기준으로 재렌더 — 호출 개별 격리 (v0.7.35)
@@ -16564,6 +16634,36 @@ async function uploadFoodDataToDB(cat) {
 
 
 
+<!-- 회원 탈퇴 모달 (v0.7.82, P0) — 삭제 사실만 담담하게 안내, 만류 문구 금지 -->
+<div id="deleteAccountModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9999;overflow-y:auto;-webkit-overflow-scrolling:touch">
+  <div style="background:var(--bg);border-radius:16px;padding:1.25rem;max-width:380px;width:calc(100% - 2rem);margin:2rem auto;box-sizing:border-box">
+    <div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:.75rem">회원 탈퇴</div>
+    <div style="font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:.5rem">탈퇴하면 아래 기록이 모두 삭제됩니다.</div>
+    <ul style="font-size:12.5px;color:var(--text2);line-height:1.7;margin:0 0 .75rem;padding-left:1.1rem">
+      <li>계정 정보</li>
+      <li>등록한 모든 고양이 정보</li>
+      <li>혈액검사 기록</li>
+      <li>병원 기록</li>
+      <li>일일 기록(음수·배변·투약·호흡수·체중·식사)</li>
+      <li>혈당·CGM 기록</li>
+      <li>사료 분석 기록</li>
+      <li>앱 설정</li>
+    </ul>
+    <div style="font-size:13px;font-weight:700;color:var(--coral-d,#D85A30);margin-bottom:1rem">삭제된 기록은 복구할 수 없습니다.</div>
+    <div style="background:var(--bg2);border-radius:10px;padding:.65rem .8rem;margin-bottom:1rem">
+      <div style="font-size:12.5px;color:var(--text2);margin-bottom:.5rem">탈퇴 전에 기록을 내보내시겠어요?</div>
+      <button type="button" onclick="exportAllDataJSON()" style="padding:7px 14px;background:var(--bg);border:1px solid var(--bd);border-radius:8px;font-size:12.5px;color:var(--text);cursor:pointer;font-family:inherit">기록 내보내기 (JSON 파일)</button>
+    </div>
+    <label style="display:flex;align-items:flex-start;gap:8px;font-size:12.5px;color:var(--text);line-height:1.6;margin-bottom:1rem;cursor:pointer">
+      <input type="checkbox" id="delAccConfirmChk" onchange="var b=document.getElementById('delAccBtn');b.disabled=!this.checked;b.style.opacity=this.checked?1:.45" style="margin-top:3px;flex-shrink:0">
+      <span>위 내용을 확인했으며, 삭제된 기록은 복구할 수 없음을 이해합니다.</span>
+    </label>
+    <button type="button" id="delAccBtn" disabled onclick="confirmDeleteAccount()" style="width:100%;padding:12px;background:var(--coral,#D85A30);color:#fff;border:none;border-radius:11px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;opacity:.45">탈퇴하고 모든 기록 삭제</button>
+    <div id="delAccMsg" style="text-align:center;font-size:12px;color:var(--text2);min-height:18px;margin-top:.5rem"></div>
+    <button type="button" onclick="closeDeleteAccount()" style="width:100%;padding:9px;background:none;color:var(--text3);border:none;font-size:13px;cursor:pointer;font-family:inherit;margin-top:.25rem">취소</button>
+  </div>
+</div>
+
 <!-- 9번: 케톤 위험 팝업 -->
 <div id="ketoneAlertModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9999;overflow-y:scroll;-webkit-overflow-scrolling:touch;pointer-events:none">
   <div style="background:var(--bg);border-radius:16px;padding:1.25rem;max-width:360px;width:calc(100% - 2rem);margin:2rem auto">
@@ -16777,6 +16877,11 @@ async function uploadFoodDataToDB(cat) {
     <svg style="margin-left:auto;color:var(--cm-faint)" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
   </a>
   <div style="font-size:11px;color:var(--cm-faint);margin-top:4px">문의: caremasters.cat@gmail.com</div>
+
+  <!-- 회원 탈퇴 (v0.7.82, P0) — 최하단, 담담한 진입점 -->
+  <div style="margin-top:22px;padding-top:14px;border-top:1px solid var(--cm-line);text-align:center">
+    <button type="button" onclick="openDeleteAccount()" style="background:none;border:none;font-size:12px;color:var(--cm-faint);text-decoration:underline;cursor:pointer;font-family:inherit;padding:6px 10px">회원 탈퇴</button>
+  </div>
 </div>
 </div>
 
