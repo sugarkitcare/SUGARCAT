@@ -662,7 +662,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.84</span>
+      <span class="cm-beta">v0.7.85</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -3003,7 +3003,8 @@ async function medNotifResyncCat(cat){
         title: cat+' · 투약 시간이에요',
         body: _lnTimeLabel(s.time)+' 투약 '+s.names.length+'건',
         schedule: { on: { hour: parseInt(s.time.slice(0,2)), minute: parseInt(s.time.slice(3,5)) }, allowWhileIdle: true },
-        extra: { cat }
+        actionTypeId: 'MED_ACTIONS',                  // [복용 확인]·[나중에] (v0.7.85)
+        extra: { cat, time: s.time }                  // 날짜는 넣지 않음 — 반복 알림이라 수신 시점 판정
       };
     });
     if(notifs.length){ try{ await ln.schedule({notifications: notifs}); }catch(e){ console.warn('알림 예약 오류:', e); } }
@@ -3103,18 +3104,116 @@ function renderMedNotifCard(cat){
     }
   }).catch(()=>{});
 }
-// 부팅 초기화 — 탭 리스너 + 시작 시 예약 검증·복구 (웹에선 전부 no-op)
+/* ── 알림 액션 (v0.7.85) — [복용 확인]·[나중에] ─────────────────
+   법적 안전선: 시각 알림과 복용 '기록'만 — 용량·투여량 안내/조정 제안 금지 (문구 현행 유지).
+   콜드 스타트: 리스너는 스크립트 로드 시 등록되지만, 처리(_processNotifEvent)는 초기화 완료
+   신호(_notifActionsSetReady — showApp/showLogin에서 호출) 후 큐에서 실행 — 이벤트 유실 방지. */
+const MED_SNOOZE_MAX = 3;    // 같은 시간대 하루 최대 연기 횟수 (무한 연기 방지)
+const MED_SNOOZE_MIN = 30;   // 재알림 간격(분)
+let _notifActionsReady = false;
+let _pendingNotifEvents = [];
+function _notifActionsSetReady(){
+  if(_notifActionsReady) return;
+  _notifActionsReady = true;
+  _pendingNotifEvents.splice(0).forEach(ev=>{ try{ _processNotifEvent(ev); }catch(e){ console.warn('알림 액션 처리 오류:', e); } });
+}
+function _processNotifEvent(ev){
+  const extra = (ev && ev.notification && ev.notification.extra) || {};
+  const cat = extra.cat, time = extra.time;
+  const actionId = ev && ev.actionId;
+  // 추모·미등록 고양이의 잔여 알림 액션은 무시 (기록·화면 전환·스누즈 전부 안 함)
+  if((actionId==='MED_DONE' || actionId==='MED_SNOOZE') && cat && (!state.cats.includes(cat) || isMemorial(cat))) return;
+  if(actionId==='MED_DONE' && cat && time){
+    // 로그인이 풀린 상태(로그인 화면)면 기록하지 않고 안내만 (무리한 저장 금지)
+    const lp = document.getElementById('loginPage');
+    if(lp && lp.style.display !== 'none'){ toast('로그인 후 투약을 기록할 수 있어요','#BA7517'); return; }
+    _medActionDone(cat, time); return;
+  }
+  if(actionId==='MED_SNOOZE' && cat && time){ _medActionSnooze(cat, time); return; }
+  // 본문 탭 — 기존 동작 유지: 해당 고양이 전환 + 오늘탭 + 투약 시트
+  try{
+    if(cat && state.cats.includes(cat) && state.activeCat!==cat) switchCat(cat);
+    const btn = document.querySelector('.cm-tab[data-tab="daily"]');
+    if(btn) showTab('daily', btn);
+    setTimeout(()=>{ try{ if(!isMemorial(state.activeCat)) openDailySheet('med'); }catch(e){} }, 400);
+  }catch(e){ console.warn('알림 탭 처리 오류:', e); }
+}
+/* [복용 확인] — 날짜는 수신(처리) 시점 기준(반복 알림 — 예약 시점 날짜를 굳히면 다음 날 오기록).
+   그 시간대의 유효 루틴(routineItemsFor — 처방 버전 반영) 전 항목 일괄 기록, 기존 기록은 중복 제외.
+   기록 형식은 toggleRoutineCheck와 동일({items:[name], slot:time}) → 순응도 집계에 동일 반영 */
+function _medActionDone(cat, time){
+  const d = today();
+  const eff = routineItemsFor(cat, d);
+  const targets = (eff||[]).filter(it=>_routineUsesTimes(it) && (it.times||[]).includes(time));
+  if(!targets.length){ toast('이 시간대에 예정된 약이 없어요 (루틴이 변경됐을 수 있어요)','#BA7517'); return; }
+  if(state.activeCat!==cat){ try{ switchCat(cat); }catch(e){} }
+  const rec = getRec(cat, d);
+  if(!rec.routines) rec.routines = [];
+  let added = 0, dup = 0;
+  targets.forEach(it=>{
+    if(_findRoutineIdx(rec, it.name, time, eff) > -1){ dup++; return; }
+    rec.routines.push({items:[it.name], memo:'', time:nowTime(), ts:Date.now(), slot:time});
+    added++;
+  });
+  if(added) saveS(d);
+  try{ renderRoutineChecklist(); }catch(e){}
+  try{ renderHistory(); }catch(e){}
+  try{ renderDailySummary(); }catch(e){}
+  const lbl = _lnTimeLabel(time);
+  if(added) toast('✅ '+lbl+' 투약 '+added+'건을 기록했어요'+(dup?' (이미 기록 '+dup+'건 제외)':''),'#1D9E75');
+  else toast(lbl+' 투약은 이미 기록돼 있어요','#1D9E75');
+  // 수정 경로 — 오늘탭 + 투약 시트를 열어 기록 상태를 바로 보여줌 (일부만 준 경우 여기서 해제)
+  try{
+    const btn = document.querySelector('.cm-tab[data-tab="daily"]');
+    if(btn) showTab('daily', btn);
+    setTimeout(()=>{ try{ openDailySheet('med'); }catch(e){} }, 400);
+  }catch(e){}
+}
+/* [나중에] — 30분 뒤 1회성 재알림(같은 액션 부착). 원래의 매일 반복 알림은 그대로 유지 */
+async function _medActionSnooze(cat, time){
+  const ln = _lnPlugin(); if(!ln) return;
+  const d = today();
+  let cnt = {};
+  try{ cnt = JSON.parse(localStorage.getItem('medSnoozeCnt_v1')||'{}'); }catch(e){}
+  Object.keys(cnt).forEach(k=>{ if(!k.endsWith('@'+d)) delete cnt[k]; });   // 지난 날짜 키 청소
+  const key = cat+'@'+time+'@'+d;
+  const used = cnt[key]||0;
+  if(used >= MED_SNOOZE_MAX){ toast('이 시간대 알림은 오늘 더 연기할 수 없어요 (최대 '+MED_SNOOZE_MAX+'회)','#BA7517'); return; }
+  cnt[key] = used+1;
+  try{ localStorage.setItem('medSnoozeCnt_v1', JSON.stringify(cnt)); }catch(e){}
+  const id = _lnId(cat, time+'#snz');   // 시간대당 1건 — 재연기 시 같은 ID 덮어씀
+  // 스누즈 ID도 medNotifIds_v1에 보관 — 추모 전환·루틴 변경 재동기화 때 함께 취소되도록
+  try{
+    const map = JSON.parse(localStorage.getItem('medNotifIds_v1')||'{}');
+    map[cat] = map[cat]||[]; if(!map[cat].includes(id)) map[cat].push(id);
+    localStorage.setItem('medNotifIds_v1', JSON.stringify(map));
+  }catch(e){}
+  try{
+    await ln.schedule({notifications:[{
+      id,
+      title: cat+' · 투약 시간이에요',
+      body: _lnTimeLabel(time)+' 투약 (다시 알림)',
+      schedule: { at: new Date(Date.now()+MED_SNOOZE_MIN*60*1000), allowWhileIdle: true },
+      actionTypeId: 'MED_ACTIONS',
+      extra: { cat, time, snooze: true }
+    }]});
+    toast(MED_SNOOZE_MIN+'분 뒤 다시 알려드릴게요','#1D9E75');
+  }catch(e){ console.warn('스누즈 예약 오류:', e); }
+}
+// 부팅 초기화 — 액션 타입 등록 + 리스너(큐 경유) + 시작 시 예약 검증·복구 (웹에선 전부 no-op)
 function initMedNotifications(){
   const ln = _lnPlugin(); if(!ln) return;
   try{
+    const p = ln.registerActionTypes({types:[{id:'MED_ACTIONS', actions:[
+      {id:'MED_DONE', title:'복용 확인'},
+      {id:'MED_SNOOZE', title:'나중에'}
+    ]}]});
+    if(p && p.catch) p.catch(e=>console.warn('알림 액션 등록 오류:', e));
+  }catch(e){}
+  try{
     ln.addListener('localNotificationActionPerformed', ev=>{
-      try{
-        const cat = ev && ev.notification && ev.notification.extra && ev.notification.extra.cat;
-        if(cat && state.cats.includes(cat) && state.activeCat!==cat) switchCat(cat);
-        const btn = document.querySelector('.cm-tab[data-tab="daily"]');
-        if(btn) showTab('daily', btn);
-        setTimeout(()=>{ try{ if(!isMemorial(state.activeCat)) openDailySheet('med'); }catch(e){} }, 400);
-      }catch(e){ console.warn('알림 탭 처리 오류:', e); }
+      if(!_notifActionsReady){ _pendingNotifEvents.push(ev); return; }
+      try{ _processNotifEvent(ev); }catch(e){ console.warn('알림 액션 오류:', e); }
     });
   }catch(e){}
   setTimeout(()=>{ medNotifResyncAll().catch(()=>{}); }, 2500);
@@ -15504,6 +15603,7 @@ function showLogin() {
   document.getElementById('loginPage').style.display = 'block';
   document.getElementById('app').style.display = 'none';
   const sw = document.getElementById('socialWelcomePage'); if(sw) sw.style.display = 'none';
+  try{ _notifActionsSetReady(); }catch(e){}   // 큐 대기 중 알림 액션 처리 (로그인 화면 — 기록은 안내로 대체됨)
 }
 
 function showApp() {
@@ -15528,6 +15628,8 @@ function showApp() {
   try { renderTileGrid(state.activeCat); } catch(e) {}
   // 비로그인: 로컬 기록만 존재 → 구토 루틴 이관을 여기서 실행 (로그인 유저는 syncFromDB merge 후 실행)
   if(!currentUser) try { migrateRoutineVomitToCard(); } catch(e) {}
+  // 알림 액션 큐 해제 (v0.7.85) — 초기 렌더 후 약간의 여유를 두고 콜드 스타트 이벤트 처리
+  setTimeout(()=>{ try{ _notifActionsSetReady(); }catch(e){} }, 800);
   console.log(`[Perf] showApp 초기렌더(동기): ${(performance.now()-_showT0).toFixed(0)}ms`);
 }
 
