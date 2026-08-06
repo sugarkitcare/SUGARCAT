@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**케어마스터즈 (CareMasters)** — a Korean-language PWA for managing sick cat (환묘) health data: blood glucose, insulin, weight, meals, routines, blood tests, and CGM. The tagline is "수치로 관리하는 환묘 질환 케어".
+**케어마스터즈 (CareMasters)** — a Korean-language PWA for managing sick cat (환묘) health data: blood glucose, insulin, weight, meals, routines, blood tests, and CGM. The tagline is "수치로 기록하는 환묘 케어" (법적 검토로 v0.7.79에서 변경 — '질환'+'관리' 결합 표현 금지).
 
 Deployed on **Vercel**. No build step — `index.html` is served as a static file directly.
 

@@ -15,6 +15,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
+<meta name="description" content="수치로 기록하는 환묘 케어 — 만성질환 반려묘 보호자를 위한 건강 기록 앱">
 <title>케어마스터즈</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -266,7 +267,7 @@ html,body{font-family:'Noto Sans KR',sans-serif;background:var(--cm-bg);color:va
 .cgm-lo{background:var(--blue-l);color:var(--blue)}
 .cgm-warn{background:var(--amber-l);color:var(--amber-d)}
 
-/* AI 분석 결과 블록 */
+/* AI 요약 결과 블록 */
 .ai-analysis{background:var(--bg2);border-radius:12px;padding:1rem 1.1rem;margin-top:.75rem}
 .ai-analysis-title{font-size:11px;font-weight:500;color:var(--teal);margin-bottom:.6rem;display:flex;align-items:center;gap:5px}
 .ai-analysis-body{font-size:13px;color:var(--text);line-height:1.8;white-space:pre-wrap}
@@ -340,7 +341,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
       </div>
       <div>
         <div style="font-size:18px;font-weight:800;color:var(--cm-green-800);letter-spacing:-0.02em;line-height:1.2">케어마스터즈</div>
-        <div style="font-size:12px;color:var(--cm-faint);font-weight:500;margin-top:1px">환묘집사가 직접 만든 질환 케어 앱</div>
+        <div style="font-size:12px;color:var(--cm-faint);font-weight:500;margin-top:1px">환묘집사가 직접 만든 케어 기록 앱</div>
       </div>
     </div>
     <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:.45rem">
@@ -349,7 +350,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
       <span style="font-size:10.5px;padding:3px 10px;border-radius:999px;background:var(--cm-surface-2);color:var(--cm-ink-soft);font-weight:600;border:1px solid var(--cm-line)">심근비대증</span>
       <span style="font-size:10.5px;padding:3px 10px;border-radius:999px;background:var(--cm-surface-2);color:var(--cm-ink-soft);font-weight:600;border:1px solid var(--cm-line)">복합질환</span>
     </div>
-    <div style="font-size:11px;color:var(--cm-faint);line-height:1.6">혈액검사 AI 분석 · 혈당 커브 · 사료 성분 분석</div>
+    <div style="font-size:11px;color:var(--cm-faint);line-height:1.6">혈액검사 AI 수치 추출 · 혈당 커브 · 사료 성분 기록</div>
   </div>
 
   <!-- 소셜 로그인 (v0.7.45) — 신규 유저 기본 경로, 이메일 로그인은 아래 접힘 섹션 -->
@@ -509,7 +510,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
       </div>
       <div>
         <div style="font-size:18px;font-weight:800;color:var(--cm-green-800);letter-spacing:-0.02em;line-height:1.2">케어마스터즈</div>
-        <div style="font-size:12px;color:var(--cm-faint);font-weight:500;margin-top:1px">환묘집사가 직접 만든 질환 케어 앱</div>
+        <div style="font-size:12px;color:var(--cm-faint);font-weight:500;margin-top:1px">환묘집사가 직접 만든 케어 기록 앱</div>
       </div>
     </div>
 
@@ -540,13 +541,13 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
         <div style="width:30px;height:30px;flex:0 0 auto;background:var(--cm-green-tint);border:1px solid var(--cm-green-edge);border-radius:9px;display:flex;align-items:center;justify-content:center">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--cm-green-700)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2Z"/></svg>
         </div>
-        <div style="flex:1;min-width:0;font-size:12.5px;font-weight:500;color:var(--cm-ink);line-height:1.55;padding-top:2px"><span style="color:var(--cm-green-700);font-weight:700">국내 유일</span> · 당뇨·신부전·심근비대증 복합질환 전용 케어 앱</div>
+        <div style="flex:1;min-width:0;font-size:12.5px;font-weight:500;color:var(--cm-ink);line-height:1.55;padding-top:2px"><span style="color:var(--cm-green-700);font-weight:700">국내 유일</span> · 당뇨·신부전·심근비대증 복합질환 반려묘 전용 기록 앱</div>
       </div>
       <div style="background:var(--cm-surface);border:1px solid var(--cm-line);border-radius:12px;padding:.8rem .95rem;display:flex;align-items:flex-start;gap:10px">
         <div style="width:30px;height:30px;flex:0 0 auto;background:var(--cm-green-tint);border:1px solid var(--cm-green-edge);border-radius:9px;display:flex;align-items:center;justify-content:center">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--cm-green-700)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg>
         </div>
-        <div style="flex:1;min-width:0;font-size:12.5px;font-weight:500;color:var(--cm-ink);line-height:1.55;padding-top:2px"><span style="color:var(--cm-green-700);font-weight:700">IRIS · ISFM · ACVIM</span> 등 수의학 가이드라인 기반 분석</div>
+        <div style="flex:1;min-width:0;font-size:12.5px;font-weight:500;color:var(--cm-ink);line-height:1.55;padding-top:2px"><span style="color:var(--cm-green-700);font-weight:700">IRIS · ISFM · ACVIM</span> 등 수의학 가이드라인 기반 참고 기준</div>
       </div>
     </div>
 
@@ -560,7 +561,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
           </div>
           <div style="flex:1;min-width:0;padding-top:2px">
             <div style="font-size:13.5px;font-weight:700;color:var(--cm-ink);margin-bottom:2px">혈액검사 사진 한 장이면</div>
-            <div style="font-size:12px;font-weight:400;color:var(--cm-faint);line-height:1.5">AI가 <span style="color:var(--cm-green-700);font-weight:600">항목별로 자동 해석</span>해 드려요</div>
+            <div style="font-size:12px;font-weight:400;color:var(--cm-faint);line-height:1.5">AI가 <span style="color:var(--cm-green-700);font-weight:600">항목별로 자동 정리</span>해 드려요</div>
           </div>
         </div>
         <div style="display:flex;align-items:flex-start;gap:12px">
@@ -569,7 +570,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
           </div>
           <div style="flex:1;min-width:0;padding-top:2px">
             <div style="font-size:13.5px;font-weight:700;color:var(--cm-ink);margin-bottom:2px">사료 성분표를 찍으면</div>
-            <div style="font-size:12px;font-weight:400;color:var(--cm-faint);line-height:1.5">우리 아이 <span style="color:var(--cm-green-700);font-weight:600">질환 기준 적합도</span>를 판정해요</div>
+            <div style="font-size:12px;font-weight:400;color:var(--cm-faint);line-height:1.5">우리 아이 <span style="color:var(--cm-green-700);font-weight:600">질환별 참고 기준</span>과 대조해 드려요</div>
           </div>
         </div>
         <div style="display:flex;align-items:flex-start;gap:12px">
@@ -652,14 +653,14 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.78</span>
+      <span class="cm-beta">v0.7.79</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
       <button id="logoutBtn" onclick="handleLogout()" type="button" class="cm-ghost" style="display:none">로그아웃</button>
     </div>
   </div>
-  <div class="cm-appbar__sub">수치로 관리하는 환묘 질환 케어</div>
+  <div class="cm-appbar__sub">수치로 기록하는 환묘 케어</div>
 </div>
 <div class="cm-pets" id="catBar">
   <div id="catSlot0" style="display:none;align-items:center;gap:4px" class="cm-pet">
@@ -691,7 +692,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <button class="cm-tab" data-tab="history" onclick="showTab('history',this)">기록</button>
   <button class="cm-tab" data-tab="bloodtest" onclick="showTab('bloodtest',this)">혈검</button>
   <button class="cm-tab" data-tab="food" onclick="showTab('food',this)">사료</button>
-  <button class="cm-tab" data-tab="ai" onclick="showTab('ai',this)">AI해석</button>
+  <button class="cm-tab" data-tab="ai" onclick="showTab('ai',this)">AI챗</button>
   <button class="cm-tab" data-tab="cgm" onclick="showTab('cgm',this)">CGM</button>
 </div>
 
@@ -1328,7 +1329,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
         <div class="card-title" style="margin:0">추출된 혈당 데이터</div>
         <div style="display:flex;gap:6px">
           <button class="btn btn-teal btn-sm" id="cgmSaveBtn">그래프에 저장</button>
-          <button class="btn btn-sm" id="cgmAiBtn" style="background:var(--purple);color:#fff">AI 분석</button>
+          <button class="btn btn-sm" id="cgmAiBtn" style="background:var(--purple);color:#fff">AI 요약</button>
         </div>
       </div>
 
@@ -1354,11 +1355,11 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
       </details>
     </div>
 
-    <!-- AI 분석 결과 -->
+    <!-- AI 요약 결과 -->
     <div id="cgmAiResult" style="display:none">
       <div class="card">
-        <div class="card-title">🤖 AI 혈당 패턴 분석</div>
-        <div style="font-size:12.5px;line-height:1.5;padding:9px 11px;margin-bottom:.6rem;border-radius:9px;background:rgba(186,117,23,0.1);color:var(--cm-ink-soft)">⚠️ 본 앱의 AI 분석은 참고용이며 수의사 진료를 대체하지 않습니다.</div>
+        <div class="card-title">🤖 AI 혈당 패턴 요약</div>
+        <div style="font-size:12.5px;line-height:1.5;padding:9px 11px;margin-bottom:.6rem;border-radius:9px;background:rgba(186,117,23,0.1);color:var(--cm-ink-soft)">⚠️ 본 앱의 AI 요약은 참고용이며 수의사 진료를 대체하지 않습니다.</div>
         <div id="cgmAiBody" class="ai-analysis-body" style="font-size:13px;line-height:1.8;color:var(--text)"></div>
       </div>
     </div>
@@ -1541,7 +1542,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
       <button type="button" onclick="document.getElementById('btManualEntry').style.display='none'" style="padding:9px 16px;background:none;border:1px solid var(--cm-line);border-radius:9px;font-size:13px;color:var(--cm-faint);cursor:pointer;font-family:inherit">취소</button>
     </div>
   </div>
-  <!-- AI 분석 결과 영역 -->
+  <!-- AI 요약 결과 영역 -->
   <div class="cm-card" style="padding:16px 16px 14px">
     <img id="btPreview" class="img-prev" style="display:none">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:.75rem">
@@ -1554,14 +1555,14 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
         <span id="btResultLabel" style="font-size:13px;font-weight:700;color:var(--cm-ink)"></span>
         <div style="display:flex;gap:8px">
           <button class="cm-btn" id="btSave">저장 및 그래프 추가</button>
-          <button class="cm-btn cm-btn--soft" id="btAiComment">AI 분석</button>
+          <button class="cm-btn cm-btn--soft" id="btAiComment">AI 요약</button>
         </div>
       </div>
       <div style="overflow-x:auto"><table class="bt"><thead><tr><th>항목</th><th>수치</th><th>단위</th><th>참고범위</th><th>범위 대비</th><th>변화</th></tr></thead><tbody id="btBody"></tbody></table></div>
     </div>
     <div id="btAiCommentArea" style="display:none;margin-top:.75rem">
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:.65rem">
-        <span style="font-size:14px;font-weight:800;color:var(--cm-ink)">AI 혈액검사 분석</span>
+        <span style="font-size:14px;font-weight:800;color:var(--cm-ink)">AI 혈액검사 요약</span>
         <span id="btAiSpinner" style="display:none" class="spin"></span>
       </div>
       <div style="font-size:12.5px;line-height:1.5;padding:9px 11px;margin-bottom:.65rem;border-radius:9px;background:rgba(186,117,23,0.1);color:var(--cm-ink-soft)">⚠️ 본 앱의 혈검 결과 표시는 검사지 기재 참고범위 기준의 단순 대조이며 수의학적 진단이 아닙니다. 진단·치료 방향은 반드시 수의사와 상담하세요.</div>
@@ -1694,7 +1695,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
           <div class="routine-tag" data-val="panc" onclick="toggleCalcDisease(this)">췌장염</div>
           <div class="routine-tag" data-val="hcm" onclick="toggleCalcDisease(this)">심비대증(HCM)</div>
           <div class="routine-tag" data-val="ibd" onclick="toggleCalcDisease(this)">IBD</div>
-          <div class="routine-tag" data-val="obese_tx" onclick="toggleCalcDisease(this)">비만 치료 중</div>
+          <div class="routine-tag" data-val="obese_tx" onclick="toggleCalcDisease(this)">체중 감량 중</div>
           <div class="routine-tag" data-val="recovery" onclick="toggleCalcDisease(this)">회복기/저체중</div>
         </div>
       </div>
@@ -1807,7 +1808,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
     <div class="cm-card cm-card--flat" style="margin-bottom:.75rem">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:.75rem">
         <div class="cm-ic cm-ic--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
-        <span style="font-size:14px;font-weight:700;color:var(--cm-ink)">성분표 사진 AI 분석</span>
+        <span style="font-size:14px;font-weight:700;color:var(--cm-ink)">성분표 사진 AI 추출</span>
       </div>
       <div style="background:var(--cm-green-tint);border:1px solid var(--cm-green-edge);border-radius:10px;padding:.6rem .85rem;margin-bottom:.75rem;display:flex;align-items:flex-start;gap:8px">
         <span style="font-size:15px;flex-shrink:0;line-height:1.6">💡</span>
@@ -1957,7 +1958,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
 
 </div>
 
-<!-- ══ AI 해석 ══ -->
+<!-- ══ AI 챗 ══ -->
 <div class="sec" id="tab-ai" style="display:none">
   <div class="card" style="padding-top:.5rem">
     <div style="font-size:12.5px;line-height:1.5;padding:9px 11px;margin:.4rem 0 .6rem;border-radius:9px;background:rgba(186,117,23,0.1);color:var(--cm-ink-soft)">⚠️ AI 답변은 일반 정보 안내이며 수의학적 진단·처방이 아닙니다. 치료 결정은 반드시 담당 수의사와 상담하세요.</div>
@@ -2078,7 +2079,7 @@ function filterAIAnalysisText(raw){
   }
   const totalContent=lines.filter(l=>l.trim()).length;
   if(removed>0&&totalContent>0&&removed/totalContent>=0.4){
-    return{text:'AI 분석 결과를 표시할 수 없습니다. 위의 통계 수치를 참고하시고, 자세한 해석은 담당 수의사와 상담하세요.',removed,discarded:true};
+    return{text:'AI 요약을 표시할 수 없습니다. 위의 통계 수치를 참고하시고, 자세한 내용은 담당 수의사와 상담하세요.',removed,discarded:true};
   }
   let text=kept.join('\n').replace(/\n{3,}/g,'\n\n');
   if(removed>0)text+='\n\n※ 일부 문구는 안전 기준에 따라 표시되지 않았어요. 자세한 해석은 담당 수의사와 상담하세요.';
@@ -4015,14 +4016,14 @@ const AI_LIMITS = {
   bloodtest: 3,   // 혈액검사 분석 하루 3회
   food: 5,        // 사료 분석 하루 5회
   cgm: 3,         // CGM 추출 하루 3회
-  ai: 10          // AI 해석 하루 10회
+  ai: 10          // AI 챗 하루 10회
 };
 
 const AI_LIMIT_LABELS = {
   bloodtest: '혈액검사 분석',
   food: '사료 분석',
   cgm: 'CGM 추출',
-  ai: 'AI 해석'
+  ai: 'AI 챗'
 };
 
 function getAIUsageKey(type) {
@@ -6809,7 +6810,7 @@ setupDrop('fdDrop','fdFile',async file=>{
   else document.getElementById('fdPreview').style.display='none';
   if(!checkAILimit('food')) return;
   document.getElementById('fdResult').innerHTML='';
-  showStat('fdStatus','loading','AI가 성분표를 분석하고 있어요...');
+  showStat('fdStatus','loading','AI가 성분표를 읽고 있어요...');
   const b64=await toB64(file);const isWet=document.getElementById('fdType').value==='wet';const fdNm=document.getElementById('fdName').value||'';
   const sys=`사료 성분표를 분석하여 아래 JSON만 출력하세요.
 {"name":"사료명","type":"${isWet?'wet':'dry'}","moisture":수분%,"protein_af":단백질%,"fat_af":지방%,"fiber_af":조섬유%,"ash_af":조회분%,"carb_af":탄수화물%or null,"kcal_per_100g":칼로리or null,"phosphorus_af":인%or null,"sodium_af":나트륨%or null,"potassium_af":칼륨%or null,"ingredients_top5":["원료1","원료2","원료3","원료4","원료5"],"grain_free":true/false,"main_protein_source":"주단백질원","special_notes":"특이사항or 빈문자열"}
@@ -6971,7 +6972,7 @@ const HCM_CRITERIA = {
       {icon:'✅', text:'나트륨 DM 0.4% 이하 사료 권장 (고나트륨 회피)', ok:true},
       {icon:'✅', text:'충분한 단백질 유지 — 근육 손실 예방 핵심', ok:true},
       {icon:'✅', text:'타우린 함유 확인 (필수 아미노산)', ok:true},
-      {icon:'ℹ️', text:'오메가3(EPA/DHA) 보충 고려 — 항염 효과', ok:null},
+      {icon:'ℹ️', text:'오메가3(EPA/DHA) 보충 고려 — 급여 여부는 수의사와 상의', ok:null},
       {icon:'🚫', text:'고나트륨 간식 및 사람 음식 금지', ok:false},
     ],
     note:'※ B1은 식이 제한보다 영양 균형이 핵심. 식욕 유지가 중요해요.'
@@ -7007,7 +7008,7 @@ const HCM_CRITERIA = {
     label: 'Stage D — 불응성 심부전',
     desc: 'ACVIM 가이드라인: Stage D에서는 저염식을 오히려 피해야 할 수 있어요.',
     checklist: [
-      {icon:'⚠️', text:'저염식 주의 — Stage D에서 과도한 나트륨 제한은 역효과 가능 (ACVIM 2020)', ok:null},
+      {icon:'⚠️', text:'저염식 주의 — Stage D에서 과도한 나트륨 제한은 권장되지 않아요 (ACVIM 2020)', ok:null},
       {icon:'✅', text:'고칼로리·고단백 유지 — 체중 유지가 최우선', ok:true},
       {icon:'✅', text:'타우린 + 오메가3 지속 보충', ok:true},
       {icon:'⚠️', text:'식욕 촉진 식이 전략 필요 (온도, 종류 다양화)', ok:null},
@@ -9466,7 +9467,7 @@ function calcRecommendedKcal(wt,age,neuter,activity,bcs,diseases,targetWt){
   }
   if(dis.has('panc')){factor=Math.min(factor,1.2);notes.push('췌장염: 저지방 식이 권장');}
   if(dis.has('recovery')){factor=Math.max(factor,1.4);notes.push('회복기: 고칼로리 식이 필요');}
-  if(dis.has('obese_tx')){factor=Math.min(factor,1.0);notes.push('비만 치료: 엄격한 칼로리 제한');}
+  if(dis.has('obese_tx')){factor=Math.min(factor,1.0);notes.push('체중 감량: 엄격한 칼로리 제한');}
   factor=Math.round(factor*100)/100;
   const mer=Math.round(rer*factor);
   const merMin=Math.round(rer*Math.max(factor-0.1,0.8));
@@ -10238,7 +10239,7 @@ document.getElementById('btAiComment').addEventListener('click', async () => {
     return `${i.name}(${i.abbr||i.name}): ${i.value}${i.unit||''} [${i.refLow??''}~${i.refHigh??''}] ${st}`;
   }).join('\n');
 
-  const sys = `당신은 반려묘 만성질환 관리 보호자를 위한 혈액검사 교육·관찰 도구입니다.
+  const sys = `당신은 만성질환 반려묘의 보호자를 위한 혈액검사 교육·관찰 도구입니다.
 당신의 역할은 "보호자가 자기 아이의 검사 결과를 이해할 수 있게" 돕는 것입니다.
 검사지의 수치와 참고범위를 정리하고, 각 지표 그룹이 일반적으로 무엇을 나타내는지 짧게 교육하며, 담당 수의사와 상담 시 참고할 사항을 안내합니다.
 개별 아이에 대한 진단·병기 판정·치료 판단은 하지 않으며, 그 역할은 담당 수의사에게 있습니다.
@@ -11021,7 +11022,7 @@ document.getElementById('cgmSaveBtn').onclick=()=>{
   if(cgmExtracted.date === today()) try{renderDailySummary();}catch(e){}
 };
 
-// AI 분석
+// AI 요약
 document.getElementById('cgmAiBtn').onclick=async()=>{
   if(!cgmExtracted)return;
   const aiResult=document.getElementById('cgmAiResult');
@@ -12926,7 +12927,7 @@ function renderCareForm(ev){
     +'<div id="cfEndRow" style="display:'+(_careFormType==='입원'?'block':'none')+'"><div style="'+lblS+'">퇴원일</div><input type="date" id="cfEnd" value="'+_vEsc(ev?.end||'')+'" style="'+dateS+'">'
     +'<label style="display:flex;align-items:center;gap:7px;margin-top:7px;font-size:12.5px;color:var(--cm-ink-soft);cursor:pointer"><input type="checkbox" id="cfOngoing" '+(ongoing?'checked':'')+' onchange="document.getElementById(\'cfEnd\').disabled=this.checked;if(this.checked)document.getElementById(\'cfEnd\').value=\'\'" style="width:16px;height:16px"> 아직 입원 중 (퇴원 전)</label></div>'
     +'<div style="'+lblS+'">증상 / 주호소</div><input type="text" id="cfSymptom" placeholder="예: 호흡곤란, 식욕부진" value="'+_vEsc(ev?.symptom||'')+'" style="'+inS+'">'
-    +'<div style="'+lblS+'">진단 <span style="font-weight:400;color:var(--cm-faint)">(선택)</span></div><input type="text" id="cfDiagnosis" value="'+_vEsc(ev?.diagnosis||'')+'" style="'+inS+'">'
+    +'<div style="'+lblS+'">수의사 진단명 <span style="font-weight:400;color:var(--cm-faint)">(선택)</span></div><input type="text" id="cfDiagnosis" value="'+_vEsc(ev?.diagnosis||'')+'" style="'+inS+'">'
     +'<div style="'+lblS+'">처치 방향·내역 <span style="font-weight:400;color:var(--cm-faint)">(예: 고압산소, 이뇨제)</span></div><textarea id="cfTreatment" rows="2" style="'+inS+';resize:none;min-height:56px">'+_vEsc(ev?.treatment||'')+'</textarea>'
     +'<div style="'+lblS+'">메모 <span style="font-weight:400;color:var(--cm-faint)">(선택)</span></div><textarea id="cfNote" rows="2" style="'+inS+';resize:none;min-height:56px">'+_vEsc(ev?.note||'')+'</textarea>'
     +'<div style="display:flex;gap:8px;margin-top:16px">'
@@ -13482,7 +13483,7 @@ function computeObservations(cat, anchor){
         out.push({ key:'bgHigh', mag:highPct,
           title:'최근 7일간 고혈당 비율 '+highPct+'%',
           lines:['최근 7일간 '+OBS_TH.bgHigh+'mg/dL 초과 측정 비율 '+highPct+'% (총 '+vals.length+'회 측정)'],
-          hint:'고혈당 지속은 인슐린 효과나 식사 관리와 관련될 수 있어요.' });
+          hint:'고혈당 지속은 인슐린 반응·식사 시점 등과 관련될 수 있어요.' });
       }
     }
 

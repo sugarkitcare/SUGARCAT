@@ -1,7 +1,7 @@
 {
   "name": "케어마스터즈",
   "short_name": "케어마스터즈",
-  "description": "수치로 관리하는 환묘 질환 케어",
+  "description": "수치로 기록하는 환묘 케어",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
