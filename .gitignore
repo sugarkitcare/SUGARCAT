@@ -10,3 +10,21 @@ www/
 
 # 로컬 회귀 테스트 하니스 (index.html에서 함수 추출해 검증 — 커밋 불필요)
 tmp_*.mjs
+
+# 루트 작업 스크래치 — 마이그레이션·데이터 정비 산출물 (커밋 불필요)
+scratchpad_*
+fm_*.json
+deleted_*.json
+dedup_*
+del_groups.json
+*_backup_*
+*.bak
+*.bak.*
+index.html.v*
+compare_report*.txt
+animonda_fix_*.json
+hills_fix_*.json
+harlow_insert_result.json
+existing_foods_current.json
+final_insert_proposed.json
+cfg_tmp.json
