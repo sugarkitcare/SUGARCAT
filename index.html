@@ -662,7 +662,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.93</span>
+      <span class="cm-beta">v0.7.94</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -15150,6 +15150,7 @@ function _vrGdlAvailable(R){
   try{
     const range = R.rtype==='interval'
       ? ((R.lastVisit && R.lastVisit < today()) ? _intervalRange(R.cat, R.lastVisit) : null)
+      : R.rtype==='transfer' ? _trfRange(R)
       : _vrPeriodRange();
     if(!range) return false;
     if(((state.catProfiles||{})[R.cat]?.diseases||[]).some(x=>String(x).includes('DM'))) return true;
@@ -15208,6 +15209,519 @@ async function vetRepSavePdf(){
   }finally{ if(_vetRep) _vetRep._pdfBusy=false; }
 }
 
+/* ══ TRF-BEGIN — 전원용 PDF 리포트 (v0.7.94, Phase 3 4단계) ══
+   처음 보는 수의사가 5분 안에 파악하는 A4 1~3쪽. v0.7.92~93 인프라 재사용
+   (PDF 빌더·페이지 분할 원칙·일일 로그 첨부·커버리지 티어).
+   법적 안전선: 상태는 '범위 위/내/아래'만, 질환명은 보호자 등록값에서만(수치로 도출 금지),
+   예후·치료 제안 없음, 앱 기준값엔 '앱 참고 기준' 표기. */
+
+/* 질환별 기본 지표 (보수적 큐레이션 — 수의사 자문 후 조정 예정이라 상수로 분리, 로직에 흩지 말 것)
+   항목은 개념 수준 → TRF_ALIAS로 실제 blood_tests abbr에 매핑, 없는 항목은 조용히 스킵 */
+const TRF_ALIAS = {
+  FPL:['FPL','fPLI','fPL'], BA:['BA','TBA','담즙산'], B12:['B12','VB12','코발라민'],
+  FOL:['FOL','Folate','엽산'], fTnI:['fTnI','cTnI','TnI'], BP:['BP','SBP','혈압'], FRU:['FRU','프룩토사민']
+};
+const TRF_DISEASE_MAP = [
+  {key:'CKD',  test:/CKD|PKD|신부전|다낭신/,          base:['CREA','BUN','PHOS','SDMA','K','USG','UPC','HCT','HGB','BP']},
+  {key:'DM',   test:/DM|당뇨/,                        base:['GLU','FRU','Ketone','K','PHOS','ALT','ALKP','TBIL','TG']},
+  {key:'LIVER',test:/지방간|담관염|간염|간질환|간수치/, base:['ALT','ALKP','GGT','TBIL','BA','ALB','TP']},
+  {key:'HCM',  test:/HCM|심비대|심근비대/,             base:['proBNP','fTnI','BP']},   // SRR·체중은 재택 모니터링 섹션에서
+  {key:'PANC', test:/췌장염/,                          base:['FPL','LIPA','Ca','ALB']},
+  {key:'IBD',  test:/IBD/,                             base:['ALB','TP','GLOB','B12','FOL']},
+];
+// DM + DKA 입원 이력 → 혈가스·전해질 승격 + 용혈 가능성 관련 HGB·HCT 동반 (스펙 3-2)
+const TRF_DKA_EXTRA = ['pH','HCO3','AnGap','K','PHOS','HGB','HCT'];
+const TRF_ANEMIA_EXTRA = ['RETIC'];   // CKD+빈혈 등록 시
+const TRF_MAX_ROWS = 12;
+
+function _trfDiseaseStr(cat){ return (((state.catProfiles||{})[cat]||{}).diseases||[]).concat((((state.catProfiles||{})[cat]||{}).calcDiseases)||[]).join(' '); }
+function _trfMatchedDiseases(dStr){ return TRF_DISEASE_MAP.filter(m=>m.test.test(dStr)).map(m=>m.key); }
+function _trfHasAnemia(dStr){ return /빈혈/.test(dStr); }
+function _trfHasDkaHistory(cat){
+  return getCareEvents(cat).some(e=>/DKA|케톤산증/i.test([e.symptom,e.diagnosis,e.treatment,e.note].join(' ')));
+}
+/* btData → abbr별 시계열 {abbr:{pts:[{date,v}], refLow, refHigh, unit, name}} — 기간 내, 날짜 오름차순.
+   저장 시 normalizeBTItems가 (abbr,category) 중복·CBC 우선을 이미 처리 (v0.7.57) */
+function _trfBtSeries(cat, fromStr, toStr){
+  const map={};
+  btData.filter(b=>b.cat===cat && b.date>=fromStr && b.date<=toStr && (b.items||[]).length)
+    .sort((a,b)=>a.date<b.date?-1:1)
+    .forEach(b=>(b.items||[]).forEach(it=>{
+      const v=parseFloat(it.value);
+      if(isNaN(v)) return;
+      const key=it.abbr||it.name; if(!key) return;
+      if(!map[key]) map[key]={pts:[],refLow:null,refHigh:null,unit:it.unit||'',name:it.name||key};
+      map[key].pts.push({date:b.date, v});
+      // 참고범위·단위는 최신 검사지 기재값 채택
+      if(it.refLow!=null && it.refLow!=='') map[key].refLow=parseFloat(it.refLow);
+      if(it.refHigh!=null && it.refHigh!=='') map[key].refHigh=parseFloat(it.refHigh);
+      if(it.unit) map[key].unit=it.unit;
+    }));
+  return map;
+}
+function _trfResolve(concept, series){
+  const alias=TRF_ALIAS[concept]||[concept];
+  return alias.find(a=>series[a] && series[a].pts.length) || null;
+}
+function _trfStatus(v, lo, hi){
+  if(lo==null && hi==null) return null;
+  if(hi!=null && v>hi) return '범위 위';
+  if(lo!=null && v<lo) return '범위 아래';
+  return '범위 내';
+}
+/* 변화 폭 점수 — 마지막 두 측정 차이를 참고범위 폭 대비로(없으면 % 변화). 방향 무관(절대값) */
+function _trfDeltaScore(s){
+  if(s.pts.length<2) return 0;
+  const a=s.pts[s.pts.length-2].v, b=s.pts[s.pts.length-1].v;
+  const span=(s.refLow!=null&&s.refHigh!=null)?(s.refHigh-s.refLow):null;
+  if(span>0) return Math.abs(b-a)/span;
+  return a!==0 ? Math.abs((b-a)/a) : 0;
+}
+/* 핵심 지표 선택 (스펙 3-1) — ①이상치 ②변화폭 ③질환 기본 세트 순 정렬, 상한 12
+   반환 {rows:[abbr], dropped, matched:[키]} */
+function _trfSelectIndicators(series, dStr, opts){
+  const matched=TRF_DISEASE_MAP.filter(m=>m.test.test(dStr));
+  let concepts=[];
+  matched.forEach(m=>concepts.push(...m.base));
+  if(opts&&opts.anemia&&matched.some(m=>m.key==='CKD')) concepts.push(...TRF_ANEMIA_EXTRA);
+  if(opts&&opts.dka&&matched.some(m=>m.key==='DM')) concepts=TRF_DKA_EXTRA.concat(concepts);  // 승격 = 앞쪽 배치
+  const baseAbbrs=[...new Set(concepts.map(c=>_trfResolve(c,series)).filter(Boolean))];
+  // 이상치: 최신값이 참고범위 밖인 모든 항목 (기본 세트 밖이어도 추가)
+  const outliers=Object.keys(series).filter(k=>{
+    const s=series[k], last=s.pts[s.pts.length-1];
+    if(!last) return false;
+    const st=_trfStatus(last.v, s.refLow, s.refHigh);
+    return st==='범위 위'||st==='범위 아래';
+  });
+  const outSet=new Set(outliers);
+  const cand=[...new Set([...outliers, ...baseAbbrs])];
+  cand.sort((a,b)=>{
+    const oa=outSet.has(a)?0:1, ob=outSet.has(b)?0:1;
+    if(oa!==ob) return oa-ob;                            // ① 이상치 우선
+    const da=_trfDeltaScore(series[a]), db=_trfDeltaScore(series[b]);
+    if(da!==db) return db-da;                            // ② 변화 폭 큰 순
+    return baseAbbrs.indexOf(a)-baseAbbrs.indexOf(b);    // ③ 기본 세트 순서
+  });
+  return { rows:cand.slice(0,TRF_MAX_ROWS), dropped:Math.max(0,cand.length-TRF_MAX_ROWS), matched:matched.map(m=>m.key) };
+}
+/* 추세 차트 대상 (스펙 2-④) — 질환 핵심 1~2개 + 변화 폭 최대 1개, 점 2개 이상만 */
+function _trfPickCharts(series, selRows, matched, dStr){
+  const plottable=k=>series[k]&&series[k].pts.length>=2;
+  const out=[];
+  const firstDisease=TRF_DISEASE_MAP.find(m=>m.test.test(dStr));
+  if(firstDisease){
+    firstDisease.base.map(c=>_trfResolve(c,series)).filter(Boolean).filter(plottable)
+      .slice(0,2).forEach(k=>{ if(!out.includes(k)) out.push(k); });
+  }
+  const byDelta=selRows.filter(plottable).sort((a,b)=>_trfDeltaScore(series[b])-_trfDeltaScore(series[a]));
+  for(const k of byDelta){ if(out.length>=3) break; if(!out.includes(k)) out.push(k); }
+  return out.slice(0,3);
+}
+/* ⑤ 질환별 경과 섹션 파생 (스펙 3-4) — 제목은 보호자 등록 질환에서만, 최대 2개, 점 2개 미만 지표 제외 */
+function _trfDeriveSections(series, dStr, opts){
+  const defs=[];
+  const has=k=>TRF_DISEASE_MAP.find(m=>m.key===k && m.test.test(dStr));
+  if(has('CKD')){
+    if(opts&&opts.anemia) defs.push({title:'빈혈 · 조혈 반응 경과', concepts:['HCT','HGB','RETIC']});
+    else defs.push({title:'신장 지표 경과', concepts:['CREA','BUN','SDMA','PHOS']});
+  }
+  if(has('DM')){
+    if(opts&&opts.dka) defs.push({title:'케톤 · 산증 경과', concepts:['Ketone','pH','HCO3','K','PHOS']});
+    else defs.push({title:'혈당 조절 경과', concepts:['GLU','FRU']});
+  }
+  if(has('LIVER')) defs.push({title:'간수치 경과', concepts:['ALT','ALKP','GGT','TBIL']});
+  if(has('HCM'))  defs.push({title:'심장 부담 지표 경과', concepts:['proBNP','fTnI']});
+  if(has('PANC')) defs.push({title:'췌장 지표 경과', concepts:['FPL','LIPA','Ca']});
+  if(has('IBD'))  defs.push({title:'단백 · 영양 지표 경과', concepts:['ALB','TP','B12']});
+  return defs.map(d=>({title:d.title,
+      keys:d.concepts.map(c=>_trfResolve(c,series)).filter(k=>k&&series[k].pts.length>=2).slice(0,3)}))
+    .filter(d=>d.keys.length).slice(0,2);
+}
+/* 투약 순응도 (v0.7.71 인터벌 원칙 미러) — 기록 있는 날만 분모, 커버리지 low면 비율 미산출 */
+function _trfMedCompliance(cat, homeDates, toStr){
+  let sched=0, done=0, schedDayCnt=0; const medRecDays=[];
+  homeDates.forEach(dy=>{
+    if(dy>=toStr) return;   // 오늘(종료일)은 예정 시간이 안 지났을 수 있어 제외
+    const rec=(state.records[cat]||{})[dy]||{};
+    const eff=routineItemsFor(cat,dy);
+    let s=0;
+    (eff||[]).forEach(it=>{ if(_routineUsesTimes(it)) s+=(it.times||[]).length; });
+    if(s>0){
+      schedDayCnt++;
+      if((rec.routines||[]).length){
+        medRecDays.push(dy);
+        const ds=_routineDoneSet(rec,eff);
+        let dn=0;
+        (eff||[]).forEach(it=>{ if(!_routineUsesTimes(it))return; (it.times||[]).forEach(t=>{ if(ds.has(_slotKey(it.name,t))) dn++; }); });
+        sched+=s; done+=dn;
+      }
+    }
+  });
+  return {sched, done, schedDayCnt, medRecDays};
+}
+
+/* ── 문서 데이터 수집 ── */
+async function _trfCollect(cat, fromStr, toStr){
+  const prof=(state.catProfiles||{})[cat]||{};
+  const dStr=_trfDiseaseStr(cat);
+  const opts={anemia:_trfHasAnemia(dStr), dka:_trfHasDkaHistory(cat)};
+  const series=_trfBtSeries(cat, fromStr, toStr);
+  const d={cat, fromStr, toStr, prof, dStr, opts, series};
+  // 나이 — 메모리얼은 마지막 기록일 기준 (v0.7.7x 규칙)
+  const anchor=_memLastDailyDate(cat)||today();
+  if(prof.birth){
+    const b=new Date(prof.birth+'T00:00:00'), t=new Date(anchor+'T00:00:00');
+    if(!isNaN(b)){
+      let months=(t.getFullYear()-b.getFullYear())*12+(t.getMonth()-b.getMonth());
+      if(t.getDate()<b.getDate()) months--;
+      if(months>=0) d.ageText=Math.floor(months/12)+'세'+(months%12?' '+months%12+'개월':'');
+    }
+  }
+  d.weight=getLatestWeight(cat);
+  const btsAll=btData.filter(b=>b.cat===cat && (b.items||[]).length).sort((a,b)=>a.date<b.date?-1:1);
+  d.btCount=btsAll.length;
+  d.btFirst=btsAll.length?btsAll[0].date:null;
+  // 입원 이력 (전체) — 최근 1건 상세 + 이전은 한 줄
+  const adms=getCareEvents(cat).filter(e=>e.type==='입원').sort((a,b)=>a.start<b.start?1:-1);
+  d.admissions=adms.map(e=>({start:e.start, end:careEventEnd(e), ongoing:(!e.end),
+    symptom:e.symptom||'', diagnosis:e.diagnosis||'', treatment:e.treatment||'',
+    procedures:e.procedures||[], note:e.note||''}));
+  // 차트 마커용 처치 이벤트 — 보호자 입력 원문 (하드코딩 금지)
+  d.procMarkers=[];
+  getCareEvents(cat).forEach(e=>{
+    (e.procedures||[]).forEach(p=>{ if(p) d.procMarkers.push({date:e.start, label:String(p).slice(0,8)}); });
+  });
+  // 지표 선택 + 차트 + 섹션
+  const sel=_trfSelectIndicators(series, dStr, opts);
+  d.rows=sel.rows; d.dropped=sel.dropped; d.matched=sel.matched;
+  d.charts=_trfPickCharts(series, sel.rows, sel.matched, dStr);
+  d.sections=_trfDeriveSections(series, dStr, opts);
+  // 재택 모니터링 — 인터벌 집계 재사용 (입원 구간 제외는 collect 내부에서)
+  d.home=collectVetReportData(cat, fromStr, toStr);
+  const ex=new Set();
+  d.home.admissions.forEach(a=>{ _vrDates(a.start,a.end).forEach(dy=>ex.add(dy)); });
+  d.med=_trfMedCompliance(cat, _vrDates(fromStr,toStr).filter(dy=>!ex.has(dy)), toStr);
+  // 퇴원 무렵 체중 (있을 때만 '퇴원 대비')
+  d.dischargeWt=null;
+  if(adms.length && adms[0].end){
+    const recs=state.records[cat]||{};
+    for(let i=0;i<=2;i++){
+      const dd=new Date(adms[0].end+'T00:00:00Z'); dd.setUTCDate(dd.getUTCDate()+i);
+      const ws=((recs[dd.toISOString().slice(0,10)]||{}).weights||[]);
+      if(ws.length){ d.dischargeWt=ws[ws.length-1].weight; break; }
+    }
+  }
+  return d;
+}
+/* ── 렌더 — 블록 단위 페이지 조립 (페이지 경계에서 블록 절단 없음, _gdlPaginate 재사용) ── */
+function _trfRenderPages(d){
+  const W=1240,H=1754,PAD=56;
+  const F="-apple-system,'Noto Sans KR',sans-serif";
+  const INK='#2A251D',SOFT='#6B6459',GREEN='#235B43',CLAY='#B4552D',LINE='#E5DFD5',BG='#FAF7F1',CARD='#FFFFFF',TINT='#E7F0E9',BLUE='#3A66A6';
+  const CW=W-PAD*2;
+  const md=s=>s?s.slice(5).replace('-','/'):'';
+  const rr=(x,x0,y0,w0,h0,r)=>{ x.beginPath(); x.moveTo(x0+r,y0); x.arcTo(x0+w0,y0,x0+w0,y0+h0,r); x.arcTo(x0+w0,y0+h0,x0,y0+h0,r); x.arcTo(x0,y0+h0,x0,y0,r); x.arcTo(x0,y0,x0+w0,y0,r); x.closePath(); };
+
+  /* 개별 차트 — x축 실제 날짜 간격, 참고범위 음영, 입원 세로 음영+라벨, 처치 삼각 마커 */
+  function drawChart(x, px0, py0, pw, ph, key){
+    const s=d.series[key];
+    const pts=s.pts;
+    const t0=new Date(d.fromStr+'T00:00:00').getTime(), t1=new Date(d.toStr+'T00:00:00').getTime();
+    const tx=t=>px0+(t1>t0 ? (t-t0)/(t1-t0)*pw : pw/2);
+    let lo=Math.min(...pts.map(p=>p.v)), hi=Math.max(...pts.map(p=>p.v));
+    if(s.refLow!=null) lo=Math.min(lo,s.refLow);
+    if(s.refHigh!=null) hi=Math.max(hi,s.refHigh);
+    const pad=(hi-lo)*0.15||Math.abs(hi)*0.15||1;
+    lo-=pad; hi+=pad;
+    const ty=v=>py0+ph-(v-lo)/(hi-lo)*ph;
+    x.fillStyle=CARD; x.fillRect(px0,py0,pw,ph);
+    // 참고범위 음영
+    if(s.refLow!=null && s.refHigh!=null){
+      x.fillStyle=TINT; x.fillRect(px0, ty(s.refHigh), pw, ty(s.refLow)-ty(s.refHigh));
+    }
+    // 입원 구간 세로 음영 + 라벨
+    d.admissions.forEach(a=>{
+      const ax0=Math.max(px0, tx(new Date(a.start+'T00:00:00').getTime()));
+      const ax1=Math.min(px0+pw, tx(new Date((a.end||d.toStr)+'T00:00:00').getTime()));
+      if(ax1<px0||ax0>px0+pw||ax1<=ax0) return;
+      x.fillStyle='rgba(58,102,166,0.10)'; x.fillRect(ax0,py0,Math.max(ax1-ax0,3),ph);
+      if(pw>=300){   // 미니 차트에서는 음영만 (라벨이 폭을 넘침)
+        x.fillStyle=BLUE; x.font='500 14px '+F;
+        x.fillText('입원 '+md(a.start)+'~'+(a.end?md(a.end):''), Math.max(px0+2,ax0+3), py0+16);
+      }
+    });
+    x.strokeStyle=LINE; x.lineWidth=1; x.strokeRect(px0,py0,pw,ph);
+    // 참고범위 경계값 라벨
+    x.font='500 14px '+F; x.fillStyle=SOFT; x.textAlign='right';
+    if(s.refHigh!=null) x.fillText(String(s.refHigh), px0-5, ty(s.refHigh)+5);
+    if(s.refLow!=null)  x.fillText(String(s.refLow),  px0-5, ty(s.refLow)+5);
+    x.textAlign='left';
+    // 처치 마커 (보호자 입력 원문) — 하단 삼각 + 짧은 라벨
+    d.procMarkers.forEach(p=>{
+      const mt=new Date(p.date+'T00:00:00').getTime();
+      if(mt<t0||mt>t1) return;
+      const mx=tx(mt);
+      x.fillStyle=CLAY;
+      x.beginPath(); x.moveTo(mx,py0+ph-9); x.lineTo(mx-6,py0+ph); x.lineTo(mx+6,py0+ph); x.closePath(); x.fill();
+      x.font='500 13px '+F; x.fillText(p.label, Math.min(mx+8,px0+pw-70), py0+ph-4);
+    });
+    // 선 + 점 + 마지막 값 라벨
+    x.strokeStyle=GREEN; x.lineWidth=2.5; x.lineJoin='round'; x.beginPath();
+    pts.forEach((p,i)=>{ const cx=tx(new Date(p.date+'T00:00:00').getTime()), cy=ty(p.v); i?x.lineTo(cx,cy):x.moveTo(cx,cy); });
+    x.stroke();
+    x.fillStyle=GREEN;
+    pts.forEach(p=>{ x.beginPath(); x.arc(tx(new Date(p.date+'T00:00:00').getTime()), ty(p.v), 4, 0, 7); x.fill(); });
+    const lastP=pts[pts.length-1];
+    x.font='700 16px '+F;
+    x.fillText(String(lastP.v), Math.min(tx(new Date(lastP.date+'T00:00:00').getTime())+8, px0+pw-46), ty(lastP.v)-8);
+    // x축 날짜 라벨 (양끝 + 마지막 측정)
+    x.font='500 14px '+F; x.fillStyle=SOFT;
+    x.fillText(md(d.fromStr), px0, py0+ph+18);
+    x.textAlign='right'; x.fillText(md(d.toStr), px0+pw, py0+ph+18); x.textAlign='left';
+  }
+
+  /* ── 블록 정의 {h, draw(x, y)} ── */
+  const blocks=[];
+  // ① 헤더 (첫 페이지 전용 — 페이지 조립에서 별도 처리)
+  const headerH=286;
+  function drawHeader(x){
+    x.fillStyle=GREEN; x.fillRect(0,0,W,120);
+    x.fillStyle='#FFFFFF'; x.font='800 40px '+F; x.fillText(d.cat+' · 진료 참고 기록', PAD, 58);
+    x.font='500 22px '+F; x.globalAlpha=.85; x.fillText('보호자 기록 정리 · 케어마스터즈', PAD, 94); x.globalAlpha=1;
+    let y=120+44;
+    const p=d.prof;
+    const l1=[];
+    if(p.breed) l1.push(p.breed);
+    if(p.gender) l1.push(p.gender+(p.neuter==='yes'?'(중성화)':''));
+    if(p.birth) l1.push(p.birth+'생'+(d.ageText?' ('+d.ageText+')':''));
+    x.fillStyle=INK; x.font='500 24px '+F;
+    if(l1.length){ x.fillText(l1.join(' · '), PAD, y); y+=36; }
+    const l2=[];
+    if(d.weight!=null) l2.push('체중 '+d.weight+' kg');
+    if(p.bcs) l2.push('BCS '+p.bcs+'/9');
+    if(l2.length){ x.fillText(l2.join(' · '), PAD, y); y+=36; }
+    x.fillStyle=SOFT; x.font='500 22px '+F;
+    const dz=(p.diseases||[]).join(' · ');
+    x.fillText('기저질환   '+(dz||'등록된 질환 없음'), PAD, y); y+=32;
+    x.fillText('기록 기간   '+d.fromStr+' ~ '+d.toStr+(d.btCount?' (혈액검사 '+d.btCount+'건)':''), PAD, y); y+=32;
+    x.fillText('작성일     '+today(), PAD, y);
+  }
+
+  // ② 최근 입원 요약 — 보호자 입력 원문 그대로, 없는 항목 줄 생략
+  if(d.admissions.length){
+    const a=d.admissions[0];
+    const rows=[];
+    if(a.symptom) rows.push(['사유', a.symptom]);
+    if(a.diagnosis) rows.push(['수의사 진단명', a.diagnosis]);
+    if(a.procedures.length||a.treatment) rows.push(['처치', [a.procedures.join(', '), a.treatment].filter(Boolean).join(' · ')]);
+    if(a.note) rows.push(['메모', a.note]);
+    const others=d.admissions.slice(1,4);
+    const h=52+rows.length*32+others.length*28+16;
+    blocks.push({h, draw:(x,y)=>{
+      x.fillStyle=GREEN; x.font='700 26px '+F;
+      const days=a.end?Math.round((new Date(a.end)-new Date(a.start))/86400000)+1:null;
+      x.fillText('최근 입원   '+a.start+' ~ '+(a.ongoing?'진행 중':md(a.end)+(days?' ('+days+'일)':'')), PAD, y+28);
+      let yy=y+64;
+      rows.forEach(r=>{
+        x.fillStyle=SOFT; x.font='600 21px '+F; x.fillText(r[0], PAD, yy);
+        x.fillStyle=INK; x.font='500 21px '+F;
+        x.fillText(String(r[1]).slice(0,58), PAD+170, yy);
+        yy+=32;
+      });
+      x.fillStyle=SOFT; x.font='500 20px '+F;
+      others.forEach(o=>{ x.fillText('이전 입원   '+o.start+' ~ '+(o.end?md(o.end):'-'), PAD, yy); yy+=28; });
+    }});
+  }
+
+  // ③ 핵심 지표 표
+  if(d.rows.length){
+    const cols=[['항목',170],['최신값',250],['이전값',250],['참고범위',230],['상태',228]];
+    const rowH=36;
+    const foot=(d.dropped?1:0);
+    const h=52+30+d.rows.length*rowH+foot*26+18;
+    blocks.push({h, draw:(x,y)=>{
+      x.fillStyle=GREEN; x.font='700 26px '+F; x.fillText('핵심 지표', PAD, y+28);
+      let yy=y+52;
+      // 헤더 행
+      x.fillStyle='#F6F2E9'; x.fillRect(PAD,yy,CW,30);
+      let cx=PAD+12;
+      x.fillStyle=SOFT; x.font='600 19px '+F;
+      cols.forEach(c=>{ x.fillText(c[0], cx, yy+21); cx+=c[1]; });
+      yy+=30;
+      d.rows.forEach((k,i)=>{
+        const s=d.series[k];
+        const last=s.pts[s.pts.length-1], prev=s.pts[s.pts.length-2];
+        const st=_trfStatus(last.v, s.refLow, s.refHigh);
+        if(i%2){ x.fillStyle='#FAF7F1'; x.fillRect(PAD,yy,CW,rowH); }
+        else { x.fillStyle=CARD; x.fillRect(PAD,yy,CW,rowH); }
+        cx=PAD+12;
+        x.font='700 20px '+F; x.fillStyle=INK; x.fillText(k, cx, yy+24); cx+=cols[0][1];
+        x.font='500 20px '+F;
+        x.fillText(last.v+(s.unit?' '+s.unit:'')+' ('+md(last.date)+')', cx, yy+24); cx+=cols[1][1];
+        x.fillStyle=SOFT;
+        x.fillText(prev?prev.v+' ('+md(prev.date)+')':'', cx, yy+24); cx+=cols[2][1];
+        x.fillText((s.refLow!=null||s.refHigh!=null)?((s.refLow!=null?s.refLow:'')+'–'+(s.refHigh!=null?s.refHigh:'')):'—', cx, yy+24); cx+=cols[3][1];
+        if(st){
+          x.fillStyle=st==='범위 내'?GREEN:CLAY; x.font='600 20px '+F;
+          x.fillText(st, cx, yy+24);
+        }
+        yy+=rowH;
+      });
+      x.strokeStyle=LINE; x.strokeRect(PAD,y+52,CW,30+d.rows.length*rowH);
+      if(d.dropped){
+        x.fillStyle=SOFT; x.font='500 18px '+F;
+        x.fillText('외 '+d.dropped+'개 항목은 앱에서 확인할 수 있습니다.', PAD, yy+22);
+      }
+    }});
+  }
+
+  // ④ 추세 차트 (개별 블록 — 페이지 경계 잘림 방지)
+  d.charts.forEach(k=>{
+    blocks.push({h:34+230+26+16, draw:(x,y)=>{
+      const s=d.series[k];
+      x.fillStyle=INK; x.font='700 24px '+F;
+      x.fillText(k+' 추세'+(s.unit?' ('+s.unit+')':''), PAD, y+24);
+      drawChart(x, PAD+70, y+40, CW-70, 230, k);
+    }});
+  });
+
+  // ⑤ 질환별 경과 섹션 — 미니 차트 행
+  d.sections.forEach(sec=>{
+    blocks.push({h:40+190+26+16, draw:(x,y)=>{
+      x.fillStyle=GREEN; x.font='700 26px '+F; x.fillText(sec.title, PAD, y+28);
+      const n=sec.keys.length, gap=24;
+      const cw2=(CW-70-(n-1)*gap)/n;
+      sec.keys.forEach((k,i)=>{
+        const px0=PAD+70+i*(cw2+gap);
+        x.fillStyle=INK; x.font='600 19px '+F; x.fillText(k, px0, y+58);
+        drawChart(x, px0, y+66, cw2, 150, k);
+      });
+    }});
+  });
+
+  // ⑥ 재택 모니터링
+  {
+    const hd=d.home;
+    const L=[];
+    if(hd.rr && hd.rr.sleepN) L.push(['수면 호흡수','평균 '+hd.rr.sleepAvg+'회/분 (최고 '+hd.rr.sleepMax+') · '+SRR_TH.obs+'회 이상 '+hd.rr.obsDays+'일']);
+    if(d.weight!=null){
+      let wl=d.weight+' kg';
+      if(d.dischargeWt){ const p=(d.weight-d.dischargeWt)/d.dischargeWt*100; wl+=' · 퇴원 무렵 '+d.dischargeWt+'kg 대비 '+(p>=0?'+':'')+p.toFixed(1)+'%'; }
+      L.push(['체중', wl]);
+    }
+    const wT=_vrCovTier(hd.water.intakeDays, hd.homeDays);
+    if(wT==='full'||wT==='partial') L.push(['수분','총 '+Math.round(hd.water.intakeAvg)+' ml/일 (경구'+(hd.water.natAvg!=null?', 자발음수 '+Math.round(hd.water.natAvg)+' ml':'')+')']);
+    else if(wT==='low') L.push(['수분',_vrCovList(hd.water.list,'ml')]);
+    const mT=_vrCovTier(hd.meal.days, hd.homeDays);
+    if(mT==='full'||mT==='partial') L.push(['식사','평균 '+Math.round(hd.meal.kcalAvg)+' kcal/일 ('+hd.meal.days+'일 기록)']);
+    else if(mT==='low'&&hd.meal.list.length) L.push(['식사',_vrCovList(hd.meal.list,'kcal')]);
+    const cT=_vrCovTier(d.med.medRecDays.length, d.med.schedDayCnt);
+    if(d.med.schedDayCnt>0){
+      if(cT==='full'||cT==='partial') L.push(['투약','순응도 '+d.med.done+'/'+d.med.sched+'회 (기록된 '+d.med.medRecDays.length+'일 기준)']);
+      else if(cT==='low') L.push(['투약','기록 '+d.med.medRecDays.length+'일 (기록이 성근 기간이라 순응도 미산출)']);
+    }
+    if(hd.glucose) L.push(['혈당', _vrGlucoseLines(hd.glucose, hd.homeDays).filter(x=>!x.startsWith('※')).join(' / ').slice(0,80)]);
+    if(hd.vomits.length) L.push(['특이사항','구토 '+hd.vomits.length+'회 ('+hd.vomits.slice(0,4).map(v=>md(v.date)).join(', ')+(hd.vomits.length>4?' 외':'')+')']);
+    if(L.length){
+      blocks.push({h:52+L.length*32+14, draw:(x,y)=>{
+        x.fillStyle=GREEN; x.font='700 26px '+F;
+        x.fillText('재택 모니터링   '+d.fromStr+' ~ '+d.toStr+(hd.admissions.length?' (입원 구간 제외)':''), PAD, y+28);
+        let yy=y+64;
+        L.forEach(r=>{
+          x.fillStyle=SOFT; x.font='600 21px '+F; x.fillText(r[0], PAD, yy);
+          x.fillStyle=INK; x.font='500 21px '+F; x.fillText(String(r[1]).slice(0,62), PAD+170, yy);
+          yy+=32;
+        });
+      }});
+    }
+  }
+
+  // ⑧ 면책 (항상 마지막)
+  blocks.push({h:130, draw:(x,y)=>{
+    x.fillStyle=SOFT; x.font='500 18px '+F;
+    x.fillText('※ 본 문서는 보호자가 케어마스터즈 앱에 입력·보관한 기록을 정리한 것으로, 진단·처방·의학적 판단이 아닙니다.', PAD, y+24);
+    x.fillText('※ 검사 수치와 참고범위는 검사를 시행한 동물병원의 기록을 옮긴 것입니다.', PAD, y+50);
+    x.fillText("※ '앱 참고 기준'으로 표시된 값은 케어마스터즈가 설정한 참고 기준입니다.", PAD, y+76);
+    x.fillText('케어마스터즈 (CareMasters) · 생성일 '+today(), PAD, y+110);
+  }});
+
+  // ── 페이지 조립 ──
+  const HEADN=52;
+  const pagesIdx=_gdlPaginate(blocks.map(b=>b.h), H-PAD*2-headerH-20, H-PAD*2-HEADN);
+  return pagesIdx.map((idxs,pi)=>{
+    const cv=document.createElement('canvas'); cv.width=W; cv.height=H;
+    const x=cv.getContext('2d');
+    x.fillStyle=BG; x.fillRect(0,0,W,H);
+    let y;
+    if(pi===0){ drawHeader(x); y=headerH+20; }
+    else {
+      x.fillStyle=SOFT; x.font='600 22px '+F;
+      x.fillText(d.cat+' · 진료 참고 기록  '+d.fromStr+' ~ '+d.toStr, PAD, PAD+8);
+      y=PAD+HEADN;
+    }
+    idxs.forEach(i=>{ blocks[i].draw(x,y); y+=blocks[i].h; });
+    return cv;
+  });
+}
+
+/* ── 저장 흐름 — 일일 로그 첨부(v0.7.93 규칙 동일) + 전체 연속 페이지 번호 ── */
+function _trfRange(R){
+  const to=_memLastDailyDate(R.cat)||today();
+  if(R.trfPeriod==='custom'){
+    if(!R.trfFrom||!R.trfTo||R.trfFrom>R.trfTo) return null;
+    return {from:R.trfFrom, to:R.trfTo};
+  }
+  if(R.trfPeriod==='all'){
+    const bt0=btData.filter(b=>b.cat===R.cat).map(b=>b.date).sort()[0];
+    const rec0=Object.keys(state.records[R.cat]||{}).sort()[0];
+    const from=[bt0,rec0].filter(Boolean).sort()[0]||to;
+    return {from, to};
+  }
+  const months={'3m':3,'6m':6,'1y':12}[R.trfPeriod]||6;
+  const t=new Date(to+'T00:00:00'); t.setMonth(t.getMonth()-months);
+  return {from:t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0'), to};
+}
+async function trfSavePdf(){
+  const R=_vetRep;
+  if(!R || R._pdfBusy) return;
+  R._pdfBusy=true;
+  toast('전원용 PDF를 만드는 중...', '#534AB7');
+  try{
+    const range=_trfRange(R);
+    if(!range){ toast('기간을 확인해주세요', '#BA7517'); return; }
+    const d=await _trfCollect(R.cat, range.from, range.to);
+    // 사용자 지표 조정 반영 (스펙 3-1 ③)
+    if(R.trfSel) d.rows=d.rows.filter(k=>R.trfSel.has(k)).concat([...R.trfSel].filter(k=>!d.rows.includes(k)&&d.series[k])).slice(0,TRF_MAX_ROWS);
+    let pages=_trfRenderPages(d);
+    if(R.attachGdl!==false && _vrGdlAvailable(R)){
+      let gFrom=range.from, clamped=false;
+      if(_gdlDates(gFrom, range.to).length>60){
+        const t=new Date(range.to+'T00:00:00'); t.setDate(t.getDate()-59);
+        gFrom=t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0');
+        clamped=true;
+      }
+      const gd=await _gdlCollect(R.cat, gFrom, range.to);
+      if(gd.days.some(dd=>dd.cgm.length||dd.man.length)){
+        pages=pages.concat(_gdlRenderPages(gd, {attach:true}));
+        if(clamped) toast('일일 로그는 최근 60일까지만 첨부돼요', '#BA7517', 3000);
+      }
+    }
+    _vrStampPageNums(pages);
+    const blob=_gdlPdfFromCanvases(pages);
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download='caremasters_transfer_'+R.cat+'_'+today()+'.pdf';
+    a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href),3000);
+    toast('전원용 PDF 저장 완료 ('+pages.length+'쪽)', '#1D9E75', 3000);
+    vetRepGo(4);
+  }catch(e){
+    console.error('전원용 PDF 오류:', e);
+    toast('PDF 생성에 실패했어요. 잠시 후 다시 시도해주세요', '#D85A30');
+  }finally{ if(_vetRep) R._pdfBusy=false; }
+}
+/* ══ TRF-END ══ */
+
 function _vetIncDefaults(cat){
   const isDM = ((state.catProfiles||{})[cat]?.diseases||[]).some(x=>String(x).includes('DM'));
   return { obs:true, profile:true, water:true, urine:true, poop:true, vomit:true, meal:true, weight:true, rr:true, med:true, cgm:isDM, bt:false };
@@ -15226,7 +15740,8 @@ function openVetReport(){
     predicted: !saved && !!predicted,
     period: '2w', customFrom: '', customTo: _memLastDailyDate(cat) || today(),
     inc: _vetIncDefaults(cat), memo: '',
-    attachGdl: true   // 혈당 일일 로그 첨부 (v0.7.93) — 노출 조건 충족 시 기본 켜짐
+    attachGdl: true,   // 혈당 일일 로그 첨부 (v0.7.93) — 노출 조건 충족 시 기본 켜짐
+    trfPeriod: '6m', trfFrom: '', trfTo: '', trfSel: null   // 전원용 PDF (v0.7.94)
   };
   let modal = document.getElementById('vetReportModal');
   if(!modal){
@@ -15275,6 +15790,13 @@ function vetRepToggle(key){
   if(!_vetRep) return;
   _vetRep.inc[key] = !_vetRep.inc[key];
 }
+/* 전원용 PDF 지표 조정 (v0.7.94, 스펙 3-1 ③) */
+function trfToggleSel(k){
+  if(!_vetRep) return;
+  if(!_vetRep.trfSel) _vetRep.trfSel=new Set(_vetRep._trfAuto||[]);
+  if(_vetRep.trfSel.has(k)) _vetRep.trfSel.delete(k); else _vetRep.trfSel.add(k);
+  renderVetReportStep();
+}
 function vetRepGo(step){
   if(!_vetRep) return;
   if(_vetRep.step === 1){
@@ -15304,7 +15826,7 @@ function renderVetReportStep(){
   const box = document.getElementById('vetReportBox');
   if(!box || !_vetRep) return;
   const R = _vetRep;
-  const _stepNo = R.step==='i2' ? 2 : R.step==='i3' ? 3 : R.step;
+  const _stepNo = (R.step==='i2'||R.step==='t2') ? 2 : (R.step==='i3'||R.step==='t3') ? 3 : R.step;
   const head = (t,sub) => '<div style="display:flex;align-items:center;margin-bottom:4px"><div style="flex:1"><div style="font-size:17px;font-weight:800;color:var(--cm-ink)">'+t+'</div><div style="font-size:12px;color:var(--cm-faint);margin-top:2px">'+sub+'</div></div>'+
     '<button type="button" onclick="closeVetReport()" style="background:none;border:none;font-size:20px;color:var(--cm-faint);cursor:pointer;padding:4px 8px;font-family:inherit">×</button></div>'+
     '<div style="font-size:11px;color:var(--cm-faint);margin-bottom:14px">'+_vEsc(R.cat)+' · 단계 '+_stepNo+'/4</div>';
@@ -15316,16 +15838,17 @@ function renderVetReportStep(){
     // 리포트 2종 (스펙 ③ Phase 3): 정기 진료용 = 주치의에게 재택 데이터만 · 전체 요약 = 전원·상세 공유용
     const tCard=(key,title,sub)=>'<button type="button" onclick="vetRepType(\''+key+'\')" style="flex:1;min-width:0;text-align:left;padding:12px;border-radius:13px;cursor:pointer;font-family:inherit;border:1.5px solid '+(R.rtype===key?'var(--cm-green-700);background:var(--cm-green-tint)':'var(--cm-line);background:var(--cm-surface)')+'"><div style="font-size:13.5px;font-weight:800;color:var(--cm-ink)">'+title+'</div><div style="font-size:11px;color:var(--cm-faint);margin-top:3px;line-height:1.45">'+sub+'</div></button>';
     box.innerHTML = head('병원에 공유하기', '리포트 종류를 선택해주세요')
-      + '<div style="display:flex;gap:8px;margin-bottom:12px">'
+      + '<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">'
       + tCard('interval','정기 진료용','지난 진료 이후 재택 기록만 · 텍스트 복사')
-      + tCard('full','전체 요약','기간 요약 + 리포트 사진 · 전원·상세 공유용')
+      + tCard('full','전체 요약','기간 요약 + 리포트 사진 · 상세 공유용')
+      + tCard('transfer','전원용 PDF','병원 옮길 때 · 이력 전체 + 혈검 추세 문서')
       + '</div>'
       + '<div style="background:var(--cm-surface-2);border:1px solid var(--cm-line);border-radius:13px;padding:14px;margin-bottom:12px">'
       + '<div style="font-size:12.5px;font-weight:700;color:var(--cm-ink-soft);margin-bottom:8px">다음 진료 예정일'+(R.predicted?' <span style="font-weight:500;color:var(--cm-faint)">(혈검 주기 기반 자동 예측)</span>':'')+'</div>'
       + '<div style="width:100%;overflow:hidden;border-radius:11px"><input type="date" id="vrNextVisit" value="'+_vEsc(R.nextVisit)+'" style="'+dateStyle+'"></div>'
       + '<div style="font-size:11px;color:var(--cm-faint);margin-top:8px;line-height:1.5">진료 예정일 D-3부터 오늘탭에서 알려드려요. 비워두면 알림 없이 리포트만 만들어요.</div>'
       + '</div>'
-      + '<div style="display:flex;gap:8px">'+_vrBtn('다음','vetRepGo('+(R.rtype==='interval'?'\'i2\'':'2')+')',true)+'</div>'
+      + '<div style="display:flex;gap:8px">'+_vrBtn('다음','vetRepGo('+(R.rtype==='interval'?'\'i2\'':R.rtype==='transfer'?'\'t2\'':'2')+')',true)+'</div>'
       + '<div style="font-size:11px;color:var(--cm-faint);margin-top:8px;text-align:center;line-height:1.5">진료 전 병원 카톡에 공유하시면 진료가 편해져요.</div>';
   } else if(R.step === 'i2'){
     const auto = guessLastVisit(R.cat);
@@ -15352,6 +15875,59 @@ function renderVetReportStep(){
       + '<div style="display:flex;gap:8px">'+_vrBtn('이전','vetRepGo(\'i2\')',false)+_vrBtn('텍스트 복사','copyIntervalReport()',true)+'</div>'
       + '<div style="display:flex;gap:8px;margin-top:8px">'+_vrBtn('PDF로 저장'+(R.attachGdl!==false&&_vrGdlAvailable(R)?' (혈당 일일 로그 포함)':''),'vetRepSavePdf()',false)+'</div>'
       + '<div style="font-size:11px;color:var(--cm-faint);margin-top:8px;text-align:center;line-height:1.5">카카오톡 채널은 공유 목록에 뜨지 않아서 복사 후 붙여넣기가 가장 빨라요.<br>PDF는 저장된 파일을 채팅방에서 직접 첨부해주세요.</div>';
+  } else if(R.step === 't2'){
+    // 전원용 PDF (v0.7.94) — 기간 + 지표 조정 + 일일 로그 첨부
+    const per=[['3m','3개월'],['6m','6개월'],['1y','1년'],['all','전체'],['custom','직접 지정']];
+    const range=_trfRange(R);
+    let chipHtml='';
+    if(range){
+      const series=_trfBtSeries(R.cat, range.from, range.to);
+      const dStr=_trfDiseaseStr(R.cat);
+      const auto=_trfSelectIndicators(series, dStr, {anemia:_trfHasAnemia(dStr), dka:_trfHasDkaHistory(R.cat)});
+      R._trfAuto=auto.rows;
+      if(!R.trfSel) R.trfSel=new Set(auto.rows);
+      const extras=Object.keys(series).filter(k=>!auto.rows.includes(k)).sort();
+      const chip=(k,on)=>'<button type="button" onclick="trfToggleSel(\''+_vEsc(k)+'\')" style="padding:6px 12px;border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;border:1px solid '+(on?'var(--cm-green-700);background:var(--cm-green-tint);color:var(--cm-green-700)':'var(--cm-line);background:var(--cm-surface);color:var(--cm-faint)')+'">'+_vEsc(k)+'</button>';
+      const shown=[...new Set([...auto.rows, ...extras])].slice(0,28);
+      chipHtml = shown.length
+        ? '<div style="font-size:12.5px;font-weight:700;color:var(--cm-ink-soft);margin:8px 0 6px">핵심 지표 표에 넣을 항목 <button type="button" onclick="_vetRep.trfSel=null;renderVetReportStep()" style="background:none;border:none;font-size:11px;color:var(--teal);cursor:pointer;font-family:inherit;text-decoration:underline">자동 선택으로 초기화</button></div>'
+          + '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">'+shown.map(k=>chip(k,R.trfSel.has(k))).join('')+'</div>'
+        : '<div style="font-size:12px;color:var(--cm-faint);margin:8px 0 12px">기간 내 혈액검사 기록이 없어 지표 표 없이 재택 기록 중심으로 만들어요.</div>';
+    }
+    box.innerHTML = head('전원용 PDF', '처음 보는 수의사가 5분 안에 파악하는 문서예요')
+      + '<div style="font-size:12.5px;font-weight:700;color:var(--cm-ink-soft);margin-bottom:6px">기간</div>'
+      + '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">'
+      + per.map(p=>'<button type="button" onclick="vetRepSet(\'trfPeriod\',\''+p[0]+'\');vetRepSet(\'trfSel\',null);renderVetReportStep()" style="padding:8px 14px;border-radius:11px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;border:1px solid '+(R.trfPeriod===p[0]?'var(--cm-green-700);background:var(--cm-green-tint);color:var(--cm-green-700)':'var(--cm-line);background:var(--cm-surface);color:var(--cm-ink-soft)')+'">'+p[1]+'</button>').join('')
+      + '</div>'
+      + (R.trfPeriod==='custom' ? '<div style="display:flex;gap:8px;margin-bottom:12px;overflow:hidden"><input type="date" id="trfFrom" value="'+_vEsc(R.trfFrom)+'" onchange="vetRepSet(\'trfFrom\',this.value);vetRepSet(\'trfSel\',null)" style="'+dateStyle.replace('display:block;width:100%','flex:1;width:auto')+'"><input type="date" id="trfTo" value="'+_vEsc(R.trfTo)+'" onchange="vetRepSet(\'trfTo\',this.value);vetRepSet(\'trfSel\',null)" style="'+dateStyle.replace('display:block;width:100%','flex:1;width:auto')+'"></div>' : '')
+      + chipHtml
+      + (_vrGdlAvailable(R) ? '<label style="display:flex;align-items:center;gap:8px;padding:11px 13px;border-radius:13px;background:var(--cm-surface);border:1px solid var(--cm-line);font-size:13px;color:var(--cm-ink);cursor:pointer;margin-bottom:14px">'
+        + '<input type="checkbox" '+(R.attachGdl!==false?'checked':'')+' onchange="vetRepSet(\'attachGdl\',this.checked)" style="accent-color:var(--cm-green-700);width:16px;height:16px">'
+        + '혈당 일일 로그 첨부</label>' : '')
+      + '<div style="display:flex;gap:8px">'+_vrBtn('이전','vetRepGo(1)',false)+_vrBtn('미리보기','vetRepGo(\'t3\')',true)+'</div>';
+  } else if(R.step === 't3'){
+    box.innerHTML = head('미리보기', 'PDF 저장 전 첫 페이지를 확인해주세요')
+      + '<div id="trfPrev" style="font-size:12.5px;color:var(--cm-faint);padding:20px 0;text-align:center">문서를 만드는 중...</div>'
+      + '<div style="display:flex;gap:8px">'+_vrBtn('이전','vetRepGo(\'t2\')',false)+_vrBtn('PDF로 저장'+(R.attachGdl!==false&&_vrGdlAvailable(R)?' (일일 로그 포함)':''),'trfSavePdf()',true)+'</div>'
+      + '<div style="font-size:11px;color:var(--cm-faint);margin-top:8px;text-align:center;line-height:1.5">카카오톡에는 저장된 PDF 파일을 채팅방에서 직접 첨부해주세요.</div>';
+    (async()=>{
+      try{
+        const range=_trfRange(R);
+        if(!range){ const el=document.getElementById('trfPrev'); if(el) el.textContent='기간을 확인해주세요'; return; }
+        const d=await _trfCollect(R.cat, range.from, range.to);
+        if(R.trfSel) d.rows=d.rows.filter(k=>R.trfSel.has(k)).concat([...R.trfSel].filter(k=>!d.rows.includes(k)&&d.series[k])).slice(0,TRF_MAX_ROWS);
+        const pages=_trfRenderPages(d);
+        const el=document.getElementById('trfPrev');
+        if(el && _vetRep && _vetRep.step==='t3'){
+          el.style.cssText='margin-bottom:12px';
+          el.innerHTML='<img src="'+pages[0].toDataURL('image/png')+'" style="width:100%;border-radius:13px;border:1px solid var(--cm-line)" alt="전원용 PDF 첫 페이지 미리보기">'
+            + '<div style="font-size:11px;color:var(--cm-faint);margin-top:6px;text-align:center">본문 '+pages.length+'쪽'+(R.attachGdl!==false&&_vrGdlAvailable(R)?' + 혈당 일일 로그':'')+'</div>';
+        }
+      }catch(e){
+        console.warn('전원용 미리보기 오류:', e);
+        const el=document.getElementById('trfPrev'); if(el) el.textContent='미리보기를 만들지 못했어요. PDF 저장은 시도할 수 있어요.';
+      }
+    })();
   } else if(R.step === 2){
     const per = [['1w','1주'],['2w','2주'],['1m','1개월'],['3m','3개월'],['custom','직접 지정']];
     const incDefs = [['obs','최근 관찰 지표'],['profile','프로필'],['water','음수량'],['urine','소변'],['poop','배변'],['vomit','구토'],['meal','급여'],['weight','체중'],['rr','호흡수'],['med','투약·루틴']];
