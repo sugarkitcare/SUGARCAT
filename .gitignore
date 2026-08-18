@@ -28,3 +28,17 @@ harlow_insert_result.json
 existing_foods_current.json
 final_insert_proposed.json
 cfg_tmp.json
+android/.idea/
+inserted_result.json
+kcal2_*.json
+kcal_fix_*.json
+liquid_*.json
+memo_data.json
+rename_*.json
+royal_rename_pre.json
+scratch_*
+*_INSERT용.json
+습식_kcal_정정목록.csv
+중복의심군.txt
+foods_master_재점검.csv
+foods_master_전체_정렬.csv
