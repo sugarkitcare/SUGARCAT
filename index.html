@@ -662,7 +662,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.88</span>
+      <span class="cm-beta">v0.7.89</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -15704,6 +15704,9 @@ function showApp() {
   document.getElementById('app').style.display = 'block';
   try{ _engageWriteGate(); }catch(e){}   // 로딩 중 쓰기 게이트 시각 처리 + 5초 지연 안내 (v0.7.87)
   if(currentUser) {
+    // 로그인 진입 단일 관문 (v0.7.89 P0) — 로컬 캐시가 다른 계정 소유면 폐기 후 리로드.
+    // 반드시 syncFromDB 호출 전에 실행돼야 함 (sync가 로컬 캐시를 현 계정으로 업로드하는 경로 보유)
+    try{ if(!_enforceDataOwnership()) return; }catch(e){ console.warn('[dataOwnership] 검사 오류:', e); }
     document.getElementById('logoutBtn').style.display = 'block';
     if(currentUser.email===ADMIN_EMAIL){
       const ab=document.getElementById('adminBtnProfile');
@@ -15891,13 +15894,64 @@ async function handleAuth() {
   btn.disabled = false;
 }
 
+/* ── 계정 간 로컬 데이터 격리 (v0.7.89, P0) ──
+   공용 기기에서 A 로그아웃 → B 로그인 시 A의 로컬 캐시(건강 기록 전체)가
+   B 계정 소유로 DB에 업로드되던 오염 경로 차단. 3중 방어:
+   A) 로그아웃 시 로컬 저장소 전체 정리 (_clearUserLocalData)
+   B) 로컬 캐시 소유 계정 표식 + 로그인 진입 시 불일치면 폐기 (_enforceDataOwnership)
+   C) 대량 업로드 경로에 소유권 확인 안전망 (_uploadOwnershipOk)
+   v0.7.84가 동의 기록에만 적용했던 uid 귀속을 전체 데이터로 확대한 것 */
+const DATA_OWNER_KEY='cm_data_owner_v1';
+/* 사용자 데이터 전체 삭제 — 기기 수준 설정(서버 config 캐시·온보딩 완료 표식)만 유지 */
+function _clearUserLocalData(){
+  const KEEP=[SK_CONFIG,'cm_onboarded'];
+  const preserved={};
+  KEEP.forEach(k=>{ try{ const v=localStorage.getItem(k); if(v!=null) preserved[k]=v; }catch(e){} });
+  try{ localStorage.clear(); }catch(e){}
+  try{ sessionStorage.clear(); }catch(e){}
+  Object.keys(preserved).forEach(k=>{ try{ localStorage.setItem(k,preserved[k]); }catch(e){} });
+}
+/* 로그인 진입 관문 (showApp) — 로컬 캐시가 다른 계정 소유면 전부 폐기 후 재시작.
+   반환 false = 리로드 진행 중이므로 호출부는 즉시 중단해야 함.
+   소유 표식이 없는 로컬 데이터는 비로그인 시절 기록 → 현 계정 귀속 (기존 로컬→가입 마이그레이션 유지) */
+function _enforceDataOwnership(){
+  if(!currentUser) return true;
+  let owner=null; try{ owner=localStorage.getItem(DATA_OWNER_KEY); }catch(e){}
+  if(owner===currentUser.id) return true;
+  if(!owner){ try{ localStorage.setItem(DATA_OWNER_KEY,currentUser.id); }catch(e){} return true; }
+  console.warn('[dataOwnership] 로컬 캐시 소유자 불일치 → 전체 폐기:', owner, '→', currentUser.id);
+  _clearUserLocalData();
+  let marked=false;
+  try{ localStorage.setItem(DATA_OWNER_KEY,currentUser.id); marked=true; }catch(e){}
+  if(marked){ location.reload(); return false; }
+  // 저장 불가 환경(리로드하면 무한 반복) → 리로드 없이 메모리 상태만 초기화
+  state={cats:[],activeCat:'',records:{},catProfiles:{}};
+  btData=[]; careEvents=[]; favFoods=[]; fdData=[]; cgmCsv=[];
+  return true;
+}
+/* 로컬 → 서버 대량 업로드 안전망 — 로컬 캐시가 현 계정 소유일 때만 허용 */
+function _uploadOwnershipOk(){
+  if(!currentUser) return false;
+  let owner=null;
+  try{ owner=localStorage.getItem(DATA_OWNER_KEY); }catch(e){ return true; } // 저장소 접근 불가 — 판별 불능이면 기존 동작 유지
+  if(!owner || owner===currentUser.id) return true;
+  console.warn('[dataOwnership] 소유자 불일치 — 업로드 차단:', owner, '→', currentUser.id);
+  return false;
+}
+
 async function handleLogout() {
   if(!sbClient) return;
+  // 예약된 투약 알림 취소 — 다음 사용자에게 이전 계정의 알림이 울리면 안 됨 (탈퇴 경로와 동일)
+  try{ await cancelAllLocalNotifications(); }catch(e){}
   await sbClient.auth.signOut();
   currentUser = null;
   cgmCsv = [];   // CSV 데이터는 DB 전용 — 로그아웃 시 세션 캐시 비움
+  // 로컬 저장소의 사용자 데이터 전체 삭제 (v0.7.89 P0) — 공용 기기에서 다음 계정으로의 오염 차단
+  _clearUserLocalData();
   document.getElementById('logoutBtn').style.display = 'none';
-  showLogin();
+  // showLogin()이 아닌 전체 리로드 — 메모리의 state·btData·careEvents 등이 남아
+  // 리로드 없이 다음 로그인이 일어나면 그대로 업로드되는 경로가 열림
+  location.href='/';
 }
 
 /* ── 회원 탈퇴 (v0.7.82, P0) — 방침 제3·4조 이행 경로 ──
@@ -16025,8 +16079,8 @@ async function syncFromDB() {
       // 이 시점 records는 아직 로컬 원본 → 로컬 데이터로 우선 렌더하고, 동기화 완료 후 finally에서 최종 렌더
       if(state.activeCat !== _prevActiveCat) _renderDailyTabSafe();
     } else {
-      // DB에 고양이 없으면 로컬 고양이들을 DB에 등록
-      if(state.cats.length > 0) {
+      // DB에 고양이 없으면 로컬 고양이들을 DB에 등록 — 로컬 캐시가 현 계정 소유일 때만 (v0.7.89 P0)
+      if(state.cats.length > 0 && _uploadOwnershipOk()) {
         for(const cat of state.cats) {
           await upsertCatToDB(cat);
         }
@@ -16229,6 +16283,7 @@ async function loadBloodTests() {
 
 async function saveToDB(targetDate) {
   if(!sbClient || !currentUser) return;
+  if(!_uploadOwnershipOk()) return;   // 다른 계정의 로컬 캐시 업로드 차단 (v0.7.89 P0)
   // 이름 없는 고양이는 저장 안 함
   if(!state.activeCat || state.activeCat.trim() === '') return;
   try {
@@ -16271,6 +16326,7 @@ async function saveToDB(targetDate) {
    - 플래그는 유저별(vomit_migrated_v1_<uid|local>) + 전 행 성공 시에만 설정 → 실패분은 다음 로드에 재시도
    - syncFromDB merge(DB overlay) 뒤에 실행해야 되돌려지지 않음 — 호출부: sync 완료 후 마이그레이션 블록 */
 async function migrateRoutineVomitToCard(dryRun) {
+  if(currentUser && !_uploadOwnershipOk()) return;   // 다른 계정의 로컬 캐시 업로드 차단 (v0.7.89 P0)
   const FLAG = 'vomit_migrated_v1_' + (currentUser ? currentUser.id : 'local');
   if(!dryRun && localStorage.getItem(FLAG)) return;
   const isVomitKey = k => k === '구토' || (typeof k === 'string' && k.indexOf('구토@') === 0);
@@ -16332,6 +16388,7 @@ async function migrateRoutineVomitToCard(dryRun) {
 // DB에 이미 행이 있는 날짜는 건드리지 않음 — 일괄 upsert로 다른 기기의 최신 데이터를 덮는 사고 방지
 async function migrateLocalToDB() {
   if(!sbClient || !currentUser) return;
+  if(!_uploadOwnershipOk()) return 0;   // 다른 계정의 로컬 캐시 업로드 차단 (v0.7.89 P0)
   // DB에 이미 존재하는 (cat_id, record_date) 키 조회 (data 컬럼 없이 가볍게)
   let dbKeys = null;
   try {
@@ -16376,6 +16433,7 @@ async function migrateLocalToDB() {
 // 고양이 DB 등록/수정
 async function upsertCatToDB(catName) {
   if(!sbClient || !currentUser) return;
+  if(!_uploadOwnershipOk()) return;   // 다른 계정의 로컬 캐시 업로드 차단 (v0.7.89 P0)
   // 이름 없는 고양이는 DB에 저장하지 않음
   if(!catName || catName.trim() === '') { console.warn('고양이 이름 없음, DB 저장 스킵'); return; }
   try {
@@ -16429,6 +16487,7 @@ async function upsertCatToDB(catName) {
 // 혈액검사 DB 저장
 async function saveBloodTestToDB(btItem) {
   if(!sbClient || !currentUser || !btItem) return;
+  if(!_uploadOwnershipOk()) return;   // 다른 계정의 로컬 캐시 업로드 차단 (v0.7.89 P0)
   try {
     let profile = (state.catProfiles || {})[btItem.cat];
     // cat_id 없으면 먼저 고양이 DB 등록 후 재시도
@@ -16455,6 +16514,7 @@ async function saveBloodTestToDB(btItem) {
 // 로컬 btData 전체를 DB에 마이그레이션
 async function migrateBloodTestsToDB() {
   if(!sbClient || !currentUser || !btData.length) return;
+  if(!_uploadOwnershipOk()) return 0;   // 다른 계정의 로컬 캐시 업로드 차단 (v0.7.89 P0)
   let count = 0;
   for(const bt of btData) {
     if(!bt.items?.length) continue;
@@ -16944,6 +17004,7 @@ async function syncFoodDataFromDB(cat) {
 /* localStorage → DB 1회 마이그레이션 (DB에 없는 key만 INSERT) */
 async function uploadFoodDataToDB(cat) {
   if(!sbClient||!currentUser||!cat) return;
+  if(!_uploadOwnershipOk()) return;   // 다른 계정의 로컬 캐시 업로드 차단 (v0.7.89 P0)
   try{
     const keys=['favFoods_v1_'+cat,'manualFoods_v1_'+cat,'fd_v2_'+cat,'tubeRecipes_v1_'+cat];
     const {data:existing}=await sbClient.from('user_settings')
