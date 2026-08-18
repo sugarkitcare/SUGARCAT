@@ -662,7 +662,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.92</span>
+      <span class="cm-beta">v0.7.93</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -11104,14 +11104,17 @@ async function _gdlCollect(cat, fromStr, toStr){
   return { cat, fromStr, toStr, nDays:dates.length, profileLine:pf.join(' · '), days };
 }
 
-/* ── 캔버스 렌더 — A4 비율(1240x1754, 150dpi급) 페이지 배열 반환 ── */
-function _gdlRenderPages(d){
+/* ── 캔버스 렌더 — A4 비율(1240x1754, 150dpi급) 페이지 배열 반환 ──
+   opts.attach (v0.7.93): 병원 리포트 첨부 모드 — 구분 제목만(이름·프로필 반복 금지),
+   내부 페이지 번호 억제(문서 전체 기준 번호는 _vrStampPageNums가 일괄 스탬프) */
+function _gdlRenderPages(d, opts){
+  const attach=!!(opts&&opts.attach);
   const W=1240,H=1754,PAD=48,LX=64;                 // LX: y축·행 라벨 열 폭 (그래프·표 정렬 공유)
   const F="-apple-system,'Noto Sans KR',sans-serif";
   const INK='#2A251D',SOFT='#6B6459',GREEN='#235B43',CLAY='#B4552D',LINE='#E5DFD5',BG='#FAF7F1',CARD='#FFFFFF',TINT='#E7F0E9';
   const plotX=PAD+LX, plotW=W-PAD-plotX;
   const GRAPH_H=140, XLBL_H=24, ROW_H=30, DAY_H=34+GRAPH_H+XLBL_H+8+ROW_H*2+10+26, EMPTY_H=52;
-  const HEAD1=190, HEADN=56, FOOT=56;
+  const HEAD1=attach?150:190, HEADN=56, FOOT=56;
   const heights=d.days.map(day=>(day.cgm.length||day.man.length)?DAY_H:EMPTY_H);
   const pages=_gdlPaginate(heights, H-PAD*2-HEAD1-FOOT, H-PAD*2-HEADN-FOOT);
   const rr=(x,x0,y0,w0,h0,r)=>{ x.beginPath(); x.moveTo(x0+r,y0); x.arcTo(x0+w0,y0,x0+w0,y0+h0,r); x.arcTo(x0+w0,y0+h0,x0,y0+h0,r); x.arcTo(x0,y0+h0,x0,y0,r); x.arcTo(x0,y0,x0+w0,y0,r); x.closePath(); };
@@ -11124,22 +11127,36 @@ function _gdlRenderPages(d){
     x.fillStyle=BG; x.fillRect(0,0,W,H);
     let y=PAD;
     if(pi===0){
-      x.fillStyle=GREEN; x.fillRect(0,0,W,132);
-      x.fillStyle='#FFFFFF'; x.font='800 40px '+F; x.fillText(d.cat+' · 혈당 일일 로그', PAD, 62);
-      x.font='500 24px '+F; x.globalAlpha=.85;
-      x.fillText(d.fromStr+' ~ '+d.toStr+' ('+d.nDays+'일) · 보호자 기록', PAD, 100); x.globalAlpha=1;
-      y=132+40;
-      if(d.profileLine){ x.fillStyle=SOFT; x.font='500 24px '+F; x.fillText(d.profileLine, PAD, y); }
-      // 범례 (오른쪽 정렬)
-      x.font='500 20px '+F; x.textAlign='right';
-      x.fillStyle=GREEN; x.fillText('― CGM', W-PAD-170, y);
-      x.fillStyle=CLAY;  x.fillText('● 수동 측정', W-PAD, y);
-      x.textAlign='left';
-      y+=18;
+      if(attach){
+        // 첨부 모드: 구분 제목 + 기간만 — 이름·프로필은 리포트 본문에 이미 있어 반복하지 않음
+        x.fillStyle=GREEN; x.fillRect(0,0,W,96);
+        x.fillStyle='#FFFFFF'; x.font='800 34px '+F; x.fillText('혈당 일일 로그', PAD, 46);
+        x.font='500 22px '+F; x.globalAlpha=.85;
+        x.fillText(d.fromStr+' ~ '+d.toStr+' ('+d.nDays+'일)', PAD, 80); x.globalAlpha=1;
+        y=96+34;
+        x.font='500 20px '+F; x.textAlign='right';
+        x.fillStyle=GREEN; x.fillText('― CGM', W-PAD-170, y);
+        x.fillStyle=CLAY;  x.fillText('● 수동 측정', W-PAD, y);
+        x.textAlign='left';
+        y+=20;
+      } else {
+        x.fillStyle=GREEN; x.fillRect(0,0,W,132);
+        x.fillStyle='#FFFFFF'; x.font='800 40px '+F; x.fillText(d.cat+' · 혈당 일일 로그', PAD, 62);
+        x.font='500 24px '+F; x.globalAlpha=.85;
+        x.fillText(d.fromStr+' ~ '+d.toStr+' ('+d.nDays+'일) · 보호자 기록', PAD, 100); x.globalAlpha=1;
+        y=132+40;
+        if(d.profileLine){ x.fillStyle=SOFT; x.font='500 24px '+F; x.fillText(d.profileLine, PAD, y); }
+        // 범례 (오른쪽 정렬)
+        x.font='500 20px '+F; x.textAlign='right';
+        x.fillStyle=GREEN; x.fillText('― CGM', W-PAD-170, y);
+        x.fillStyle=CLAY;  x.fillText('● 수동 측정', W-PAD, y);
+        x.textAlign='left';
+        y+=18;
+      }
     } else {
       x.fillStyle=SOFT; x.font='600 22px '+F;
-      x.fillText(d.cat+' · 혈당 일일 로그  '+d.fromStr+' ~ '+d.toStr, PAD, y+8);
-      x.textAlign='right'; x.fillText((pi+1)+' / '+pages.length, W-PAD, y+8); x.textAlign='left';
+      x.fillText((attach?'혈당 일일 로그 (계속)  ':d.cat+' · 혈당 일일 로그  ')+d.fromStr+' ~ '+d.toStr, PAD, y+8);
+      if(!attach){ x.textAlign='right'; x.fillText((pi+1)+' / '+pages.length, W-PAD, y+8); x.textAlign='left'; }
       y+=HEADN-14;
     }
     idxs.forEach(i=>{
@@ -13905,6 +13922,79 @@ function _lastPoopLine(li){
   return '마지막 배변: '+li.date+' ('+(li.daysAgo===0?'오늘':li.daysAgo+'일 전')+')'
     +(li.daysAgo>=3?' — 기록을 놓치신 게 아니라면 참고해주세요':'');
 }
+
+/* ── 리포트 혈당 집계 (v0.7.93) — CGM(스크린샷+CSV) + 수동 혈당 통합 ──
+   시각 포함 극값·목표범위 아래 진입 횟수(에피소드 — CGM 연속 측정에서 개별 측정치 세기 금지).
+   표현 규칙: 병명(저혈당/고혈당) 금지 → '목표범위 아래/위', 80~200은 '앱 참고 기준' 표기 */
+function _vrHm(mn){ return String(Math.floor(mn/60)).padStart(2,'0')+':'+String(mn%60).padStart(2,'0'); }
+function _vrGlucoseData(cat, fromStr, toStr){
+  const byDay={};
+  (typeof cgmAllEntries==='function'?cgmAllEntries():[])
+    .filter(c=>(c.cat||'').trim()===(cat||'').trim() && c.date>=fromStr && c.date<=toStr)
+    .forEach(c=>(c.readings||[]).forEach(r=>{
+      const mn=_gdlTimeMin(r.time), v=parseFloat(r.value);
+      if(mn!=null && v>0) (byDay[c.date]=byDay[c.date]||[]).push({min:mn, v, src:'cgm'});
+    }));
+  let manN=0;
+  _vrDates(fromStr,toStr).forEach(dy=>{
+    (((state.records[cat]||{})[dy]||{}).bg||[]).forEach(b=>{
+      const v=parseFloat(b.bg);
+      if(!(v>0)) return;
+      const mn=_gdlTimeMin(b.time);
+      manN++; (byDay[dy]=byDay[dy]||[]).push({min:mn==null?0:mn, v, src:'man'});
+    });
+  });
+  const days=Object.keys(byDay).sort();
+  if(!days.length) return null;
+  const vals=[], list=[];
+  let min=null, max=null, below=0, cgmDays=0, cgmN=0;
+  days.forEach(dy=>{
+    const pts=byDay[dy].sort((a,b)=>a.min-b.min);
+    if(pts.some(p=>p.src==='cgm')) cgmDays++;
+    let sum=0, wasBelow=false;
+    pts.forEach(p=>{
+      vals.push(p.v); sum+=p.v;
+      if(p.src==='cgm') cgmN++;
+      if(min==null || p.v<min.v) min={v:p.v, d:dy, mn:p.min};
+      if(max==null || p.v>max.v) max={v:p.v, d:dy, mn:p.min};
+      const isB=p.v<GDL_TARGET_LOW;
+      if(isB && !wasBelow) below++;   // 하루 안에서 목표범위 아래로 '진입'한 횟수
+      wasBelow=isB;
+    });
+    list.push({d:dy, v:Math.round(sum/pts.length)});
+  });
+  return {
+    days:days.length, cgmDays, cgmN, manN,
+    avg:Math.round(vals.reduce((a,b)=>a+b,0)/vals.length),
+    tir:Math.round(vals.filter(v=>v>=GDL_TARGET_LOW&&v<=GDL_TARGET_HIGH).length/vals.length*100),
+    min, max, below, list
+  };
+}
+/* 혈당 요약 줄 — 텍스트 리포트 공용. 커버리지 low(기록 30% 미만)는 평균·비율 미산출 (VR_COV 원칙) */
+function _vrGlucoseLines(g, homeDays){
+  const L=[];
+  const md=s=>s.slice(5).replace('-','/');
+  const src=g.cgmDays
+    ? 'CGM 기록 '+g.cgmDays+'일'+(g.manN?' · 수동 측정 '+g.manN+'회':'')
+    : '수동 측정 '+g.manN+'회 ('+g.days+'일)';
+  const tier=_vrCovTier(g.days, homeDays);
+  if(tier==='low'){
+    L.push(src);
+    L.push(_vrCovList(g.list,'')+' (일 평균 mg/dL)');
+    L.push('※ 기록이 성근 기간이라 평균·범위 내 비율은 산출하지 않았습니다.');
+  } else {
+    L.push(src+' · 평균 '+g.avg+' mg/dL');
+    L.push('목표범위(80~200) 내 '+g.tir+'%');
+  }
+  L.push(g.below
+    ? '목표범위 아래 '+g.below+'회 (최저 '+g.min.v+', '+md(g.min.d)+' '+_vrHm(g.min.mn)+')'
+    : '목표범위 아래 없음 (최저 '+g.min.v+')');
+  L.push(g.max.v>GDL_TARGET_HIGH
+    ? '목표범위 위 최고 '+g.max.v+' ('+md(g.max.d)+' '+_vrHm(g.max.mn)+')'
+    : '목표범위 위 없음 (최고 '+g.max.v+')');
+  L.push('※ 목표범위 80~200 mg/dL은 앱 참고 기준입니다.');
+  return L;
+}
 /* ══ OBS-BEGIN — 최근 관찰 지표 엔진 (v0.7.51) ══
    개인 기준선(최근 7일 vs 이전 4주) 대비 변화 감지 — 수치 관찰 전달만.
    진단·처방·응급 판정·용량 권고 금지 (v0.7.34 원칙), 문구 전부 하드코딩(AI 생성 아님).
@@ -14411,20 +14501,8 @@ function collectVetReportData(cat, fromStr, toStr, excludeSet){
     warnDays: rrWarnDays, obsDays: rrObsDays };
   d.meds = Object.keys(medCount).sort((a,b)=>medCount[b]-medCount[a]).map(nm=>({name:nm, count:medCount[nm]}));
   d.isDM = (prof.diseases||[]).some(x=>String(x).includes('DM'));
-  if(d.isDM && typeof cgmAllEntries === 'function'){
-    const vals = [];
-    cgmAllEntries().filter(c=>(c.cat||'').trim()===cat.trim() && c.date>=fromStr && c.date<=toStr)
-      .forEach(c=>(c.readings||[]).forEach(r=>{ if(r.value>0) vals.push(r.value); }));
-    if(vals.length){
-      d.cgm = {
-        n: vals.length,
-        avg: Math.round(vals.reduce((a,b)=>a+b,0)/vals.length),
-        min: Math.min(...vals), max: Math.max(...vals),
-        tir: Math.round(vals.filter(v=>v>=80&&v<=200).length/vals.length*100),
-        high: vals.filter(v=>v>=300).length, low: vals.filter(v=>v<60).length
-      };
-    }
-  }
+  // 혈당 통합 집계 (v0.7.93) — CGM+수동, 시각 포함 극값·아래 진입 횟수. 당뇨 등록 시에만
+  if(d.isDM) d.glucose = _vrGlucoseData(cat, fromStr, toStr);
   // 혈검 (선택) — 최근 검사 + 전회 대비 (중립 표현: 범위 밖/상승/하락, v0.7.32 원칙)
   const bts = btData.filter(b=>b.cat===cat && b.items && b.items.length).sort((a,b)=>a.date<b.date?1:-1);
   if(bts.length){
@@ -14593,12 +14671,10 @@ function buildVetReportText(d, inc, memo){
       }
     }
   }
-  if(inc.cgm && d.cgm){
+  if(inc.cgm && d.glucose){
     L.push('');
-    L.push('[연속혈당(CGM) 요약]');
-    L.push('측정 '+d.cgm.n+'개 · 평균 '+d.cgm.avg+' · 최저 '+d.cgm.min+' · 최고 '+d.cgm.max+' mg/dL');
-    L.push('80~200 범위 내 비율: '+d.cgm.tir+'%');
-    L.push('300 이상 측정 '+d.cgm.high+'회 · 60 미만 측정 '+d.cgm.low+'회');
+    L.push('[혈당]');
+    _vrGlucoseLines(d.glucose, d.homeDays).forEach(x=>L.push(x));
   }
   if(inc.bt && d.bt){
     L.push('');
@@ -14703,7 +14779,7 @@ function renderVetReportCanvas(d, inc, memo){
     if(_wm.length) _mLines.push('관찰 권고: '+[...new Set(_wm.flatMap(it=>it.watch))].slice(0,6).join('·')+' (수의사 안내 기준)');
     secs.push({t:'투약·루틴', lines:_mLines});
   }
-  if(inc.cgm && d.cgm) secs.push({t:'연속혈당(CGM)', lines:['평균 '+d.cgm.avg+' · 최저 '+d.cgm.min+' · 최고 '+d.cgm.max+' mg/dL','80~200 범위 내 '+d.cgm.tir+'%']});
+  if(inc.cgm && d.glucose) secs.push({t:'혈당', lines:_vrGlucoseLines(d.glucose, d.homeDays).filter(x=>!x.startsWith('※')).slice(0,4)});
   if(inc.bt && d.bt){
     const outs = d.bt.items.filter(i=>i.out);
     secs.push({t:'혈액검사 ('+d.bt.date+')', lines:[outs.length?('참고범위 밖 '+outs.length+'개 항목 — 텍스트 상세 참조'):'전 항목 참고범위 내'], warn:outs.length>0});
@@ -14793,12 +14869,17 @@ function guessLastVisit(cat){
   btData.filter(b=>b.cat===cat && b.date && b.date < today()).forEach(b=>cands.push(b.date));
   return cands.length ? cands.sort().reverse()[0] : null;
 }
-function buildIntervalReport(cat, lastVisit, incBt){
+/* 인터벌 리포트 기간 — 지난 진료 다음 날 ~ 마지막 기록일(비추모=오늘). PDF 첨부(v0.7.93)와 공용 */
+function _intervalRange(cat, lastVisit){
   // 기억하기 (v0.7.76): 종료일을 마지막 기록일에 앵커 — 사후 빈 기간이 기본값이 되지 않게 (비추모=오늘)
   const to = _memLastDailyDate(cat) || today();
   const d0 = new Date(lastVisit+'T00:00:00Z'); d0.setUTCDate(d0.getUTCDate()+1);
   let from = d0.toISOString().slice(0,10);
   if(from > to) from = to;
+  return {from, to};
+}
+function buildIntervalReport(cat, lastVisit, incBt){
+  const {from, to} = _intervalRange(cat, lastVisit);
   const dates = _vrDates(from, to);
   const md = s=>s.slice(5).replace('-','/');
   // 기간 내 입원 구간은 재택 데이터에서 제외하고 한 줄 표기만
@@ -14901,6 +14982,13 @@ function buildIntervalReport(cat, lastVisit, incBt){
       L.push(parts.join(' · ')+' — '+(_mT==='partial'?d.homeDays+'일 중 ':'')+Math.max(gDays,d.meal.days)+'일 기록');
     }
   }
+  // 혈당 (v0.7.93) — 당뇨 등록 시에만. CGM+수동 통합, 커버리지 규칙·'목표범위 아래/위' 표현
+  if(d.isDM){
+    L.push('');
+    L.push('[혈당]');
+    if(d.glucose) _vrGlucoseLines(d.glucose, d.homeDays).forEach(x=>L.push(x));
+    else L.push('기간 내 기록 없음');
+  }
   if(schedDayCnt>0){
     L.push('');
     L.push('[투약]');
@@ -14977,6 +15065,149 @@ async function copyIntervalReport(){
   else toast('복사가 안 됐어요. 미리보기 텍스트를 길게 눌러 직접 복사해주세요', '#BA7517', 3600);
 }
 
+/* ── 리포트 PDF 저장 + 혈당 일일 로그 첨부 (v0.7.93) ──
+   v0.7.92 PDF 빌더(_gdlPdfFromCanvases) 재사용. 본문(텍스트 조판 또는 리포트 캔버스 분할) 뒤에
+   일일 로그 페이지를 붙이고, 페이지 번호는 문서 전체 기준으로 마지막에 일괄 스탬프 */
+/* 인터벌 텍스트 → A4 페이지 조판 (섹션 헤더 [..]는 녹색 볼드) */
+function _vrTextToPages(text){
+  const W=1240,H=1754,PAD=80,LH=38;
+  const F="-apple-system,'Noto Sans KR',sans-serif";
+  const INK='#2A251D',GREEN='#235B43',BG='#FAF7F1';
+  const mc=document.createElement('canvas').getContext('2d');
+  const maxW=W-PAD*2;
+  const lines=[];
+  String(text||'').split('\n').forEach(raw=>{
+    const isHead=/^\[.+\]/.test(raw);
+    if(!raw){ lines.push({t:'',h:false}); return; }
+    mc.font=(isHead?'700 26px ':'500 24px ')+F;
+    let cur='';
+    for(const ch of raw){
+      if(cur && mc.measureText(cur+ch).width>maxW){ lines.push({t:cur,h:isHead}); cur=ch; }
+      else cur+=ch;
+    }
+    lines.push({t:cur,h:isHead});
+  });
+  const perPage=Math.floor((H-PAD*2-30)/LH);
+  const pages=[];
+  for(let i=0;i<lines.length || !pages.length;i+=perPage){
+    const cv=document.createElement('canvas'); cv.width=W; cv.height=H;
+    const x=cv.getContext('2d');
+    x.fillStyle=BG; x.fillRect(0,0,W,H);
+    let y=PAD+24;
+    lines.slice(i,i+perPage).forEach(ln=>{
+      x.font=(ln.h?'700 26px ':'500 24px ')+F;
+      x.fillStyle=ln.h?GREEN:INK;
+      if(ln.t) x.fillText(ln.t,PAD,y);
+      y+=LH;
+    });
+    pages.push(cv);
+  }
+  return pages;
+}
+/* 리포트 캔버스(1080폭·가변 높이) → A4 페이지 분할 — 배경 단색 행에서만 절단(카드 중간 절단 방지) */
+function _vrSliceCanvasToPages(cv){
+  const PW=1240,PH=1754;
+  const scale=PW/cv.width;
+  const maxSrcH=Math.floor(PH/scale);
+  const ctx=cv.getContext('2d');
+  const pages=[];
+  let y=0;
+  while(y<cv.height){
+    let end=Math.min(y+maxSrcH,cv.height);
+    if(end<cv.height){
+      // BG(#FAF7F1) 단색 행을 위로 탐색 — 카드 사이 여백에서 절단.
+      // 탐색 창 600px: 섹션 카드가 이보다 높으면(드묾) 강제 절단 폴백
+      for(let r=end;r>Math.max(y+200,end-600);r--){
+        const dt=ctx.getImageData(0,r,cv.width,1).data;
+        let bg=true;
+        for(let i=0;i<cv.width;i+=3){
+          const o=i*4;
+          if(Math.abs(dt[o]-250)>8||Math.abs(dt[o+1]-247)>8||Math.abs(dt[o+2]-241)>8){ bg=false; break; }
+        }
+        if(bg){ end=r; break; }
+      }
+    }
+    const pc=document.createElement('canvas'); pc.width=PW; pc.height=PH;
+    const px=pc.getContext('2d'); px.fillStyle='#FAF7F1'; px.fillRect(0,0,PW,PH);
+    px.drawImage(cv, 0,y,cv.width,end-y, 0,0,PW,Math.round((end-y)*scale));
+    pages.push(pc);
+    y=end;
+  }
+  return pages;
+}
+/* 문서 전체 페이지 번호 스탬프 — 우하단, 첨부 포함 연속 */
+function _vrStampPageNums(pages){
+  pages.forEach((cv,i)=>{
+    const x=cv.getContext('2d');
+    x.font="500 18px -apple-system,'Noto Sans KR',sans-serif";
+    x.fillStyle='#6B6459'; x.textAlign='right';
+    x.fillText((i+1)+' / '+pages.length, cv.width-36, cv.height-24);
+    x.textAlign='left';
+  });
+}
+/* 일일 로그 첨부 가능 여부 — 당뇨 등록 또는 기간 내 혈당 기록 존재 (체크박스 노출 조건) */
+function _vrGdlAvailable(R){
+  try{
+    const range = R.rtype==='interval'
+      ? ((R.lastVisit && R.lastVisit < today()) ? _intervalRange(R.cat, R.lastVisit) : null)
+      : _vrPeriodRange();
+    if(!range) return false;
+    if(((state.catProfiles||{})[R.cat]?.diseases||[]).some(x=>String(x).includes('DM'))) return true;
+    return !!_vrGlucoseData(R.cat, range.from, range.to);
+  }catch(e){ return false; }
+}
+async function vetRepSavePdf(){
+  const R=_vetRep;
+  if(!R || R._pdfBusy) return;
+  R._pdfBusy=true;
+  toast('PDF를 만드는 중...', '#534AB7');
+  try{
+    let pages=[], range=null;
+    if(R.rtype==='interval'){
+      if(!R._text){ try{ R._text=buildIntervalReport(R.cat, R.lastVisit, R.incBt); }catch(e){} }
+      if(!R._text){ toast('리포트를 만들지 못했어요. 다시 시도해주세요', '#D85A30'); return; }
+      pages=_vrTextToPages(R._text);
+      range=_intervalRange(R.cat, R.lastVisit);
+    } else {
+      if(!R._canvas){
+        try{
+          const rg=_vrPeriodRange();
+          const data=R._data||collectVetReportData(R.cat, rg.from, rg.to);
+          R._canvas=renderVetReportCanvas(data, R.inc, R.memo);
+        }catch(e){}
+      }
+      if(!R._canvas){ toast('리포트 이미지를 만들지 못했어요', '#D85A30'); return; }
+      pages=_vrSliceCanvasToPages(R._canvas);
+      range=_vrPeriodRange();
+    }
+    // 일일 로그 첨부 — 리포트 기간과 동일, 60일 상한(v0.7.92 규칙)은 최근 60일로 절단 후 안내
+    if(R.attachGdl!==false && range && _vrGdlAvailable(R)){
+      let gFrom=range.from, clamped=false;
+      if(_gdlDates(gFrom, range.to).length>60){
+        const t=new Date(range.to+'T00:00:00'); t.setDate(t.getDate()-59);
+        gFrom=t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0');
+        clamped=true;
+      }
+      const gd=await _gdlCollect(R.cat, gFrom, range.to);
+      if(gd.days.some(dd=>dd.cgm.length||dd.man.length)){
+        pages=pages.concat(_gdlRenderPages(gd, {attach:true}));
+        if(clamped) toast('일일 로그는 최근 60일까지만 첨부돼요', '#BA7517', 3000);
+      }
+    }
+    _vrStampPageNums(pages);
+    const blob=_gdlPdfFromCanvases(pages);
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download='caremasters_report_'+R.cat+'_'+today()+'.pdf';
+    a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href),3000);
+    toast('PDF 저장 완료 ('+pages.length+'쪽). 카카오톡에는 저장된 파일을 직접 첨부해주세요', '#1D9E75', 3200);
+  }catch(e){
+    console.error('리포트 PDF 오류:', e);
+    toast('PDF 생성에 실패했어요. 잠시 후 다시 시도해주세요', '#D85A30');
+  }finally{ if(_vetRep) _vetRep._pdfBusy=false; }
+}
+
 function _vetIncDefaults(cat){
   const isDM = ((state.catProfiles||{})[cat]?.diseases||[]).some(x=>String(x).includes('DM'));
   return { obs:true, profile:true, water:true, urine:true, poop:true, vomit:true, meal:true, weight:true, rr:true, med:true, cgm:isDM, bt:false };
@@ -14994,7 +15225,8 @@ function openVetReport(){
     nextVisit: saved || predicted || '',
     predicted: !saved && !!predicted,
     period: '2w', customFrom: '', customTo: _memLastDailyDate(cat) || today(),
-    inc: _vetIncDefaults(cat), memo: ''
+    inc: _vetIncDefaults(cat), memo: '',
+    attachGdl: true   // 혈당 일일 로그 첨부 (v0.7.93) — 노출 조건 충족 시 기본 켜짐
   };
   let modal = document.getElementById('vetReportModal');
   if(!modal){
@@ -15107,6 +15339,9 @@ function renderVetReportStep(){
       + '<label style="display:flex;align-items:center;gap:8px;padding:11px 13px;border-radius:13px;background:var(--cm-surface);border:1px solid var(--cm-line);font-size:13px;color:var(--cm-ink);cursor:pointer;margin-bottom:14px">'
       + '<input type="checkbox" '+(R.incBt?'checked':'')+' onchange="vetRepSet(\'incBt\',this.checked)" style="accent-color:var(--cm-green-700);width:16px;height:16px">'
       + '혈액검사 포함 <span style="font-size:11px;color:var(--cm-faint)">(다른 병원에서 받은 검사 공유용)</span></label>'
+      + (_vrGdlAvailable(R) ? '<label style="display:flex;align-items:center;gap:8px;padding:11px 13px;border-radius:13px;background:var(--cm-surface);border:1px solid var(--cm-line);font-size:13px;color:var(--cm-ink);cursor:pointer;margin-bottom:14px">'
+        + '<input type="checkbox" '+(R.attachGdl!==false?'checked':'')+' onchange="vetRepSet(\'attachGdl\',this.checked)" style="accent-color:var(--cm-green-700);width:16px;height:16px">'
+        + '혈당 일일 로그 첨부 <span style="font-size:11px;color:var(--cm-faint)">(PDF 저장 시 날짜별 그래프가 뒤에 붙어요)</span></label>' : '')
       + '<div style="display:flex;gap:8px">'+_vrBtn('이전','vetRepGo(1)',false)+_vrBtn('미리보기','vetRepGo(\'i3\')',true)+'</div>';
   } else if(R.step === 'i3'){
     let text='';
@@ -15115,11 +15350,12 @@ function renderVetReportStep(){
     box.innerHTML = head('미리보기', '복사해서 병원 카톡·채널에 붙여넣어 주세요')
       + '<pre style="white-space:pre-wrap;word-break:break-word;background:var(--cm-surface);border:1px solid var(--cm-line);border-radius:13px;padding:12px;font-size:12px;line-height:1.6;color:var(--cm-ink);font-family:inherit;max-height:300px;overflow-y:auto;margin:0 0 12px">'+_vEsc(text)+'</pre>'
       + '<div style="display:flex;gap:8px">'+_vrBtn('이전','vetRepGo(\'i2\')',false)+_vrBtn('텍스트 복사','copyIntervalReport()',true)+'</div>'
-      + '<div style="font-size:11px;color:var(--cm-faint);margin-top:8px;text-align:center;line-height:1.5">카카오톡 채널은 공유 목록에 뜨지 않아서 복사 후 붙여넣기가 가장 빨라요.</div>';
+      + '<div style="display:flex;gap:8px;margin-top:8px">'+_vrBtn('PDF로 저장'+(R.attachGdl!==false&&_vrGdlAvailable(R)?' (혈당 일일 로그 포함)':''),'vetRepSavePdf()',false)+'</div>'
+      + '<div style="font-size:11px;color:var(--cm-faint);margin-top:8px;text-align:center;line-height:1.5">카카오톡 채널은 공유 목록에 뜨지 않아서 복사 후 붙여넣기가 가장 빨라요.<br>PDF는 저장된 파일을 채팅방에서 직접 첨부해주세요.</div>';
   } else if(R.step === 2){
     const per = [['1w','1주'],['2w','2주'],['1m','1개월'],['3m','3개월'],['custom','직접 지정']];
     const incDefs = [['obs','최근 관찰 지표'],['profile','프로필'],['water','음수량'],['urine','소변'],['poop','배변'],['vomit','구토'],['meal','급여'],['weight','체중'],['rr','호흡수'],['med','투약·루틴']];
-    if(((state.catProfiles||{})[R.cat]?.diseases||[]).some(x=>String(x).includes('DM'))) incDefs.push(['cgm','CGM 요약']);
+    if(((state.catProfiles||{})[R.cat]?.diseases||[]).some(x=>String(x).includes('DM'))) incDefs.push(['cgm','혈당']);
     incDefs.push(['bt','혈액검사 (전원·타 병원용)']);
     box.innerHTML = head('리포트 옵션', '기간과 포함 항목을 선택해주세요')
       + '<div style="font-size:12.5px;font-weight:700;color:var(--cm-ink-soft);margin-bottom:8px">기간</div>'
@@ -15131,6 +15367,9 @@ function renderVetReportStep(){
       + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:16px">'
       + incDefs.map(k=>'<label style="display:flex;align-items:center;gap:7px;padding:9px 11px;border-radius:11px;background:var(--cm-surface);border:1px solid var(--cm-line);font-size:12.5px;color:var(--cm-ink);cursor:pointer"><input type="checkbox" '+(R.inc[k[0]]?'checked':'')+' onchange="vetRepToggle(\''+k[0]+'\')" style="accent-color:var(--cm-green-700)">'+k[1]+'</label>').join('')
       + '</div>'
+      + (_vrGdlAvailable(R) ? '<label style="display:flex;align-items:center;gap:8px;padding:11px 13px;border-radius:13px;background:var(--cm-surface);border:1px solid var(--cm-line);font-size:13px;color:var(--cm-ink);cursor:pointer;margin-bottom:14px">'
+        + '<input type="checkbox" '+(R.attachGdl!==false?'checked':'')+' onchange="vetRepSet(\'attachGdl\',this.checked)" style="accent-color:var(--cm-green-700);width:16px;height:16px">'
+        + '혈당 일일 로그 첨부 <span style="font-size:11px;color:var(--cm-faint)">(PDF 저장 시 날짜별 그래프가 뒤에 붙어요)</span></label>' : '')
       + '<div style="display:flex;gap:8px">'+_vrBtn('이전','vetRepGo(1)',false)+_vrBtn('미리보기','vetRepGo(3)',true)+'</div>';
   } else if(R.step === 3){
     const range = _vrPeriodRange();
@@ -15151,7 +15390,8 @@ function renderVetReportStep(){
       + '<div style="font-size:12.5px;font-weight:700;color:var(--cm-ink-soft);margin-bottom:6px">특이사항 메모 (선택)</div>'
       + '<textarea id="vrMemo" maxlength="300" placeholder="담당 수의사에게 전할 관찰 내용" style="'+inputStyle+';width:100%;min-height:64px;resize:vertical;margin-bottom:6px">'+_vEsc(R.memo)+'</textarea>'
       + '<button type="button" onclick="vetRepGo(3)" style="background:none;border:none;color:var(--teal);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;padding:0 0 14px 0">메모 반영해 미리보기 새로고침</button>'
-      + '<div style="display:flex;gap:8px">'+_vrBtn('이전','vetRepGo(2)',false)+_vrBtn('카톡으로 공유','shareVetReport()',true)+'</div>';
+      + '<div style="display:flex;gap:8px">'+_vrBtn('이전','vetRepGo(2)',false)+_vrBtn('카톡으로 공유','shareVetReport()',true)+'</div>'
+      + '<div style="display:flex;gap:8px;margin-top:8px">'+_vrBtn('PDF로 저장'+(R.attachGdl!==false&&_vrGdlAvailable(R)?' (혈당 일일 로그 포함)':''),'vetRepSavePdf()',false)+'</div>';
   } else if(R.step === 4){
     const nv = R.nextVisit || predictNextVisit(R.cat) || '';
     box.innerHTML = head('공유 완료', '다음 진료 예정일을 저장해두면 D-3부터 알려드려요')
