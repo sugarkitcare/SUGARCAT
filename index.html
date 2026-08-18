@@ -664,7 +664,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.98</span>
+      <span class="cm-beta">v0.7.99</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -6640,6 +6640,58 @@ function renderTimelineChart(date) {
   });
 }
 
+/* ── 그래프 축 공용 헬퍼 (v0.7.99) ── */
+/* x축 날짜 라벨 — 실제 표시 구간이 해를 넘으면 YY-MM(연도 상실 방지), 같은 해면 MM-DD 유지 */
+function gDateLabels(dates){
+  const ds=(dates||[]).filter(Boolean);
+  const multi=ds.length>1 && ds[0].slice(0,4)!==ds[ds.length-1].slice(0,4);
+  return (dates||[]).map(d=>d?(multi?d.slice(2,7):d.slice(5)):d);
+}
+/* 연도가 바뀌는 눈금 인덱스 (구분선용) */
+function gYearBreakIdxs(dates){
+  const out=[];
+  for(let i=1;i<(dates||[]).length;i++){
+    if(dates[i]&&dates[i-1]&&dates[i].slice(0,4)!==dates[i-1].slice(0,4)) out.push(i);
+  }
+  return out;
+}
+/* 연도 경계 세로 구분선 플러그인 — 중립 회색 점선 (입원 음영 파랑과 구분) */
+function gYearLinePlugin(dates){
+  const idxs=gYearBreakIdxs(dates);
+  return {
+    id:'gYearLines',
+    afterDatasetsDraw(chart){
+      if(!idxs.length) return;
+      const xs=chart.scales.x, ys=chart.scales.y;
+      if(!xs||!ys) return;
+      const ctx=chart.ctx;
+      ctx.save();
+      ctx.strokeStyle='rgba(120,115,105,0.4)';
+      ctx.setLineDash([3,4]); ctx.lineWidth=1;
+      idxs.forEach(i=>{
+        const xm=(xs.getPixelForValue(i-1)+xs.getPixelForValue(i))/2;   // 경계는 두 눈금 사이
+        ctx.beginPath(); ctx.moveTo(xm,ys.top); ctx.lineTo(xm,ys.bottom); ctx.stroke();
+      });
+      ctx.restore();
+    }
+  };
+}
+/* y축 보기 좋은 경계 — 111.7 같은 끝수를 정리(120), 최솟값이 최댓값의 25% 미만이면 0으로 스냅 */
+function gNiceBounds(lo,hi){
+  if(!isFinite(lo)||!isFinite(hi)||hi<=lo) return {min:lo,max:hi};
+  const nice=(v,up)=>{
+    if(v<=0) return 0;
+    const m=Math.pow(10,Math.floor(Math.log10(v)));
+    const n=v/m, steps=[1,1.2,1.5,2,2.5,3,4,5,6,8,10];
+    const f=up?steps.find(s=>s>=n-1e-9):steps.slice().reverse().find(s=>s<=n+1e-9);
+    return parseFloat(((f!=null?f:(up?10:1))*m).toPrecision(12));
+  };
+  const min=(lo<=0||lo<hi*0.25)?0:nice(lo,false);
+  let max=nice(hi,true);
+  if(max<=min) max=min+1;
+  return {min,max};
+}
+
 /* 그래프 */
 let gInst=[];let gPeriod=0;
 const gActive=new Set(['ket','wt','rr','water']);
@@ -6721,7 +6773,7 @@ function renderGraphs(){
 
   defs.forEach(def=>{
     if(!gActive.has(def.k))return;
-    const labels=days.map(d=>d.slice(5));
+    const labels=gDateLabels(days);   // 해 넘김 구간은 YY-MM (v0.7.99)
     // 개별 카드 wrap 선택
     const wrap = def.k==='ket'   ? document.getElementById('ketChartWrap')
                : def.k==='wt'    ? document.getElementById('wtChartWrap')
@@ -6780,7 +6832,7 @@ function renderGraphs(){
 
       const inst=new Chart(document.getElementById('gc_'+def.k),{
         type:'line',data:{labels,datasets},
-        plugins:[careAdmissionBandPlugin(state.activeCat, days)],
+        plugins:[careAdmissionBandPlugin(state.activeCat, days), gYearLinePlugin(days)],
         options:{responsive:true,maintainAspectRatio:false,
           plugins:{legend:{display:false},
             tooltip:{callbacks:{label:ctx=>ctx.dataset.label&&ctx.parsed.y!==null?`${ctx.dataset.label}: ${ctx.parsed.y}회/분`:''}}},
@@ -6820,7 +6872,7 @@ function renderGraphs(){
       ];
       const inst=new Chart(document.getElementById('gc_water'),{
         type:'bar',data:{labels,datasets},
-        plugins:[careAdmissionBandPlugin(state.activeCat, days)],
+        plugins:[careAdmissionBandPlugin(state.activeCat, days), gYearLinePlugin(days)],
         options:{responsive:true,maintainAspectRatio:false,
           plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>ctx.parsed.y>0?`${ctx.dataset.label}: ${ctx.parsed.y}ml`:''}}},
           scales:{x:{grid:{color:gc},ticks:{color:tc,font:{size:10},maxTicksLimit:days.length>60?8:15},stacked:true},y:{grid:{color:gc},ticks:{color:tc,font:{size:10}},stacked:true}}
@@ -6867,7 +6919,7 @@ function renderGraphs(){
     const inst=new Chart(document.getElementById('gc_'+def.k),{
       type:def.type||'line',
       data:{labels,datasets},
-      plugins:[careAdmissionBandPlugin(state.activeCat, days)],
+      plugins:[careAdmissionBandPlugin(state.activeCat, days), gYearLinePlugin(days)],
       options:{responsive:true,maintainAspectRatio:false,
         plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>ctx.parsed.y!==null?`${ctx.parsed.y}`:''}}},
         scales:{x:{grid:{color:gc},ticks:{color:tc,font:{size:10},maxTicksLimit:days.length>60?8:15}},y:yOpts}
@@ -7131,8 +7183,7 @@ function renderBTGraphs(){
     const minV=Math.min(...allVals,item.refLow??Infinity);
     const maxV=Math.max(...allVals,item.refHigh??-Infinity);
     const pad=(maxV-minV)*0.3||1;
-    const yMin=Math.max(0,parseFloat((minV-pad).toFixed(1)));
-    const yMax=parseFloat((maxV+pad).toFixed(1));
+    const {min:yMin,max:yMax}=gNiceBounds(Math.max(0,minV-pad), maxV+pad);   // 끝수 정리 (v0.7.99)
 
     // 정상범위 표시선
     const refDatasets=[];
@@ -7141,7 +7192,8 @@ function renderBTGraphs(){
 
     btGI.push(new Chart(document.getElementById(`btc_${idx}`),{
       type:'line',
-      data:{labels:dates.map(d=>d.slice(5)),datasets:[...datasets,...refDatasets]},
+      data:{labels:gDateLabels(dates),datasets:[...datasets,...refDatasets]},
+      plugins:[gYearLinePlugin(dates)],
       options:{
         responsive:true,maintainAspectRatio:false,
         plugins:{
@@ -12861,8 +12913,7 @@ function openBTCatSheet(cat) {
       const minV = Math.min(...allNums);
       const maxV = Math.max(...allNums);
       const pad = (maxV - minV) * 0.3 || 1;
-      const yMin = Math.max(0, parseFloat((minV - pad).toFixed(1)));
-      const yMax = parseFloat((maxV + pad).toFixed(1));
+      const {min:yMin, max:yMax} = gNiceBounds(Math.max(0, minV - pad), maxV + pad);   // 끝수 정리 (v0.7.99)
       const refDs = [];
       if(item.refHigh!==null) refDs.push({label:'상한',data:dates.map(()=>item.refHigh),borderColor:'rgba(187,85,56,0.5)',borderWidth:1.5,borderDash:[5,4],pointRadius:0,fill:false,tension:0});
       if(item.refLow!==null)  refDs.push({label:'하한',data:dates.map(()=>item.refLow),borderColor:'rgba(35,91,67,0.45)',borderWidth:1.5,borderDash:[5,4],pointRadius:0,fill:false,tension:0});
@@ -12872,9 +12923,9 @@ function openBTCatSheet(cat) {
         try {
           btCatSheetInst.push(new Chart(canvas, {
             type: 'line',
-            plugins: [careAdmissionBandPlugin(cat, dates)],
+            plugins: [careAdmissionBandPlugin(cat, dates), gYearLinePlugin(dates)],
             data: {
-              labels: dates.map(d=>d.slice(5)),
+              labels: gDateLabels(dates),
               datasets: [{
                 label: abbr, data: values,
                 borderColor: '#235B43', backgroundColor: 'rgba(35,91,67,0.12)',
@@ -12972,8 +13023,7 @@ function openBTTrendCatSheet(cat, catItems) {
       if(!allNums.length)return;
       const minV=Math.min(...allNums),maxV=Math.max(...allNums);
       const pad=(maxV-minV)*0.3||1;
-      const yMin=Math.max(0,parseFloat((minV-pad).toFixed(1)));
-      const yMax=parseFloat((maxV+pad).toFixed(1));
+      const {min:yMin2,max:yMax2}=gNiceBounds(Math.max(0,minV-pad), maxV+pad);   // 끝수 정리 (v0.7.99)
       const refDs=[];
       if(item.refHigh!=null)refDs.push({data:dates.map(()=>item.refHigh),borderColor:'rgba(187,85,56,0.5)',borderWidth:1.5,borderDash:[5,4],pointRadius:0,fill:false,tension:0});
       if(item.refLow!=null) refDs.push({data:dates.map(()=>item.refLow),borderColor:'rgba(35,91,67,0.45)',borderWidth:1.5,borderDash:[5,4],pointRadius:0,fill:false,tension:0});
@@ -12983,7 +13033,8 @@ function openBTTrendCatSheet(cat, catItems) {
         try{
           btCatSheetInst.push(new Chart(canvas,{
             type:'line',
-            data:{labels:dates.map(d=>d.slice(5)),datasets:[{
+            plugins:[gYearLinePlugin(dates)],
+            data:{labels:gDateLabels(dates),datasets:[{
               data:values,borderColor:'#235B43',backgroundColor:'rgba(35,91,67,0.10)',
               pointBackgroundColor:'#235B43',pointBorderColor:'#fff',pointBorderWidth:2,
               pointRadius:4,tension:0.4,fill:dates.length>1,spanGaps:true
@@ -12998,7 +13049,7 @@ function openBTTrendCatSheet(cat, catItems) {
                 }}}},
               scales:{
                 x:{grid:{color:gc},ticks:{color:tc,font:{size:10}}},
-                y:{grid:{color:gc},ticks:{color:tc,font:{size:10}},min:yMin,max:yMax}
+                y:{grid:{color:gc},ticks:{color:tc,font:{size:10}},min:yMin2,max:yMax2}
               }
             }
           }));
