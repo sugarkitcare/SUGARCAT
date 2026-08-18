@@ -662,7 +662,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.95</span>
+      <span class="cm-beta">v0.7.96</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -4335,6 +4335,19 @@ window.switchCat = function(c) {
   }catch(e){}
 };
 
+/* 고양이별 user_settings 키 접두사 (v0.7.96) — deleteCat 연쇄 삭제 대상.
+   cats 행 삭제의 FK CASCADE는 cat_id 기반 테이블(care_events·cgm_daily)만 지우고,
+   이름 키 기반 user_settings(사료 분석·CGM 스크린샷·루틴 등)는 남던 구멍을 메움.
+   ⚠ 고양이별 user_settings 키를 새로 만들면 이 목록에도 추가할 것 */
+const CAT_US_PREFIXES=['fd_v2_','favFoods_v1_','manualFoods_v1_','tubeRecipes_v1_','cgm_data_',
+  'routine_items_','routine_versions_','med_notif_','emerg_state_','fluid_state_',
+  'card_order_','card_hidden_','tile_config_','memorial_','memorial_msg_',
+  'next_visit_','vet_questions_','last_inputs_'];
+// 로컬 미러 키 접두사 — 접두사+이름 정확 일치로만 제거 (suffix 매칭은 이름 충돌 위험)
+const CAT_LS_PREFIXES=['fd_v2_','favFoods_v1_','manualFoods_v1_','tubeRecipes_v1_','cgmData_v1_',
+  'routineItems_v1_','routineVersions_v1_','lastInputs_v1_','nextVisit_v1_','vetQuestions_v1_',
+  'tileConfig_v1_','cardOrder_v1_','cardHidden_v1_','medNotif_v1_','memorial_v1_','memorialMsg_v1_',
+  'lastRecipeMode_','emerg_state_','fluid_state_','lastMealTab_','vetBannerDismiss_'];
 window.deleteCat = function(c) {
   // 삭제로 유도하지 않기 (스펙 금지사항 3) — 기록 보존 대안(기억하기)을 확인 문구에서 안내
   if(!confirm(c+'를 삭제할까요? 모든 기록이 삭제돼요.\n\n기록을 남기고 알림만 멈추려면, 프로필 화면의 "기억하기"를 사용할 수 있어요.'))return;
@@ -4345,6 +4358,8 @@ window.deleteCat = function(c) {
   if(state.activeCat===c)state.activeCat=state.cats[0]||'';
   // 삭제된 고양이의 예약 알림 정리 (v0.7.77) — 설정 끄고 취소 (state.cats에서 빠져 재등록 안 됨)
   try{ setMedNotifEnabled(c, false); medNotifResyncCat(c); }catch(e){}
+  // 로컬 고양이별 캐시 정리 (v0.7.96)
+  CAT_LS_PREFIXES.forEach(p=>{ try{ localStorage.removeItem(p+c); }catch(e){} });
   saveS();
   renderCatBar();updateMetrics();
   if(sbClient&&currentUser&&delProfile?.dbId){
@@ -4352,7 +4367,12 @@ window.deleteCat = function(c) {
       try{
         await sbClient.from('daily_records').delete().eq('cat_id',delProfile.dbId);
         await sbClient.from('blood_tests').delete().eq('cat_id',delProfile.dbId);
-        const {error}=await sbClient.from('cats').delete().eq('id',delProfile.dbId);
+        // 이름 키 기반 user_settings 정리 (v0.7.96) — 사료 분석·CGM 스크린샷·루틴 등
+        try{
+          await sbClient.from('user_settings').delete()
+            .eq('user_id',currentUser.id).in('key', CAT_US_PREFIXES.map(p=>p+c));
+        }catch(e){ console.warn('user_settings 정리 오류:', e); }
+        const {error}=await sbClient.from('cats').delete().eq('id',delProfile.dbId);   // care_events·cgm_daily는 FK CASCADE
         if(error)toast('DB 삭제 오류: '+error.message,'#D85A30');
         else toast(c+' 삭제 완료 ✅');
       }catch(e){console.error(e);}
