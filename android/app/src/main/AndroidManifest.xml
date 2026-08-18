@@ -22,6 +22,14 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- 소셜 로그인 딥링크 복귀 (v0.8.3 P0) — Supabase 허용 목록의 com.caremasters://login-callback -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="com.caremasters" android:host="login-callback" />
+            </intent-filter>
+
         </activity>
 
         <provider

@@ -1,5 +1,15 @@
 {
   "appId": "com.caremasters",
   "appName": "케어마스터즈",
-  "webDir": "www"
+  "webDir": "www",
+  "plugins": {
+    "SocialLogin": {
+      "providers": {
+        "google": true,
+        "facebook": false,
+        "apple": false,
+        "twitter": false
+      }
+    }
+  }
 }

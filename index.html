@@ -664,7 +664,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.8.2</span>
+      <span class="cm-beta">v0.8.3</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -16803,12 +16803,116 @@ async function _checkAuthAndShow() {
   }
 }
 
+/* ── 네이티브 소셜 로그인 (v0.8.3, P0) ──
+   Capacitor WebView의 origin은 https://localhost — 외부 브라우저에는 존재하지 않는 주소라
+   redirectTo=origin 방식의 signInWithOAuth 복귀가 앱으로 돌아오지 못함(구글·카카오 공통).
+   · 구글: 네이티브 계정 시트(@capgo/capacitor-social-login)로 idToken 획득 → signInWithIdToken.
+     브라우저를 아예 열지 않아 기기·제조사·기본브라우저 변수 없음. 실패 시 딥링크로 폴백.
+   · 카카오: 앱 스킴 딥링크(Supabase 허용 목록 기등록) + 외부 브라우저 → appUrlOpen에서 세션 설정.
+   웹(PWA)은 기존 redirectTo=origin 경로 그대로 — 플랫폼 분기. */
+const _NATIVE_AUTH_REDIRECT = 'com.caremasters://login-callback';
+function _isNativeApp(){
+  try{ return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()); }catch(e){ return false; }
+}
+function _capPlugin(name){
+  try{ return (window.Capacitor && window.Capacitor.Plugins) ? window.Capacitor.Plugins[name] : null; }catch(e){ return null; }
+}
+/* 구글 웹 클라이언트 ID — 공개값. /api/config 경유(Vercel env GOOGLE_WEB_CLIENT_ID).
+   캐시 config엔 없을 수 있어(구버전 캐시) 없으면 신선 fetch로 보충 */
+async function _getGoogleWebClientId(){
+  try{
+    const raw = localStorage.getItem(SK_CONFIG);
+    const cfg = raw ? JSON.parse(raw) : null;
+    if(cfg && cfg.googleWebClientId) return cfg.googleWebClientId;
+  }catch(e){}
+  try{
+    const res = await fetch(API_BASE + '/api/config');
+    if(res.ok){
+      const fresh = await res.json();
+      if(fresh && fresh.googleWebClientId){
+        try{ localStorage.setItem(SK_CONFIG, JSON.stringify(fresh)); }catch(e){}
+        return fresh.googleWebClientId;
+      }
+    }
+  }catch(e){}
+  return null;
+}
+let _slGoogleInited = false;
+async function _signInGoogleNative(){
+  try{
+    const sl = _capPlugin('SocialLogin');
+    if(!sl) throw new Error('SocialLogin 플러그인 없음');
+    const webClientId = await _getGoogleWebClientId();
+    if(!webClientId) throw new Error('googleWebClientId 미설정');
+    if(!_slGoogleInited){
+      await sl.initialize({ google: { webClientId: webClientId, mode: 'online' } });
+      _slGoogleInited = true;
+    }
+    const res = await sl.login({ provider: 'google', options: { scopes: ['profile','email'] } });
+    const idToken = res && res.result ? res.result.idToken : null;
+    if(!idToken) throw new Error('idToken 없음');
+    const { error } = await sbClient.auth.signInWithIdToken({ provider: 'google', token: idToken });
+    if(error) throw error;
+    // 웹 OAuth 복귀(페이지 리로드)와 동일 경로로 재진입 — 환영 화면·온보딩·sync 로직 재사용
+    location.reload();
+  }catch(e){
+    if(/cancel/i.test(String(e && e.message || e))) return;   // 사용자가 계정 시트를 닫음 — 조용히 종료
+    console.warn('네이티브 구글 로그인 실패 — 딥링크 폴백:', e);
+    await _signInSocialNativeRedirect('google');
+  }
+}
+/* 딥링크 방식 — 카카오 기본 경로 · 구글 폴백. 외부 브라우저에서 인증 후 앱 스킴으로 복귀 */
+async function _signInSocialNativeRedirect(provider){
+  try{
+    const { data, error } = await sbClient.auth.signInWithOAuth({
+      provider: provider,
+      options: { redirectTo: _NATIVE_AUTH_REDIRECT, skipBrowserRedirect: true }
+    });
+    if(error || !data || !data.url){
+      console.error(provider + ' 네이티브 로그인 URL 오류:', error);
+      toast('로그인 오류가 발생했어요. 다시 시도해주세요', '#D85A30'); return;
+    }
+    const br = _capPlugin('Browser');
+    if(br) await br.open({ url: data.url });
+    else window.open(data.url, '_blank');
+  }catch(e){ console.error(provider + ' 네이티브 로그인 오류:', e); toast('로그인 중 오류가 발생했어요. 다시 시도해주세요', '#D85A30'); }
+}
+/* 딥링크 복귀 — com.caremasters://login-callback#access_token=…&refresh_token=… (implicit flow) */
+async function _handleAuthDeepLink(url){
+  if(!url || url.indexOf(_NATIVE_AUTH_REDIRECT) !== 0) return;
+  try{ const br = _capPlugin('Browser'); if(br && br.close) br.close().catch(()=>{}); }catch(e){}   // 안드로이드 미지원이어도 무해
+  let frag = '';
+  const h = url.indexOf('#'), q = url.indexOf('?');
+  if(h >= 0) frag = url.slice(h + 1); else if(q >= 0) frag = url.slice(q + 1);
+  const params = new URLSearchParams(frag);
+  const errDesc = params.get('error_description') || params.get('error');
+  if(errDesc){ toast('로그인이 완료되지 않았어요: ' + errDesc, '#D85A30', 4000); return; }
+  const at = params.get('access_token'), rt = params.get('refresh_token');
+  if(!at || !rt){ toast('로그인 응답이 올바르지 않아요. 다시 시도해주세요', '#D85A30'); return; }
+  for(let i = 0; i < 50 && !sbClient; i++) await new Promise(r => setTimeout(r, 100));   // 콜드 스타트: 클라이언트 대기
+  if(!sbClient){ toast('서버 연결을 확인해주세요. 잠시 후 다시 시도해주세요', '#D85A30'); return; }
+  const { error } = await sbClient.auth.setSession({ access_token: at, refresh_token: rt });
+  if(error){ console.error('딥링크 setSession 오류:', error); toast('로그인 오류: ' + error.message, '#D85A30'); return; }
+  location.reload();   // initSupabase 경로로 재진입
+}
+function _initAuthDeepLinkListener(){
+  if(!_isNativeApp()) return;
+  const app = _capPlugin('App'); if(!app) return;
+  try{ app.addListener('appUrlOpen', ev => { try{ _handleAuthDeepLink(ev && ev.url); }catch(e){ console.error('딥링크 처리 오류:', e); } }); }catch(e){}
+  try{ app.getLaunchUrl().then(r => { if(r && r.url) _handleAuthDeepLink(r.url); }).catch(()=>{}); }catch(e){}
+}
+_initAuthDeepLinkListener();
+
 /* ── 소셜 로그인 (v0.7.45) ──
    카카오·구글 → Supabase signInWithOAuth 리다이렉트. 같은 verified 이메일이면 Supabase가
    기존 계정에 자동 연결(케이스 2), 없으면 새 계정 생성(케이스 1·3).
    기존 이메일 로그인(handleAuth)은 미접촉 — 소셜은 추가 경로일 뿐 */
 async function _signInSocial(provider){
   if(!sbClient){ toast('서버 연결을 확인해주세요. 잠시 후 다시 시도해주세요', '#D85A30'); return; }
+  if(_isNativeApp()){   // 네이티브는 브라우저 리다이렉트 복귀 불가 (v0.8.3 P0) — 위 분기 경로로
+    if(provider === 'google'){ await _signInGoogleNative(); return; }
+    await _signInSocialNativeRedirect(provider); return;
+  }
   try{
     // scopes 미전달 (v0.7.45 2차) — GoTrue 카카오 provider가 account_email·profile_image·profile_nickname
     // 3종을 항상 기본 요청하고, 클라이언트 scopes는 대체가 아닌 추가 병합(쉼표 분리)이라
@@ -16912,7 +17016,16 @@ async function submitSocialLink(){
       // 4. 소셜 identity를 기존 계정에 연결 — provider 재인증으로 리다이렉트 (Manual linking 필요)
       msg.textContent = '';
       toast('기존 계정 확인 완료. ' + (provider === 'kakao' ? '카카오' : '구글') + ' 계정을 연결할게요');
-      const { error: linkErr } = await sbClient.auth.linkIdentity({ provider: provider, options: { redirectTo: window.location.origin } });
+      // 네이티브는 앱 스킴 딥링크로 복귀 (v0.8.3 P0) — 웹은 기존 origin 리다이렉트
+      const linkOpts = _isNativeApp()
+        ? { redirectTo: _NATIVE_AUTH_REDIRECT, skipBrowserRedirect: true }
+        : { redirectTo: window.location.origin };
+      const { data: linkData, error: linkErr } = await sbClient.auth.linkIdentity({ provider: provider, options: linkOpts });
+      if(!linkErr && _isNativeApp() && linkData && linkData.url){
+        const br = _capPlugin('Browser');
+        if(br) await br.open({ url: linkData.url });
+        else window.open(linkData.url, '_blank');
+      }
       if(linkErr){
         console.warn('linkIdentity 오류:', linkErr);
         toast('기존 계정으로 로그인됐어요. 소셜 연결은 다음에 다시 시도할 수 있어요', '#BA7517', 4000);
