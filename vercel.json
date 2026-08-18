@@ -5,6 +5,7 @@
   "rewrites": [
     { "source": "/terms", "destination": "/terms.html" },
     { "source": "/privacy", "destination": "/privacy.html" },
-    { "source": "/privacy-20260706", "destination": "/privacy-20260706.html" }
+    { "source": "/privacy-20260706", "destination": "/privacy-20260706.html" },
+    { "source": "/delete-account", "destination": "/delete-account.html" }
   ]
 }

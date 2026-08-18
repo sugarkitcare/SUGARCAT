@@ -1,11 +1,11 @@
 // 법적 문서 md → 정적 HTML 변환 (v0.7.48 페이지 셸 재현)
-// 사용법: node scripts/build_legal_page.mjs <입력.md> <출력.html> <privacy|terms>
+// 사용법: node scripts/build_legal_page.mjs <입력.md> <출력.html> <privacy|terms|delete>
 // 원본 md는 OneDrive 고양이/sugarkey — md 수정 후 이 스크립트로 재생성해야 동기화 유지.
 import { readFileSync, writeFileSync } from 'fs';
 
 const [,, inPath, outPath, kind] = process.argv;
-if (!inPath || !outPath || !['privacy','terms'].includes(kind)) {
-  console.error('사용법: node scripts/build_legal_page.mjs <입력.md> <출력.html> <privacy|terms>');
+if (!inPath || !outPath || !['privacy','terms','delete'].includes(kind)) {
+  console.error('사용법: node scripts/build_legal_page.mjs <입력.md> <출력.html> <privacy|terms|delete>');
   process.exit(1);
 }
 
@@ -80,12 +80,18 @@ while (i < lines.length) {
   }
 }
 
-const title = kind === 'privacy' ? '개인정보처리방침 · 케어마스터즈' : '이용약관 · 케어마스터즈';
+const title = kind === 'privacy' ? '개인정보처리방침 · 케어마스터즈'
+  : kind === 'delete' ? '계정 및 데이터 삭제 안내 · 케어마스터즈'
+  : '이용약관 · 케어마스터즈';
 const desc = kind === 'privacy'
   ? `케어마스터즈 개인정보처리방침 (시행일 ${effective})`
+  : kind === 'delete'
+  ? '케어마스터즈 계정 및 저장 데이터 삭제 요청 방법 안내 (앱 내 탈퇴 · 이메일 요청)'
   : `케어마스터즈 반려묘 건강 관리 서비스 이용약관 (시행일 ${effective})`;
 const nav = kind === 'privacy'
   ? '<nav><a href="/terms">이용약관</a> &middot; <a href="/">케어마스터즈 앱</a></nav>'
+  : kind === 'delete'
+  ? '<nav><a href="/privacy">개인정보처리방침</a> &middot; <a href="/terms">이용약관</a> &middot; <a href="/">케어마스터즈 앱</a></nav>'
   : '<nav><a href="/privacy">개인정보처리방침</a> &middot; <a href="/">케어마스터즈 앱</a></nav>';
 
 const html = `<!DOCTYPE html>
@@ -108,7 +114,7 @@ const html = `<!DOCTYPE html>
 html{font-size:100%}
 body{margin:0;background:var(--bg);color:var(--ink);
   font-family:'Pretendard Variable',Pretendard,'Noto Sans KR',-apple-system,system-ui,sans-serif;
-  line-height:1.75;-webkit-font-smoothing:antialiased;word-break:keep-all}
+  line-height:1.75;-webkit-font-smoothing:antialiased;word-break:keep-all;overflow-wrap:break-word}
 .wrap{max-width:720px;margin:0 auto;padding:1.25rem 1.25rem 3.5rem}
 header{display:flex;align-items:center;justify-content:space-between;gap:.75rem;
   padding:.5rem 0 1rem;border-bottom:1px solid var(--line2);margin-bottom:1.5rem}
