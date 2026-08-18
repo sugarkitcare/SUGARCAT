@@ -662,7 +662,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.90</span>
+      <span class="cm-beta">v0.7.91</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -16431,7 +16431,18 @@ async function migrateLocalToDB() {
 }
 
 // 고양이 DB 등록/수정
-async function upsertCatToDB(catName) {
+/* 같은 고양이 동시 등록 직렬화 (v0.7.91 P1) — saveS→saveToDB(비동기)와 명시적 upsertCatToDB가
+   ms 차로 겹치면 둘 다 존재 확인(maybeSingle)을 통과해 같은 고양이가 2행 insert되던 레이스.
+   (실측: 다수 계정에서 created_at 2~36ms 차 중복 행) 같은 이름의 진행 중 호출이 있으면
+   새로 실행하지 않고 그 Promise를 그대로 반환한다. */
+const _catUpsertInflight = {};
+function upsertCatToDB(catName) {
+  if(_catUpsertInflight[catName]) return _catUpsertInflight[catName];
+  const p = _upsertCatToDBExec(catName).finally(() => { delete _catUpsertInflight[catName]; });
+  _catUpsertInflight[catName] = p;
+  return p;
+}
+async function _upsertCatToDBExec(catName) {
   if(!sbClient || !currentUser) return;
   if(!_uploadOwnershipOk()) return;   // 다른 계정의 로컬 캐시 업로드 차단 (v0.7.89 P0)
   // 이름 없는 고양이는 DB에 저장하지 않음
@@ -16477,6 +16488,18 @@ async function upsertCatToDB(catName) {
         if(!state.catProfiles[catName]) state.catProfiles[catName] = {};
         state.catProfiles[catName].dbId = result.data.id;
         try{localStorage.setItem(SK, JSON.stringify(state));}catch(e){}
+      } else if(result.error) {
+        // 유니크 제약(user_id,name) 충돌 = 다른 기기·탭이 먼저 등록 (v0.7.91) — 기존 행 채택으로 멱등 처리
+        if(result.error.code === '23505') {
+          const { data: dup } = await sbClient.from('cats')
+            .select('id').eq('user_id', currentUser.id).eq('name', catName).maybeSingle();
+          if(dup?.id) {
+            if(!state.catProfiles) state.catProfiles = {};
+            if(!state.catProfiles[catName]) state.catProfiles[catName] = {};
+            state.catProfiles[catName].dbId = dup.id;
+            try{localStorage.setItem(SK, JSON.stringify(state));}catch(e){}
+          }
+        } else console.error('고양이 insert 오류:', result.error);
       }
     }
   } catch(e) {
