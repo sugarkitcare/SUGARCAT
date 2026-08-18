@@ -662,7 +662,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.96</span>
+      <span class="cm-beta">v0.7.97</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -4358,8 +4358,7 @@ window.deleteCat = function(c) {
   if(state.activeCat===c)state.activeCat=state.cats[0]||'';
   // 삭제된 고양이의 예약 알림 정리 (v0.7.77) — 설정 끄고 취소 (state.cats에서 빠져 재등록 안 됨)
   try{ setMedNotifEnabled(c, false); medNotifResyncCat(c); }catch(e){}
-  // 로컬 고양이별 캐시 정리 (v0.7.96)
-  CAT_LS_PREFIXES.forEach(p=>{ try{ localStorage.removeItem(p+c); }catch(e){} });
+  const _wipeCatLocalKeys=()=>{ CAT_LS_PREFIXES.forEach(p=>{ try{ localStorage.removeItem(p+c); }catch(e){} }); };
   saveS();
   renderCatBar();updateMetrics();
   if(sbClient&&currentUser&&delProfile?.dbId){
@@ -4367,17 +4366,28 @@ window.deleteCat = function(c) {
       try{
         await sbClient.from('daily_records').delete().eq('cat_id',delProfile.dbId);
         await sbClient.from('blood_tests').delete().eq('cat_id',delProfile.dbId);
-        // 이름 키 기반 user_settings 정리 (v0.7.96) — 사료 분석·CGM 스크린샷·루틴 등
+        // 이름 키 기반 user_settings 정리 (v0.7.96) — 사료 분석·CGM 스크린샷·루틴 등.
+        // ⚠ 동명 가드 (v0.7.97 P0): 같은 이름의 다른 cats 행이 남아 있으면(중복 생성 사고 등)
+        //   이름 키는 남은 아이가 계속 쓰는 설정이므로 지우지 않는다. cat_id 기반 삭제만 수행.
         try{
-          await sbClient.from('user_settings').delete()
-            .eq('user_id',currentUser.id).in('key', CAT_US_PREFIXES.map(p=>p+c));
+          const {data:dup}=await sbClient.from('cats').select('id')
+            .eq('user_id',currentUser.id).eq('name',c).neq('id',delProfile.dbId).limit(1);
+          if(!dup || !dup.length){
+            await sbClient.from('user_settings').delete()
+              .eq('user_id',currentUser.id).in('key', CAT_US_PREFIXES.map(p=>p+c));
+            _wipeCatLocalKeys();
+          } else console.warn('[deleteCat] 동명 고양이 잔존 → 이름 키 보존:', c);
         }catch(e){ console.warn('user_settings 정리 오류:', e); }
         const {error}=await sbClient.from('cats').delete().eq('id',delProfile.dbId);   // care_events·cgm_daily는 FK CASCADE
         if(error)toast('DB 삭제 오류: '+error.message,'#D85A30');
         else toast(c+' 삭제 완료 ✅');
       }catch(e){console.error(e);}
     })();
-  }else{toast(c+' 삭제됐어요');}
+  }else{
+    // 비로그인/미동기화: 로컬만 정리 (로컬 목록은 이름 중복이 불가능)
+    _wipeCatLocalKeys();
+    toast(c+' 삭제됐어요');
+  }
 };
 
 
@@ -16200,6 +16210,36 @@ function openCatProfile(cat, initialTab) {
 // 품종 직접입력 처리
 // cpBreed 이벤트는 openCatProfile에서 바인딩
 
+/* 이름 변경 시 고양이별 키 이관 (v0.7.97 P1) — 이름이 키인 user_settings·localStorage를
+   새 이름으로 옮기고 옛 키 삭제. 이관 없이는 루틴·즐겨찾기·사료 분석이 고아가 됨 */
+async function _renameCatKeys(oldN, newN){
+  // 로컬 미러 — 접두사+이름 정확 일치로만
+  CAT_LS_PREFIXES.forEach(p=>{
+    try{
+      const v=localStorage.getItem(p+oldN);
+      if(v!=null){ localStorage.setItem(p+newN, v); localStorage.removeItem(p+oldN); }
+    }catch(e){}
+  });
+  // 예약 알림 재동기화 — 옛 이름 예약 취소(설정 키 이관으로 비활성 판정) + 새 이름 재등록
+  try{ medNotifResyncCat(oldN); medNotifResyncCat(newN); }catch(e){}
+  if(!sbClient || !currentUser) return;
+  try{
+    const oldKeys=CAT_US_PREFIXES.map(p=>p+oldN);
+    const {data}=await sbClient.from('user_settings').select('key,value')
+      .eq('user_id',currentUser.id).in('key',oldKeys);
+    if(data && data.length){
+      const rows=data.map(r=>{
+        const p=CAT_US_PREFIXES.find(px=>r.key===px+oldN);
+        return p ? {user_id:currentUser.id, key:p+newN, value:r.value, updated_at:new Date().toISOString()} : null;
+      }).filter(Boolean);
+      if(rows.length){
+        const {error}=await sbClient.from('user_settings').upsert(rows,{onConflict:'user_id,key'});
+        if(error){ console.warn('[renameCat] 키 이관 실패 — 옛 키 보존:', error); return; }
+      }
+      await sbClient.from('user_settings').delete().eq('user_id',currentUser.id).in('key',oldKeys);
+    }
+  }catch(e){ console.warn('[renameCat] 키 이관 오류 — 옛 키 보존:', e); }
+}
 function saveCatProfile() {
   if(!state.catProfiles)state.catProfiles={};
   const diseases=[...document.querySelectorAll('#cpDiseaseTags .routine-tag.selected')].map(t=>t.dataset.val);
@@ -16207,6 +16247,12 @@ function saveCatProfile() {
   // 이름 변경 처리
   const newName = document.getElementById('cpCatName').value.trim();
   if(newName && newName !== currentProfileCat) {
+    // 동명 차단 (v0.7.97 P1) — 기존 고양이의 상태·이름 키를 덮어쓰는 사고 방지
+    if(state.cats.includes(newName)){
+      toast('같은 이름의 고양이가 이미 있어요. 다른 이름을 사용해주세요', '#BA7517');
+      return;
+    }
+    const _oldName = currentProfileCat;
     // 기존 이름 데이터를 새 이름으로 이전
     state.catProfiles[newName] = state.catProfiles[currentProfileCat] || {};
     if(state.records[currentProfileCat]) state.records[newName] = state.records[currentProfileCat];
@@ -16216,6 +16262,8 @@ function saveCatProfile() {
     if(idx > -1) state.cats[idx] = newName;
     if(state.activeCat === currentProfileCat) state.activeCat = newName;
     currentProfileCat = newName;
+    // 이름 키 이관 (v0.7.97) — 실패해도 옛 키 보존(다음 진입 시 재시도 가능)
+    _renameCatKeys(_oldName, newName).catch(e=>console.warn('키 이관 오류:', e));
   }
   // 품종 값 (직접입력이면 커스텀 값 사용)
   const breedSel2 = document.getElementById('cpBreed');
