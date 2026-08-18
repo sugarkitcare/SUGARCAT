@@ -662,7 +662,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.7.94</span>
+      <span class="cm-beta">v0.7.95</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -11109,18 +11109,34 @@ async function _gdlCollect(cat, fromStr, toStr){
    내부 페이지 번호 억제(문서 전체 기준 번호는 _vrStampPageNums가 일괄 스탬프) */
 function _gdlRenderPages(d, opts){
   const attach=!!(opts&&opts.attach);
-  const W=1240,H=1754,PAD=48,LX=64;                 // LX: y축·행 라벨 열 폭 (그래프·표 정렬 공유)
+  const W=1240,H=1754,PAD=40,LX=64;                 // LX: y축·행 라벨 열 폭 (그래프·표 정렬 공유)
   const F="-apple-system,'Noto Sans KR',sans-serif";
   const INK='#2A251D',SOFT='#6B6459',GREEN='#235B43',CLAY='#B4552D',LINE='#E5DFD5',BG='#FAF7F1',CARD='#FFFFFF',TINT='#E7F0E9';
   const plotX=PAD+LX, plotW=W-PAD-plotX;
-  const GRAPH_H=140, XLBL_H=24, ROW_H=30, DAY_H=34+GRAPH_H+XLBL_H+8+ROW_H*2+10+26, EMPTY_H=52;
-  const HEAD1=attach?150:190, HEADN=56, FOOT=56;
-  const heights=d.days.map(day=>(day.cgm.length||day.man.length)?DAY_H:EMPTY_H);
+  // v0.7.95 밀도 개선 — 수동 7일=1쪽 목표. 날짜별 행 수(rowN): CGM 있으면 최고/최저 2행, 수동만이면 '측정값' 1행
+  const GRAPH_H=96, XLBL_H=22, ROW_H=28, EMPTY_H=44;
+  const dayH=day=>30+GRAPH_H+XLBL_H+6+ROW_H*(day.cgm.length?2:1)+8+14;
+  const HEAD1=attach?150:170, HEADN=48, FOOT=48;
+  // 문서에 실제 존재하는 소스만 범례에 (v0.7.95 P2-2)
+  const hasCgm=d.days.some(dd=>dd.cgm.length), hasMan=d.days.some(dd=>dd.man.length);
+  // y축 상한 — 기본 400, 기간 최댓값이 넘으면 50 단위 올림. 문서 전체 단일 값(세로 비교 유지, v0.7.95 P1-3)
+  let docMax=0;
+  d.days.forEach(dd=>{ dd.cgm.concat(dd.man).forEach(p=>{ if(p.v>docMax) docMax=p.v; }); });
+  const Y_TOP=docMax>GDL_Y_MAX ? Math.ceil(docMax/50)*50 : GDL_Y_MAX;
+  const heights=d.days.map(day=>(day.cgm.length||day.man.length)?dayH(day):EMPTY_H);
   const pages=_gdlPaginate(heights, H-PAD*2-HEAD1-FOOT, H-PAD*2-HEADN-FOOT);
   const rr=(x,x0,y0,w0,h0,r)=>{ x.beginPath(); x.moveTo(x0+r,y0); x.arcTo(x0+w0,y0,x0+w0,y0+h0,r); x.arcTo(x0+w0,y0+h0,x0,y0+h0,r); x.arcTo(x0,y0+h0,x0,y0,r); x.arcTo(x0,y0,x0+w0,y0,r); x.closePath(); };
-  const yOf=(top,v)=>top+GRAPH_H-(Math.min(v,GDL_Y_MAX)/GDL_Y_MAX)*GRAPH_H;
+  const yOf=(top,v)=>top+GRAPH_H-(Math.min(v,Y_TOP)/Y_TOP)*GRAPH_H;
   const WD=['일','월','화','수','목','금','토'];
-  const BADGE={low2:['#C0492E','#FFFFFF'],low1:['#E8C46B','#2A251D'],high1:['#D85A30','#FFFFFF'],high2:['#C0492E','#FFFFFF']};
+  // 강조 4단계 (v0.7.95 P1-2 색 분리): 80 미만 노랑 / 60 미만 빨강 / 300 초과 주황 / 400 초과 진한 적색+굵게
+  const BADGE={low2:['#C0492E','#FFFFFF',false],low1:['#E8C46B','#2A251D',false],high1:['#D85A30','#FFFFFF',false],high2:['#7A1616','#FFFFFF',true]};
+  const legend=(x,ly)=>{
+    x.font='500 20px '+F; x.textAlign='right';
+    let lx=W-PAD;
+    if(hasMan){ x.fillStyle=CLAY; x.fillText('● 수동 측정', lx, ly); lx-=170; }
+    if(hasCgm){ x.fillStyle=GREEN; x.fillText('― CGM', lx, ly); }
+    x.textAlign='left';
+  };
   return pages.map((idxs,pi)=>{
     const cv=document.createElement('canvas'); cv.width=W; cv.height=H;
     const x=cv.getContext('2d');
@@ -11134,24 +11150,17 @@ function _gdlRenderPages(d, opts){
         x.font='500 22px '+F; x.globalAlpha=.85;
         x.fillText(d.fromStr+' ~ '+d.toStr+' ('+d.nDays+'일)', PAD, 80); x.globalAlpha=1;
         y=96+34;
-        x.font='500 20px '+F; x.textAlign='right';
-        x.fillStyle=GREEN; x.fillText('― CGM', W-PAD-170, y);
-        x.fillStyle=CLAY;  x.fillText('● 수동 측정', W-PAD, y);
-        x.textAlign='left';
+        legend(x,y);
         y+=20;
       } else {
-        x.fillStyle=GREEN; x.fillRect(0,0,W,132);
-        x.fillStyle='#FFFFFF'; x.font='800 40px '+F; x.fillText(d.cat+' · 혈당 일일 로그', PAD, 62);
-        x.font='500 24px '+F; x.globalAlpha=.85;
-        x.fillText(d.fromStr+' ~ '+d.toStr+' ('+d.nDays+'일) · 보호자 기록', PAD, 100); x.globalAlpha=1;
-        y=132+40;
-        if(d.profileLine){ x.fillStyle=SOFT; x.font='500 24px '+F; x.fillText(d.profileLine, PAD, y); }
-        // 범례 (오른쪽 정렬)
-        x.font='500 20px '+F; x.textAlign='right';
-        x.fillStyle=GREEN; x.fillText('― CGM', W-PAD-170, y);
-        x.fillStyle=CLAY;  x.fillText('● 수동 측정', W-PAD, y);
-        x.textAlign='left';
-        y+=18;
+        x.fillStyle=GREEN; x.fillRect(0,0,W,110);
+        x.fillStyle='#FFFFFF'; x.font='800 36px '+F; x.fillText(d.cat+' · 혈당 일일 로그', PAD, 50);
+        x.font='500 22px '+F; x.globalAlpha=.85;
+        x.fillText(d.fromStr+' ~ '+d.toStr+' ('+d.nDays+'일) · 보호자 기록', PAD, 86); x.globalAlpha=1;
+        y=110+34;
+        if(d.profileLine){ x.fillStyle=SOFT; x.font='500 22px '+F; x.fillText(d.profileLine, PAD, y); }
+        legend(x,y);
+        y+=16;
       }
     } else {
       x.fillStyle=SOFT; x.font='600 22px '+F;
@@ -11165,23 +11174,23 @@ function _gdlRenderPages(d, opts){
       const label=WD[dt.getDay()]+' '+(dt.getMonth()+1)+'월 '+dt.getDate()+'일';
       const has=day.cgm.length||day.man.length;
       // 날짜 줄 + 측정 밀도 표기 (수동만일 땐 횟수로 밀도 인지)
-      x.fillStyle=INK; x.font='700 25px '+F; x.fillText(label, PAD, y+24);
-      x.font='500 20px '+F; x.textAlign='right'; x.fillStyle=SOFT;
-      x.fillText(!has?'':(day.cgm.length?('CGM '+day.cgm.length+'점'+(day.man.length?' · 수동 '+day.man.length+'회':'')):('수동 측정 '+day.man.length+'회')), W-PAD, y+24);
+      x.fillStyle=INK; x.font='700 23px '+F; x.fillText(label, PAD, y+22);
+      x.font='500 19px '+F; x.textAlign='right'; x.fillStyle=SOFT;
+      x.fillText(!has?'':(day.cgm.length?('CGM '+day.cgm.length+'점'+(day.man.length?' · 수동 '+day.man.length+'회':'')):('수동 측정 '+day.man.length+'회')), W-PAD, y+22);
       x.textAlign='left';
       if(!has){
-        x.fillStyle=SOFT; x.font='500 22px '+F; x.textAlign='right';
-        x.fillText('기록 없음', W-PAD, y+24); x.textAlign='left';
-        x.strokeStyle=LINE; x.lineWidth=1; x.beginPath(); x.moveTo(PAD,y+EMPTY_H-12); x.lineTo(W-PAD,y+EMPTY_H-12); x.stroke();
+        x.fillStyle=SOFT; x.font='500 21px '+F; x.textAlign='right';
+        x.fillText('기록 없음', W-PAD, y+22); x.textAlign='left';
+        x.strokeStyle=LINE; x.lineWidth=1; x.beginPath(); x.moveTo(PAD,y+EMPTY_H-10); x.lineTo(W-PAD,y+EMPTY_H-10); x.stroke();
         y+=EMPTY_H; return;
       }
-      const gy=y+34;
+      const gy=y+30;
       // 그래프 배경 카드 + 목표범위(80~200) 음영
       x.fillStyle=CARD; x.fillRect(plotX,gy,plotW,GRAPH_H);
       x.fillStyle=TINT; x.fillRect(plotX, yOf(gy,GDL_TARGET_HIGH), plotW, yOf(gy,GDL_TARGET_LOW)-yOf(gy,GDL_TARGET_HIGH));
-      // y 그리드·라벨 (0/80/200/400 — 고양이 기준)
-      x.font='500 17px '+F; x.textAlign='right';
-      [0,GDL_TARGET_LOW,GDL_TARGET_HIGH,GDL_Y_MAX].forEach(v=>{
+      // y 그리드·라벨 — 0/80/200/400(+동적 상한, 문서 전체 동일)
+      x.font='500 16px '+F; x.textAlign='right';
+      [0,GDL_TARGET_LOW,GDL_TARGET_HIGH,GDL_Y_MAX].concat(Y_TOP>GDL_Y_MAX?[Y_TOP]:[]).forEach(v=>{
         const yy=yOf(gy,v);
         x.strokeStyle=v===0?LINE:'#EFE9DD'; x.lineWidth=1;
         x.beginPath(); x.moveTo(plotX,yy); x.lineTo(plotX+plotW,yy); x.stroke();
@@ -11194,7 +11203,7 @@ function _gdlRenderPages(d, opts){
         const xx=plotX+plotW*h2/24;
         x.strokeStyle='#EFE9DD'; x.beginPath(); x.moveTo(xx,gy); x.lineTo(xx,gy+GRAPH_H); x.stroke();
         x.textAlign=h2===0?'left':(h2===24?'right':'center');
-        x.fillText(String(h2), xx, gy+GRAPH_H+18);
+        x.fillText(String(h2), xx, gy+GRAPH_H+17);
       }
       x.textAlign='left';
       // CGM 곡선 (30분 초과 공백은 선 끊기) — 점이 성기면 점도 함께
@@ -11218,29 +11227,30 @@ function _gdlRenderPages(d, opts){
         x.fillStyle=CLAY; x.beginPath(); x.arc(px,py,5.5,0,7); x.fill();
         x.strokeStyle='#FFFFFF'; x.lineWidth=1.5; x.beginPath(); x.arc(px,py,5.5,0,7); x.stroke();
       });
-      // 시간대별 최고·최저 표 (그래프와 같은 24열 정렬)
-      const ty=gy+GRAPH_H+XLBL_H+8, cw=plotW/24;
-      x.font='600 16px '+F;
-      [['최고','max'],['최저','min']].forEach((row,ri)=>{
+      // 시간대별 표 (그래프와 같은 24열 정렬) — CGM 있는 날 최고/최저 2행,
+      // 수동만인 날은 시간대당 1회라 최고=최저 → '측정값' 1행으로 병합 (v0.7.95 P1-1, 날짜 단위 판단)
+      const ty=gy+GRAPH_H+XLBL_H+6, cw=plotW/24;
+      const rowDefs=day.cgm.length?[['최고','max'],['최저','min']]:[['측정값','max']];
+      rowDefs.forEach((row,ri)=>{
         const ry=ty+ri*ROW_H;
         x.fillStyle=ri?'#F6F2E9':CARD; x.fillRect(plotX,ry,plotW,ROW_H);
-        x.fillStyle=SOFT; x.font='600 17px '+F; x.textAlign='right'; x.fillText(row[0], plotX-8, ry+21); x.textAlign='left';
+        x.fillStyle=SOFT; x.font='600 15px '+F; x.textAlign='right'; x.fillText(row[0], plotX-8, ry+19); x.textAlign='left';
         day.hourly.forEach((cell,h)=>{
           if(!cell) return;                        // 데이터 없는 시간대는 빈칸
           const v=Math.round(cell[row[1]]);
           const cx=plotX+cw*h+cw/2, badge=_gdlBadge(v);
-          x.font='600 16px '+F; x.textAlign='center';
+          x.textAlign='center';
           if(badge){
             const bc=BADGE[badge];
-            x.fillStyle=bc[0]; rr(x, plotX+cw*h+1.5, ry+3.5, cw-3, ROW_H-7, 5); x.fill();
-            x.fillStyle=bc[1];
-          } else x.fillStyle=INK;
-          x.fillText(String(v), cx, ry+21);
+            x.fillStyle=bc[0]; rr(x, plotX+cw*h+1.5, ry+3, cw-3, ROW_H-6, 5); x.fill();
+            x.fillStyle=bc[1]; x.font=(bc[2]?'800':'600')+' 16px '+F;   // 400 초과는 굵게
+          } else { x.fillStyle=INK; x.font='600 16px '+F; }
+          x.fillText(String(v), cx, ry+19.5);
           x.textAlign='left';
         });
         x.strokeStyle=LINE; x.lineWidth=1; x.strokeRect(plotX,ry,plotW,ROW_H);
       });
-      y+=DAY_H;
+      y+=dayH(day);
     });
     // 하단: 참고 기준 + 면책 (모든 페이지 — 낱장 제출 대비)
     x.fillStyle=SOFT; x.font='500 18px '+F;
