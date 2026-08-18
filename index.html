@@ -664,7 +664,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.8.0</span>
+      <span class="cm-beta">v0.8.1</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -774,6 +774,8 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
         </div>
       </div>
     </div>
+    <!-- 앱 참고 기준 각주 (v0.8.1) — 값마다 반복하는 대신 카드 하단 한 줄 (법적 표기 + 레이아웃 보존) -->
+    <div style="margin-top:9px;font-size:11.5px;color:var(--cm-faint);line-height:1.5">※ 목표·기준값은 앱 참고 기준입니다</div>
     <!-- 피드백 슬라이더 -->
     <div id="heroFeedbackBar" style="margin-top:14px;min-height:44px;display:none">
       <div id="heroFeedbackSlide" style="background:var(--cm-surface-2);border:1px solid var(--cm-line);border-radius:13px;padding:11px 14px;font-size:13px;font-weight:700;color:var(--cm-ink-soft);line-height:1.4">
@@ -5849,13 +5851,15 @@ function renderDailySummary(catName) {
     const arc = document.getElementById('heroGaugeArc');
     if(arc) {
       arc.style.strokeDashoffset = C * (1 - heroPct / 100);
-      arc.style.stroke = heroPct >= 100 ? 'var(--cm-green-500)' : 'var(--cm-clay)';
+      // 미달 시 경고색(clay)은 '미달=나쁨' 판정으로 읽히고 중앙 텍스트 대비도 나쁨 → 중립 연녹 진행색 (v0.8.1)
+      arc.style.stroke = heroPct >= 100 ? 'var(--cm-green-500)' : 'rgba(35,91,67,0.4)';
     }
     // 음수량 수치 + 목표
     const mlEl = document.getElementById('heroWaterMl');
     if(mlEl) mlEl.textContent = todayWaterTotal || 0;
     const tgtEl = document.getElementById('heroWaterTarget');
-    if(tgtEl) tgtEl.textContent = waterTarget ? '앱 참고 목표 ' + waterTarget + 'ml' : '목표 —';   // 기준 출처 표기 (v0.8.0) — 체중×40ml 앱 계산값
+    // 원 안은 짧게 '목표 Nml' — 기준 출처는 카드 하단 각주로 (v0.8.1, 원 고정 지름이라 긴 라벨은 넘침)
+    if(tgtEl) tgtEl.textContent = waterTarget ? '목표 ' + waterTarget + 'ml' : '목표 —';
 
     // 식사 칼로리
     const mealsHero = rec.meals || [];
@@ -5868,7 +5872,7 @@ function renderDailySummary(catName) {
       } else if(recKcalHero && totalKcalHero) {
         const pctHero = Math.round(totalKcalHero / recKcalHero * 100);
         const clrHero = pctHero >= 100 ? 'var(--cm-green-700)' : pctHero >= 80 ? 'var(--cm-clay)' : '#D85A30';
-        mealKcalEl.innerHTML = '<span style="color:'+clrHero+';font-weight:700">'+totalKcalHero+'kcal</span> / 앱 참고 기준 '+recKcalHero+'kcal<br><span style="color:'+clrHero+';font-weight:600">('+pctHero+'%)</span>';
+        mealKcalEl.innerHTML = '<span style="color:'+clrHero+';font-weight:700">'+totalKcalHero+'</span> / '+recKcalHero+'kcal<br><span style="color:'+clrHero+';font-weight:600">('+pctHero+'%)</span>';
       } else {
         mealKcalEl.textContent = totalKcalHero ? totalKcalHero+'kcal' : mealsHero.length+'끼니';
       }
