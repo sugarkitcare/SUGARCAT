@@ -664,7 +664,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.8.3</span>
+      <span class="cm-beta">v0.8.4</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -3353,7 +3353,7 @@ function renderCatBar(){
       saveS();
       // DB에 새 고양이 등록
       upsertCatToDB(n);
-      // 신규 고양이: emerg 상태 프리셋(migrated) → grandfather 동결 건너뛰고 HCM이면 자동추가 적용
+      // 신규 고양이: emerg 상태 프리셋(migrated) → grandfather 동결 건너뛰고 HCM이면 처치 제안 표시
       try{setEmergState(n,{migrated:true,deleted:false});}catch(e){}
     }
     renderCatBar();
@@ -8413,14 +8413,10 @@ document.getElementById('autoAnalyze').onclick=()=>sendAI(`오늘 기록 전체 
 /* ── 루틴/투약 ── */
 const SK_RT='routineItems_v1';
 const defaultItems=[
-  {name:'레나딜',cat:'med'},{name:'레나메진',cat:'med'},{name:'오메가3',cat:'med'},
-  {name:'유산균',cat:'med'},{name:'사메탑',cat:'med'},{name:'항생제',cat:'med'},
-  {name:'세레니아',cat:'med'},{name:'미르타자핀',cat:'med'},
-  // 피하수액은 신장질환(CKD/PKD) 전용 → 기본 항목에서 제외. loadRoutineForCat에서 신장질환 고양이만 자동 추가
-  // 비상이뇨제는 HCM 전용 기능 → 기본 항목에서 제외. loadRoutineForCat에서 HCM 고양이만 자동 추가
-  {name:'간식',cat:'food'},{name:'황금푸딩',cat:'food'},
-  // 구토는 v0.7.37부터 별도 상태 기록 카드(수분 밸런스 카드 내) — 루틴 기본 세트에서 제외
-  {name:'병원 방문',cat:'other'}
+  // v0.8.4: 기본 루틴 중립화 — 약 이름·제품명 금지, 자리표시 2개만(예정 시간은 보호자가 직접 설정).
+  // 기존 고양이 루틴에는 영향 없음(defaultItems는 저장된 루틴이 없을 때만 복사됨).
+  // 피하수액(CKD/PKD)·비상이뇨제(HCM)는 자동 추가 대신 1회 제안(_queueRoutineSuggest) — 보호자가 선택
+  {name:'아침 약',cat:'med'},{name:'저녁 약',cat:'med'}
 ];
 
 /* ── 약별 관찰 항목 (watch items) ──
@@ -8633,6 +8629,92 @@ function setFluidState(cat, st){
   }
   return Promise.resolve();
 }
+
+/* ── 질환 기반 처치 제안 (v0.8.4) ──
+   기존 자동 추가(HCM→비상이뇨제, CKD/PKD→피하수액)를 보호자 선택으로 전환.
+   - [추가하기] → 기존 자동 추가와 완전히 동일한 항목 생성 + 마커 {deleted:false}
+   - [아니요]   → 마커 {deleted:true} (기존 삭제 가드 재사용 — 다시 묻지 않음, 수동 추가는 계속 가능)
+   - 문구에 용량·투여 방법·시점 금지 ("기록하시나요?"까지만) */
+const _RT_SUGGEST_DEF = {
+  fluid: {
+    item: {name:'피하수액', cat:'fluid', hasValue:true, unit:'ml', defaultVal:120,
+      hasType:true, typeOptions:['하트만','0.9% NS','0.45% NS','플라즈마솔루션','기타']},
+    itemJosa: '피하수액을',
+    has: items => items.some(i => i.cat === 'fluid'),
+    setState: (cat, st) => setFluidState(cat, st)
+  },
+  emerg: {
+    item: {name:'비상이뇨제', cat:'med', diuretic:'emergency'},
+    itemJosa: '비상이뇨제를',
+    has: items => items.some(i => i.diuretic === 'emergency'),
+    setState: (cat, st) => setEmergState(cat, st)
+  }
+};
+// cat의 루틴 목록을 안전하게 수정 — 전역이 그 고양이 것이면 전역+렌더, 아니면 localStorage 사본에 적용 후 저장.
+// fn(items)가 false를 반환하면 저장 생략(중복 가드).
+function _rtMutateItems(cat, fn){
+  if(_rtItemsCat === cat){
+    if(fn(routineItems) === false) return false;
+    saveRT(cat);
+    renderRoutineChecklist();
+    try{renderRoutineEditList();}catch(e){}
+    try{renderRoutineSchedule();}catch(e){}
+    try{renderDailySummary();}catch(e){}
+  } else {
+    let items=[];
+    try{const l=localStorage.getItem(SK_RT+'_'+cat); const p=l?JSON.parse(l):[]; if(Array.isArray(p)) items=p;}catch(e){}
+    if(fn(items) === false) return false;
+    saveRT(cat, items);
+  }
+  return true;
+}
+const _rtSuggestQueue = [];   // {cat, kind} — 순차 표시(한 화면에 겹침 금지)
+let _rtSuggestShowing = null; // 현재 표시 중인 키 'cat|kind'
+function _queueRoutineSuggest(cat, kind){
+  if(!cat || !_RT_SUGGEST_DEF[kind]) return;
+  const key = cat + '|' + kind;
+  if(_rtSuggestShowing === key || _rtSuggestQueue.some(q => q.cat === cat && q.kind === kind)) return;
+  _rtSuggestQueue.push({cat, kind});
+  _drainRoutineSuggest();
+}
+function _drainRoutineSuggest(){
+  if(_rtSuggestShowing || !_rtSuggestQueue.length) return;
+  const {cat, kind} = _rtSuggestQueue.shift();
+  _rtSuggestShowing = cat + '|' + kind;
+  const def = _RT_SUGGEST_DEF[kind];
+  // 질환명 표기: fluid는 실제 등록 질환(CKD/PKD)에 맞춤. 조사는 고정 명칭이라 하드코딩(HCM만 받침)
+  let disease = 'HCM이';
+  if(kind === 'fluid'){
+    const ds = (state.catProfiles && state.catProfiles[cat] && state.catProfiles[cat].diseases) || [];
+    disease = (ds.some(d => typeof d === 'string' && d.includes('CKD')) ? 'CKD' : 'PKD') + '가';
+  }
+  const old = document.getElementById('rtSuggestDlg');
+  if(old) old.remove();
+  const d = document.createElement('div');
+  d.id = 'rtSuggestDlg';
+  d.style.cssText = 'position:fixed;inset:0;background:rgba(42,37,29,0.55);z-index:10001;display:flex;align-items:center;justify-content:center;padding:24px';
+  d.innerHTML = '<div style="background:var(--cm-bg);border-radius:18px;max-width:340px;width:100%;padding:20px 18px;box-sizing:border-box">'
+    + '<div style="font-size:15px;font-weight:700;color:var(--cm-ink);margin-bottom:10px">'+disease+' 등록되어 있어요.</div>'
+    + '<div style="font-size:13.5px;color:var(--cm-ink-soft);line-height:1.65;margin-bottom:16px">'+(state.cats.length>1?cat+'의 ':'')+'루틴에 '+def.itemJosa+' 기록하시나요?</div>'
+    + '<div style="display:flex;gap:8px">'
+    + '<button type="button" id="rtSuggestOk" style="flex:1;padding:12px;background:var(--cm-green-700);color:#fff;border:none;border-radius:11px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">추가하기</button>'
+    + '<button type="button" id="rtSuggestNo" style="flex:1;padding:12px;background:var(--cm-surface-2);color:var(--cm-ink-soft);border:none;border-radius:11px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">아니요</button>'
+    + '</div></div>';
+  // 오버레이 클릭으로 닫히지 않음 — 답변 시에만 상태 저장(미답변 시 다음 로드에 다시 제안)
+  document.body.appendChild(d);
+  const _close = ()=>{ d.remove(); _rtSuggestShowing = null; _drainRoutineSuggest(); };
+  document.getElementById('rtSuggestOk').onclick = ()=>{
+    _rtMutateItems(cat, items => def.has(items) ? false : (items.push(JSON.parse(JSON.stringify(def.item))), true));
+    try{ def.setState(cat, {migrated:true, deleted:false}); }catch(e){}
+    toast(def.item.name+' 항목을 추가했어요', '#1D9E75');
+    _close();
+  };
+  document.getElementById('rtSuggestNo').onclick = ()=>{
+    // 기존 삭제 가드와 동일 상태 — 다시 묻지 않음. 루틴 편집에서 수동 추가하면 마커가 다시 풀림
+    try{ def.setState(cat, {migrated:true, deleted:true}); }catch(e){}
+    _close();
+  };
+}
 // 고양이별 루틴 불러오기
 // 레이스 가드: 전 과정을 로컬 배열(items)로 작업하고, 전역(routineItems) 대입·렌더는
 // 마지막에 시퀀스 확인 후에만 수행. await 사이에 다른 고양이 로드가 끼어들어도
@@ -8683,7 +8765,9 @@ async function loadRoutineForCat(catName) {
       }
     } catch(e) { /* 버전 이력은 부가 정보 — 실패해도 루틴 로드는 계속 */ }
   }
-  // 비상이뇨제 — HCM 전용 자동추가 + DB 영속 삭제 가드
+  // 질환 기반 처치 제안 플래그 (v0.8.4) — 자동 추가 금지, 조건 충족 시 보호자에게 1회 제안만
+  let _suggestEmerg = false, _suggestFluid = false;
+  // 비상이뇨제 — HCM 전용 제안 + DB 영속 삭제 가드
   try {
     const _emDiseases = (state.catProfiles && state.catProfiles[cat] && state.catProfiles[cat].diseases) || [];
     const _emIsHCM = _emDiseases.some(d => typeof d === 'string' && d.includes('HCM'));
@@ -8702,14 +8786,13 @@ async function loadRoutineForCat(catName) {
       setEmergState(cat, _emState);
       if (_emChanged) saveRT(cat, items);
     }
-    // 동결 이후 정상 자동추가: HCM + 삭제이력 없음 + 루틴에 없음
+    // 동결 이후: HCM + 삭제이력 없음 + 루틴에 없음 → 자동 추가 대신 제안 (v0.8.4, 앱이 결정 → 보호자가 선택)
+    //   상태 마커는 보호자가 제안에 답할 때만 갱신 — 답 없이 종료하면 다음 로드에 다시 제안
     if (_emIsHCM && !_emState.deleted && !items.some(i => i.diuretic === 'emergency')) {
-      items.push({name:'비상이뇨제', cat:'med', diuretic:'emergency'});
-      setEmergState(cat, { migrated: true, deleted: false });
-      saveRT(cat, items);
+      _suggestEmerg = true;
     }
   } catch(e) { console.warn('비상이뇨제 자동처리 오류:', e); }
-  // 피하수액 — 신장질환(CKD/PKD) 전용 자동추가 + DB 영속 삭제 가드
+  // 피하수액 — 신장질환(CKD/PKD) 전용 제안 + DB 영속 삭제 가드
   try {
     const _flDiseases = (state.catProfiles && state.catProfiles[cat] && state.catProfiles[cat].diseases) || [];
     const _flIsKidney = _flDiseases.some(d => typeof d === 'string' && (d.includes('CKD') || d.includes('PKD')));
@@ -8721,12 +8804,9 @@ async function loadRoutineForCat(catName) {
       _flState = { migrated: true, deleted: !_flPresent }; // 지금 없으면 "삭제됨"으로 동결 → 다시 자동추가 안 함
       setFluidState(cat, _flState);
     }
-    // 동결 이후 정상 자동추가: 신장질환 + 삭제이력 없음 + 루틴에 fluid 없음
+    // 동결 이후: 신장질환 + 삭제이력 없음 + 루틴에 fluid 없음 → 자동 추가 대신 제안 (v0.8.4)
     if (_flIsKidney && !_flState.deleted && !items.some(i => i.cat === 'fluid')) {
-      items.push({name:'피하수액', cat:'fluid', hasValue:true, unit:'ml', defaultVal:120,
-        hasType:true, typeOptions:['하트만','0.9% NS','0.45% NS','플라즈마솔루션','기타']});
-      setFluidState(cat, { migrated: true, deleted: false });
-      saveRT(cat, items);
+      _suggestFluid = true;
     }
   } catch(e) { console.warn('피하수액 자동처리 오류:', e); }
   // 구버전 피하수액(hasType 없음) 스키마 업그레이드 — 기존 fluid 항목만 보강(신규 추가 안 함, 데이터 보존), 최초 1회만
@@ -8792,6 +8872,11 @@ async function loadRoutineForCat(catName) {
   try{renderRoutineEditList();}catch(e){}
   try{renderRoutineSchedule();}catch(e){}
   try{renderRxVersionList();}catch(e){}
+  // 질환 기반 처치 제안 (v0.8.4) — 순차 표시(겹침 금지), 답변 시에만 상태 마커 저장
+  try{
+    if(_suggestFluid) _queueRoutineSuggest(cat, 'fluid');
+    if(_suggestEmerg) _queueRoutineSuggest(cat, 'emerg');
+  }catch(e){ console.warn('처치 제안 표시 오류:', e); }
 }
 
 const catColor={med:'#534AB7',food:'#BA7517',other:'#1D9E75',fluid:'#2A7A5A'};
@@ -9728,24 +9813,48 @@ function addRoutineItem(){
       routineItems.push({name:'비상이뇨제',cat:'med',diuretic:'emergency'});
       try{setEmergState(currentProfileCat||state.activeCat,{migrated:true,deleted:false});}catch(e){}
     } else {
-      const newItem={name,cat:catVal};
-      // 약이면 보수적 큐레이션 템플릿으로 관찰 권고 항목 자동 연결 (부작용 단정 아님 — 편집·삭제 가능)
+      routineItems.push({name,cat:catVal});
+      // 약이면 큐레이션 템플릿 매칭 시 확인 후에만 관찰 항목 연결 (v0.8.4 — 자동 연결 금지, 매칭 실패 시 아무것도 안 띄움)
       if(catVal==='med'){
         const tpl=_medWatchTemplate(name);
-        if(tpl) newItem.watch=tpl.watch.slice();
+        if(tpl) _watchConfirmDialog(currentProfileCat||state.activeCat, name, tpl.watch.slice());
       }
-      routineItems.push(newItem);
     }
   }
   saveRT(currentProfileCat||state.activeCat);
   document.getElementById('newRoutineName').value='';
   renderRoutineChecklist();renderRoutineEditList();
-  const _addedIt=routineItems[routineItems.length-1];
-  if(_addedIt && Array.isArray(_addedIt.watch) && _addedIt.watch.length){
-    toast(name+' 추가 완료 · 관찰 권고 항목 연결: '+_addedIt.watch.join('·'),'#1D9E75');
-  } else {
-    toast((catVal==='fluid'?'피하수액':name)+' 추가 완료!');
-  }
+  toast((catVal==='fluid'?'피하수액':name)+' 추가 완료!');
+}
+
+/* ── watch 연결 확인 (v0.8.4) — 템플릿 매칭돼도 보호자가 [추가]를 눌러야만 item.watch에 저장.
+   [건너뛰기] 후에도 루틴 편집의 관찰 항목 행(_watchRowHtml)에서 수동 추가 가능. */
+function _watchConfirmDialog(cat, medName, ws){
+  const old=document.getElementById('watchConfirmDlg');
+  if(old) old.remove();
+  const d=document.createElement('div');
+  d.id='watchConfirmDlg';
+  d.style.cssText='position:fixed;inset:0;background:rgba(42,37,29,0.55);z-index:10001;display:flex;align-items:center;justify-content:center;padding:24px';
+  d.innerHTML='<div style="background:var(--cm-bg);border-radius:18px;max-width:340px;width:100%;padding:20px 18px;box-sizing:border-box">'
+    + '<div style="font-size:15px;font-weight:700;color:var(--cm-ink);margin-bottom:10px">이 약과 함께 자주 관찰하는 항목이에요.</div>'
+    + '<div style="font-size:14px;font-weight:600;color:var(--cm-ink);margin-bottom:10px">'+ws.join(' · ')+'</div>'
+    + '<div style="font-size:12.5px;color:var(--cm-faint);line-height:1.6;margin-bottom:16px">주치의 안내와 다르면 빼셔도 됩니다.</div>'
+    + '<div style="display:flex;gap:8px">'
+    + '<button type="button" id="watchConfirmOk" style="flex:1;padding:12px;background:var(--cm-green-700);color:#fff;border:none;border-radius:11px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">추가</button>'
+    + '<button type="button" id="watchConfirmNo" style="flex:1;padding:12px;background:var(--cm-surface-2);color:var(--cm-ink-soft);border:none;border-radius:11px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">건너뛰기</button>'
+    + '</div></div>';
+  document.body.appendChild(d);
+  document.getElementById('watchConfirmOk').onclick=()=>{
+    _rtMutateItems(cat, items=>{
+      const it=items.find(i=>i.name===medName && i.cat==='med');
+      if(!it) return false;
+      if(!Array.isArray(it.watch)) it.watch=[];
+      ws.forEach(w=>{ if(!it.watch.includes(w)) it.watch.push(w); });
+    });
+    toast(medName+' 관찰 권고 항목 연결: '+ws.join('·'),'#1D9E75');
+    d.remove();
+  };
+  document.getElementById('watchConfirmNo').onclick=()=>{ d.remove(); };
 }
 
 function deleteRoutineItem(idx){
@@ -16363,7 +16472,7 @@ function saveCatProfile() {
   // 인슐린 종류 자동 반영
   const ins=state.catProfiles[currentProfileCat].insulin;
   if(ins)document.getElementById('insType').value=ins;
-  // 질환 신규 추가 연동: 그 질환 처치 자동추가 + 삭제마커 리셋 + 즉시 루틴 반영
+  // 질환 신규 추가 연동: 삭제마커 리셋 + 즉시 루틴 재로드 → 처치 제안 표시 (v0.8.4 — 자동추가 아님, 보호자 선택)
   //   "그냥 지운 것"(마커 존중) vs "새 질환 생겨 필요"(질환 추가=분기점, 리셋). 질환 제거는 처리 안 함(처치 보존).
   try {
     const _added = diseases.filter(d => !oldDiseases.includes(d));
@@ -16376,7 +16485,7 @@ function saveCatProfile() {
       _mk.push(setFluidState(_profCat, {migrated:true, deleted:false}));
     }
     if(_mk.length){
-      // 마커 DB 커밋 후 루틴 재로드(read-after-write 레이스 방지) → 자동추가 즉시 트리거
+      // 마커 DB 커밋 후 루틴 재로드(read-after-write 레이스 방지) → 처치 제안 즉시 표시
       Promise.all(_mk)
         .then(()=> loadRoutineForCat(_profCat))
         .then(()=>{
@@ -17319,7 +17428,7 @@ function registerFirstCat() {
   state.activeCat = name;
   saveS();
   upsertCatToDB(name);
-  // 신규 고양이: emerg 상태 프리셋(migrated) → grandfather 동결 건너뛰고 HCM이면 자동추가 적용
+  // 신규 고양이: emerg 상태 프리셋(migrated) → grandfather 동결 건너뛰고 HCM이면 처치 제안 표시
   try{setEmergState(name,{migrated:true,deleted:false});}catch(e){}
   renderCatBar();
   document.getElementById('catAddPrompt')?.remove();
