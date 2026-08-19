@@ -7270,7 +7270,7 @@ setupDrop('fdDrop','fdFile',async file=>{
   showStat('fdStatus','loading','AI가 성분표를 읽고 있어요...');
   const b64=await toB64(file);const isWet=document.getElementById('fdType').value==='wet';const fdNm=document.getElementById('fdName').value||'';
   const sys=`사료 성분표를 분석하여 아래 JSON만 출력하세요.
-{"name":"사료명","type":"${isWet?'wet':'dry'}","moisture":수분%,"protein_af":단백질%,"fat_af":지방%,"fiber_af":조섬유%,"ash_af":조회분%,"carb_af":탄수화물%or null,"kcal_per_100g":칼로리or null,"phosphorus_af":인%or null,"sodium_af":나트륨%or null,"potassium_af":칼륨%or null,"ingredients_top5":["원료1","원료2","원료3","원료4","원료5"],"grain_free":true/false,"main_protein_source":"주단백질원","special_notes":"특이사항or 빈문자열"}
+{"name":"사료명","type":"${isWet?'wet':'dry'}","moisture":수분%,"protein_af":단백질%,"fat_af":지방%,"fiber_af":조섬유%,"ash_af":조회분%,"carb_af":탄수화물%or null,"kcal_per_100g":칼로리or null,"phosphorus_af":인%or null,"sodium_af":나트륨%or null,"potassium_af":칼륨%or null,"ingredients":["원료1","원료2","...라벨의 전체 원재료"],"grain_free":true/false,"main_protein_source":"주단백질원","special_notes":"특이사항or 빈문자열"}
 수치 추출 규칙:
 0. 표기되지 않은 수치는 추측하지 말고 null로 두세요. 성분표/보장성분표에 명시된 값만 입력합니다.
 1. "8%↑" "5%↓" 같은 최저/최고 보증값은 숫자만 추출 (8, 5으로)
@@ -7286,12 +7286,14 @@ setupDrop('fdDrop','fdFile',async file=>{
 7. kcal_per_100g: 반드시 100g 기준 값으로 환산. 캔 전체 칼로리(예: 1캔 73kcal/85g)는 73÷85×100≈86으로 환산. 절대로 캔/봉지 단위 총 칼로리를 그대로 입력하지 말 것.
 8. 소수점 자릿수 주의: 성분표의 "6.0%"는 6.0이지 60이 아님. 소수점(.) 위치를 정확히 확인하고 자릿수 오류 없이 입력하세요.
 9. 교차검증: 입력 전 (protein_af + fat_af + fiber_af + ash_af + moisture)의 합이 100%에 근사하는지 확인하세요. 습식은 moisture 70~85%, 건식은 5~14% 범위를 벗어나면 수치를 재확인하세요.
-10. phosphorus_af/sodium_af/potassium_af (인·나트륨·칼륨): 성분표/보장성분표에 명시된 값만 입력하세요. 수치가 전혀 없을 때만 null. 절대 추측하거나 0으로 채우지 마세요. 모르면 null.`;
+10. phosphorus_af/sodium_af/potassium_af (인·나트륨·칼륨): 성분표/보장성분표에 명시된 값만 입력하세요. 수치가 전혀 없을 때만 null. 절대 추측하거나 0으로 채우지 마세요. 모르면 null. ⚠ 칼슘(Ca)은 칼륨(K)과 다른 성분입니다 — 칼슘 값을 potassium_af에 절대 넣지 마세요. 성분표에 "칼륨"/"Potassium" 표기가 없으면 potassium_af는 null입니다.
+11. ingredients: 라벨의 원재료(등록성분량) 목록 전체를 표기된 순서 그대로 입력하세요. 표기 원문 그대로 옮기고 번역·요약·정규화하지 마세요("닭고기분"을 "닭"으로 바꾸지 말 것). 함량 %가 병기돼 있으면 "연어(26%)"처럼 원문대로 포함. 원재료 표기가 이미지에 없으면 빈 배열 []. 이 항목은 수치 추출(0~10번 규칙)에 영향을 주지 않습니다 — 수치는 기존 규칙대로 성분표에서만 추출하세요.`;
   const _typeHint=isWet?'습식':'건식';
   const _userText=fdNm?`사료명: ${fdNm}. (사용자가 ${_typeHint}으로 표시함, 참고용)`:`사료명은 이미지에서 추출할 것. 이미지에 사료명이 없으면 name을 빈 문자열("")로 둘 것. 절대 "습식 사료"/"건식 사료" 같은 일반명을 지어내지 말 것. (사용자가 ${_typeHint}으로 표시함, 참고용)`;
   let mc=file.type.startsWith('image/')?[{type:'image',source:{type:'base64',media_type:file.type,data:b64}},{type:'text',text:_userText}]:[{type:'document',source:{type:'base64',media_type:'application/pdf',data:b64}},{type:'text',text:_userText}];
   try{
-    const resp=await fetch(`${API_BASE}/api/proxy`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:AI_MODEL,max_tokens:1200,system:sys,messages:[{role:'user',content:mc}]})});
+    // max_tokens 2000: 전체 원재료 요청 후 실측 최대 505tok(원재료 32개 건식) — 극단 라벨(50개+) 여유 포함 (v0.8.7)
+    const resp=await fetch(`${API_BASE}/api/proxy`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:AI_MODEL,max_tokens:2000,system:sys,messages:[{role:'user',content:mc}]})});
     const data=await resp.json();
     incrementAIUsage('food');
     let rawText2='';
@@ -7307,6 +7309,13 @@ setupDrop('fdDrop','fdFile',async file=>{
     parsed.foodNameInput=fdNm;
     parsed.type=inferFoodType(parsed.moisture,parsed.type);
     parsed.name=sanitizeFoodName(parsed.name);
+    // 원재료 전체 목록(ingredients, 함량 순·라벨 원문) 수집 — top5는 앞 5개 slice 파생 (v0.8.7, AI 이중 요청 금지)
+    if(Array.isArray(parsed.ingredients)){
+      parsed.ingredients=parsed.ingredients.map(s=>String(s).trim()).filter(Boolean);
+      if(!parsed.ingredients.length)parsed.ingredients=null;
+    }else parsed.ingredients=null;
+    if(parsed.ingredients)parsed.ingredients_top5=parsed.ingredients.slice(0,5);
+    else if(!Array.isArray(parsed.ingredients_top5))parsed.ingredients_top5=null;   // 구응답 호환
     // AI 추출 이름은 버리지 않고 stash(추천 버튼용). entry name(매칭·영양용)은 기존대로 유지.
     parsed.aiName=parsed.name||'';
     // nameConfirmed: AI 이름이면 미확정(능동 확인 강제). 업로드 시 사용자가 직접 친 이름(fdNm)만 확정.
@@ -8030,6 +8039,7 @@ function _fmNormMaster(r){
     carb_af:(r.carb_af!=null?r.carb_af:null),
     phosphorus_af:(r.phosphorus_af!=null?r.phosphorus_af:null),
     sodium_af:(r.sodium_af!=null?r.sodium_af:null),
+    ingredients:(r.ingredients||null),
     ingredients_top5:(r.ingredients_top5||null),
     grain_free:(r.grain_free!=null?r.grain_free:null),
     special_notes:(r.special_notes!=null?r.special_notes:null)};
@@ -8137,6 +8147,7 @@ function buildFdDataFromMaster(item){
     kcal_per_100g: (item.kcal!=null?item.kcal:null),
     phosphorus_af: (item.phosphorus_af!=null?item.phosphorus_af:null),
     sodium_af: (item.sodium_af!=null?item.sodium_af:null),
+    ingredients: (item.ingredients||null),
     ingredients_top5: (item.ingredients_top5||[]),
     grain_free: (item.grain_free!=null?item.grain_free:false),
     special_notes: (item.special_notes!=null?item.special_notes:''),
@@ -16657,6 +16668,7 @@ async function contributeFoodMaster(parsed,source){
       phosphorus_af:parsed.phosphorus_af??null,
       sodium_af:parsed.sodium_af??null,
       potassium_af:parsed.potassium_af??null,
+      ingredients:parsed.ingredients||null,           // 전체 원재료 (함량 순·라벨 원문, v0.8.7)
       ingredients_top5:parsed.ingredients_top5||null,
       grain_free:parsed.grain_free??null,
       main_protein_source:parsed.main_protein_source||null,
@@ -16719,9 +16731,9 @@ async function searchFoodMaster(q){
   if(q.length<2)return [];
   if(!sbClient||!currentUser)return [];
   try{
-    const {data,error}=await sbClient.from('foods_master').select('id,name,type,kcal_per_100g,moisture,phosphorus_af,protein_af,fat_af,fiber_af,ash_af,carb_af,sodium_af,ingredients_top5,grain_free,special_notes').ilike('name','%'+q+'%').limit(8);
+    const {data,error}=await sbClient.from('foods_master').select('id,name,type,kcal_per_100g,moisture,phosphorus_af,protein_af,fat_af,fiber_af,ash_af,carb_af,sodium_af,ingredients,ingredients_top5,grain_free,special_notes').ilike('name','%'+q+'%').limit(8);
     if(error){console.warn('foods_master 검색 오류:',error);return [];}
-    return (data||[]).map(r=>({id:r.id,name:r.name,type:r.type,kcal_per_100g:r.kcal_per_100g,moisture:r.moisture,phosphorus_af:r.phosphorus_af,protein_af:r.protein_af,fat_af:r.fat_af,fiber_af:r.fiber_af,ash_af:r.ash_af,carb_af:r.carb_af,sodium_af:r.sodium_af,ingredients_top5:r.ingredients_top5,grain_free:r.grain_free,special_notes:r.special_notes}));
+    return (data||[]).map(r=>({id:r.id,name:r.name,type:r.type,kcal_per_100g:r.kcal_per_100g,moisture:r.moisture,phosphorus_af:r.phosphorus_af,protein_af:r.protein_af,fat_af:r.fat_af,fiber_af:r.fiber_af,ash_af:r.ash_af,carb_af:r.carb_af,sodium_af:r.sodium_af,ingredients:r.ingredients,ingredients_top5:r.ingredients_top5,grain_free:r.grain_free,special_notes:r.special_notes}));
   }catch(e){console.warn('foods_master 검색 오류:',e);return [];}
 }
 // 유사 사료 후보 검색 — trigram 유사도 RPC(표기 흔들림 "카토빗"↔"카토비트" 매칭)
