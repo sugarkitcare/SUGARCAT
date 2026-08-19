@@ -664,7 +664,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.8.4</span>
+      <span class="cm-beta">v0.8.5</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -6255,10 +6255,10 @@ function renderRoutineSchedule(date) {
         const item = p.item, slot = p.slot;
         const done = _isDoneP(p);
         const fluidRec = _findRoutineRec(rec, item.name, slot, effSched);
-        // 미기록 시 마지막 저장값 프리필, 없으면 기존 기본값 (v0.7.42) — 목록에 없는 종류는 무시
+        // 미기록 시 마지막 저장값만 프리필 (v0.8.5 — 앱이 용량을 먼저 제시하지 않음, 첫 기록은 빈 칸) — 목록에 없는 종류는 무시
         const _liF = getLastInputs(state.activeCat).fluid || {};
         const _liType = (item.typeOptions||[]).includes(_liF.type) ? _liF.type : '';
-        const savedMl = fluidRec?.ml || _liF.amount || item.defaultVal || 120;
+        const savedMl = fluidRec?.ml || _liF.amount || '';
         const savedType = fluidRec?.fluidType || _liType || (item.typeOptions?.[0]||'');
         const slotArg = slot ? '\''+slot+'\'' : 'null';
         const mlId = _fluidElId('fluidMl_', item.name, slot, '_sched');
@@ -8637,7 +8637,8 @@ function setFluidState(cat, st){
    - 문구에 용량·투여 방법·시점 금지 ("기록하시나요?"까지만) */
 const _RT_SUGGEST_DEF = {
   fluid: {
-    item: {name:'피하수액', cat:'fluid', hasValue:true, unit:'ml', defaultVal:120,
+    // defaultVal 없음 (v0.8.5) — 수액량은 수의사가 정하는 값, 앱이 숫자를 먼저 보여주지 않는다(첫 기록은 빈 칸)
+    item: {name:'피하수액', cat:'fluid', hasValue:true, unit:'ml',
       hasType:true, typeOptions:['하트만','0.9% NS','0.45% NS','플라즈마솔루션','기타']},
     itemJosa: '피하수액을',
     has: items => items.some(i => i.cat === 'fluid'),
@@ -8668,6 +8669,13 @@ function _rtMutateItems(cat, fn){
   }
   return true;
 }
+// 선택한 수액 종류를 다음 기록 프리필로 저장 (v0.8.5) — lastInputs 경유로 기존 프리필 체인 그대로 재사용.
+// 기록 화면에서 언제든 변경 가능(저장 시 lastInputs가 다시 갱신됨). 기존 amount는 보존.
+function _setFluidTypePref(cat, type){
+  if(!cat || !type) return;
+  const prev = getLastInputs(cat).fluid || {};
+  setLastInput(cat, 'fluid', {type: type, amount: prev.amount || null});
+}
 const _rtSuggestQueue = [];   // {cat, kind} — 순차 표시(한 화면에 겹침 금지)
 let _rtSuggestShowing = null; // 현재 표시 중인 키 'cat|kind'
 function _queueRoutineSuggest(cat, kind){
@@ -8693,9 +8701,18 @@ function _drainRoutineSuggest(){
   const d = document.createElement('div');
   d.id = 'rtSuggestDlg';
   d.style.cssText = 'position:fixed;inset:0;background:rgba(42,37,29,0.55);z-index:10001;display:flex;align-items:center;justify-content:center;padding:24px';
+  // 수액 종류 선택 (fluid만, v0.8.5) — 기본 '나중에 정할게요', 순서는 typeOptions 그대로, 권장 표시 금지
+  const _typeSel = kind==='fluid'
+    ? '<div style="font-size:11.5px;color:var(--cm-faint);margin-bottom:6px">수액 종류 (선택)</div>'
+      + '<select id="rtSuggestFluidType" style="width:100%;box-sizing:border-box;padding:9px 10px;border:1px solid var(--cm-line);border-radius:9px;font-size:13px;background:var(--cm-bg);color:var(--cm-ink);font-family:inherit;margin-bottom:16px">'
+      + '<option value="">나중에 정할게요</option>'
+      + (def.item.typeOptions||[]).map(t=>'<option value="'+t+'">'+t+'</option>').join('')
+      + '</select>'
+    : '';
   d.innerHTML = '<div style="background:var(--cm-bg);border-radius:18px;max-width:340px;width:100%;padding:20px 18px;box-sizing:border-box">'
     + '<div style="font-size:15px;font-weight:700;color:var(--cm-ink);margin-bottom:10px">'+disease+' 등록되어 있어요.</div>'
     + '<div style="font-size:13.5px;color:var(--cm-ink-soft);line-height:1.65;margin-bottom:16px">'+(state.cats.length>1?cat+'의 ':'')+'루틴에 '+def.itemJosa+' 기록하시나요?</div>'
+    + _typeSel
     + '<div style="display:flex;gap:8px">'
     + '<button type="button" id="rtSuggestOk" style="flex:1;padding:12px;background:var(--cm-green-700);color:#fff;border:none;border-radius:11px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">추가하기</button>'
     + '<button type="button" id="rtSuggestNo" style="flex:1;padding:12px;background:var(--cm-surface-2);color:var(--cm-ink-soft);border:none;border-radius:11px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">아니요</button>'
@@ -8704,6 +8721,11 @@ function _drainRoutineSuggest(){
   document.body.appendChild(d);
   const _close = ()=>{ d.remove(); _rtSuggestShowing = null; _drainRoutineSuggest(); };
   document.getElementById('rtSuggestOk').onclick = ()=>{
+    // 수액 종류를 골랐으면 다음 기록 프리필로 저장 (미선택 = 기존 동작 그대로)
+    try{
+      const _ft = document.getElementById('rtSuggestFluidType');
+      if(_ft && _ft.value) _setFluidTypePref(cat, _ft.value);
+    }catch(e){}
     _rtMutateItems(cat, items => def.has(items) ? false : (items.push(JSON.parse(JSON.stringify(def.item))), true));
     try{ def.setState(cat, {migrated:true, deleted:false}); }catch(e){}
     toast(def.item.name+' 항목을 추가했어요', '#1D9E75');
@@ -8817,7 +8839,7 @@ async function loadRoutineForCat(catName) {
       if(it.cat==='fluid' && it.hasType!==true){
         if(it.hasValue===undefined) it.hasValue = true;
         if(!it.unit) it.unit = 'ml';
-        if(!it.defaultVal) it.defaultVal = 120;
+        // defaultVal은 부여하지 않음 (v0.8.5) — 기존 저장분의 defaultVal은 더 이상 읽지 않는 사장 필드
         it.hasType = true;
         if(!it.typeOptions) it.typeOptions = ['하트만','0.9% NS','0.45% NS','플라즈마솔루션','기타'];
         _flUpgraded = true;
@@ -8931,10 +8953,10 @@ function renderRoutineChecklist(){
       _itemSlots(item).forEach(slot=>{
       const fluidRec = _findRoutineRec(rec, item.name, slot);
       const done = !!fluidRec;
-      // 미기록 시 마지막 저장값 프리필, 없으면 기존 기본값 (v0.7.42) — 목록에 없는 종류는 무시
+      // 미기록 시 마지막 저장값만 프리필 (v0.8.5 — 앱이 용량을 먼저 제시하지 않음, 첫 기록은 빈 칸) — 목록에 없는 종류는 무시
       const _liF = getLastInputs(state.activeCat).fluid || {};
       const _liType = (item.typeOptions||[]).includes(_liF.type) ? _liF.type : '';
-      const savedMl = fluidRec?.ml || _liF.amount || item.defaultVal || 120;
+      const savedMl = fluidRec?.ml || _liF.amount || '';
       const savedType = fluidRec?.fluidType || _liType || (item.typeOptions?.[0]||'');
       const slotArg = slot ? '\''+slot+'\'' : 'null';
       const mlId = _fluidElId('fluidMl_', item.name, slot, '');
@@ -9049,13 +9071,13 @@ function toggleFluidCheck(itemName, slot, dateOverride, idSuffix) {
     renderHistory();
     try{renderDailySummary();}catch(e){}
   } else {
-    // 체크: 현재 입력값으로 저장, 빈값이면 defaultVal 적용
+    // 체크: 현재 입력값으로 저장, 빈값이면 마지막 입력값만 프리필 (v0.8.5 — 기본 120 제거, 앱이 용량 제안 금지)
     const mlEl = document.getElementById(_fluidElId('fluidMl_', itemName, slot, _sfx));
     if(mlEl && (!mlEl.value || parseInt(mlEl.value) <= 0)) {
-      const itemDef = routineItemsFor(state.activeCat, date).find(i=>i.name===itemName);
       const _liFluid = getLastInputs(state.activeCat).fluid || {};   // 마지막 저장값 우선 (v0.7.42)
-      mlEl.value = String(_liFluid.amount || itemDef?.defaultVal || 120);
+      if(_liFluid.amount) mlEl.value = String(_liFluid.amount);
     }
+    // 여전히 빈값이면 saveFluidRoutine의 기존 검증이 '수액량을 입력해주세요'로 안내
     saveFluidRoutine(itemName, slot, dateOverride, _sfx);
   }
 }
@@ -9800,10 +9822,16 @@ function addRoutineItem(){
   if(catVal==='fluid'){
     if(routineItems.find(i=>i.cat==='fluid')){toast('피하수액은 이미 있어요','#BA7517');return}
     _autoSnapshotRoutine(currentProfileCat||state.activeCat);   // 편집 전 상태 자동 보관
-    routineItems.push({name:'피하수액',cat:'fluid',hasValue:true,unit:'ml',defaultVal:120,
+    routineItems.push({name:'피하수액',cat:'fluid',hasValue:true,unit:'ml',
       hasType:true,typeOptions:['하트만','0.9% NS','0.45% NS','플라즈마솔루션','기타']});
     // 수동 추가 시 삭제마커 해제(다시 쓰겠다는 의사) — 비-신장질환 고양이도 가능
     try{setFluidState(currentProfileCat||state.activeCat,{migrated:true,deleted:false});}catch(e){}
+    // 수액 종류를 골랐으면 다음 기록 프리필로 저장 (v0.8.5, 제안 모달과 동일 동작)
+    try{
+      const _nft=document.getElementById('newFluidType');
+      if(_nft && _nft.value) _setFluidTypePref(currentProfileCat||state.activeCat, _nft.value);
+      if(_nft) _nft.value='';
+    }catch(e){}
   } else {
     if(!name){toast('항목명을 입력해주세요','#D85A30');return}
     if(routineItems.find(i=>i.name===name)){toast('이미 있는 항목이에요','#BA7517');return}
@@ -18929,13 +18957,25 @@ async function uploadFoodDataToDB(cat) {
     <input type="text" id="newRoutineName" placeholder="항목명 (예: 오메가3)"
       style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--cm-line);border-radius:9px;font-size:13px;background:var(--cm-bg);color:var(--cm-ink);font-family:inherit;margin-bottom:8px">
     <div style="display:flex;gap:6px">
-      <select id="newRoutineCat" style="flex:1;padding:9px 8px;border:1px solid var(--cm-line);border-radius:9px;font-size:12px;background:var(--cm-bg);color:var(--cm-ink);font-family:inherit">
+      <select id="newRoutineCat" onchange="document.getElementById('newFluidTypeWrap').style.display=this.value==='fluid'?'block':'none'" style="flex:1;padding:9px 8px;border:1px solid var(--cm-line);border-radius:9px;font-size:12px;background:var(--cm-bg);color:var(--cm-ink);font-family:inherit">
         <option value="med">약·보조제</option>
         <option value="food">간식</option>
         <option value="fluid">피하수액</option>
         <option value="other">기타루틴</option>
       </select>
       <button onclick="addRoutineItem()" class="cm-btn" style="padding:9px 20px;white-space:nowrap;border-radius:9px">+ 추가</button>
+    </div>
+    <!-- 피하수액 선택 시에만 표시 — 수액 종류 (선택, v0.8.5). 권장 표시 금지, 순서는 typeOptions 그대로 -->
+    <div id="newFluidTypeWrap" style="display:none;margin-top:8px">
+      <div style="font-size:11px;color:var(--cm-faint);margin-bottom:4px">수액 종류 (선택)</div>
+      <select id="newFluidType" style="width:100%;box-sizing:border-box;padding:9px 8px;border:1px solid var(--cm-line);border-radius:9px;font-size:12px;background:var(--cm-bg);color:var(--cm-ink);font-family:inherit">
+        <option value="">나중에 정할게요</option>
+        <option value="하트만">하트만</option>
+        <option value="0.9% NS">0.9% NS</option>
+        <option value="0.45% NS">0.45% NS</option>
+        <option value="플라즈마솔루션">플라즈마솔루션</option>
+        <option value="기타">기타</option>
+      </select>
     </div>
   </div>
   <div id="routineItemList"></div>
