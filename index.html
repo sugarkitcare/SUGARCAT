@@ -664,7 +664,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.8.7</span>
+      <span class="cm-beta">v0.8.8</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -16731,7 +16731,12 @@ async function searchFoodMaster(q){
   if(q.length<2)return [];
   if(!sbClient||!currentUser)return [];
   try{
-    const {data,error}=await sbClient.from('foods_master').select('id,name,type,kcal_per_100g,moisture,phosphorus_af,protein_af,fat_af,fiber_af,ash_af,carb_af,sodium_af,ingredients,ingredients_top5,grain_free,special_notes').ilike('name','%'+q+'%').limit(8);
+    // 토큰 분리 AND 매칭 (v0.8.8): "카토빗 센서티브"가 "카토빗 파우치인소스 센서티브…"에 매칭되도록.
+    // 토큰 상한 5개(긴 붙여넣기 방어), created_at desc(잘릴 때 최근 적립분 우선), limit 8→20.
+    const tokens=q.split(/\s+/).filter(Boolean).slice(0,5);
+    let query=sbClient.from('foods_master').select('id,name,type,kcal_per_100g,moisture,phosphorus_af,protein_af,fat_af,fiber_af,ash_af,carb_af,sodium_af,ingredients,ingredients_top5,grain_free,special_notes');
+    for(const t of tokens)query=query.ilike('name','%'+t+'%');
+    const {data,error}=await query.order('created_at',{ascending:false}).limit(20);
     if(error){console.warn('foods_master 검색 오류:',error);return [];}
     return (data||[]).map(r=>({id:r.id,name:r.name,type:r.type,kcal_per_100g:r.kcal_per_100g,moisture:r.moisture,phosphorus_af:r.phosphorus_af,protein_af:r.protein_af,fat_af:r.fat_af,fiber_af:r.fiber_af,ash_af:r.ash_af,carb_af:r.carb_af,sodium_af:r.sodium_af,ingredients:r.ingredients,ingredients_top5:r.ingredients_top5,grain_free:r.grain_free,special_notes:r.special_notes}));
   }catch(e){console.warn('foods_master 검색 오류:',e);return [];}
