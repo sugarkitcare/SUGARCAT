@@ -664,7 +664,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.8.9</span>
+      <span class="cm-beta">v0.9.0</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -2534,15 +2534,16 @@ async function loadMemorials(){
   if(!sbClient || !currentUser || !state.cats.length) return;
   try{
     const keys = state.cats.flatMap(c=>['memorial_'+c, 'memorial_msg_'+c]);
-    const {data} = await sbClient.from('user_settings').select('key,value')
+    const {data} = await sbClient.from('user_settings').select('key,value,updated_at')
       .eq('user_id', currentUser.id).in('key', keys);
+    // 편지 — 서버 행 유무와 무관하게 고양이마다 병합(오프라인·비로그인 중 쓴 편지 업로드 포함)
+    const msgRows = {};
+    (data||[]).forEach(row=>{ if(row.key.startsWith('memorial_msg_')) msgRows[row.key.slice('memorial_msg_'.length)] = row; });
+    await Promise.all(state.cats.map(c=>_memLettersReconcile(c, msgRows[c]||null).catch(e=>console.warn('편지 병합 오류:', e))));
     (data||[]).forEach(row=>{
       try{
         if(row.key.startsWith('memorial_msg_')){
-          const cat = row.key.replace('memorial_msg_','');
-          const msg = (row.value && row.value.msg) || '';
-          if(msg) localStorage.setItem('memorialMsg_v1_'+cat, msg);
-          else localStorage.removeItem('memorialMsg_v1_'+cat);
+          // 위에서 처리
         } else {
           const cat = row.key.replace('memorial_','');
           if(row.value && row.value.is) localStorage.setItem('memorial_v1_'+cat, JSON.stringify({is:true, date:row.value.date||null}));
@@ -2780,20 +2781,96 @@ function renderMemorialBox(cat){
    한 줄 메시지는 기본 비어 있음 — 앱이 대신 채우지 않고, 쓰지 않는 것도 자연스러운 선택. */
 // 보호자가 남긴 한 줄 — 개인적인 글이므로 memorial 상태와 분리 저장: 되돌리기(해제) 후에도 유지.
 // user_settings에 미러되므로 향후 Export 구현 시 서버 데이터에 포함됨.
-function getMemorialMsg(cat){ try{ return localStorage.getItem('memorialMsg_v1_'+cat)||''; }catch(e){ return ''; } }
-function saveMemorialMsg(cat, msg){
-  msg = (msg||'').trim();
+/* 아이에게 보내는 편지 (v0.9.0) — 한 줄을 덮어쓰지 않고 편지로 쌓는다.
+   저장 키는 그대로(memorialMsg_v1_<cat> / user_settings memorial_msg_<cat>) → 이름 변경·삭제 연쇄 처리 재사용.
+   값: {v:2, letters:[{id, body, at, upd, deleted?}], msg}
+   - msg = 최신 편지 본문. 구버전 앱(www 번들, value.msg만 읽음)이 계속 최신 한 줄을 보이게 하는 호환 필드.
+   - 기기 간 병합: 편지 id 단위 last-write-wins(upd). 지운 편지는 본문 없는 묘비(deleted)로 남겨 부활 방지.
+   - 구 형식({msg} / 로컬 평문)은 고정 id 'l_legacy' 첫 편지로 이관 — 기기마다 따로 이관해도 1통으로 합쳐짐.
+   AI·리포트·공유에는 쓰지 않는다. 재촉(작성 알림·연속 기록·개수 강조) 금지. */
+function _memLettersFrom(v, legacyAt){
+  if(!v) return [];
+  if(typeof v==='string'){
+    const s=v.trim(); if(!s) return [];
+    if(s[0]==='{'){ try{ return _memLettersFrom(JSON.parse(s), legacyAt); }catch(e){} }
+    return [{id:'l_legacy', body:s, at:legacyAt||'', upd:''}];   // 로컬 평문(구 형식) — upd 비움: 서버 쪽이 우선
+  }
+  if(Array.isArray(v.letters)) return v.letters.filter(l=>l&&l.id);
+  if(v.msg) return [{id:'l_legacy', body:String(v.msg), at:legacyAt||'', upd:legacyAt||''}];
+  return [];
+}
+function _memLettersRaw(cat){
+  try{ return _memLettersFrom(localStorage.getItem('memorialMsg_v1_'+cat), (getMemorial(cat)||{}).date||''); }catch(e){ return []; }
+}
+// 표시용 — 지운 편지 제외, 최신순
+function getMemorialLetters(cat){
+  return _memLettersRaw(cat).filter(l=>!l.deleted && l.body).sort((a,b)=>String(b.at||'').localeCompare(String(a.at||'')));
+}
+function getMemorialMsg(cat){ const l=getMemorialLetters(cat)[0]; return l?l.body:''; }
+function _memLettersPayload(letters){
+  const live = letters.filter(l=>!l.deleted && l.body).sort((a,b)=>String(b.at||'').localeCompare(String(a.at||'')));
+  return {v:2, letters, msg: live.length?live[0].body:null};
+}
+function _memLettersStore(cat, letters){
   try{
-    if(msg) localStorage.setItem('memorialMsg_v1_'+cat, msg);
+    if(letters.length) localStorage.setItem('memorialMsg_v1_'+cat, JSON.stringify(_memLettersPayload(letters)));
     else localStorage.removeItem('memorialMsg_v1_'+cat);
   }catch(e){}
-  if(sbClient && currentUser){
-    sbClient.from('user_settings').upsert({
+}
+function _memLettersMerge(a, b){
+  const m = {};
+  a.concat(b).forEach(l=>{ const o=m[l.id]; if(!o || String(l.upd||'')>String(o.upd||'')) m[l.id]=l; });
+  return Object.values(m);
+}
+const _memLettersSig = ls => JSON.stringify(ls.map(l=>[l.id,l.upd||'',!!l.deleted]).sort());
+// 서버 값과 로컬을 합쳐 양쪽에 반영. row = user_settings 행(없으면 null)
+async function _memLettersReconcile(cat, row){
+  const local = _memLettersRaw(cat);
+  const server = row ? _memLettersFrom(row.value, row.updated_at||'') : [];
+  const merged = _memLettersMerge(server, local);
+  _memLettersStore(cat, merged);
+  const needPush = merged.length && (!row || !(row.value&&Array.isArray(row.value.letters)) || _memLettersSig(merged)!==_memLettersSig(server));
+  if(needPush){
+    const {error} = await sbClient.from('user_settings').upsert({
       user_id: currentUser.id, key: 'memorial_msg_'+cat,
-      value: {msg: msg||null}, updated_at: new Date().toISOString()
-    }, {onConflict:'user_id,key'}).then(({error})=>{ if(error) console.warn('기억 메시지 저장 오류:', error); })
-      .catch(e=>console.warn('기억 메시지 저장 reject:', e));
+      value: _memLettersPayload(merged), updated_at: new Date().toISOString()
+    }, {onConflict:'user_id,key'});
+    if(error) console.warn('편지 저장 오류:', error);
   }
+  return _memLettersSig(merged)!==_memLettersSig(local);   // 로컬이 바뀌었는지(재렌더 필요)
+}
+// 로컬 변경 → 즉시 저장·렌더, 서버는 저장 직전 최신값을 읽어 병합 후 기록(다른 기기에서 쓴 편지 유실 방지)
+function _memLettersCommit(cat, mutate){
+  const letters = _memLettersRaw(cat);
+  mutate(letters);
+  _memLettersStore(cat, letters);
+  if(!(sbClient && currentUser)) return;
+  (async()=>{
+    try{
+      const {data, error} = await sbClient.from('user_settings').select('key,value,updated_at')
+        .eq('user_id', currentUser.id).eq('key', 'memorial_msg_'+cat).maybeSingle();
+      if(error){ console.warn('편지 서버 읽기 오류 — 다음 로그인 때 다시 맞춰요:', error); return; }
+      if(await _memLettersReconcile(cat, data||null) && cat===state.activeCat && isMemorial(cat)){
+        renderMemorialCard(cat);
+        if(_memSheetOpen()) _renderMemLettersSheet();
+      }
+    }catch(e){ console.warn('편지 동기화 오류:', e); }
+  })();
+}
+const _memNowIso = () => new Date().toISOString();
+function addMemorialLetter(cat, body){
+  body=(body||'').trim(); if(!body) return;
+  const now=_memNowIso();
+  _memLettersCommit(cat, ls=>ls.push({id:'l_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6), body, at:now, upd:now}));
+}
+function editMemorialLetter(cat, id, body){
+  body=(body||'').trim(); if(!body) return;
+  const now=_memNowIso();
+  _memLettersCommit(cat, ls=>{ const l=ls.find(x=>x.id===id); if(l){ l.body=body; l.edited=now; l.upd=now; } });
+}
+function deleteMemorialLetter(cat, id){
+  const now=_memNowIso();
+  _memLettersCommit(cat, ls=>{ const i=ls.findIndex(x=>x.id===id); if(i>=0) ls[i]={id, deleted:true, at:ls[i].at||'', upd:now}; });
 }
 // 지구별 여행한 날 — 생년월일~떠난 날 (앱 사용 기간이 아니라 아이의 삶 전체)
 function _memorialJourney(cat){
@@ -2856,14 +2933,106 @@ function _applyMemorialDailyView(cat, on){
   if(on){ renderMemorialCard(cat); card.style.display=''; }
   else card.style.display='none';
 }
-var _memMsgEdit = false;
-function memorialMsgEdit(){ _memMsgEdit = true; renderMemorialCard(state.activeCat); const t=document.getElementById('memMsgInput'); if(t){ t.focus(); } }
-function memorialMsgCancel(){ _memMsgEdit = false; renderMemorialCard(state.activeCat); }
+// 카드 입력 모드: null | 'new'(새 편지) | 'edit'(최신 편지 고치기)
+var _memMsgMode = null;
+function _memMsgFocus(){ const t=document.getElementById('memMsgInput'); if(t){ t.focus(); try{ t.setSelectionRange(t.value.length, t.value.length); }catch(e){} } }
+function memorialLetterNew(){ _memMsgMode='new'; renderMemorialCard(state.activeCat); _memMsgFocus(); }
+function memorialLetterEdit(){ _memMsgMode='edit'; renderMemorialCard(state.activeCat); _memMsgFocus(); }
+function memorialMsgCancel(){ _memMsgMode = null; renderMemorialCard(state.activeCat); }
 function memorialMsgSave(){
+  const cat = state.activeCat;
   const t = document.getElementById('memMsgInput');
-  saveMemorialMsg(state.activeCat, t ? t.value : '');
-  _memMsgEdit = false;
-  renderMemorialCard(state.activeCat);
+  const body = (t ? t.value : '').trim();
+  if(_memMsgMode==='edit'){
+    // 비워서 저장 = 삭제가 아님 — 쌓인 편지가 실수로 사라지지 않게, 지우기는 편지함에서만
+    if(!body){ toast('지우려면 편지함에서 지울 수 있어요'); return; }
+    const l = getMemorialLetters(cat)[0];
+    if(l) editMemorialLetter(cat, l.id, body);
+  } else if(body){
+    addMemorialLetter(cat, body);
+  }
+  _memMsgMode = null;
+  renderMemorialCard(cat);
+}
+function _memYmd(iso){
+  if(!iso) return '';
+  if(/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso;
+  const d=new Date(iso); if(isNaN(d)) return '';
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+// 편지 날짜 줄 — "2026년 10월 7일 · 지구별 여행 후 77일째" (떠난 날 미입력이면 날짜만)
+function _memLetterMeta(cat, l){
+  const ymd=_memYmd(l.at);
+  if(!ymd) return '';
+  let s=_memKDate(ymd);
+  const end=(getMemorial(cat)||{}).date;
+  if(end && /^\d{4}-\d{2}-\d{2}$/.test(end)){
+    const n=Math.round((new Date(ymd+'T00:00:00Z')-new Date(end+'T00:00:00Z'))/86400000);
+    if(n===0) s+=' · 떠난 날';
+    else if(n>0) s+=' · 지구별 여행 후 '+n.toLocaleString('ko-KR')+'일째';
+  }
+  return s;
+}
+/* ── 편지함 바텀시트 ── */
+var _memSheetEditId = null;
+function _memSheetOpen(){ const s=document.getElementById('memLetterSheet'); return !!(s && s.dataset.open==='1'); }
+function openMemorialLetters(){
+  _memSheetEditId = null;
+  _renderMemLettersSheet();
+  document.getElementById('memLetterSheetBack').dataset.open='1';
+  document.getElementById('memLetterSheet').dataset.open='1';
+}
+function closeMemorialLetters(){
+  _memSheetEditId = null;
+  const b=document.getElementById('memLetterSheetBack'), s=document.getElementById('memLetterSheet');
+  if(b) b.dataset.open='0';
+  if(s) s.dataset.open='0';
+}
+function memLetterSheetEdit(id){ _memSheetEditId=id; _renderMemLettersSheet(); const t=document.getElementById('memSheetInput'); if(t) t.focus(); }
+function memLetterSheetCancel(){ _memSheetEditId=null; _renderMemLettersSheet(); }
+function memLetterSheetSave(){
+  const cat=state.activeCat, t=document.getElementById('memSheetInput');
+  const body=(t?t.value:'').trim();
+  if(!body){ toast('지우려면 아래 지우기를 눌러주세요'); return; }
+  editMemorialLetter(cat, _memSheetEditId, body);
+  _memSheetEditId=null;
+  _renderMemLettersSheet(); renderMemorialCard(cat);
+}
+function memLetterDelete(id){
+  if(!confirm('이 편지를 지울까요?\n지운 편지는 되돌릴 수 없어요.')) return;
+  const cat=state.activeCat;
+  deleteMemorialLetter(cat, id);
+  _memSheetEditId=null;
+  if(!getMemorialLetters(cat).length) closeMemorialLetters(); else _renderMemLettersSheet();
+  renderMemorialCard(cat);
+}
+function _renderMemLettersSheet(){
+  const cat=state.activeCat;
+  const head=document.getElementById('memLetterSheetHead'), body=document.getElementById('memLetterSheetBody');
+  if(!head || !body) return;
+  const serif = "font-family:Georgia,'Nanum Myeongjo','Noto Serif KR',serif";
+  const letters=getMemorialLetters(cat);
+  const _xSvg = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+  head.innerHTML = '<div class="tx"><b>'+_vEsc(cat)+'에게 보낸 편지</b><span>'+letters.length+'통</span></div>'
+    + '<button class="sheet__close" onclick="closeMemorialLetters()" type="button" aria-label="닫기">'+_xSvg+'</button>';
+  const lnk='background:none;border:none;padding:4px 6px;font-size:12px;color:var(--cm-faint);cursor:pointer;font-family:inherit';
+  body.innerHTML = letters.map(l=>{
+    const meta = _memLetterMeta(cat, l) + (l.edited ? ' · 고침' : '');
+    const inner = (_memSheetEditId===l.id)
+      ? '<textarea id="memSheetInput" maxlength="500" style="width:100%;box-sizing:border-box;min-height:110px;padding:12px;border:1px solid var(--cm-line);border-radius:13px;font-size:14px;'+serif+';color:var(--cm-ink);background:var(--cm-surface);resize:vertical;line-height:1.7">'+_vEsc(l.body)+'</textarea>'
+        + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">'
+        + '<button type="button" onclick="memLetterSheetCancel()" style="padding:7px 14px;border-radius:11px;font-size:13px;cursor:pointer;font-family:inherit;background:none;border:1px solid var(--cm-line);color:var(--cm-faint)">취소</button>'
+        + '<button type="button" onclick="memLetterSheetSave()" style="padding:7px 16px;border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;background:var(--cm-green-700);color:#fff;border:none">저장</button>'
+        + '</div>'
+      : '<div style="'+serif+';font-size:15px;color:var(--cm-ink);white-space:pre-line;line-height:1.8">'+_vEsc(l.body)+'</div>'
+        + '<div style="display:flex;justify-content:flex-end;gap:2px;margin-top:6px">'
+        + '<button type="button" onclick="memLetterSheetEdit(\''+l.id+'\')" style="'+lnk+'">고치기</button>'
+        + '<button type="button" onclick="memLetterDelete(\''+l.id+'\')" style="'+lnk+'">지우기</button>'
+        + '</div>';
+    return '<div style="background:var(--cm-surface);border:1px solid var(--cm-line);border-radius:16px;padding:14px 15px 8px">'
+      + (meta?'<div style="font-size:11.5px;color:var(--cm-faint);margin-bottom:8px">'+_vEsc(meta)+'</div>':'')
+      + inner + '</div>';
+  }).join('') + '<div style="height:12px"></div>';
 }
 function _memGoTab(tab){
   if(tab==='report'){ openVetReport(); return; }
@@ -2902,24 +3071,36 @@ function renderMemorialCard(cat){
   }
   // 보호자가 남긴 한 줄 — 세리프 서체로 앱 UI 문구와 구분
   const serif = "font-family:Georgia,'Nanum Myeongjo','Noto Serif KR',serif";
-  const msg = getMemorialMsg(cat);
+  // 아이에게 보내는 편지 (v0.9.0) — 카드엔 최신 한 통만, 지난 편지는 편지함
+  const letters = getMemorialLetters(cat);
+  const latest = letters[0] || null;
+  if(_memMsgMode==='edit' && !latest) _memMsgMode = 'new';
   let msgHtml;
-  if(_memMsgEdit){
+  if(_memMsgMode){
+    const isEdit = _memMsgMode==='edit';
     msgHtml = '<div style="margin:14px 0 4px">'
-      + '<textarea id="memMsgInput" maxlength="500" placeholder="남기고 싶은 말이 있다면 여기에 적어주세요" style="width:100%;box-sizing:border-box;min-height:84px;padding:12px;border:1px solid var(--cm-line);border-radius:13px;font-size:14px;'+serif+';color:var(--cm-ink);background:var(--cm-surface);resize:vertical;line-height:1.7;text-align:center">'+_vEsc(msg)+'</textarea>'
+      + '<div style="'+serif+';font-size:13px;color:var(--cm-faint);text-align:center;margin-bottom:6px">'+_vEsc(cat)+'에게</div>'
+      + '<textarea id="memMsgInput" maxlength="500" placeholder="'+(isEdit?'':'하고 싶은 말을 적어주세요')+'" style="width:100%;box-sizing:border-box;min-height:96px;padding:12px;border:1px solid var(--cm-line);border-radius:13px;font-size:14px;'+serif+';color:var(--cm-ink);background:var(--cm-surface);resize:vertical;line-height:1.7;text-align:center">'+(isEdit?_vEsc(latest.body):'')+'</textarea>'
       + '<div style="display:flex;gap:8px;justify-content:center;margin-top:8px">'
-      + '<button type="button" onclick="memorialMsgSave()" style="padding:8px 18px;border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;background:var(--cm-green-700);color:#fff;border:none">저장</button>'
+      + '<button type="button" onclick="memorialMsgSave()" style="padding:8px 18px;border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;background:var(--cm-green-700);color:#fff;border:none">'+(isEdit?'저장':'보내기')+'</button>'
       + '<button type="button" onclick="memorialMsgCancel()" style="padding:8px 14px;border-radius:11px;font-size:13px;cursor:pointer;font-family:inherit;background:none;border:1px solid var(--cm-line);color:var(--cm-faint)">취소</button>'
       + '</div>'
-      + '<div style="font-size:10.5px;color:var(--cm-faint);text-align:center;margin-top:6px">비워두고 저장하면 지워져요. 쓰지 않아도 괜찮아요.</div>'
+      + (isEdit ? '' : '<div style="font-size:10.5px;color:var(--cm-faint);text-align:center;margin-top:6px">쓴 편지는 편지함에 차곡차곡 쌓여요. 쓰지 않아도 괜찮아요.</div>')
       + '</div>';
-  } else if(msg){
-    msgHtml = '<div onclick="memorialMsgEdit()" style="margin:14px 0 4px;cursor:pointer">'
-      + '<div style="'+serif+';font-size:15.5px;color:var(--cm-ink);text-align:center;white-space:pre-line;line-height:1.8;padding:6px 8px">'+_vEsc(msg)+'</div>'
-      + '<div style="font-size:10.5px;color:var(--cm-faint);text-align:center;margin-top:4px">보호자가 남긴 한 줄 · 탭하면 수정</div>'
+  } else if(latest){
+    const meta = _memLetterMeta(cat, latest);
+    const btnS = 'background:none;border:none;padding:4px 8px;font-size:12px;color:var(--cm-ink-soft);cursor:pointer;font-family:inherit';
+    msgHtml = '<div style="margin:14px 0 4px">'
+      + '<div style="'+serif+';font-size:15.5px;color:var(--cm-ink);text-align:center;white-space:pre-line;line-height:1.8;padding:6px 8px">'+_vEsc(latest.body)+'</div>'
+      + (meta ? '<div style="font-size:10.5px;color:var(--cm-faint);text-align:center;margin-top:4px">'+_vEsc(meta)+'</div>' : '')
+      + '<div style="display:flex;justify-content:center;align-items:center;gap:2px;margin-top:6px;font-size:12px;color:var(--cm-line-2)">'
+      + '<button type="button" onclick="memorialLetterNew()" style="'+btnS+';font-weight:700;color:var(--cm-green-700)">편지 쓰기</button>·'
+      + '<button type="button" onclick="memorialLetterEdit()" style="'+btnS+'">고치기</button>'
+      + (letters.length>1 ? '·<button type="button" onclick="openMemorialLetters()" style="'+btnS+'">편지함 ('+letters.length+')</button>' : '')
+      + '</div>'
       + '</div>';
   } else {
-    msgHtml = '<div onclick="memorialMsgEdit()" style="margin:14px 0 4px;border:1.5px dashed var(--cm-line);border-radius:13px;padding:16px 12px;cursor:pointer">'
+    msgHtml = '<div onclick="memorialLetterNew()" style="margin:14px 0 4px;border:1.5px dashed var(--cm-line);border-radius:13px;padding:16px 12px;cursor:pointer">'
       + '<div style="font-size:12.5px;color:var(--cm-faint);text-align:center;line-height:1.6">남기고 싶은 말이 있다면 여기에 적어주세요</div>'
       + '</div>';
   }
@@ -19324,6 +19505,14 @@ async function uploadFoodDataToDB(cat) {
   <div class="sheet__handle"></div>
   <div class="sheet__head" id="btCatSheetHead"></div>
   <div class="sheet__body" id="btCatSheetBody"></div>
+</div>
+
+<!-- ══ 기억하기 — 편지함 바텀시트 (v0.9.0) ══ -->
+<div class="sheet-back" id="memLetterSheetBack" data-open="0" onclick="closeMemorialLetters()"></div>
+<div class="sheet" id="memLetterSheet" data-open="0">
+  <div class="sheet__handle"></div>
+  <div class="sheet__head" id="memLetterSheetHead"></div>
+  <div class="sheet__body" id="memLetterSheetBody"></div>
 </div>
 
 </body>
