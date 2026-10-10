@@ -664,7 +664,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.9.0</span>
+      <span class="cm-beta">v0.9.1</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -11857,6 +11857,58 @@ function _gdlStat(type,msg){
   el.style.color=type==='err'?'var(--coral,#D85A30)':'var(--teal-d,#1D9E75)';
   el.textContent=msg;
 }
+/* ══ 파일 저장 공통 (v0.9.1) ══
+   Android 앱(WebView)은 <a download>(blob:/data:)를 무시해 "저장 완료"만 뜨고 파일이 안 생겼음.
+   앱: 네이티브 CmFileSaver로 공용 폴더 저장(PDF→다운로드/CareMasters, 이미지→갤러리 CareMasters 앨범)
+       → 저장 위치 안내 + [보내기] 공유 시트. Android 9 이하는 저장 대신 공유 시트로 폴백.
+   웹: 기존 <a download> 유지. 반환 {ok, native, shared} */
+function _blobToB64(blob){
+  return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(String(r.result).split(',')[1]||''); r.onerror=()=>rej(r.error); r.readAsDataURL(blob); });
+}
+function _cmFileSaver(){ return _isNativeApp() ? _capPlugin('CmFileSaver') : null; }
+async function cmSaveFile(blob, filename, mime, opt){
+  opt=opt||{};
+  const P=_cmFileSaver();
+  if(P){
+    const data=await _blobToB64(blob);
+    try{
+      const r=await P.save({data, filename, mimeType:mime});
+      _cmSavedDialog(r, ()=>P.share({uri:r.uri, mimeType:mime, title:opt.title||filename}).catch(e=>{
+        console.warn('[save] 공유 실패:', e); toast('공유를 열지 못했어요','#D85A30');
+      }));
+      return {ok:true, native:true};
+    }catch(e){
+      console.warn('[save] 직접 저장 실패 → 공유 시트 폴백:', e);
+      await P.share({data, filename, mimeType:mime, title:opt.title||filename});
+      return {ok:true, native:true, shared:true};
+    }
+  }
+  const a=document.createElement('a');
+  const url=URL.createObjectURL(blob);
+  a.href=url; a.download=filename; a.style.display='none';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),60000);
+  return {ok:true, native:false};
+}
+function _cmSavedDialog(r, onShare){
+  const old=document.getElementById('cmSavedDlg'); if(old) old.remove();
+  const where=r&&r.isImage ? '갤러리(사진) 앱 → <b>CareMasters</b> 앨범' : '내 파일 → <b>다운로드(Download) → CareMasters</b> 폴더';
+  const d=document.createElement('div');
+  d.id='cmSavedDlg';
+  d.style.cssText='position:fixed;inset:0;background:rgba(42,37,29,0.55);z-index:10002;display:flex;align-items:center;justify-content:center;padding:24px';
+  d.innerHTML='<div style="background:var(--cm-bg,#fff);border-radius:18px;max-width:340px;width:100%;padding:20px 18px;box-sizing:border-box">'
+    +'<div style="font-size:15px;font-weight:700;color:var(--cm-ink);margin-bottom:10px">휴대폰에 저장했어요 ✅</div>'
+    +'<div style="font-size:13px;color:var(--cm-ink-soft);line-height:1.65;margin-bottom:16px">'+where+'에서 확인할 수 있어요.<br>카카오톡 등으로 바로 보내려면 [보내기]를 눌러주세요.</div>'
+    +'<div style="display:flex;gap:8px">'
+    +'<button type="button" id="cmSavedClose" style="flex:1;padding:12px;background:var(--cm-surface,#f3f1ec);color:var(--cm-ink-soft);border:1px solid var(--cm-line,#ddd);border-radius:11px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">닫기</button>'
+    +'<button type="button" id="cmSavedShare" style="flex:1;padding:12px;background:var(--cm-green-700);color:#fff;border:none;border-radius:11px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">보내기</button>'
+    +'</div></div>';
+  d.addEventListener('click', e=>{ if(e.target===d) d.remove(); });
+  document.body.appendChild(d);
+  document.getElementById('cmSavedClose').onclick=()=>d.remove();
+  document.getElementById('cmSavedShare').onclick=()=>{ d.remove(); onShare&&onShare(); };
+}
+/* ══ 파일 저장 공통 END ══ */
 let _gdlBusy=false;
 async function gdlExport(kind){
   if(_gdlBusy) return;
@@ -11878,10 +11930,10 @@ async function gdlExport(kind){
     if(kind==='pdf'){
       const pages=_gdlRenderPages(d);
       const blob=_gdlPdfFromCanvases(pages);
-      const a=document.createElement('a');
-      a.href=URL.createObjectURL(blob); a.download=fname+'.pdf'; a.click();
-      setTimeout(()=>URL.revokeObjectURL(a.href),3000);
-      _gdlStat('ok','PDF 저장 완료 ('+pages.length+'쪽). 카카오톡 공유는 저장된 파일을 채팅방에서 직접 첨부해주세요.');
+      const r=await cmSaveFile(blob, fname+'.pdf', 'application/pdf', {title:cat+' 혈당 일일 로그'});
+      if(r.shared) _gdlStat('ok','PDF ('+pages.length+'쪽)를 공유 화면으로 보냈어요. 원하는 앱을 골라 저장·전송해주세요.');
+      else if(r.native) _gdlStat('ok','PDF 저장 완료 ('+pages.length+'쪽) — 내 파일 → 다운로드 → CareMasters 폴더');
+      else _gdlStat('ok','PDF 저장 완료 ('+pages.length+'쪽). 카카오톡 공유는 저장된 파일을 채팅방에서 직접 첨부해주세요.');
     } else {
       // PNG: 페이지 캔버스를 세로로 이어붙인 한 장 — 공유 시트 시도 후 다운로드 폴백
       const pages=_gdlRenderPages(d);
@@ -11890,13 +11942,18 @@ async function gdlExport(kind){
       const x=cv.getContext('2d'); let yy=0;
       pages.forEach(p=>{ x.drawImage(p,0,yy); yy+=p.height; });
       const blob=await new Promise(res=>cv.toBlob(res,'image/png'));
-      const file=blob?new File([blob],fname+'.png',{type:'image/png'}):null;
+      if(!blob) throw new Error('PNG 생성 실패');
+      if(_cmFileSaver()){
+        const r=await cmSaveFile(blob, fname+'.png', 'image/png', {title:cat+' 혈당 일일 로그'});
+        _gdlStat('ok', r.shared ? '이미지를 공유 화면으로 보냈어요. 원하는 앱을 골라 저장·전송해주세요.' : '이미지 저장 완료 — 갤러리 → CareMasters 앨범');
+        return;
+      }
+      const file=new File([blob],fname+'.png',{type:'image/png'});
       if(file && navigator.canShare && navigator.canShare({files:[file]}) && navigator.share){
         try{ await navigator.share({files:[file], title:cat+' 혈당 일일 로그'}); _gdlStat('ok','이미지를 공유했어요'); return; }
         catch(e){ if(e&&e.name==='AbortError'){ _gdlStat('',''); return; } }
       }
-      const a=document.createElement('a');
-      a.href=cv.toDataURL('image/png'); a.download=fname+'.png'; a.click();
+      await cmSaveFile(blob, fname+'.png', 'image/png');
       _gdlStat('ok','이미지 저장 완료. 카카오톡에는 저장된 이미지를 직접 첨부해주세요.');
     }
   }catch(e){
@@ -15740,12 +15797,8 @@ async function vetRepSavePdf(){
     }
     _vrStampPageNums(pages);
     const blob=_gdlPdfFromCanvases(pages);
-    const a=document.createElement('a');
-    a.href=URL.createObjectURL(blob);
-    a.download='caremasters_report_'+R.cat+'_'+today()+'.pdf';
-    a.click();
-    setTimeout(()=>URL.revokeObjectURL(a.href),3000);
-    toast('PDF 저장 완료 ('+pages.length+'쪽). 카카오톡에는 저장된 파일을 직접 첨부해주세요', '#1D9E75', 3200);
+    const r=await cmSaveFile(blob, 'caremasters_report_'+R.cat+'_'+today()+'.pdf', 'application/pdf', {title:R.cat+' 관리 기록 PDF'});
+    if(!r.native) toast('PDF 저장 완료 ('+pages.length+'쪽). 카카오톡에는 저장된 파일을 직접 첨부해주세요', '#1D9E75', 3200);
   }catch(e){
     console.error('리포트 PDF 오류:', e);
     toast('PDF 생성에 실패했어요. 잠시 후 다시 시도해주세요', '#D85A30');
@@ -16251,12 +16304,8 @@ async function trfSavePdf(){
     }
     _vrStampPageNums(pages);
     const blob=_gdlPdfFromCanvases(pages);
-    const a=document.createElement('a');
-    a.href=URL.createObjectURL(blob);
-    a.download='caremasters_transfer_'+R.cat+'_'+today()+'.pdf';
-    a.click();
-    setTimeout(()=>URL.revokeObjectURL(a.href),3000);
-    toast('전원용 PDF 저장 완료 ('+pages.length+'쪽)', '#1D9E75', 3000);
+    const r=await cmSaveFile(blob, 'caremasters_transfer_'+R.cat+'_'+today()+'.pdf', 'application/pdf', {title:R.cat+' 전원용 PDF'});
+    if(!r.native) toast('전원용 PDF 저장 완료 ('+pages.length+'쪽)', '#1D9E75', 3000);
     vetRepGo(4);
   }catch(e){
     console.error('전원용 PDF 오류:', e);
@@ -16584,6 +16633,16 @@ async function _vetShareProceed(text, clipOk, isAndroid){
     }
   }catch(e){ console.warn('이미지 blob 오류:', e); }
   const payload = { title: _vetRep.cat+'의 관리 기록', text };
+  // 앱(WebView)엔 Web Share API가 없음 → 네이티브 공유 시트로 이미지+텍스트 전달 (v0.9.1)
+  const FS = _cmFileSaver();
+  if(FS && file){
+    try{
+      await FS.share({ data: await _blobToB64(file), filename: file.name, mimeType: 'image/png', title: payload.title, text });
+      if(clipOk) toast('텍스트가 복사됐어요. 리포트 사진 전송 후 붙여넣기 해주세요', '#1D9E75', 3200);
+      if(_vetRep) vetRepGo(4);
+      return;
+    }catch(e){ console.warn('네이티브 공유 오류:', e); }
+  }
   if(file && navigator.canShare && navigator.canShare({files:[file]})) payload.files = [file];
   if(navigator.share){
     try{
@@ -16602,12 +16661,7 @@ async function _vetShareProceed(text, clipOk, isAndroid){
   }
   // fallback: 이미지 다운로드 + 텍스트 클립보드 복사 (데스크톱·미지원 브라우저)
   try{
-    if(_vetRep && _vetRep._canvas){
-      const a = document.createElement('a');
-      a.href = _vetRep._canvas.toDataURL('image/png');
-      a.download = 'caremasters_report_'+today()+'.png';
-      a.click();
-    }
+    if(file) await cmSaveFile(file, file.name, 'image/png');
     if(!clipOk) await navigator.clipboard.writeText(text);
     toast('이미지 저장 + 텍스트 복사 완료. 카톡에 붙여넣어 공유하세요', '#1D9E75', 3200);
     if(_vetRep) vetRepGo(4);
@@ -18027,7 +18081,7 @@ function openDeleteAccount(){
 }
 function closeDeleteAccount(){ const m=document.getElementById('deleteAccountModal'); if(m) m.style.display='none'; }
 /* 전체 기록 JSON 내보내기 — 탈퇴 전 백업 + 제8조 내보내기(Export) 권리 이행 */
-function exportAllDataJSON(){
+async function exportAllDataJSON(){
   try{
     const dump={ app:'caremasters', exportedAt:new Date().toISOString(),
       records:state, bloodTests:btData, careEvents:careEvents, perCatKeys:{} };
@@ -18038,10 +18092,8 @@ function exportAllDataJSON(){
       }
     }
     const blob=new Blob([JSON.stringify(dump,null,2)],{type:'application/json'});
-    const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-    a.download='caremasters_export_'+today()+'.json'; a.click();
-    setTimeout(()=>URL.revokeObjectURL(a.href),3000);
-    toast('기록을 JSON 파일로 내보냈어요','#1D9E75');
+    const r=await cmSaveFile(blob, 'caremasters_export_'+today()+'.json', 'application/json', {title:'케어마스터즈 기록 백업'});
+    if(!r.native) toast('기록을 JSON 파일로 내보냈어요','#1D9E75');
   }catch(e){ toast('내보내기에 실패했어요','#D85A30'); }
 }
 /* 예약된 로컬 알림 전부 취소 — 탈퇴 후 투약 알림이 울리면 안 됨 (추모 전환과 동일 요구) */
