@@ -664,7 +664,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.9.1</span>
+      <span class="cm-beta">v0.9.2</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -1657,7 +1657,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
     <div id="calcResult" class="cm-card cm-card--flat" style="display:none;margin-bottom:.75rem">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:.65rem">
         <div class="cm-ic cm-ic--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 8h3v3H8zM8 13h3v3H8zM13 8h3v3h-3zM13 13h3v3h-3zM9 6v2M11 6v2"/></svg></div>
-        <span style="font-size:12px;font-weight:600;color:var(--cm-faint)">하루 칼로리 (앱 참고 기준)</span>
+        <span id="calcKcalLabel" style="font-size:12px;font-weight:600;color:var(--cm-faint)">하루 칼로리 (앱 참고 기준)</span>
         <span id="calcRerBadge" style="font-size:10px;color:var(--cm-green-700);background:var(--cm-green-tint);padding:2px 8px;border-radius:6px;margin-left:auto"></span>
       </div>
       <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:.75rem">
@@ -1676,6 +1676,22 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
       </div>
       <div id="calcFormula" style="font-size:11px;color:var(--cm-faint);margin-bottom:.35rem"></div>
       <div id="calcRange" style="font-size:11px;color:var(--cm-faint);margin-bottom:.5rem"></div>
+      <!-- 하루 목표 직접 설정 (v0.9.2) -->
+      <div id="kcalGoalBox" style="margin-bottom:.6rem;padding:.65rem .75rem;border:1px solid var(--cm-line);border-radius:10px;background:var(--cm-surface)">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--cm-ink);cursor:pointer">
+          <input type="checkbox" id="kcalGoalToggle" onchange="onKcalGoalToggle(this.checked)" style="width:18px;height:18px;accent-color:var(--cm-green-700);margin:0">
+          하루 목표 칼로리 직접 정하기
+        </label>
+        <div id="kcalGoalEdit" style="display:none;margin-top:.55rem">
+          <div style="display:flex;gap:6px;align-items:center">
+            <input type="number" id="kcalGoalInput" inputmode="numeric" min="20" max="1500" step="1" placeholder="예: 200" style="flex:1;min-width:0;padding:9px 10px;border:1px solid var(--cm-line);border-radius:9px;font-size:15px;font-family:inherit;background:var(--cm-bg);color:var(--cm-ink)">
+            <span style="font-size:12px;color:var(--cm-faint);white-space:nowrap">kcal / 일</span>
+            <button type="button" onclick="saveKcalGoalFromInput()" style="padding:9px 14px;background:var(--cm-green-700);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">저장</button>
+          </div>
+          <div id="kcalGoalMsg" style="display:none;margin-top:.45rem;padding:.45rem .6rem;border-radius:8px;background:var(--coral-l,#FDEBE3);color:var(--coral,#D85A30);font-size:11.5px;line-height:1.55"></div>
+        </div>
+        <div style="font-size:11px;color:var(--cm-faint);margin-top:.4rem;line-height:1.55">계산값은 출발점이에요. 체중 변화나 병원 안내에 맞춰 직접 정하면 오늘 탭·식사·리포트의 목표로 쓰여요. 끄면 앱 계산값으로 돌아가요.</div>
+      </div>
       <div id="calcNote" style="font-size:11px;color:var(--cm-ink-soft);line-height:1.6;padding-top:.5rem;border-top:0.5px solid var(--cm-line)"></div>
     </div>
 
@@ -4527,12 +4543,12 @@ window.switchCat = function(c) {
 const CAT_US_PREFIXES=['fd_v2_','favFoods_v1_','manualFoods_v1_','tubeRecipes_v1_','cgm_data_',
   'routine_items_','routine_versions_','med_notif_','emerg_state_','fluid_state_',
   'card_order_','card_hidden_','tile_config_','memorial_','memorial_msg_',
-  'next_visit_','vet_questions_','last_inputs_'];
+  'next_visit_','vet_questions_','last_inputs_','kcal_goal_'];
 // 로컬 미러 키 접두사 — 접두사+이름 정확 일치로만 제거 (suffix 매칭은 이름 충돌 위험)
 const CAT_LS_PREFIXES=['fd_v2_','favFoods_v1_','manualFoods_v1_','tubeRecipes_v1_','cgmData_v1_',
   'routineItems_v1_','routineVersions_v1_','lastInputs_v1_','nextVisit_v1_','vetQuestions_v1_',
   'tileConfig_v1_','cardOrder_v1_','cardHidden_v1_','medNotif_v1_','memorial_v1_','memorialMsg_v1_',
-  'lastRecipeMode_','emerg_state_','fluid_state_','lastMealTab_','vetBannerDismiss_'];
+  'lastRecipeMode_','emerg_state_','fluid_state_','lastMealTab_','vetBannerDismiss_','kcalGoal_v1_'];
 window.deleteCat = function(c) {
   // 삭제로 유도하지 않기 (스펙 금지사항 3) — 기록 보존 대안(기억하기)을 확인 문구에서 안내
   if(!confirm(c+'를 삭제할까요? 모든 기록이 삭제돼요.\n\n기록을 남기고 알림만 멈추려면, 프로필 화면의 "기억하기"를 사용할 수 있어요.'))return;
@@ -5671,7 +5687,8 @@ function renderDailySummary(catName) {
   // 4-0. 식사 칼로리 피드백 (전 고양이 공통). 입원 중 억제.
   // ════════════════════════════════
   if(!_admitted) {
-    const _recKcal = prof.recommendedKcal || 0;
+    const _kT = getKcalTarget(cat);
+    const _recKcal = _kT.kcal || 0;
     if(_recKcal > 0) {
       // 최근 3일 유효 kcal: 기록 없음=null, kcal 미입력=null (기록 안 함으로 간주)
       const _kcal3 = getRecentDays(3).map(day => {
@@ -5704,7 +5721,7 @@ function renderDailySummary(catName) {
       // 조건 B: 3일 모두 기록 있고 매일 70% 미만 (priority 3, warn)
       if(!_mealFbAdded && _kcal3.every(v => v !== null && v < _recKcal * 0.7)) {
         feedbacks.push({priority:3, ...makeFeedback('warn','⚠️','며칠째 적게 먹고 있어요',
-          `3일 연속 앱 참고 기준보다 적게 먹었어요<br>계속되면 수의사와 상담해 주세요`)});
+          `3일 연속 ${_kT.manual?'정해둔 목표':'앱 참고 기준'}보다 적게 먹었어요<br>계속되면 수의사와 상담해 주세요`)});
       }
     }
   }
@@ -6047,7 +6064,7 @@ function renderDailySummary(catName) {
     const mealKcalEl = document.getElementById('heroMealKcal');
     if(mealKcalEl) {
       const totalKcalHero = Math.round(mealsHero.reduce((a,b) => a + (b.kcal||0), 0));
-      const recKcalHero = ((state.catProfiles||{})[cat]||{}).recommendedKcal || 0;
+      const recKcalHero = getKcalTarget(cat).kcal || 0;
       if(!mealsHero.length) {
         mealKcalEl.innerHTML = '<span style="color:var(--cm-faint)">기록 없음</span>';
       } else if(recKcalHero && totalKcalHero) {
@@ -10371,6 +10388,7 @@ function calcCalorie(){
       const _fEl=document.getElementById('calcFormula');if(_fEl)_fEl.textContent='';
       const _rgEl=document.getElementById('calcRange');if(_rgEl)_rgEl.textContent='';
       const _nEl=document.getElementById('calcNote');if(_nEl)_nEl.innerHTML='<span style="font-size:12px;color:var(--cm-faint)">계산 조건을 입력하면 참고 칼로리가 나와요.</span>';
+      try{renderKcalGoalBox(null);}catch(e){}
     }
     return;
   }
@@ -10399,6 +10417,9 @@ function calcCalorie(){
   document.getElementById('calcRange').textContent=`앱 참고 범위 ${merMin}~${merMax} kcal/일`;
   document.getElementById('calcNote').innerHTML=notes.length?notes.map(n=>`• ${n}`).join('<br>')+'<br><small style="color:var(--cm-faint)">※ 참고용 수치입니다. 정확한 급여량은 수의사와 상담하세요.</small>':'<small style="color:var(--cm-faint)">※ 참고용 수치입니다. 정확한 급여량은 수의사와 상담하세요.</small>';
   updateCalcCondSummary(wt, age, neuter, activity, bcs);
+  // 급여량 환산은 실제 목표 기준 — 보호자 설정 목표가 있으면 그 값 (v0.9.2)
+  const _goal=state.activeCat?getKcalGoal(state.activeCat):null;
+  const goalK=_goal?_goal.v:mer;
 
   // 분석된 사료 목록과 연동 (100g 기준 칼로리로 정확히 계산)
   if(fdData.length){
@@ -10408,7 +10429,7 @@ function calcCalorie(){
       const d=h.data;
       const kcalPer100=d.kcal_per_100g||null;
       if(!kcalPer100)return;
-      const grams=Math.round(mer/kcalPer100*100);
+      const grams=Math.round(goalK/kcalPer100*100);
       const meals2=Math.round(grams/2);
       const _carb4=(d.carb_af!=null&&d.carb_af>0)?d.carb_af:estCarb(d.protein_af??0,d.fat_af??0,d.fiber_af??0,d.ash_af??(d.type==='wet'?2:7),d.moisture??(d.type==='wet'?75:10));const lv=getLv(cDM(_carb4,d.moisture||(d.type==='wet'?75:10))??999);
       const lc=lvColor(lv);
@@ -10424,7 +10445,8 @@ function calcCalorie(){
   }
 
   // 수동 입력 사료 다시 계산
-  updateManualFoodCalc(mer);
+  updateManualFoodCalc(goalK);
+  try{renderKcalGoalBox(mer);}catch(e){}
   // 권장 칼로리 프로필 저장 (오늘탭 달성률 표시용)
   // 소유 가드 (v0.7.36): 폼을 현재 고양이 것으로 직접 편집한 경우에만 저장.
   // 프로그램 호출(고양이 전환·동기화·탭 진입 프리필)은 표시만 하고 저장하지 않음
@@ -10630,12 +10652,13 @@ function calcTubeTotal(){
   const rounded=Math.round(total);
   const kEl=document.getElementById('tubeTotalKcal');
   if(kEl)kEl.textContent=rounded;
-  const rec=(state.catProfiles||{})[state.activeCat||'']?.recommendedKcal;
+  const _kT=getKcalTarget(state.activeCat||'');
+  const rec=_kT.kcal;
   const cEl=document.getElementById('tubeKcalCompare');
   if(cEl){
     if(rec&&rec>0){
       const pct=Math.round(rounded/rec*100);
-      cEl.textContent='앱 참고 기준 '+rec+'kcal의 '+pct+'%';
+      cEl.textContent=_kT.label+' '+rec+'kcal의 '+pct+'%';
       cEl.style.display='block';
     }else{
       cEl.style.display='none';
@@ -11074,7 +11097,7 @@ function openTubeFavPicker(){
 }
 
 function matchTubeToRecommended(){
-  const target=(state.catProfiles||{})[state.activeCat||'']?.recommendedKcal;
+  const target=getKcalTarget(state.activeCat||'').kcal;
   let totalKcal=0;
   _tubeItems.forEach(item=>{totalKcal+=(parseFloat(item.grams)||0)*(parseFloat(item.kcalPer100g)||0)/100;});
   if(!totalKcal){toast('재료를 추가하고 g수를 입력해주세요','#BA7517');return;}
@@ -11087,7 +11110,7 @@ function matchTubeToRecommended(){
 /* 특정 사료 하나를 늘려 목표 칼로리 부족분을 채움 (보호자가 사료 선택, 계산은 앱) */
 function fillTubeWithFood(idx){
   if(idx<0||idx>=_tubeItems.length)return;
-  const target=(state.catProfiles||{})[state.activeCat||'']?.recommendedKcal;
+  const target=getKcalTarget(state.activeCat||'').kcal;
   if(!target||target<=0){toast('고양이 프로필에 참고 칼로리를 먼저 설정해주세요','#BA7517');return;}
   const item=_tubeItems[idx];
   const k=parseFloat(item.kcalPer100g)||0;
@@ -13827,6 +13850,113 @@ function checkKetoneAlert(ket, bg) {
    이미지: 외부 라이브러리 없이 Canvas 2D 직접 렌더 / 공유: Web Share API + fallback
    ══════════════════════════════════════════════ */
 
+/* ── 하루 목표 칼로리 직접 설정 (v0.9.2) ──
+   공식(RER×계수)은 출발점일 뿐 — 활동량이 극히 적은 비만묘 등은 계산대로 먹이면 체중이 늚.
+   보호자가 정한 값(병원 안내·체중 추이 기반)을 목표로 쓰고, 계산값 recommendedKcal은 그대로 둠
+   (재계산이 보호자 목표를 덮지 않도록 분리 저장). 원본 localStorage(kcalGoal_v1_<cat>) + user_settings(kcal_goal_<cat>)
+   ⚠ 목표 칼로리를 읽는 화면은 recommendedKcal 직접 참조 금지 → getKcalTarget(cat) 사용 */
+const KCAL_GOAL_MIN=20, KCAL_GOAL_MAX=1500;
+function getKcalGoal(cat){
+  try{ const o=JSON.parse(localStorage.getItem('kcalGoal_v1_'+cat)||'null'); return (o&&o.v>0)?o:null; }catch(e){ return null; }
+}
+function getKcalTarget(cat){
+  const calc=((state.catProfiles||{})[cat]||{}).recommendedKcal||0;
+  const g=cat?getKcalGoal(cat):null;
+  return g ? {kcal:g.v, manual:true, calc, label:'보호자 설정 목표'}
+           : {kcal:calc, manual:false, calc, label:'앱 참고 기준'};
+}
+function setKcalGoal(cat, v){
+  if(!cat) return;
+  const val=(v!=null&&v>0)?Math.round(v):null;
+  const at=new Date().toISOString();
+  try{
+    if(val) localStorage.setItem('kcalGoal_v1_'+cat, JSON.stringify({v:val, at}));
+    else localStorage.removeItem('kcalGoal_v1_'+cat);
+  }catch(e){}
+  if(sbClient && currentUser){
+    sbClient.from('user_settings').upsert({
+      user_id: currentUser.id, key: 'kcal_goal_'+cat,
+      value: {v: val, at}, updated_at: at
+    }, {onConflict:'user_id,key'}).then(({error})=>{ if(error) console.warn('kcalGoal 저장 오류:', error); })
+      .catch(e=>console.warn('kcalGoal 저장 reject:', e));
+  }
+  try{ _renderDailyTabSafe(); }catch(e){}
+}
+async function loadKcalGoals(){
+  if(!sbClient || !currentUser || !state.cats.length) return;
+  try{
+    const keys = state.cats.map(c => 'kcal_goal_'+c);
+    const {data} = await sbClient.from('user_settings').select('key,value')
+      .eq('user_id', currentUser.id).in('key', keys);
+    (data||[]).forEach(row=>{
+      const cat = row.key.replace('kcal_goal_','');
+      const v = row.value && row.value.v;
+      try{
+        if(v>0) localStorage.setItem('kcalGoal_v1_'+cat, JSON.stringify({v, at:row.value.at||null}));
+        else localStorage.removeItem('kcalGoal_v1_'+cat);
+      }catch(e){}
+    });
+  }catch(e){ console.warn('kcalGoal 로드 오류:', e); }
+}
+/* 계산기 결과 카드의 목표 설정 UI — calcCalorie 끝에서 호출 (mer=이번 계산값, 없으면 null) */
+let _kcalGoalCalcMer=null;
+function renderKcalGoalBox(mer){
+  _kcalGoalCalcMer=(mer>0)?mer:null;
+  const cat=state.activeCat;
+  const g=cat?getKcalGoal(cat):null;
+  const tg=document.getElementById('kcalGoalToggle');
+  const ed=document.getElementById('kcalGoalEdit');
+  const inp=document.getElementById('kcalGoalInput');
+  const hd=document.getElementById('calcKcalLabel');
+  const kEl=document.getElementById('calcKcal');
+  const rg=document.getElementById('calcRange');
+  if(tg) tg.checked=!!g;
+  if(ed) ed.style.display=g?'block':'none';
+  if(inp && g && document.activeElement!==inp) inp.value=g.v;
+  if(hd) hd.textContent=g?'하루 칼로리 (보호자 설정 목표)':'하루 칼로리 (앱 참고 기준)';
+  if(g){
+    if(kEl) kEl.textContent=g.v;
+    // calcCalorie가 매번 calcRange를 새로 쓰므로 앞에 붙이기만 함
+    if(rg && _kcalGoalCalcMer) rg.textContent='앱 계산 참고값 '+_kcalGoalCalcMer+' kcal/일 · '+rg.textContent;
+  }
+  _kcalGoalWarn(g?g.v:null);
+}
+function _kcalGoalWarn(v){
+  const msg=document.getElementById('kcalGoalMsg'); if(!msg) return;
+  const m=_kcalGoalCalcMer;
+  let t='';
+  if(v && m){
+    const r=v/m;
+    if(r<0.7) t='앱 계산 참고값보다 30% 이상 낮아요. 고양이는 먹는 양을 급하게 줄이면 건강에 무리가 갈 수 있어요. 큰 폭의 감량은 수의사와 상담해 주세요.';
+    else if(r>1.3) t='앱 계산 참고값보다 30% 이상 높아요. 병원에서 안내받은 값이 아니라면 수의사와 상담해 주세요.';
+  }
+  msg.textContent=t;
+  msg.style.display=t?'block':'none';
+}
+function onKcalGoalToggle(on){
+  const cat=state.activeCat; if(!cat) return;
+  const ed=document.getElementById('kcalGoalEdit');
+  if(on){
+    if(ed) ed.style.display='block';
+    const inp=document.getElementById('kcalGoalInput');
+    if(inp){ if(!inp.value) inp.value=_kcalGoalCalcMer||''; inp.focus(); }
+  }else{
+    const had=!!getKcalGoal(cat);
+    if(ed) ed.style.display='none';
+    if(had){ setKcalGoal(cat,null); toast('앱 계산값으로 돌아갔어요','#1D9E75'); }
+    try{ calcCalorie(); }catch(e){}
+  }
+}
+function saveKcalGoalFromInput(){
+  const cat=state.activeCat; if(!cat) return;
+  const inp=document.getElementById('kcalGoalInput');
+  const v=parseFloat(inp&&inp.value);
+  if(isNaN(v)||v<KCAL_GOAL_MIN||v>KCAL_GOAL_MAX){ toast(KCAL_GOAL_MIN+'~'+KCAL_GOAL_MAX+' kcal 사이로 입력해주세요','#BA7517'); return; }
+  setKcalGoal(cat, v);
+  toast(cat+'의 하루 목표를 '+Math.round(v)+'kcal로 정했어요','#1D9E75');
+  try{ calcCalorie(); }catch(e){}
+}
+
 /* ── 다음 진료 예정일 관리 ──
    catProfiles는 syncFromDB가 DB 기준으로 재구축(임의 필드 소실)하므로
    원본은 localStorage(nextVisit_v1_<cat>) + user_settings(next_visit_<cat>), 프로필 필드는 미러 */
@@ -14977,7 +15107,7 @@ function computeObservations(cat, anchor){
         lines:['최근 7일 평균 식사량 '+Math.round(mt.recentAvg)+'kcal/일','지난 4주 평균 '+Math.round(mt.priorAvg)+'kcal/일 대비 '+dropPct+'% 감소'],
         hint:mealHint });
     } else {
-      const recKcal=((state.catProfiles||{})[cat]||{}).recommendedKcal;
+      const recKcal=getKcalTarget(cat).kcal;
       if(recKcal>0){
         const recs=(state.records||{})[cat]||{};
         let run=0;
@@ -15015,7 +15145,10 @@ function collectVetReportData(cat, fromStr, toStr, excludeSet){
   d.profile = {
     breed: prof.breed || '', age: _vrAge(cat),
     weight: getLatestWeight(cat), diseases: (prof.diseases||[]).join('·'),
-    targetWt: prof.targetWt || null, recommendedKcal: prof.recommendedKcal || null
+    targetWt: prof.targetWt || null,
+    // 리포트의 칼로리 기준 = 실제 목표(보호자 설정 우선), kcalLabel로 출처 구분 (v0.9.2)
+    recommendedKcal: getKcalTarget(cat).kcal || null, kcalLabel: getKcalTarget(cat).label,
+    calcKcal: prof.recommendedKcal || null
   };
   // 기간 내 입원 구간 — 병원 관리 데이터라 재택 집계에서 제외(전 리포트 공통), 표기용으로 d.admissions 제공 (v0.7.69)
   const _adms = getCareEvents(cat).filter(e=>e.type==='입원' && e.start<=toStr && careEventEnd(e)>=fromStr);
@@ -15223,7 +15356,7 @@ function buildVetReportText(d, inc, memo){
     const _mTier = _vrCovTier(d.meal.days, d.homeDays);
     if(_mTier==='none') L.push('기록 없음');
     else if(_mTier==='low') L.push(_vrCovList(d.meal.list,'kcal'));
-    else L.push('평균 '+Math.round(d.meal.kcalAvg)+' kcal/일 ('+(_mTier==='partial'?d.homeDays+'일 중 ':'')+d.meal.days+'일 기록)'+(d.profile.recommendedKcal?' · 앱 참고 기준 '+d.profile.recommendedKcal+'kcal':''));
+    else L.push('평균 '+Math.round(d.meal.kcalAvg)+' kcal/일 ('+(_mTier==='partial'?d.homeDays+'일 중 ':'')+d.meal.days+'일 기록)'+(d.profile.recommendedKcal?' · '+(d.profile.kcalLabel||'앱 참고 기준')+' '+d.profile.recommendedKcal+'kcal':''));
     if(d.meal.topFoods.length) L.push('주 사료: '+d.meal.topFoods.join(' & '));
   }
   if(inc.weight){
@@ -15350,7 +15483,7 @@ function renderVetReportCanvas(d, inc, memo){
   if(inc.vomit) secs.push({t:'구토', lines:['기간 내 총 '+d.vomits.length+'회'+(d.vomits.some(v=>v.danger)?' · 피/붉은색 포함':'')], warn:d.vomits.some(v=>v.danger)});
   if(inc.meal){
     const _mT = _vrCovTier(d.meal.days, d.homeDays);
-    secs.push({t:'급여', lines:[_covLine(_mT, d.meal.days, '평균 '+Math.round(d.meal.kcalAvg)+' kcal/일', d.meal.list, 'kcal')+(_mT==='full'&&d.profile.recommendedKcal?' / 앱 참고 기준 '+d.profile.recommendedKcal:'')], bar: (_mT==='full'&&d.meal.days&&d.profile.recommendedKcal)?Math.min(1.5,d.meal.kcalAvg/d.profile.recommendedKcal):null});
+    secs.push({t:'급여', lines:[_covLine(_mT, d.meal.days, '평균 '+Math.round(d.meal.kcalAvg)+' kcal/일', d.meal.list, 'kcal')+(_mT==='full'&&d.profile.recommendedKcal?' / '+(d.profile.kcalLabel||'앱 참고 기준')+' '+d.profile.recommendedKcal:'')], bar: (_mT==='full'&&d.meal.days&&d.profile.recommendedKcal)?Math.min(1.5,d.meal.kcalAvg/d.profile.recommendedKcal):null});
   }
   if(inc.weight && (d.weight.last || d.weight.prior)){
     // 측정일 표기 (v0.7.69) · 기간 내 기록 없으면 기간 외 마지막 값 — 섹션 생략하지 않음 (v0.7.70)
@@ -15578,7 +15711,7 @@ function buildIntervalReport(cat, lastVisit, incBt){
     } else {
       const parts=[];
       if(gDays) parts.push('평균 '+Math.round(gSum/gDays)+'g/일');
-      if(d.meal.days) parts.push('평균 '+Math.round(d.meal.kcalAvg)+'kcal/일'+(d.profile.recommendedKcal?' (앱 참고 기준 '+d.profile.recommendedKcal+'kcal)':''));
+      if(d.meal.days) parts.push('평균 '+Math.round(d.meal.kcalAvg)+'kcal/일'+(d.profile.recommendedKcal?' ('+(d.profile.kcalLabel||'앱 참고 기준')+' '+d.profile.recommendedKcal+'kcal)':''));
       L.push(parts.join(' · ')+' — '+(_mT==='partial'?d.homeDays+'일 중 ':'')+Math.max(gDays,d.meal.days)+'일 기록');
     }
   }
@@ -18087,7 +18220,7 @@ async function exportAllDataJSON(){
       records:state, bloodTests:btData, careEvents:careEvents, perCatKeys:{} };
     for(let i=0;i<localStorage.length;i++){
       const k=localStorage.key(i); if(!k) continue;
-      if(/^(fd_v2_|cgmData_v1_|tubeRecipes_v1_|favFoods_v1_|manualFoods_v1_|routineItems_v1_|routineVersions_v1_|lastInputs_v1_|nextVisit_v1_|vetQuestions_v1_)/.test(k)){
+      if(/^(fd_v2_|cgmData_v1_|tubeRecipes_v1_|favFoods_v1_|manualFoods_v1_|routineItems_v1_|routineVersions_v1_|lastInputs_v1_|nextVisit_v1_|vetQuestions_v1_|kcalGoal_v1_)/.test(k)){
         try{ dump.perCatKeys[k]=JSON.parse(localStorage.getItem(k)); }catch(e){ dump.perCatKeys[k]=localStorage.getItem(k); }
       }
     }
@@ -18251,6 +18384,7 @@ async function syncFromDB() {
       _tw('med_notif',      loadMedNotifSettings().catch(e => console.warn('medNotif 로드 오류:', e))),
       _tw('vet_questions',  loadVetQuestions().catch(e => console.warn('vetQuestions 로드 오류:', e))),
       _tw('last_inputs',    loadLastInputs().catch(e => console.warn('lastInputs 로드 오류:', e))),
+      _tw('kcal_goal',      loadKcalGoals().catch(e => console.warn('kcalGoal 로드 오류:', e))),
     ]);
     console.log(`[Perf] Promise.all 전체: ${(performance.now()-_parallelT0).toFixed(0)}ms`);
 
