@@ -664,7 +664,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.9.7</span>
+      <span class="cm-beta">v0.9.8</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -885,6 +885,16 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
         </div>
       </div>
       <div id="dmTileRows"></div>
+    </div>
+    <!-- 식이 반응 노트 타일 (v0.9.8) — 먹은 것 성분 표시 / 피부·귀 기록 / 최근 7일. 당뇨 타일과 같은 2칸 패턴 -->
+    <div class="tile tile--dm" data-tile="foodreact" role="group" aria-label="식이 반응 노트">
+      <div class="tile__top">
+        <div class="tile__label">
+          <div class="cm-ic cm-ic--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h12l4 4v12H4z"/><path d="M8 11h8M8 15h5"/></svg></div>
+          <div class="tile__title">식이 반응 노트</div>
+        </div>
+      </div>
+      <div id="frTileRows"></div>
     </div>
     <button class="tile" data-tile="vet" onclick="openVetManage()">
       <div class="tile__top">
@@ -2064,6 +2074,14 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   </div>
 </div>
 
+<!-- ══ 식이 반응 노트 허브 (v0.9.8) ══ -->
+<div class="sheet-back" id="frSheetBack" data-open="0" onclick="closeFrHub()"></div>
+<div class="sheet" id="frSheet" data-open="0" style="max-height:94%">
+  <div class="sheet__handle"></div>
+  <div class="sheet__head" id="frSheetHead"></div>
+  <div class="sheet__body" id="frSheetBody"></div>
+</div>
+
 <!-- ══ 혈당 일일 로그 내보내기 바텀시트 (v0.9.4) ══ -->
 <div class="sheet-back" id="gdlSheetBack" data-open="0" onclick="closeGdlSheet()"></div>
 <div class="sheet" id="gdlSheet" data-open="0">
@@ -2099,6 +2117,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
 </div>
 
 <script src="cm_fooddb.js"></script>
+<script src="cm_ingrnorm.js"></script>
 <script>
 
 const SK='dangmyo_v2',SK_BT='bt_v2',SK_FD='fd_v2',SK_CONFIG='cm_sb_cfg';
@@ -2197,7 +2216,7 @@ try{const d=localStorage.getItem(SK_FD);if(d)fdData=JSON.parse(d)}catch(e){}
 try{const d=localStorage.getItem('careEvents_v1');if(d)careEvents=JSON.parse(d)}catch(e){}
 /* 일일 레코드에 기록이 하나라도 있는지 (빈 값 덮어쓰기 가드 공용 헬퍼) */
 // poop·vomits 포함 (v0.7.37) — poop 누락은 기존 결함: 대변만 있는 날이 "빈 레코드"로 취급돼 DB upsert가 차단됐음
-const REC_ARRAY_KEYS=['bg','ins','meals','weights','routines','water','urine','rr','poop','vomits'];
+const REC_ARRAY_KEYS=['bg','ins','meals','weights','routines','water','urine','rr','poop','vomits','skin'];
 function recHasData(rec){
   if(!rec)return false;
   return REC_ARRAY_KEYS.some(k=>(rec[k]?.length||0)>0);
@@ -4419,7 +4438,9 @@ function _renderMealFoodSearchResults(local, master, masterLoading) {
       : ' <span style="color:var(--text3)">(칼로리 없음)</span>';
     return '<div style="display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:0.5px solid var(--bd)">'
       + badge
-      + '<span style="flex:1;font-size:12px;color:var(--text)">' + nm + kpStr + '</span>'
+      + '<span style="flex:1;font-size:12px;color:var(--text)">' + nm + kpStr
+      + (function(){ try{ var _ing = Array.isArray(r.ingredients)&&r.ingredients.length ? {list:r.ingredients, level:'full'} : (r.id!=null ? _frFoodIngr(state.activeCat, r.name, r.id) : {list:null, level:'none'}); var _m=_frMatch(state.activeCat, _ing); return _m ? '<br>'+_frBadgeHtml(_m) : ''; }catch(e){ return ''; } })()
+      + '</span>'
       + '<button type="button" onclick="selectMealSearchFoodDaily(' + i + ')" style="padding:4px 10px;background:var(--teal);color:#fff;border:none;border-radius:7px;font-size:11px;cursor:pointer;font-family:inherit">선택</button>'
       + '</div>';
   };
@@ -4474,7 +4495,9 @@ function _renderFavFoodPickerList(listId, onSelect) {
       var kp = typeof f === 'string' ? null : f.kcalPer100g;
       var kpStr = kp ? ' <span style="color:var(--text3)">('+ kp +'kcal/100g)</span>' : '';
       return '<div style="display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:0.5px solid var(--bd)">'
-        + '<span style="flex:1;font-size:12px;color:var(--text)">' + nm + kpStr + '</span>'
+        + '<span style="flex:1;font-size:12px;color:var(--text)">' + nm + kpStr
+        + (function(){ try{ var _m=_frMatch(state.activeCat, _frFoodIngr(state.activeCat, nm, (typeof f==='object'&&f.masterId!=null)?f.masterId:null)); return _m ? '<br>'+_frBadgeHtml(_m) : ''; }catch(e){ return ''; } })()
+        + '</span>'
         + '<button type="button" onclick="selectFavFoodDaily(' + i + ')" style="padding:4px 10px;background:var(--teal);color:#fff;border:none;border-radius:7px;font-size:11px;cursor:pointer;font-family:inherit">선택</button>'
         + '<button type="button" onclick="deleteFavFood(' + i + ',\u0027favFoodPickerDailyList\u0027)" style="background:none;border:none;color:var(--cm-faint);cursor:pointer;padding:2px 6px;font-size:15px;line-height:1">×</button>'
         + '</div>';
@@ -4585,12 +4608,12 @@ window.switchCat = function(c) {
 const CAT_US_PREFIXES=['fd_v2_','favFoods_v1_','manualFoods_v1_','tubeRecipes_v1_','cgm_data_',
   'routine_items_','routine_versions_','med_notif_','emerg_state_','fluid_state_',
   'card_order_','card_hidden_','tile_config_','memorial_','memorial_msg_',
-  'next_visit_','vet_questions_','last_inputs_','kcal_goal_'];
+  'next_visit_','vet_questions_','last_inputs_','kcal_goal_','food_react_'];
 // 로컬 미러 키 접두사 — 접두사+이름 정확 일치로만 제거 (suffix 매칭은 이름 충돌 위험)
 const CAT_LS_PREFIXES=['fd_v2_','favFoods_v1_','manualFoods_v1_','tubeRecipes_v1_','cgmData_v1_',
   'routineItems_v1_','routineVersions_v1_','lastInputs_v1_','nextVisit_v1_','vetQuestions_v1_',
   'tileConfig_v1_','cardOrder_v1_','cardHidden_v1_','medNotif_v1_','memorial_v1_','memorialMsg_v1_',
-  'lastRecipeMode_','emerg_state_','fluid_state_','lastMealTab_','vetBannerDismiss_','kcalGoal_v1_'];
+  'lastRecipeMode_','emerg_state_','fluid_state_','lastMealTab_','vetBannerDismiss_','kcalGoal_v1_','foodReact_v1_'];
 window.deleteCat = function(c) {
   // 삭제로 유도하지 않기 (스펙 금지사항 3) — 기록 보존 대안(기억하기)을 확인 문구에서 안내
   if(!confirm(c+'를 삭제할까요? 모든 기록이 삭제돼요.\n\n기록을 남기고 알림만 멈추려면, 프로필 화면의 "기억하기"를 사용할 수 있어요.'))return;
@@ -6300,6 +6323,7 @@ function renderDailySummary(catName) {
     if(tins2){var tlins=(tRec.ins||[]).slice(-1)[0];if(tlins){tins2.textContent=tlins.dose+'U · '+(tlins.type||'').substring(0,4);tins2.dataset.tone='good';_tit('insulin','good');}else{tins2.textContent='투여 전';tins2.dataset.tone='muted';_tit('insulin','muted');}}
     try{renderVetTileStatus();}catch(e){}
     try{_renderDmTile(cat,d);}catch(e){console.warn('dm tile:', e);}
+    try{_renderFrTile(cat,d);}catch(e){console.warn('fr tile:', e);}
   } catch(e) { console.warn('tile status:', e); }
 }
 
@@ -14444,6 +14468,367 @@ function setKcalGoal(cat, v){
   }
   try{ _renderDailyTabSafe(); }catch(e){}
 }
+/* ── 식이 반응 노트 (v0.9.8, 1-B) ─────────────────────────────────────────
+   보호자가 등록한 반응 성분(계열 단위)과 먹은 것의 원재료(cm_ingrnorm.js 정규화)를 이어서 보여주는 기록·정리 도구.
+   - 판정 금지: "원인/알러지 확정" 표현 없이 사실 배지만. 경고색은 앱 공통(산호=포함, 황토=관련, 회갈 점선=확인 불가, 회색=등록 성분 없음)
+   - 등록 상태 4종: 확인됨/의심/먹어도 괜찮았음/먹어본 적 없음 — 앱이 자동으로 바꾸지 않음
+   - 저장: foodReact_v1_<cat> + user_settings food_react_<cat> (CAT 키 목록 등록 — 이름 변경·삭제 연쇄)
+   - 원재료 출처: 보호자 사료 분석(fd_v2_<cat>, 전체 목록) → 공유 사료 목록(foods_master, foodId/이름) → 없음
+   - 공통 기록(식사·대변·구토)은 기존 카드에서만. 피부·귀 기록만 노트 전용(rec.skin) */
+const FR_STATUS = {
+  confirmed: {t:'확인됨',         bg:'var(--cm-clay-tint)',  bd:'var(--cm-clay-edge)',  fg:'var(--cm-clay-ink)'},
+  suspect:   {t:'의심',           bg:'var(--cm-amber-tint)', bd:'var(--cm-amber-edge)', fg:'#7E5C16'},
+  ok:        {t:'먹어도 괜찮았음', bg:'var(--cm-surface-2)',  bd:'var(--cm-line)',       fg:'var(--cm-ink-soft)'},
+  never:     {t:'먹어본 적 없음',  bg:'var(--cm-surface-2)',  bd:'var(--cm-line)',       fg:'var(--cm-ink-soft)'},
+};
+function frGet(cat){
+  try{ const v=JSON.parse(localStorage.getItem('foodReact_v1_'+cat)||'null'); return (v&&Array.isArray(v.items))?v:{items:[]}; }
+  catch(e){ return {items:[]}; }
+}
+function frSave(cat, v){
+  v = {items:(v.items||[]).filter(i=>i&&i.fam), at:new Date().toISOString()};
+  try{ if(v.items.length) localStorage.setItem('foodReact_v1_'+cat, JSON.stringify(v)); else localStorage.removeItem('foodReact_v1_'+cat); }catch(e){}
+  if(sbClient && currentUser){
+    sbClient.from('user_settings').upsert({user_id:currentUser.id, key:'food_react_'+cat, value:v, updated_at:v.at}, {onConflict:'user_id,key'})
+      .then(({error})=>{ if(error) console.warn('식이 반응 노트 저장 오류:', error); })
+      .catch(e=>console.warn('식이 반응 노트 저장 reject:', e));
+  }
+}
+async function loadFoodReacts(){
+  if(!sbClient || !currentUser || !state.cats.length) return;
+  try{
+    const {data} = await sbClient.from('user_settings').select('key,value').eq('user_id', currentUser.id).in('key', state.cats.map(c=>'food_react_'+c));
+    (data||[]).forEach(row=>{
+      const cat=row.key.replace('food_react_','');
+      try{
+        if(row.value && Array.isArray(row.value.items) && row.value.items.length) localStorage.setItem('foodReact_v1_'+cat, JSON.stringify(row.value));
+        else localStorage.removeItem('foodReact_v1_'+cat);
+      }catch(e){}
+    });
+    try{ renderTileGrid(state.activeCat); _frRefresh(); }catch(e){}
+  }catch(e){ console.warn('식이 반응 노트 로드 오류:', e); }
+}
+/* 표시 기준 — 프로필 IBD·식이 알러지 또는 반응 성분 등록. 표시만(자동 처리 아님) */
+function _catHasFR(cat){
+  const prof=((state.catProfiles||{})[cat])||{};
+  if((prof.diseases||[]).some(x=>{ x=String(x); return x.indexOf('IBD')!==-1 || x.indexOf('알러지')!==-1; })) return true;
+  return frGet(cat).items.length>0;
+}
+
+/* ── 원재료 조회 ── */
+const _frMasterCache = {};   // 'id:<id>' | 'nm:<name>' → {ingredients, top5} | null(조회했지만 없음). undefined=미조회
+let _frQueue = new Map(), _frTimer = null;
+function _frFoodIngr(cat, name, foodId){
+  let fd=[]; try{ fd=JSON.parse(localStorage.getItem('fd_v2_'+cat)||'[]')||[]; }catch(e){}
+  const h = fd.find(x=>x && x.data && ((foodId!=null && x.masterId===foodId) || x.data.name===name));
+  if(h && h.data){
+    if(Array.isArray(h.data.ingredients) && h.data.ingredients.length) return {list:h.data.ingredients, level:'full'};
+    if(Array.isArray(h.data.ingredients_top5) && h.data.ingredients_top5.length) return {list:h.data.ingredients_top5, level:'partial'};
+  }
+  const k = foodId!=null ? 'id:'+foodId : 'nm:'+name;
+  const c = _frMasterCache[k];
+  if(c===undefined){
+    if(!sbClient) return {list:null, level:'none'};
+    _frQueue.set(k, {id:foodId, name}); if(!_frTimer) _frTimer=setTimeout(_frFlush, 60);
+    return {list:null, level:'loading'};
+  }
+  if(c && Array.isArray(c.ingredients) && c.ingredients.length) return {list:c.ingredients, level:'full'};
+  if(c && Array.isArray(c.top5) && c.top5.length) return {list:c.top5, level:'partial'};
+  return {list:null, level:'none'};
+}
+async function _frFlush(){
+  _frTimer=null;
+  const items=[..._frQueue.entries()]; _frQueue.clear();
+  const put=(k,r)=>{ _frMasterCache[k] = r ? {ingredients:r.ingredients||null, top5:r.ingredients_top5||null} : null; };
+  try{
+    const ids=items.filter(([,v])=>v.id!=null).map(([,v])=>v.id), names=items.filter(([,v])=>v.id==null).map(([,v])=>v.name).filter(Boolean);
+    if(ids.length){ const {data}=await sbClient.from('foods_master').select('id,name,ingredients,ingredients_top5').in('id', ids); (data||[]).forEach(r=>put('id:'+r.id, r)); }
+    if(names.length){ const {data}=await sbClient.from('foods_master').select('id,name,ingredients,ingredients_top5').in('name', names); (data||[]).forEach(r=>{ if(_frMasterCache['nm:'+r.name]===undefined) put('nm:'+r.name, r); }); }
+  }catch(e){ console.warn('원재료 조회 오류:', e); }
+  items.forEach(([k])=>{ if(_frMasterCache[k]===undefined) _frMasterCache[k]=null; });
+  try{ _frRefresh(); }catch(e){}
+}
+/* 등록 성분과 대조 — 등록(괜찮았음 제외)이 없으면 null(표시 안 함) */
+function _frMatch(cat, ingr){
+  const reg = frGet(cat).items.filter(i=>i.status!=='ok');
+  if(!reg.length) return null;
+  if(ingr.level==='loading') return {kind:'loading'};
+  if(!ingr.list || typeof cmIngrInfo!=='function') return {kind:'none'};
+  const st = {}; reg.forEach(i=>st[i.fam]=i.status);
+  const direct=[], related=[], never=[], unspec=[];
+  ingr.list.forEach(raw=>{
+    const inf = cmIngrInfo(raw); if(!inf.fam) return;
+    if(inf.unspec && inf.form!=='원료'){ unspec.push(inf); return; }
+    const s = st[inf.fam]; if(!s) return;
+    if(s==='never'){ never.push(inf); return; }
+    ((window.CM_INGR_FORM_RELATED||[]).indexOf(inf.form)!==-1 ? related : direct).push(inf);
+  });
+  const kind = direct.length ? 'direct' : related.length ? 'related' : unspec.length ? 'unspec' : ingr.level==='partial' ? 'partial' : 'clear';
+  return {kind, direct, related, never, unspec};
+}
+const _frUniq = a => [...new Set(a)];
+function _frBadgeHtml(m){
+  if(!m) return '';
+  const b=(bg,bd,fg,t,dash)=>'<span style="display:inline-block;margin-top:3px;padding:2px 7px;border-radius:7px;font-size:11px;font-weight:600;line-height:1.45;background:'+bg+';border:1px '+(dash?'dashed':'solid')+' '+bd+';color:'+fg+'">'+_vEsc(t)+'</span>';
+  let h='';
+  if(m.kind==='direct'){
+    const by={}; m.direct.forEach(i=>{ (by[i.fam]=by[i.fam]||[]).push(i.form); });
+    h=b('var(--cm-clay-tint)','var(--cm-clay-edge)','var(--cm-clay-ink)','등록한 성분이 들어 있어요: '+Object.keys(by).map(f=>f+'('+_frUniq(by[f]).join('·')+')').join(', '));
+  } else if(m.kind==='related') h=b('var(--cm-amber-tint)','var(--cm-amber-edge)','#7E5C16','관련 성분이 있어요: '+_frUniq(m.related.map(i=>i.raw)).join(', '));
+  else if(m.kind==='unspec') h=b('var(--cm-surface-2)','#A39A8C','#6B6255','특정되지 않은 원료가 있어 확인할 수 없어요: '+_frUniq(m.unspec.map(i=>i.raw)).slice(0,3).join(', '),true);
+  else if(m.kind==='partial') h=b('var(--cm-surface-2)','#A39A8C','#6B6255','원재료 일부만 있어 확인할 수 없어요',true);
+  else if(m.kind==='none') h=b('var(--cm-surface-2)','#A39A8C','#6B6255','원재료 정보가 없어 확인할 수 없어요',true);
+  else if(m.kind==='loading') h=b('var(--cm-surface-2)','var(--cm-line)','var(--cm-faint)','원재료 확인 중');
+  else h=b('var(--cm-surface-2)','var(--cm-line)','var(--cm-ink-soft)','등록한 성분 없음');
+  if(m.direct && m.direct.length && m.related && m.related.length) h+=' '+b('var(--cm-amber-tint)','var(--cm-amber-edge)','#7E5C16','관련 성분: '+_frUniq(m.related.map(i=>i.raw)).join(', '));
+  if(m.never && m.never.length) h+=' '+b('var(--cm-surface-2)','var(--cm-line)','var(--cm-ink-soft)','먹어본 적 없음으로 등록: '+_frUniq(m.never.map(i=>i.fam)).join(', '));
+  return h;
+}
+/* 하루 식사 → 사료 단위(혼합 급여는 한 끼) */
+function _frDayFoods(cat, d){
+  const r=((state.records||{})[cat]||{})[d]||{}; const out=[], mix={};
+  (r.meals||[]).forEach(m=>{
+    if(m.mixTs){ (mix[m.mixTs]=mix[m.mixTs]||[]).push(m); return; }
+    out.push({name:m.name||'식사', foodId:m.foodId!=null?m.foodId:null, time:m.time});
+  });
+  Object.values(mix).forEach(ms=>ms.forEach(m=>out.push({name:m.name||'식사', foodId:m.foodId!=null?m.foodId:null, time:m.time, mix:m.mixName})));
+  return out;
+}
+
+/* ── 오늘 탭 타일 ── */
+function _renderFrTile(cat, d){
+  const box=document.getElementById('frTileRows'); if(!box) return;
+  const row=(on,t,s,extra)=>'<button type="button" class="dmrow" onclick="'+on+'"><div class="dmrow__main"><div class="dmrow__t">'+t+'</div>'+(extra||'')+(s?'<div class="dmrow__s">'+s+'</div>':'')+'</div>'
+    +'<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" style="color:var(--cm-faint);flex:0 0 auto"><path d="M9 5l7 7-7 7"/></svg></button>';
+  // 오늘 먹은 것
+  const foods=_frDayFoods(cat,d), hasReg=frGet(cat).items.some(i=>i.status!=='ok');
+  let fT='오늘 먹은 것', fS='', fX='';
+  if(!hasReg) fS='반응 성분을 등록하면 먹은 것에 표시돼요';
+  else if(!foods.length) fS='식사 기록 전';
+  else {
+    const ms=foods.map(f=>_frMatch(cat,_frFoodIngr(cat,f.name,f.foodId)));
+    const n=k=>ms.filter(m=>m&&m.kind===k).length;
+    const unk=n('unspec')+n('partial')+n('none');
+    const m0 = n('direct') ? {kind:'direct',direct:[].concat(...ms.filter(m=>m&&m.kind==='direct').map(m=>m.direct)),related:[],never:[]}
+      : n('related') ? {kind:'related',related:[].concat(...ms.filter(m=>m&&m.kind==='related').map(m=>m.related)),never:[]}
+      : n('loading') ? {kind:'loading'} : unk ? {kind:'none'} : {kind:'clear',never:[]};
+    fX=_frBadgeHtml(m0);
+    fS='식사 '+foods.length+'건'+(n('direct')?' · 등록한 성분 포함 '+n('direct')+'건':'')+(n('related')?' · 관련 성분 '+n('related')+'건':'')+(unk?' · 확인할 수 없음 '+unk+'건':'');
+  }
+  // 피부·귀
+  const sk=(((state.records||{})[cat]||{})[d]||{}).skin||[];
+  const skS = sk.length ? _skinLabel(sk[sk.length-1])+(sk.length>1?' · 오늘 '+sk.length+'회':'') : '오늘 기록 없음';
+  // 최근 7일
+  const s7=_frWeek(cat,d);
+  const wS='구토 '+s7.vomit+'회'+(s7.hair?' (헤어볼 '+s7.hair+')':'')+' · '+(s7.scoreN?'변 점수 평균 '+s7.scoreAvg+' ('+s7.scoreN+'회)':'변 점수 기록 없음');
+  box.innerHTML = row('openFrHub()', fT, fS, fX) + row("openDailySheet('skin')", '피부·귀 기록', skS) + row('openFrHub()', '최근 7일', wS);
+}
+function _frWeek(cat, d){
+  const recs=(state.records||{})[cat]||{}; const di=_mrDayIdx(d);
+  let vomit=0, hair=0, sc=[], skinDays=0;
+  for(let i=di-6;i<=di;i++){
+    const r=recs[_mrIdxDate(i)]; if(!r) continue;
+    (r.vomits||[]).forEach(v=>{ vomit++; if(v.content==='hairball') hair++; });
+    (r.poop||[]).forEach(p=>{ if(p.score) sc.push(p.score); });
+    if((r.skin||[]).length) skinDays++;
+  }
+  return {vomit, hair, scoreN:sc.length, scoreAvg:sc.length?Math.round(sc.reduce((a,b)=>a+b,0)/sc.length*10)/10:null, skinDays};
+}
+
+/* ── 피부·귀 기록 (rec.skin) — 관찰 기록만, 진단 표현 없음. 있는 것만 누르면 됨 ── */
+const SKIN_OPTS = {
+  hair: ['얼굴','목','배','다리','등·꼬리'],
+  skin: ['좁쌀 같은 딱지','상처','붉음','비듬'],
+  ear:  ['갈색 귀지','귀 긁기','머리 털기'],
+};
+var _skinSel = null;
+function _skinReset(){ _skinSel = {itch:null, groom:false, hair:[], skin:[], ear:[]}; }
+function _skinLabel(s){
+  if(!s) return '';
+  const p=[];
+  if(s.itch!=null) p.push('가려움 '+s.itch);
+  if(s.groom) p.push('과도한 그루밍');
+  if((s.hair||[]).length) p.push('털 빠짐('+s.hair.join('·')+')');
+  (s.skin||[]).forEach(x=>p.push(x));
+  (s.ear||[]).forEach(x=>p.push(x));
+  return p.join(' · ') || (s.memo ? s.memo : '기록');
+}
+function _dsSkinBodyHtml(){
+  const lbl='font-size:12.5px;font-weight:700;color:var(--cm-ink-soft);margin:14px 0 8px';
+  const chip=(grp,v)=>'<button type="button" data-sg="'+grp+'" data-sv="'+_vEsc(v)+'" onclick="skinToggle(\''+grp+'\',this.dataset.sv)" style="padding:8px 12px;border-radius:11px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;border:1px solid var(--cm-line);background:var(--cm-surface);color:var(--cm-ink-soft)">'+_vEsc(v)+'</button>';
+  return _dsDateTimeRow('sheetSkinDate','sheetSkinTime')
+    + '<div style="font-size:11.5px;color:var(--cm-faint);line-height:1.6;margin-bottom:4px">보인 것만 눌러 주세요. 관찰한 대로 남기는 기록이에요.</div>'
+    + '<div style="'+lbl+'">가려움 <span style="font-weight:500;color:var(--cm-faint);font-size:11px">0 없음 ~ 3 계속 긁음</span></div>'
+    + '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">'+[0,1,2,3].map(n=>'<button type="button" data-itch="'+n+'" onclick="skinItch('+n+')" style="padding:10px 0;border-radius:11px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid var(--cm-line);background:var(--cm-surface);color:var(--cm-ink)">'+n+'</button>').join('')+'</div>'
+    + '<div style="'+lbl+'">그루밍</div><div style="display:flex;gap:6px;flex-wrap:wrap">'+chip('groom','과도한 그루밍')+'</div>'
+    + '<div style="'+lbl+'">털 빠진 부위</div><div style="display:flex;gap:6px;flex-wrap:wrap">'+SKIN_OPTS.hair.map(v=>chip('hair',v)).join('')+'</div>'
+    + '<div style="'+lbl+'">피부</div><div style="display:flex;gap:6px;flex-wrap:wrap">'+SKIN_OPTS.skin.map(v=>chip('skin',v)).join('')+'</div>'
+    + '<div style="'+lbl+'">귀</div><div style="display:flex;gap:6px;flex-wrap:wrap">'+SKIN_OPTS.ear.map(v=>chip('ear',v)).join('')+'</div>'
+    + '<div style="'+lbl+'">메모</div><input type="text" id="sheetSkinMemo" maxlength="200" placeholder="예: 턱 아래를 자주 긁음" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--cm-line);border-radius:11px;font-size:13px;background:var(--cm-surface);color:var(--cm-ink);font-family:inherit">'
+    + '<div id="skinLog" style="margin-top:14px"></div>';
+}
+function _skinPaint(){
+  if(!_skinSel) return;
+  document.querySelectorAll('[data-itch]').forEach(b=>{ const on=+b.dataset.itch===_skinSel.itch; b.style.background=on?'var(--cm-green-tint)':'var(--cm-surface)'; b.style.borderColor=on?'var(--cm-green-700)':'var(--cm-line)'; b.style.color=on?'var(--cm-green-700)':'var(--cm-ink)'; });
+  document.querySelectorAll('[data-sg]').forEach(b=>{ const g=b.dataset.sg, v=b.dataset.sv; const on = g==='groom' ? _skinSel.groom : _skinSel[g].indexOf(v)!==-1;
+    b.style.background=on?'var(--cm-green-tint)':'var(--cm-surface)'; b.style.borderColor=on?'var(--cm-green-700)':'var(--cm-line)'; b.style.color=on?'var(--cm-green-700)':'var(--cm-ink-soft)'; });
+}
+function skinItch(n){ _skinSel.itch = (_skinSel.itch===n?null:n); _skinPaint(); }
+function skinToggle(g, v){
+  if(g==='groom') _skinSel.groom=!_skinSel.groom;
+  else { const a=_skinSel[g], i=a.indexOf(v); if(i===-1) a.push(v); else a.splice(i,1); }
+  _skinPaint();
+}
+function saveSkin(){
+  const memo=((document.getElementById('sheetSkinMemo')||{}).value||'').trim();
+  const s=_skinSel||{};
+  if(s.itch==null && !s.groom && !s.hair.length && !s.skin.length && !s.ear.length && !memo){ toast('보인 것을 하나 이상 골라 주세요'); return; }
+  const date=(document.getElementById('sheetSkinDate')||{}).value||today();
+  const time=(document.getElementById('sheetSkinTime')||{}).value||nowTime();
+  const rec=getRec(state.activeCat, date); if(!rec.skin) rec.skin=[];
+  const e={time, ts:Date.now()};
+  if(s.itch!=null) e.itch=s.itch; if(s.groom) e.groom=true;
+  if(s.hair.length) e.hair=s.hair.slice(); if(s.skin.length) e.skin=s.skin.slice(); if(s.ear.length) e.ear=s.ear.slice();
+  if(memo) e.memo=memo;
+  rec.skin.push(e); rec.skin.sort((a,b)=>String(a.time||'').localeCompare(String(b.time||'')));
+  saveS(date);
+  toast('피부·귀 기록됐어요', '#1D9E75');
+  _skinReset(); _skinPaint(); const mm=document.getElementById('sheetSkinMemo'); if(mm) mm.value='';
+  renderSkinLog(); try{renderDailySummary();}catch(e){}
+}
+function renderSkinLog(){
+  const box=document.getElementById('skinLog'); if(!box) return;
+  const date=(document.getElementById('sheetSkinDate')||{}).value||today();
+  const arr=(((state.records||{})[state.activeCat]||{})[date]||{}).skin||[];
+  box.innerHTML = arr.length ? '<div style="font-size:12px;font-weight:700;color:var(--cm-ink-soft);margin-bottom:6px">이 날 기록</div>'
+    + arr.map((s,i)=>'<div style="display:flex;gap:8px;align-items:baseline;padding:6px 0;border-top:1px solid var(--cm-line);font-size:12px"><span style="color:var(--cm-faint);min-width:38px">'+_vEsc(s.time||'')+'</span><span style="flex:1;color:var(--cm-ink)">'+_vEsc(_skinLabel(s))+(s.memo&&_skinLabel(s)!==s.memo?' <span style="color:var(--cm-faint)">· '+_vEsc(s.memo)+'</span>':'')+'</span><button type="button" onclick="deleteSkin('+i+')" style="background:none;border:none;color:var(--cm-faint);cursor:pointer;font-size:13px">삭제</button></div>').join('')
+    : '';
+}
+function deleteSkin(i){
+  const date=(document.getElementById('sheetSkinDate')||{}).value||today();
+  const rec=getRec(state.activeCat, date); if(!rec.skin||!rec.skin[i]) return;
+  if(!confirm('이 피부·귀 기록을 지울까요?')) return;
+  rec.skin.splice(i,1); saveS(date); renderSkinLog(); try{renderDailySummary();}catch(e){}
+}
+
+/* ── 허브 (바텀시트) ── */
+var _frEdit = null;   // {fam, status, memo, isNew}
+function openFrHub(){ _frEdit=null; _renderFrHub(); _sheetOpen('frSheet', true); }
+function closeFrHub(){ _sheetOpen('frSheet', false); _frEdit=null; try{ renderDailySummary(); }catch(e){} }
+function _frRefresh(){
+  try{ _renderFrTile(state.activeCat, heroDateStr()); }catch(e){}
+  const s=document.getElementById('frSheet'); if(s && s.dataset.open==='1') _renderFrHub();
+  try{ const fl=document.getElementById('favFoodPickerDailyList'); if(fl && fl.offsetParent!==null) _renderFavFoodPickerList('favFoodPickerDailyList'); }catch(e){}
+}
+function _frFamilies(){
+  const D=window.CM_INGR||{}, seen=new Set(), out=[];
+  Object.keys(D).forEach(k=>{ const e=D[k]; if(e.u) return; if(!seen.has(e.f)){ seen.add(e.f); out.push({fam:e.f, animal:e.t!=='원료' || ['계란','우유'].indexOf(e.f)!==-1}); } });
+  return out.filter(x=>x.animal).concat(out.filter(x=>!x.animal));
+}
+function frEditStart(fam){
+  const it=frGet(state.activeCat).items.find(i=>i.fam===fam);
+  _frEdit = it ? {fam:it.fam, status:it.status, memo:it.memo||'', isNew:false} : {fam:'', status:'suspect', memo:'', isNew:true};
+  _renderFrHub();
+}
+function frEditSet(k,v){ if(!_frEdit) return; _frEdit[k]=v; if(k!=='memo') _renderFrHub(); }
+function frEditSave(){
+  const e=_frEdit; if(!e) return;
+  const memoEl=document.getElementById('frEditMemo'); if(memoEl) e.memo=memoEl.value.trim();
+  if(!e.fam){ toast('성분을 골라 주세요'); return; }
+  const cat=state.activeCat, v=frGet(cat);
+  const i=v.items.findIndex(x=>x.fam===e.fam);
+  const it={fam:e.fam, status:e.status, memo:e.memo||'', upd:new Date().toISOString()};
+  if(i===-1) v.items.push(it); else v.items[i]=it;
+  frSave(cat, v); _frEdit=null; _renderFrHub(); try{ renderTileGrid(cat); renderDailySummary(); }catch(err){}
+}
+function frEditDelete(){
+  const e=_frEdit; if(!e||e.isNew) return;
+  if(!confirm(e.fam+' 등록을 지울까요?')) return;
+  const cat=state.activeCat, v=frGet(cat); v.items=v.items.filter(x=>x.fam!==e.fam);
+  frSave(cat, v); _frEdit=null; _renderFrHub(); try{ renderTileGrid(cat); renderDailySummary(); }catch(err){}
+}
+/* 최근 N일 먹은 사료(혼합은 재료별) — 이름 기준 중복 제거, 최근순 */
+function _frRecentFoods(cat, days){
+  const recs=(state.records||{})[cat]||{}, di=_mrDayIdx(today()), by={};
+  for(let i=di-days+1;i<=di;i++){
+    const d=_mrIdxDate(i);
+    if(!recs[d]) continue;
+    _frDayFoods(cat,d).forEach(f=>{ const k=f.name; if(!by[k]) by[k]={name:f.name, foodId:f.foodId, n:0, last:d}; by[k].n++; by[k].last=d; if(f.foodId!=null) by[k].foodId=f.foodId; });
+  }
+  return Object.values(by).sort((a,b)=>b.last.localeCompare(a.last)||b.n-a.n);
+}
+function _renderFrHub(){
+  const head=document.getElementById('frSheetHead'), body=document.getElementById('frSheetBody'); if(!head||!body) return;
+  const cat=state.activeCat;
+  const xSvg='<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+  head.innerHTML='<div class="tx"><b>식이 반응 노트</b><span>'+_vEsc(cat)+' · 먹은 것과 증상 기록을 이어서 봐요</span></div><button class="sheet__close" onclick="closeFrHub()" type="button" aria-label="닫기">'+xSvg+'</button>';
+  const sec=t=>'<div style="font-size:13px;font-weight:800;color:var(--cm-ink);margin:2px 0 7px">'+t+'</div>';
+  const s7=_frWeek(cat, today());
+  let h='<div style="background:var(--cm-green-tint);border:1px solid var(--cm-green-edge);border-radius:14px;padding:11px 13px;color:var(--cm-green-700)">'
+    + '<div style="font-size:12.5px;font-weight:800">최근 7일</div>'
+    + '<div style="font-size:12px;margin-top:3px;line-height:1.6">구토 '+s7.vomit+'회'+(s7.hair?' (헤어볼 '+s7.hair+'회)':'')+' · '+(s7.scoreN?'변 점수 평균 '+s7.scoreAvg+' ('+s7.scoreN+'회)':'변 점수 기록 없음')+' · 피부·귀 기록 '+s7.skinDays+'일</div></div>';
+  // 등록한 성분
+  const items=frGet(cat).items;
+  const order={confirmed:0,suspect:1,never:2,ok:3};
+  h+='<div>'+sec('등록한 성분')
+    + '<div style="display:flex;flex-wrap:wrap;gap:6px">'
+    + items.slice().sort((a,b)=>order[a.status]-order[b.status]).map(i=>{ const s=FR_STATUS[i.status]||FR_STATUS.suspect;
+        return '<button type="button" onclick="frEditStart(\''+_vEsc(i.fam).replace(/'/g,'&#39;')+'\')" style="padding:6px 11px;border-radius:999px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;background:'+s.bg+';border:1px solid '+s.bd+';color:'+s.fg+'">'+_vEsc(i.fam)+' · '+s.t+'</button>'; }).join('')
+    + '<button type="button" onclick="frEditStart(null)" style="padding:6px 11px;border-radius:999px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;background:none;border:1px dashed var(--cm-green-edge);color:var(--cm-green-700)">+ 추가</button></div>'
+    + (items.length?'':'<div style="font-size:11.5px;color:var(--cm-faint);margin-top:6px;line-height:1.6">병원에서 확인했거나 의심되는 성분, 먹어도 괜찮았던 성분, 아직 먹어본 적 없는 성분을 등록해 두면 먹은 것과 이어서 볼 수 있어요.</div>');
+  if(_frEdit){
+    const fams=_frFamilies(), e=_frEdit;
+    h+='<div style="margin-top:10px;padding:11px;border:1px solid var(--cm-line);border-radius:13px;background:var(--cm-surface)">'
+      + '<div style="font-size:12px;font-weight:700;color:var(--cm-ink-soft);margin-bottom:6px">성분</div>'
+      + (e.isNew ? '<select onchange="frEditSet(\'fam\',this.value)" style="width:100%;padding:9px 10px;border:1px solid var(--cm-line);border-radius:10px;font-size:13px;background:var(--cm-surface);color:var(--cm-ink);font-family:inherit"><option value="">고르기</option>'
+          + fams.filter(f=>!items.some(i=>i.fam===f.fam)).map(f=>'<option value="'+_vEsc(f.fam)+'"'+(f.fam===e.fam?' selected':'')+'>'+_vEsc(f.fam)+'</option>').join('')+'</select>'
+          : '<div style="font-size:14px;font-weight:800;color:var(--cm-ink)">'+_vEsc(e.fam)+'</div>')
+      + '<div style="font-size:11px;color:var(--cm-faint);margin-top:4px">같은 동물에서 나온 고기·내장·기름·육수 등을 함께 확인해요</div>'
+      + '<div style="font-size:12px;font-weight:700;color:var(--cm-ink-soft);margin:10px 0 6px">상태</div>'
+      + '<div class="f-seg" style="flex-wrap:wrap">'+Object.keys(FR_STATUS).map(k=>'<button type="button" data-on="'+(e.status===k?'1':'0')+'" onclick="frEditSet(\'status\',\''+k+'\')" style="padding:8px 4px;font-size:12px;min-width:44%">'+FR_STATUS[k].t+'</button>').join('')+'</div>'
+      + '<input type="text" id="frEditMemo" maxlength="120" placeholder="메모 (예: 식이 시험 때 확인)" value="'+_vEsc(e.memo||'')+'" style="width:100%;box-sizing:border-box;margin-top:9px;padding:9px 11px;border:1px solid var(--cm-line);border-radius:10px;font-size:12.5px;background:var(--cm-surface);color:var(--cm-ink);font-family:inherit">'
+      + '<div style="display:flex;gap:6px;margin-top:9px">'
+      + '<button type="button" onclick="frEditSave()" style="flex:1;padding:10px 0;border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;border:none;background:var(--cm-green-700);color:#fff">저장</button>'
+      + (e.isNew?'':'<button type="button" onclick="frEditDelete()" style="padding:10px 14px;border-radius:11px;font-size:12.5px;cursor:pointer;font-family:inherit;background:none;border:1px solid var(--cm-line);color:var(--cm-faint)">지우기</button>')
+      + '<button type="button" onclick="_frEdit=null;_renderFrHub()" style="padding:10px 14px;border-radius:11px;font-size:12.5px;cursor:pointer;font-family:inherit;background:none;border:1px solid var(--cm-line);color:var(--cm-faint)">취소</button>'
+      + '</div></div>';
+  }
+  h+='</div>';
+  // 지금 먹고 있는 것 (최근 14일)
+  const recent=_frRecentFoods(cat, 14);
+  h+='<div>'+sec('최근 14일 먹은 것')
+    + (recent.length ? recent.map(f=>{
+        const ing=_frFoodIngr(cat,f.name,f.foodId), m=_frMatch(cat,ing);
+        const noInfo = ing.level==='none' || ing.level==='partial';
+        return '<div style="padding:9px 11px;border:1px solid var(--cm-line);border-radius:12px;background:var(--cm-surface);margin-bottom:6px">'
+          + '<div style="font-size:12.5px;color:var(--cm-ink);font-weight:600">'+_vEsc(f.name)+' <span style="color:var(--cm-faint);font-weight:500;font-size:11px">'+f.n+'회 · 마지막 '+_vEsc(f.last.slice(5))+'</span></div>'
+          + (m ? '<div>'+_frBadgeHtml(m)+'</div>' : '<div style="font-size:11px;color:var(--cm-faint);margin-top:2px">'+(ing.level==='full'?'원재료 확인됨':ing.level==='partial'?'원재료 일부만 있어요':ing.level==='loading'?'원재료 확인 중':'원재료 정보 없음')+'</div>')
+          + (noInfo ? '<div style="font-size:11px;color:var(--cm-faint);margin-top:4px;line-height:1.5">사료 탭에서 원재료 사진을 분석하면 확인할 수 있어요</div>' : '')
+          + '</div>'; }).join('')
+      : '<div style="font-size:12px;color:var(--cm-faint)">최근 14일 식사 기록이 없어요</div>')
+    + '</div>';
+  // 먹은 사료의 동물성 원료 계열 겹침 (최근 30일)
+  const r30=_frRecentFoods(cat, 30); let known=0; const famN={};
+  r30.forEach(f=>{
+    const ing=_frFoodIngr(cat,f.name,f.foodId); if(!ing.list) return; known++;
+    const fams=new Set();
+    ing.list.forEach(raw=>{ const inf=cmIngrInfo(raw); if(inf.fam && (inf.form!=='원료' || ['계란','우유'].indexOf(inf.fam)!==-1)) fams.add(inf.fam+(inf.unspec?' (특정 안 됨)':'')); });
+    fams.forEach(x=>famN[x]=(famN[x]||0)+1);
+  });
+  const famRows=Object.keys(famN).sort((a,b)=>famN[b]-famN[a]).slice(0,10);
+  h+='<div>'+sec('먹은 사료의 동물성 원료 <span style="font-weight:500;font-size:11px;color:var(--cm-faint)">최근 30일</span>')
+    + (famRows.length ? famRows.map(f=>{ const reg=items.find(i=>i.fam===f), pct=Math.round(famN[f]/known*100);
+        return '<div style="margin-bottom:7px"><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--cm-ink)"><span>'+_vEsc(f)+(reg?' <span style="font-size:10.5px;color:'+FR_STATUS[reg.status].fg+'">· '+FR_STATUS[reg.status].t+'</span>':'')+'</span><span style="color:var(--cm-ink-soft)">'+famN[f]+'/'+known+'종</span></div>'
+          + '<div style="height:6px;border-radius:3px;background:var(--cm-surface-2);margin-top:3px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:var(--cm-green-500)"></div></div></div>'; }).join('')
+        + '<div style="font-size:11px;color:var(--cm-faint);line-height:1.6">원재료를 아는 사료 '+known+'종 중 그 원료가 든 사료 수예요.'+(r30.length>known?' 원재료를 모르는 '+(r30.length-known)+'종은 빠져 있어요.':'')+'</div>'
+      : '<div style="font-size:12px;color:var(--cm-faint)">원재료를 아는 사료 기록이 아직 없어요</div>')
+    + '</div>';
+  h+='<div>'+sec('함께 나타난 횟수')
+    + '<div style="border:1px dashed var(--cm-line);border-radius:12px;padding:10px 12px;font-size:11.5px;color:var(--cm-faint);line-height:1.6">기록이 14일 이상 쌓이면 성분별로 구토·무른 변·피부 기록이 함께 나타난 횟수를 보여줄 예정이에요.</div></div>';
+  h+='<div style="font-size:10.5px;color:var(--cm-faint);line-height:1.65;padding-bottom:8px">보호자가 남긴 기록을 정리해 보여줘요. 원인 확인과 식단 변경은 수의사와 상담해 주세요.</div>';
+  body.innerHTML=h;
+}
+
 async function loadKcalGoals(){
   if(!sbClient || !currentUser || !state.cats.length) return;
   try{
@@ -18782,7 +19167,7 @@ async function exportAllDataJSON(){
       records:state, bloodTests:btData, careEvents:careEvents, perCatKeys:{} };
     for(let i=0;i<localStorage.length;i++){
       const k=localStorage.key(i); if(!k) continue;
-      if(/^(fd_v2_|cgmData_v1_|tubeRecipes_v1_|favFoods_v1_|manualFoods_v1_|routineItems_v1_|routineVersions_v1_|lastInputs_v1_|nextVisit_v1_|vetQuestions_v1_|kcalGoal_v1_)/.test(k)){
+      if(/^(fd_v2_|cgmData_v1_|tubeRecipes_v1_|favFoods_v1_|manualFoods_v1_|routineItems_v1_|routineVersions_v1_|lastInputs_v1_|nextVisit_v1_|vetQuestions_v1_|kcalGoal_v1_|foodReact_v1_)/.test(k)){
         try{ dump.perCatKeys[k]=JSON.parse(localStorage.getItem(k)); }catch(e){ dump.perCatKeys[k]=localStorage.getItem(k); }
       }
     }
@@ -18947,6 +19332,7 @@ async function syncFromDB() {
       _tw('vet_questions',  loadVetQuestions().catch(e => console.warn('vetQuestions 로드 오류:', e))),
       _tw('last_inputs',    loadLastInputs().catch(e => console.warn('lastInputs 로드 오류:', e))),
       _tw('kcal_goal',      loadKcalGoals().catch(e => console.warn('kcalGoal 로드 오류:', e))),
+      _tw('food_react',     loadFoodReacts().catch(e => console.warn('식이 반응 노트 로드 오류:', e))),
     ]);
     console.log(`[Perf] Promise.all 전체: ${(performance.now()-_parallelT0).toFixed(0)}ms`);
 
@@ -19378,14 +19764,14 @@ initSupabase();
 // ── Tile Config ──
 var _tileEditMode = false;
 var _tileDragSrc = null;
-var ALL_TILE_KEYS = ['water','excreta','vomit','med','breath','weight','meal','diabetes','vet'];   // v0.9.4: glucose·insulin → diabetes 통합
+var ALL_TILE_KEYS = ['water','excreta','vomit','med','breath','weight','meal','diabetes','foodreact','vet'];   // v0.9.4: glucose·insulin → diabetes 통합
 
-function saveTileConfig(cat, order, hidden, dmUser) {
+function saveTileConfig(cat, order, hidden, wideUser) {
   var c = cat || state.activeCat;
   var key = 'tileConfig_v1_' + c;
   var ts = Date.now();
   var val = {order: order, hidden: hidden};
-  if(dmUser === true || dmUser === false) val.dmUser = dmUser;
+  Object.keys(wideUser || {}).forEach(function(f){ var v = wideUser[f]; if(v === true || v === false) val[f] = v; });
   try {
     localStorage.setItem(key, JSON.stringify(val));
     localStorage.setItem(key + '_ts', ts.toString());
@@ -19427,7 +19813,7 @@ function loadTileConfig(cat) {
     if(raw) return _tileCfgMigrateDM(JSON.parse(raw));
   } catch(e) {}
   // 당뇨 타일(2칸 폭)은 맨 위 — 당뇨 아이에겐 가장 자주 쓰는 타일, 아래 작은 타일 짝수 유지 (v0.9.4)
-  var order = ['diabetes','water','excreta','vomit','med','breath','weight','meal'];
+  var order = ['diabetes','foodreact','water','excreta','vomit','med','breath','weight','meal'];
   order.push('vet'); // 병원 타일 (v0.7.40) — 기본 세트 마지막
   return {order: order, hidden: []};
 }
@@ -19451,10 +19837,15 @@ function _tileCfgMigrateDM(cfg){
 }
 /* 실제 숨김 목록 — 당뇨 타일은 보호자가 직접 켜고 끈 적 있으면(dmUser) 그대로,
    아니면 _catHasDM 기준 (당뇨가 아닌 아이에겐 안 보임) */
+/* 넓은(질환) 타일 — 보호자가 편집 모드에서 직접 켜고 끈 값이 우선, 없으면 표시 기준 함수 (v0.9.8: 식이 반응 노트 추가) */
+var WIDE_TILES = {diabetes:{user:'dmUser', has:function(c){ return _catHasDM(c); }}, foodreact:{user:'frUser', has:function(c){ return _catHasFR(c); }}};
 function _tileEffectiveHidden(cfg, cat){
-  var hidden = (cfg.hidden || []).filter(function(k){ return k !== 'diabetes'; });
-  var vis = (cfg.dmUser === true || cfg.dmUser === false) ? cfg.dmUser : _catHasDM(cat);
-  if(!vis) hidden.push('diabetes');
+  var hidden = (cfg.hidden || []).filter(function(k){ return !WIDE_TILES[k]; });
+  Object.keys(WIDE_TILES).forEach(function(k){
+    var u = cfg[WIDE_TILES[k].user];
+    var vis = (u === true || u === false) ? u : WIDE_TILES[k].has(cat);
+    if(!vis) hidden.push(k);
+  });
   return hidden;
 }
 /* 당뇨 화면 표시 기준 (v0.9.4) — 프로필 질환에 당뇨(DM)가 있거나 혈당·인슐린·CGM 기록이 한 번이라도 있으면.
@@ -19492,7 +19883,7 @@ function renderTileGrid(cat) {
   });
 }
 
-var _tileDmVisBefore = true;
+var _tileWideVisBefore = {};
 function toggleTileEditMode() {
   _tileEditMode = !_tileEditMode;
   var btn = document.getElementById('tileEditBtn');
@@ -19507,7 +19898,7 @@ function toggleTileEditMode() {
     if(_subEl) _subEl.textContent = '항목을 끄거나 추가해 고양이에 맞게 구성하세요';
     var cfg = loadTileConfig(c);
     var hidden = _tileEffectiveHidden(cfg, c);
-    _tileDmVisBefore = hidden.indexOf('diabetes') === -1;
+    _tileWideVisBefore = {}; Object.keys(WIDE_TILES).forEach(function(k){ _tileWideVisBefore[k] = hidden.indexOf(k) === -1; });
     // reorder all tiles for editing
     var editOrder = cfg.order.slice();
     ALL_TILE_KEYS.forEach(function(id) { if(editOrder.indexOf(id) === -1) editOrder.push(id); });
@@ -19611,9 +20002,13 @@ function toggleTileEditMode() {
       if(t._phMove) { t.removeEventListener('pointermove', t._phMove); delete t._phMove; }
       if(t._phEnd) { t.removeEventListener('pointerup', t._phEnd); t.removeEventListener('pointercancel', t._phEnd); delete t._phEnd; }
     });
-    var _dmCfg = loadTileConfig(c), _dmVisAfter = newHidden.indexOf('diabetes') === -1;
-    var _dmUser = (_dmVisAfter !== _tileDmVisBefore) ? _dmVisAfter : _dmCfg.dmUser;
-    saveTileConfig(c, newOrder, newHidden, _dmUser);
+    // 넓은 타일은 켜고 끈 걸 바꿨을 때만 보호자 선택(dmUser·frUser)으로 기록
+    var _wCfg = loadTileConfig(c), _wideUser = {};
+    Object.keys(WIDE_TILES).forEach(function(k){
+      var after = newHidden.indexOf(k) === -1, f = WIDE_TILES[k].user;
+      _wideUser[f] = (after !== _tileWideVisBefore[k]) ? after : _wCfg[f];
+    });
+    saveTileConfig(c, newOrder, newHidden, _wideUser);
     renderTileGrid(c);
   }
 }
@@ -19722,6 +20117,7 @@ window.openDailySheet = function(type) {
     meal:    {title:'식사 · 칼로리', sub:'급여량 기록',       bodyId:'mealCard'},
     glucose: {title:'혈당 · 케톤',   sub:'측정값 입력',       bodyId:'bgCard'},
     insulin: {title:'인슐린 투여',   sub:'투여량 기록',       bodyId:'insCard'},
+    skin:    {title:'피부 · 귀',     sub:'보인 것만 눌러요',   bodyId:null},
   };
   var cfg = MAP[type]; if(!cfg) return;
   var sheetBody = document.getElementById('dailySheetBody');
@@ -19740,6 +20136,13 @@ window.openDailySheet = function(type) {
     if(sheetFoot) sheetFoot.innerHTML = '';
     var ed = document.getElementById('sheetExcretaDate'); if(ed) ed.value = today();
     var et = document.getElementById('sheetExcretaTime'); if(et) et.value = nowTime();
+  } else if(type === 'skin') {
+    _skinReset();
+    sheetBody.innerHTML = _dsSkinBodyHtml();
+    if(sheetFoot) sheetFoot.innerHTML = '<button class="cm-btn cm-btn--block" onclick="saveSkin()" type="button">기록하기</button>';
+    var sd = document.getElementById('sheetSkinDate'); if(sd) { sd.value = today(); sd.onchange = renderSkinLog; }
+    var st = document.getElementById('sheetSkinTime'); if(st) st.value = nowTime();
+    _skinPaint(); renderSkinLog();
   } else if(type === 'vomit') {
     sheetBody.innerHTML = _dsVomitBodyHtml();
     if(sheetFoot) sheetFoot.innerHTML = '';
@@ -20150,6 +20553,7 @@ async function uploadFoodDataToDB(cat) {
     <div class="routine-tag" data-val="심비대증(HCM)">심비대증(HCM)</div>
     <div class="routine-tag" data-val="췌장염">췌장염</div>
     <div class="routine-tag" data-val="IBD">IBD</div>
+    <div class="routine-tag" data-val="식이 알러지">식이 알러지</div>
     <div class="routine-tag" data-val="방광염">방광염</div>
   </div>
   <div class="ig" style="margin-bottom:1rem"><label>메모</label><input type="text" id="cpMemo" placeholder="특이사항, 알레르기 등"></div>

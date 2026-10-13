@@ -13,6 +13,7 @@ const WWW = join(ROOT, 'www');
 const ASSETS = [
   'index.html',
   'cm_fooddb.js',
+  'cm_ingrnorm.js',
   'cm.css',
   'manifest.json',
   'icon_180.png',
