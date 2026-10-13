@@ -640,3 +640,17 @@ input[type="date"]{ border-radius:13px !important; -webkit-border-radius:13px !i
   font-weight: 700 !important;
   box-shadow: 0 6px 14px rgba(35,91,67,.24) !important;
 }
+
+/* 당뇨 타일 (v0.9.4) — 2칸 폭, 줄마다 버튼. 편집 모드에선 줄 클릭 막고 타일 단위로만 */
+.tile--dm{ grid-column:1/-1; gap:2px; }
+.tgrid{ grid-auto-flow:row dense; }   /* 2칸 타일 앞 홀수 칸이 비지 않게 뒤 타일로 채움 */
+.tile--dm:active{ transform:none; }
+.dmrow{ display:flex; align-items:center; gap:8px; width:100%; background:none; border:none; border-top:1px solid var(--cm-line);
+  padding:9px 2px 8px; text-align:left; font-family:inherit; color:var(--cm-ink); cursor:pointer; }
+.dmrow:first-child{ border-top:none; }
+.dmrow:active{ opacity:.6; }
+.dmrow__main{ flex:1; min-width:0; }
+.dmrow__t{ font-size:13.5px; font-weight:700; }
+.dmrow__s{ font-size:11.5px; color:var(--cm-faint); margin-top:2px; }
+.dmrow__bar{ display:flex; height:6px; border-radius:3px; overflow:hidden; margin:5px 0 3px; background:var(--cm-surface-2); }
+.tile--edit .dmrow{ pointer-events:none; }

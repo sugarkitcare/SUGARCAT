@@ -664,7 +664,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.9.3</span>
+      <span class="cm-beta">v0.9.4</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -706,7 +706,6 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <button class="cm-tab" data-tab="bloodtest" onclick="showTab('bloodtest',this)">혈검</button>
   <button class="cm-tab" data-tab="food" onclick="showTab('food',this)">사료</button>
   <button class="cm-tab" data-tab="ai" onclick="showTab('ai',this)">AI챗</button>
-  <button class="cm-tab" data-tab="cgm" onclick="showTab('cgm',this)">CGM</button>
 </div>
 
 <!-- ══ 오늘 기록 ══ -->
@@ -877,26 +876,16 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
       </div>
       <div class="tile__status" id="tileMealStatus" data-tone="muted">급여 전</div>
     </button>
-    <button class="tile" data-tile="glucose" onclick="openDailySheet('glucose')">
+    <!-- 당뇨 타일 (v0.9.4) — 혈당·케톤 / 인슐린 / CGM 통합. 넓은 타일, 줄마다 각자 기록 창으로 -->
+    <div class="tile tile--dm" data-tile="diabetes" role="group" aria-label="당뇨">
       <div class="tile__top">
         <div class="tile__label">
           <div class="cm-ic cm-ic--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 3h7M10 3v5l-4.2 9A2.4 2.4 0 0 0 8 20.5h8a2.4 2.4 0 0 0 2.2-3.5L14 8V3"/></svg></div>
-          <div class="tile__title">혈당·케톤</div>
+          <div class="tile__title">당뇨</div>
         </div>
-        <svg class="tile__chev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 5l7 7-7 7"/></svg>
       </div>
-      <div class="tile__status" id="tileGlucoseStatus" data-tone="muted">기록 전</div>
-    </button>
-    <button class="tile" data-tile="insulin" onclick="openDailySheet('insulin')">
-      <div class="tile__top">
-        <div class="tile__label">
-          <div class="cm-ic cm-ic--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21l4-4M14.5 4.5 19.5 9.5M7 17 17 7M16 6 18.2 8.2M9.4 13.6 11.4 15.6M12.4 10.6 14.4 12.6"/></svg></div>
-          <div class="tile__title">인슐린 투여</div>
-        </div>
-        <svg class="tile__chev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 5l7 7-7 7"/></svg>
-      </div>
-      <div class="tile__status" id="tileInsulinStatus" data-tone="muted">투여 전</div>
-    </button>
+      <div id="dmTileRows"></div>
+    </div>
     <button class="tile" data-tile="vet" onclick="openVetManage()">
       <div class="tile__top">
         <div class="tile__label">
@@ -1264,174 +1253,19 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
 
 </div><!-- /tab-daily -->
 <!-- ══ 연속혈당(CGM) ══ -->
-<div class="sec" id="tab-cgm" style="display:none">
-
-  <!-- 업로드 카드 -->
-  <div class="card">
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:.75rem">
-      <div class="cm-ic cm-ic--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
-      <span style="font-size:14px;font-weight:700;color:var(--cm-ink)">CGM 스크린샷 AI 혈당 추출</span>
-    </div>
-
-    <!-- 앱 선택 -->
-    <div style="font-size:11px;color:var(--text2);margin-bottom:.6rem">어떤 앱 화면을 업로드할 건가요?</div>
-    <div class="app-selector" id="appSelector">
-      <label class="app-opt selected" id="optCaresens">
-        <div class="app-opt-icon" style="background:var(--cm-green-tint);color:var(--cm-green-700)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
-        <div>
-          <div class="app-opt-text">케어센스 에어</div>
-          <div class="app-opt-sub">CareSens Air / 센스365</div>
-        </div>
-        <input type="radio" name="cgmApp" value="caresens" checked style="accent-color:var(--cm-green-700);margin-left:auto">
-      </label>
-      <label class="app-opt" id="optPasta">
-        <div class="app-opt-icon" style="background:var(--cm-green-tint);color:var(--cm-green-700)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
-        <div>
-          <div class="app-opt-text">파스타 (PASTA)</div>
-          <div class="app-opt-sub">카카오헬스케어</div>
-        </div>
-        <input type="radio" name="cgmApp" value="pasta" style="accent-color:var(--cm-green-700);margin-left:auto">
-      </label>
-      <label class="app-opt" id="optLibre">
-        <div class="app-opt-icon" style="background:var(--cm-green-tint);color:var(--cm-green-700)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
-        <div>
-          <div class="app-opt-text">리브레뷰 (LibreView)</div>
-          <div class="app-opt-sub">Abbott FreeStyle Libre</div>
-        </div>
-        <input type="radio" name="cgmApp" value="libre" style="accent-color:var(--cm-green-700);margin-left:auto">
-      </label>
-    </div>
-
-    <div id="cgmAppHint" style="font-size:11px;color:var(--text2);margin-bottom:.75rem;line-height:1.6;padding:.6rem .75rem;background:var(--bg2);border-radius:8px">
-      <b>케어센스 에어</b> — 하루치 혈당 그래프 화면을 캡처해주세요. 센스365 앱도 가능해요.<br>5분 간격 측정, 변동 화살표, 목표범위 밴드를 자동으로 읽어요.
-    </div>
-    <div class="drop-zone" id="cgmDrop">
-      <div class="drop-title" id="cgmDropTitle">케어센스 에어 스크린샷 업로드</div>
-      <div class="drop-sub">하루치 혈당 그래프 화면 캡처 · JPG/PNG</div>
-      <label class="drop-lbl" for="cgmFile">스크린샷 선택</label>
-      <input type="file" id="cgmFile" accept="image/*" style="display:none">
-    </div>
-    <img id="cgmPreview" class="img-prev" style="display:none">
-    <div class="row2" style="margin-bottom:.75rem">
-      <div class="ig"><label>측정 날짜</label><input type="date" id="cgmDate"></div>
-      <div class="ig"><label>고양이</label><input type="text" id="cgmCat" placeholder="케이" readonly style="background:var(--bg2);cursor:default"></div>
-    </div>
-    <div id="cgmStatus" style="display:none"></div>
-  </div>
-
-  <!-- CSV 파일 업로드 (v0.7.53) — AI 호출 없는 순수 파싱, 스크린샷 방식과 병행 -->
-  <div class="card" id="cgmCsvCard">
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:.5rem">
-      <div class="cm-ic cm-ic--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg></div>
-      <span style="font-size:14px;font-weight:700;color:var(--cm-ink)">CGM 파일로 불러오기</span>
-      <span style="font-size:9px;padding:2px 7px;border-radius:6px;background:var(--cm-green-tint);color:var(--cm-green-700);font-weight:700">신규</span>
-    </div>
-    <div style="font-size:11.5px;color:var(--text2);line-height:1.6;margin-bottom:.6rem">CGM 앱에서 CSV를 내보낼 수 있다면 한 번에 여러 날치를 불러올 수 있어요.<br>현재 지원: <b>센스365 (CareSens Air)</b> · 최대 5MB</div>
-    <div class="drop-zone" id="cgmCsvDrop">
-      <div class="drop-title">CGM CSV 파일 업로드</div>
-      <div class="drop-sub">Sens365 앱 → 데이터 내보내기 → CSV</div>
-      <label class="drop-lbl" for="cgmCsvFile">CSV 파일 선택</label>
-      <input type="file" id="cgmCsvFile" accept=".csv,text/csv" style="display:none">
-    </div>
-    <div id="cgmCsvStatus" style="display:none"></div>
-    <div id="cgmCsvPreview" style="display:none"></div>
-  </div>
-
-  <!-- 혈당 일일 로그 내보내기 (v0.7.92) — 병원 제출용 PDF/이미지 -->
-  <div class="card" id="gdlCard">
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:.5rem">
-      <div class="cm-ic cm-ic--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="8 13 10.5 15.5 16 10"/></svg></div>
-      <span style="font-size:14px;font-weight:700;color:var(--cm-ink)">혈당 일일 로그 내보내기</span>
-      <span style="font-size:9px;padding:2px 7px;border-radius:6px;background:var(--cm-green-tint);color:var(--cm-green-700);font-weight:700">신규</span>
-    </div>
-    <div style="font-size:11.5px;color:var(--text2);line-height:1.6;margin-bottom:.6rem">날짜별 24시간 그래프와 시간대별 최고·최저를 정리한 병원 제출용 문서를 만들어요.<br>CGM 기록과 수동 혈당 기록이 함께 담겨요.</div>
-    <div id="gdlPeriodBtns" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.6rem">
-      <button type="button" data-p="7" onclick="gdlSetPeriod('7')" style="padding:8px 14px;border-radius:11px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;border:1px solid var(--cm-line);background:var(--cm-surface);color:var(--cm-ink-soft)">7일</button>
-      <button type="button" data-p="14" onclick="gdlSetPeriod('14')" style="padding:8px 14px;border-radius:11px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;border:1px solid var(--cm-green-700);background:var(--cm-green-tint);color:var(--cm-green-700)">14일</button>
-      <button type="button" data-p="30" onclick="gdlSetPeriod('30')" style="padding:8px 14px;border-radius:11px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;border:1px solid var(--cm-line);background:var(--cm-surface);color:var(--cm-ink-soft)">30일</button>
-      <button type="button" data-p="custom" onclick="gdlSetPeriod('custom')" style="padding:8px 14px;border-radius:11px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;border:1px solid var(--cm-line);background:var(--cm-surface);color:var(--cm-ink-soft)">직접 지정</button>
-    </div>
-    <div id="gdlCustom" style="display:none;gap:8px;margin-bottom:.6rem">
-      <input type="date" id="gdlFrom" style="flex:1;padding:9px 10px;border:1px solid var(--cm-line);border-radius:9px;font-size:13px;background:var(--cm-bg);color:var(--cm-ink);font-family:inherit;-webkit-appearance:none;appearance:none;min-width:0">
-      <input type="date" id="gdlTo" style="flex:1;padding:9px 10px;border:1px solid var(--cm-line);border-radius:9px;font-size:13px;background:var(--cm-bg);color:var(--cm-ink);font-family:inherit;-webkit-appearance:none;appearance:none;min-width:0">
-    </div>
-    <div style="display:flex;gap:8px">
-      <button type="button" class="btn btn-teal" onclick="gdlExport('pdf')" style="flex:1">PDF 다운로드</button>
-      <button type="button" onclick="gdlExport('png')" style="flex:1;padding:10px;border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid var(--cm-line);background:var(--cm-surface);color:var(--cm-ink-soft)">이미지 저장 (7일 이하)</button>
-    </div>
-    <div id="gdlStatus" style="display:none"></div>
-  </div>
-
-  <!-- 추출 결과 -->
-  <div id="cgmResultCard" style="display:none">
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem">
-        <div class="card-title" style="margin:0">추출된 혈당 데이터</div>
-        <div style="display:flex;gap:6px">
-          <button class="btn btn-teal btn-sm" id="cgmSaveBtn">그래프에 저장</button>
-          <button class="btn btn-sm" id="cgmAiBtn" style="background:var(--purple);color:#fff">AI 요약</button>
-        </div>
-      </div>
-
-      <!-- 통계 요약 -->
-      <div class="cgm-stats" id="cgmStats"></div>
-
-      <!-- 위험 배너 -->
-      <div id="cgmBanner" style="display:none"></div>
-
-      <!-- 하루 혈당 미니 그래프 -->
-      <div class="chart-wrap" style="height:170px;margin-bottom:.75rem">
-        <canvas id="cgmDayChart"></canvas>
-      </div>
-
-      <!-- 수치 테이블 (접기/펼치기) -->
-      <details style="margin-bottom:.5rem">
-        <summary style="font-size:12px;color:var(--text2);cursor:pointer;padding:.3rem 0">측정값 목록 보기</summary>
-        <div style="overflow-x:auto;margin-top:.5rem">
-          <table class="cgm-table"><thead><tr><th>시각</th><th>혈당</th><th>변화</th><th>판정</th></tr></thead>
-          <tbody id="cgmTableBody"></tbody></table>
-          <div style="font-size:10px;color:var(--text3);margin-top:4px">* 판정 구간(60·80·200·300 mg/dL)은 앱이 설정한 참고 기준이며 진단이 아니에요.</div>
-        </div>
-      </details>
-    </div>
-
-    <!-- AI 요약 결과 -->
-    <div id="cgmAiResult" style="display:none">
-      <div class="card">
-        <div class="card-title">🤖 AI 혈당 패턴 요약</div>
-        <div style="font-size:12.5px;line-height:1.5;padding:9px 11px;margin-bottom:.6rem;border-radius:9px;background:rgba(186,117,23,0.1);color:var(--cm-ink-soft)">⚠️ 본 앱의 AI 요약은 참고용이며 수의사 진료를 대체하지 않습니다.</div>
-        <div id="cgmAiBody" class="ai-analysis-body" style="font-size:13px;line-height:1.8;color:var(--text)"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- 저장된 CGM 이력 그래프 -->
-  <div id="cgmHistory" style="display:none">
-    <div class="sep"></div>
-    <div class="sec-lbl">
-      <span>저장된 CGM 기록</span>
-      <button class="clr-btn" id="cgmClear">전체 삭제</button>
-    </div>
-    <!-- 날짜별 평균 추이 -->
-    <div class="card">
-      <div class="card-title">일별 평균 혈당 추이</div>
-      <div class="chart-wrap" style="height:160px">
-        <canvas id="cgmTrendChart"></canvas>
-      </div>
-    </div>
-    <div id="cgmHistList"></div>
-  </div>
-
-</div>
-
 <!-- ══ 그래프 ══ -->
 <div class="sec" id="tab-graph" style="display:none">
   <!-- 세그먼트: 생체지표 / 혈액검사 -->
   <div class="f-seg" style="margin-bottom:.6rem">
+    <button id="gSegDM"  type="button" data-on="0" onclick="setGSeg('dm')" style="padding:7px 0;font-size:13px;display:none">당뇨</button>
     <button id="gSegBio" type="button" data-on="1" onclick="setGSeg('bio')" style="padding:7px 0;font-size:13px">생체 지표</button>
     <button id="gSegBT"  type="button" data-on="0" onclick="setGSeg('bt')" style="padding:7px 0;font-size:13px">혈액검사</button>
   </div>
   <!-- 기간 필터 (pill 스타일) -->
+  <!-- 당뇨 구분 전용 (v0.9.4) — 혈당 일일 로그 내보내기 (CGM 탭에서 이동) -->
+  <div id="gDmBar" style="display:none;justify-content:flex-end;margin:-.2rem 0 .5rem">
+    <button type="button" onclick="openGdlSheet()" style="padding:5px 11px;border:1px solid var(--cm-line);border-radius:10px;background:var(--cm-surface-2);color:var(--cm-ink-soft);font-size:11.5px;cursor:pointer;font-family:inherit;font-weight:600">일일 로그 내보내기</button>
+  </div>
   <div style="display:flex;align-items:center;gap:8px;margin-bottom:.75rem" id="gPeriodBar">
     <div style="display:flex;flex:1;gap:2px;background:var(--cm-surface-2);border-radius:18px;padding:3px">
       <button id="gp7"   type="button" data-on="0" onclick="setGPeriod(7,this)"
@@ -1505,6 +1339,25 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   </div>
 
   <div id="gKetCard" data-graph-card="ket" style="display:none"><div id="ketChartWrap"></div></div>
+  <!-- CGM 이력 (v0.9.4, CGM 탭에서 이동) — 기록 없으면 renderCgmHistory가 내부를 숨김 -->
+  <div id="gCgmHistCard" data-graph-card="cgmhist">
+    <!-- 저장된 CGM 이력 그래프 -->
+    <div id="cgmHistory" style="display:none">
+      <div class="sep"></div>
+      <div class="sec-lbl">
+        <span>저장된 CGM 기록</span>
+        <button class="clr-btn" id="cgmClear">전체 삭제</button>
+      </div>
+      <!-- 날짜별 평균 추이 -->
+      <div class="card">
+        <div class="card-title">일별 평균 혈당 추이</div>
+        <div class="chart-wrap" style="height:160px">
+          <canvas id="cgmTrendChart"></canvas>
+        </div>
+      </div>
+      <div id="cgmHistList"></div>
+    </div>
+  </div>
   <div id="gWtCard" data-graph-card="wt"><div id="wtChartWrap"></div></div>
   <div id="gRrCard" data-graph-card="rr" style="display:none"><div id="rrChartWrap"></div></div>
   <div id="gWaterCard" data-graph-card="water" style="display:none"><div id="waterChartWrap"></div></div>
@@ -2080,6 +1933,171 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
 .cmfd-name-row{display:flex;gap:6px;align-items:stretch}
 .cmfd-confirm-btn{flex-shrink:0;padding:0 14px;background:#235B43;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit}
 </style>
+<!-- ══ CGM 불러오기 바텀시트 (v0.9.4 — CGM 탭을 당뇨 타일 진입으로 이동) ══ -->
+<div class="sheet-back" id="cgmSheetBack" data-open="0" onclick="closeCgmSheet()"></div>
+<div class="sheet" id="cgmSheet" data-open="0" style="max-height:94%">
+  <div class="sheet__handle"></div>
+  <div class="sheet__head"><div class="tx"><b>CGM 불러오기</b><span>스크린샷이나 CSV 파일로 가져와요</span></div><button class="sheet__close" onclick="closeCgmSheet()" type="button" aria-label="닫기"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+  <div class="sheet__body" id="cgmSheetBody" style="display:block">
+    <div class="f-seg" style="margin-bottom:.75rem">
+      <button id="cgmSegShot" type="button" data-on="1" onclick="setCgmSheetSeg('shot')" style="padding:8px 0;font-size:13px">스크린샷</button>
+      <button id="cgmSegCsv" type="button" data-on="0" onclick="setCgmSheetSeg('csv')" style="padding:8px 0;font-size:13px">CSV 파일</button>
+    </div>
+    <div id="cgmPaneShot">
+  <!-- 업로드 카드 -->
+  <div class="card">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:.75rem">
+      <div class="cm-ic cm-ic--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
+      <span style="font-size:14px;font-weight:700;color:var(--cm-ink)">CGM 스크린샷 AI 혈당 추출</span>
+    </div>
+
+    <!-- 앱 선택 -->
+    <div style="font-size:11px;color:var(--text2);margin-bottom:.6rem">어떤 앱 화면을 업로드할 건가요?</div>
+    <div class="app-selector" id="appSelector">
+      <label class="app-opt selected" id="optCaresens">
+        <div class="app-opt-icon" style="background:var(--cm-green-tint);color:var(--cm-green-700)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+        <div>
+          <div class="app-opt-text">케어센스 에어</div>
+          <div class="app-opt-sub">CareSens Air / 센스365</div>
+        </div>
+        <input type="radio" name="cgmApp" value="caresens" checked style="accent-color:var(--cm-green-700);margin-left:auto">
+      </label>
+      <label class="app-opt" id="optPasta">
+        <div class="app-opt-icon" style="background:var(--cm-green-tint);color:var(--cm-green-700)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+        <div>
+          <div class="app-opt-text">파스타 (PASTA)</div>
+          <div class="app-opt-sub">카카오헬스케어</div>
+        </div>
+        <input type="radio" name="cgmApp" value="pasta" style="accent-color:var(--cm-green-700);margin-left:auto">
+      </label>
+      <label class="app-opt" id="optLibre">
+        <div class="app-opt-icon" style="background:var(--cm-green-tint);color:var(--cm-green-700)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+        <div>
+          <div class="app-opt-text">리브레뷰 (LibreView)</div>
+          <div class="app-opt-sub">Abbott FreeStyle Libre</div>
+        </div>
+        <input type="radio" name="cgmApp" value="libre" style="accent-color:var(--cm-green-700);margin-left:auto">
+      </label>
+    </div>
+
+    <div id="cgmAppHint" style="font-size:11px;color:var(--text2);margin-bottom:.75rem;line-height:1.6;padding:.6rem .75rem;background:var(--bg2);border-radius:8px">
+      <b>케어센스 에어</b> — 하루치 혈당 그래프 화면을 캡처해주세요. 센스365 앱도 가능해요.<br>5분 간격 측정, 변동 화살표, 목표범위 밴드를 자동으로 읽어요.
+    </div>
+    <div class="drop-zone" id="cgmDrop">
+      <div class="drop-title" id="cgmDropTitle">케어센스 에어 스크린샷 업로드</div>
+      <div class="drop-sub">하루치 혈당 그래프 화면 캡처 · JPG/PNG</div>
+      <label class="drop-lbl" for="cgmFile">스크린샷 선택</label>
+      <input type="file" id="cgmFile" accept="image/*" style="display:none">
+    </div>
+    <img id="cgmPreview" class="img-prev" style="display:none">
+    <div class="row2" style="margin-bottom:.75rem">
+      <div class="ig"><label>측정 날짜</label><input type="date" id="cgmDate"></div>
+      <div class="ig"><label>고양이</label><input type="text" id="cgmCat" placeholder="케이" readonly style="background:var(--bg2);cursor:default"></div>
+    </div>
+    <div id="cgmStatus" style="display:none"></div>
+  </div>
+
+    </div>
+    <div id="cgmPaneCsv" style="display:none">
+  <!-- CSV 파일 업로드 (v0.7.53) — AI 호출 없는 순수 파싱, 스크린샷 방식과 병행 -->
+  <div class="card" id="cgmCsvCard">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:.5rem">
+      <div class="cm-ic cm-ic--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg></div>
+      <span style="font-size:14px;font-weight:700;color:var(--cm-ink)">CGM 파일로 불러오기</span>
+      <span style="font-size:9px;padding:2px 7px;border-radius:6px;background:var(--cm-green-tint);color:var(--cm-green-700);font-weight:700">신규</span>
+    </div>
+    <div style="font-size:11.5px;color:var(--text2);line-height:1.6;margin-bottom:.6rem">CGM 앱에서 CSV를 내보낼 수 있다면 한 번에 여러 날치를 불러올 수 있어요.<br>현재 지원: <b>센스365 (CareSens Air)</b> · 최대 5MB</div>
+    <div class="drop-zone" id="cgmCsvDrop">
+      <div class="drop-title">CGM CSV 파일 업로드</div>
+      <div class="drop-sub">Sens365 앱 → 데이터 내보내기 → CSV</div>
+      <label class="drop-lbl" for="cgmCsvFile">CSV 파일 선택</label>
+      <input type="file" id="cgmCsvFile" accept=".csv,text/csv" style="display:none">
+    </div>
+    <div id="cgmCsvStatus" style="display:none"></div>
+    <div id="cgmCsvPreview" style="display:none"></div>
+  </div>
+
+    </div>
+  <!-- 추출 결과 -->
+  <div id="cgmResultCard" style="display:none">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem">
+        <div class="card-title" style="margin:0">추출된 혈당 데이터</div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-teal btn-sm" id="cgmSaveBtn">그래프에 저장</button>
+          <button class="btn btn-sm" id="cgmAiBtn" style="background:var(--purple);color:#fff">AI 요약</button>
+        </div>
+      </div>
+
+      <!-- 통계 요약 -->
+      <div class="cgm-stats" id="cgmStats"></div>
+
+      <!-- 위험 배너 -->
+      <div id="cgmBanner" style="display:none"></div>
+
+      <!-- 하루 혈당 미니 그래프 -->
+      <div class="chart-wrap" style="height:170px;margin-bottom:.75rem">
+        <canvas id="cgmDayChart"></canvas>
+      </div>
+
+      <!-- 수치 테이블 (접기/펼치기) -->
+      <details style="margin-bottom:.5rem">
+        <summary style="font-size:12px;color:var(--text2);cursor:pointer;padding:.3rem 0">측정값 목록 보기</summary>
+        <div style="overflow-x:auto;margin-top:.5rem">
+          <table class="cgm-table"><thead><tr><th>시각</th><th>혈당</th><th>변화</th><th>판정</th></tr></thead>
+          <tbody id="cgmTableBody"></tbody></table>
+          <div style="font-size:10px;color:var(--text3);margin-top:4px">* 판정 구간(60·80·200·300 mg/dL)은 앱이 설정한 참고 기준이며 진단이 아니에요.</div>
+        </div>
+      </details>
+    </div>
+
+    <!-- AI 요약 결과 -->
+    <div id="cgmAiResult" style="display:none">
+      <div class="card">
+        <div class="card-title">🤖 AI 혈당 패턴 요약</div>
+        <div style="font-size:12.5px;line-height:1.5;padding:9px 11px;margin-bottom:.6rem;border-radius:9px;background:rgba(186,117,23,0.1);color:var(--cm-ink-soft)">⚠️ 본 앱의 AI 요약은 참고용이며 수의사 진료를 대체하지 않습니다.</div>
+        <div id="cgmAiBody" class="ai-analysis-body" style="font-size:13px;line-height:1.8;color:var(--text)"></div>
+      </div>
+    </div>
+  </div>
+
+  </div>
+</div>
+
+<!-- ══ 혈당 일일 로그 내보내기 바텀시트 (v0.9.4) ══ -->
+<div class="sheet-back" id="gdlSheetBack" data-open="0" onclick="closeGdlSheet()"></div>
+<div class="sheet" id="gdlSheet" data-open="0">
+  <div class="sheet__handle"></div>
+  <div class="sheet__head"><div class="tx"><b>혈당 일일 로그 내보내기</b><span>병원 제출용 PDF·이미지</span></div><button class="sheet__close" onclick="closeGdlSheet()" type="button" aria-label="닫기"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+  <div class="sheet__body" style="display:block">
+  <!-- 혈당 일일 로그 내보내기 (v0.7.92) — 병원 제출용 PDF/이미지 -->
+  <div class="card" id="gdlCard">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:.5rem">
+      <div class="cm-ic cm-ic--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="8 13 10.5 15.5 16 10"/></svg></div>
+      <span style="font-size:14px;font-weight:700;color:var(--cm-ink)">혈당 일일 로그 내보내기</span>
+      <span style="font-size:9px;padding:2px 7px;border-radius:6px;background:var(--cm-green-tint);color:var(--cm-green-700);font-weight:700">신규</span>
+    </div>
+    <div style="font-size:11.5px;color:var(--text2);line-height:1.6;margin-bottom:.6rem">날짜별 24시간 그래프와 시간대별 최고·최저를 정리한 병원 제출용 문서를 만들어요.<br>CGM 기록과 수동 혈당 기록이 함께 담겨요.</div>
+    <div id="gdlPeriodBtns" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.6rem">
+      <button type="button" data-p="7" onclick="gdlSetPeriod('7')" style="padding:8px 14px;border-radius:11px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;border:1px solid var(--cm-line);background:var(--cm-surface);color:var(--cm-ink-soft)">7일</button>
+      <button type="button" data-p="14" onclick="gdlSetPeriod('14')" style="padding:8px 14px;border-radius:11px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;border:1px solid var(--cm-green-700);background:var(--cm-green-tint);color:var(--cm-green-700)">14일</button>
+      <button type="button" data-p="30" onclick="gdlSetPeriod('30')" style="padding:8px 14px;border-radius:11px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;border:1px solid var(--cm-line);background:var(--cm-surface);color:var(--cm-ink-soft)">30일</button>
+      <button type="button" data-p="custom" onclick="gdlSetPeriod('custom')" style="padding:8px 14px;border-radius:11px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;border:1px solid var(--cm-line);background:var(--cm-surface);color:var(--cm-ink-soft)">직접 지정</button>
+    </div>
+    <div id="gdlCustom" style="display:none;gap:8px;margin-bottom:.6rem">
+      <input type="date" id="gdlFrom" style="flex:1;padding:9px 10px;border:1px solid var(--cm-line);border-radius:9px;font-size:13px;background:var(--cm-bg);color:var(--cm-ink);font-family:inherit;-webkit-appearance:none;appearance:none;min-width:0">
+      <input type="date" id="gdlTo" style="flex:1;padding:9px 10px;border:1px solid var(--cm-line);border-radius:9px;font-size:13px;background:var(--cm-bg);color:var(--cm-ink);font-family:inherit;-webkit-appearance:none;appearance:none;min-width:0">
+    </div>
+    <div style="display:flex;gap:8px">
+      <button type="button" class="btn btn-teal" onclick="gdlExport('pdf')" style="flex:1">PDF 다운로드</button>
+      <button type="button" onclick="gdlExport('png')" style="flex:1;padding:10px;border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid var(--cm-line);background:var(--cm-surface);color:var(--cm-ink-soft)">이미지 저장 (7일 이하)</button>
+    </div>
+    <div id="gdlStatus" style="display:none"></div>
+  </div>
+
+  </div>
+</div>
+
 <script src="cm_fooddb.js"></script>
 <script>
 
@@ -4531,8 +4549,9 @@ window.switchCat = function(c) {
   try{const cc=document.getElementById('cgmCat');if(cc)cc.value=c;}catch(e){}
   try{Promise.all([loadCGMForCat(c),loadCgmCsvForCat(c)]).then(()=>{
     const at=document.querySelector('.cm-tab.active')?.dataset?.tab;
-    if(at==='cgm')renderCgmHistory();
-    if(at==='graph'){try{renderTimelineChart(document.getElementById('timelineDatePicker')?.value||_memLastDailyDate(c)||today());}catch(e){} try{_mrState.food=null;_mrState.sel=null;renderMealResp();}catch(e){}}
+    try{renderCgmHistory();}catch(e){}
+    try{renderTileGrid(c);renderDailySummary();}catch(e){}   // CGM 로드 후 당뇨 타일 표시·CGM 줄 갱신 (v0.9.4)
+    if(at==='graph'){try{_gSegSync();}catch(e){} try{renderTimelineChart(document.getElementById('timelineDatePicker')?.value||_memLastDailyDate(c)||today());}catch(e){} try{_mrState.food=null;_mrState.sel=null;renderMealResp();}catch(e){}}
   });}catch(e){}
   try{
     const at=document.querySelector('.cm-tab.active')?.dataset?.tab;
@@ -4660,9 +4679,10 @@ function checkAILimit(type) {
 
 /* ── 그래프탭 카드 편집 ── */
 const GRAPH_CARDS = [
-  { id: 'timelineCard', label: '당뇨 타임라인', icon: 'activity', seg: 'bio' },
-  { id: 'gMealRespCard', label: '식후 혈당 반응', icon: 'activity', seg: 'bio' },
-  { id: 'gKetCard',     label: '케톤',          icon: 'flask',    seg: 'bio' },
+  { id: 'timelineCard', label: '당뇨 타임라인', icon: 'activity', seg: 'dm' },
+  { id: 'gMealRespCard', label: '식후 혈당 반응', icon: 'activity', seg: 'dm' },
+  { id: 'gKetCard',     label: '케톤',          icon: 'flask',    seg: 'dm' },
+  { id: 'gCgmHistCard', label: 'CGM 이력',      icon: 'activity', seg: 'dm' },
   { id: 'gWtCard',      label: '체중',          icon: 'scale',    seg: 'bio' },
   { id: 'gRrCard',      label: '호흡수',        icon: 'lungs',    seg: 'bio' },
   { id: 'gWaterCard',   label: '음수량',        icon: 'droplet',  seg: 'bio' },
@@ -4735,14 +4755,82 @@ let gSegMode = 'bio';
 
 function setGSeg(mode) {
   gSegMode = mode;
-  document.querySelectorAll('#gSegBio,#gSegBT').forEach(b => b.dataset.on = '0');
-  const activeBtn = document.getElementById(mode === 'bio' ? 'gSegBio' : 'gSegBT');
+  document.querySelectorAll('#gSegDM,#gSegBio,#gSegBT').forEach(b => b.dataset.on = '0');
+  const activeBtn = document.getElementById(mode === 'dm' ? 'gSegDM' : mode === 'bio' ? 'gSegBio' : 'gSegBT');
   if(activeBtn) activeBtn.dataset.on = '1';
-  // 기간 필터는 생체지표 세그먼트에서만 표시
+  // 기간 필터는 당뇨(케톤)·생체지표에서 표시, 내보내기는 당뇨에서만
   const periodBar = document.getElementById('gPeriodBar');
-  if(periodBar) periodBar.style.display = mode === 'bio' ? '' : 'none';
+  if(periodBar) periodBar.style.display = mode === 'bt' ? 'none' : 'flex';   // ''로 두면 인라인 flex가 풀려 카드 편집 버튼이 줄바꿈되던 문제
+  const dmBar = document.getElementById('gDmBar');
+  if(dmBar) dmBar.style.display = mode === 'dm' ? 'flex' : 'none';
   applyGraphCards();
   if(mode === 'bt') try { renderBTTrend(); } catch(e) {}
+  if(mode === 'dm') try { renderCgmHistory(); } catch(e) {}
+}
+/* [당뇨] 구분 표시 (v0.9.4) — _catHasDM 아이에게만. 고양이가 바뀌면 당뇨 아이는 [당뇨]부터 열고,
+   같은 고양이에선 보던 구분 유지. 당뇨가 아닌데 [당뇨]에 있으면 생체 지표로 */
+/* ── 당뇨 타일 (v0.9.4) — 혈당·케톤 / 인슐린 / CGM 세 줄. 사실만(판정 없음), CGM 범위는 앱 참고 범위 80~200 ── */
+function _renderDmTile(cat, d){
+  const box = document.getElementById('dmTileRows'); if(!box) return;
+  const rec = ((state.records||{})[cat]||{})[d] || {};
+  const row = (on, t, s, extra) => '<button type="button" class="dmrow" onclick="'+on+'"><div class="dmrow__main"><div class="dmrow__t">'+t+'</div>'+(extra||'')+(s?'<div class="dmrow__s">'+s+'</div>':'')+'</div>'
+    + '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" style="color:var(--cm-faint);flex:0 0 auto"><path d="M9 5l7 7-7 7"/></svg></button>';
+  // 혈당·케톤 — 가장 최근 기록
+  const bgs = (rec.bg||[]).filter(x=>x.bg!==''&&x.bg!=null).slice().sort((a,b)=>String(a.time||'').localeCompare(String(b.time||'')));
+  const lb = bgs[bgs.length-1];
+  const kets = (rec.bg||[]).filter(x=>x.ketone!==''&&x.ketone!=null);
+  const lk = kets[kets.length-1];
+  const bgT = lb ? '혈당 '+_vEsc(lb.bg)+(lk?' · 케톤 '+_vEsc(lk.ketone):'') : '혈당·케톤';
+  const bgS = lb ? (lb.time?_vEsc(lb.time)+' 기록':'')+(bgs.length>1?' · 오늘 '+bgs.length+'회':'') : '기록 전';
+  // 인슐린 — 가장 최근 투여
+  const ins = (rec.ins||[]).filter(x=>x.dose).slice().sort((a,b)=>String(a.time||'').localeCompare(String(b.time||'')));
+  const li = ins[ins.length-1];
+  const insT = li ? '인슐린 '+(li.time?_vEsc(li.time)+' ':'')+_vEsc(li.dose)+'U' : '인슐린';
+  const insS = li ? (li.type?_vEsc(li.type):'')+(ins.length>1?(li.type?' · ':'')+'오늘 '+ins.length+'회':'') : '투여 전';
+  // CGM — 이 날 기록의 앱 참고 범위 비율
+  let vals = [];
+  try{ _bgDaySeries(cat, d).forEach(p=>{ if(p.src==='cgm') vals.push(p.y); }); }catch(e){}
+  let cgmT = 'CGM 불러오기', cgmS = '스크린샷이나 CSV 파일로 가져와요', bar = '';
+  if(vals.length){
+    const lo = vals.filter(v=>v<80).length, hi = vals.filter(v=>v>200).length, n = vals.length;
+    const pl = Math.round(lo/n*100), ph = Math.round(hi/n*100), pi = 100-pl-ph;
+    cgmT = 'CGM 참고 범위 안 '+pi+'%';
+    cgmS = '아래 '+pl+'% · 위 '+ph+'% · 최저 '+Math.min(...vals)+' · 최고 '+Math.max(...vals);
+    bar = '<div class="dmrow__bar"><div style="width:'+pl+'%;background:#185FA5"></div><div style="width:'+pi+'%;background:#1D9E75"></div><div style="width:'+ph+'%;background:#BA7517"></div></div>';
+  }
+  box.innerHTML = row("openDailySheet('glucose')", bgT, bgS) + row("openDailySheet('insulin')", insT, insS) + row('openCgmSheet()', cgmT, cgmS, bar);
+}
+/* ── CGM 불러오기·일일 로그 시트 (v0.9.4 — CGM 탭 대체). 내부 화면·ID는 CGM 탭 그대로 옮김 ── */
+function _sheetOpen(id, on){
+  const b=document.getElementById(id+'Back'), s=document.getElementById(id);
+  if(b) b.dataset.open = on?'1':'0';
+  if(s) s.dataset.open = on?'1':'0';
+}
+function setCgmSheetSeg(m){
+  document.getElementById('cgmSegShot').dataset.on = m==='shot'?'1':'0';
+  document.getElementById('cgmSegCsv').dataset.on = m==='csv'?'1':'0';
+  document.getElementById('cgmPaneShot').style.display = m==='shot'?'':'none';
+  document.getElementById('cgmPaneCsv').style.display = m==='csv'?'':'none';
+}
+function openCgmSheet(){
+  const cc=document.getElementById('cgmCat'); if(cc) cc.value=state.activeCat||'';
+  _sheetOpen('cgmSheet', true);
+  try{ Promise.all([loadCGMForCat(state.activeCat), loadCgmCsvForCat(state.activeCat)]).then(()=>{ try{renderCgmHistory();}catch(e){} }); }catch(e){ console.warn(e); }
+}
+function closeCgmSheet(){
+  _sheetOpen('cgmSheet', false);
+  // 새로 불러온 CGM을 당뇨 타일·그래프에 반영
+  try{ renderTileGrid(state.activeCat); renderDailySummary(); }catch(e){}
+}
+function openGdlSheet(){ _sheetOpen('gdlSheet', true); }
+function closeGdlSheet(){ _sheetOpen('gdlSheet', false); }
+
+var _gSegCat = null;
+function _gSegSync(){
+  const cat = state.activeCat, has = _catHasDM(cat);
+  const b = document.getElementById('gSegDM'); if(b) b.style.display = has ? '' : 'none';
+  if(_gSegCat !== cat){ _gSegCat = cat; setGSeg(has ? 'dm' : (gSegMode === 'dm' ? 'bio' : gSegMode)); return; }
+  if(!has && gSegMode === 'dm') setGSeg('bio');
 }
 
 function applyGraphCards() {
@@ -6204,6 +6292,7 @@ function renderDailySummary(catName) {
     var tins2=document.getElementById('tileInsulinStatus');
     if(tins2){var tlins=(tRec.ins||[]).slice(-1)[0];if(tlins){tins2.textContent=tlins.dose+'U · '+(tlins.type||'').substring(0,4);tins2.dataset.tone='good';_tit('insulin','good');}else{tins2.textContent='투여 전';tins2.dataset.tone='muted';_tit('insulin','muted');}}
     try{renderVetTileStatus();}catch(e){}
+    try{_renderDmTile(cat,d);}catch(e){console.warn('dm tile:', e);}
   } catch(e) { console.warn('tile status:', e); }
 }
 
@@ -6321,8 +6410,7 @@ window.showTab = function showTab(tab, btn) {
     if(btn) btn.classList.add('active');
 
     // 렌더링
-    if(tab==='cgm') try{const cc=document.getElementById('cgmCat');if(cc)cc.value=state.activeCat||'';Promise.all([loadCGMForCat(state.activeCat),loadCgmCsvForCat(state.activeCat)]).then(()=>renderCgmHistory());}catch(e){console.warn(e);}
-    if(tab==='graph') try{loadGraphHiddenFromDB().then(()=>{applyGraphCards();});renderGraphs();renderBTTrend();const _tlDef=_memLastDailyDate(state.activeCat)||today();const tlDate=document.getElementById('timelineDatePicker');if(tlDate&&!tlDate.value)tlDate.value=_tlDef;try{renderTimelineChart(document.getElementById('timelineDatePicker')?.value||_tlDef);}catch(e2){console.warn(e2);} try{renderMealResp();}catch(e3){console.warn(e3);}}catch(e){console.warn(e);}
+    if(tab==='graph') try{loadGraphHiddenFromDB().then(()=>{applyGraphCards();});renderGraphs();renderBTTrend();const _tlDef=_memLastDailyDate(state.activeCat)||today();const tlDate=document.getElementById('timelineDatePicker');if(tlDate&&!tlDate.value)tlDate.value=_tlDef;try{renderTimelineChart(document.getElementById('timelineDatePicker')?.value||_tlDef);}catch(e2){console.warn(e2);} try{renderMealResp();}catch(e3){console.warn(e3);} try{_gSegSync();renderCgmHistory();}catch(e4){console.warn(e4);}}catch(e){console.warn(e);}
     if(tab==='history') try{renderHistory();renderRoutineSchedule();}catch(e){console.warn(e);}
     if(tab==='bloodtest') try{renderBTGraphs();renderBTHistoryList();}catch(e){console.warn(e);}
     if(tab==='food') try{renderFdHistory();autoSetFdMode(state.activeCat);initCalcResult();}catch(e){console.warn(e);}
@@ -19151,13 +19239,14 @@ initSupabase();
 // ── Tile Config ──
 var _tileEditMode = false;
 var _tileDragSrc = null;
-var ALL_TILE_KEYS = ['water','excreta','vomit','med','breath','weight','meal','glucose','insulin','vet'];
+var ALL_TILE_KEYS = ['water','excreta','vomit','med','breath','weight','meal','diabetes','vet'];   // v0.9.4: glucose·insulin → diabetes 통합
 
-function saveTileConfig(cat, order, hidden) {
+function saveTileConfig(cat, order, hidden, dmUser) {
   var c = cat || state.activeCat;
   var key = 'tileConfig_v1_' + c;
   var ts = Date.now();
   var val = {order: order, hidden: hidden};
+  if(dmUser === true || dmUser === false) val.dmUser = dmUser;
   try {
     localStorage.setItem(key, JSON.stringify(val));
     localStorage.setItem(key + '_ts', ts.toString());
@@ -19196,15 +19285,47 @@ function loadTileConfig(cat) {
   var key = 'tileConfig_v1_' + cat;
   try {
     var raw = localStorage.getItem(key);
-    if(raw) return JSON.parse(raw);
+    if(raw) return _tileCfgMigrateDM(JSON.parse(raw));
   } catch(e) {}
-  var prof = ((state.catProfiles || {})[cat]) || {};
-  var diseases = prof.diseases || [];
-  var hasDM = diseases.indexOf('DM') !== -1;
-  var order = ['water','excreta','vomit','med','breath','weight','meal'];
-  if(hasDM) { order.push('glucose'); order.push('insulin'); }
+  // 당뇨 타일(2칸 폭)은 맨 위 — 당뇨 아이에겐 가장 자주 쓰는 타일, 아래 작은 타일 짝수 유지 (v0.9.4)
+  var order = ['diabetes','water','excreta','vomit','med','breath','weight','meal'];
   order.push('vet'); // 병원 타일 (v0.7.40) — 기본 세트 마지막
   return {order: order, hidden: []};
+}
+/* 당뇨 타일 (v0.9.4) — 구 설정(glucose·insulin 타일)을 diabetes 한 칸으로 이전.
+   자리는 둘 중 앞선 위치, 둘 다 숨겨 뒀으면 보호자가 끈 것으로 보고 dmUser:false */
+function _tileCfgMigrateDM(cfg){
+  if(!cfg || !Array.isArray(cfg.order)) return cfg;
+  var order = cfg.order, hid = cfg.hidden || [];
+  if(order.indexOf('glucose') === -1 && order.indexOf('insulin') === -1) return cfg;
+  var gi = order.indexOf('glucose'), ii = order.indexOf('insulin');
+  var pos = Math.min(gi === -1 ? Infinity : gi, ii === -1 ? Infinity : ii);
+  var bothHidden = hid.indexOf('glucose') !== -1 && hid.indexOf('insulin') !== -1;
+  var drop = function(k){ return k !== 'glucose' && k !== 'insulin'; };
+  var at = order.slice(0, pos).filter(drop).length;
+  var nOrder = order.filter(drop).filter(function(k){ return k !== 'diabetes'; });
+  nOrder.splice(at, 0, 'diabetes');
+  var out = {order: nOrder, hidden: hid.filter(drop)};
+  if(cfg.dmUser === true || cfg.dmUser === false) out.dmUser = cfg.dmUser;
+  else if(bothHidden) out.dmUser = false;
+  return out;
+}
+/* 실제 숨김 목록 — 당뇨 타일은 보호자가 직접 켜고 끈 적 있으면(dmUser) 그대로,
+   아니면 _catHasDM 기준 (당뇨가 아닌 아이에겐 안 보임) */
+function _tileEffectiveHidden(cfg, cat){
+  var hidden = (cfg.hidden || []).filter(function(k){ return k !== 'diabetes'; });
+  var vis = (cfg.dmUser === true || cfg.dmUser === false) ? cfg.dmUser : _catHasDM(cat);
+  if(!vis) hidden.push('diabetes');
+  return hidden;
+}
+/* 당뇨 화면 표시 기준 (v0.9.4) — 프로필 질환에 당뇨(DM)가 있거나 혈당·인슐린·CGM 기록이 한 번이라도 있으면.
+   표시 여부만 정함(자동 처리·판단 아님). 오늘 탭 당뇨 타일·그래프 [당뇨] 구분이 공유 */
+function _catHasDM(cat){
+  var prof = ((state.catProfiles || {})[cat]) || {};
+  if((prof.diseases || []).indexOf('DM') !== -1) return true;
+  var recs = (state.records || {})[cat] || {};
+  for(var d in recs){ var r = recs[d]; if(r && ((r.bg && r.bg.length) || (r.ins && r.ins.length))) return true; }
+  try{ var nm = (cat || '').trim(); return cgmAllEntries().some(function(c){ return (c.cat || '').trim() === nm; }); }catch(e){ return false; }
 }
 
 function renderTileGrid(cat) {
@@ -19218,7 +19339,7 @@ function renderTileGrid(cat) {
   }
   var cfg = loadTileConfig(c);
   var order = cfg.order.slice();
-  var hidden = cfg.hidden || [];
+  var hidden = _tileEffectiveHidden(cfg, c);
   ALL_TILE_KEYS.forEach(function(id) {
     if(order.indexOf(id) === -1) order.push(id);
   });
@@ -19231,6 +19352,7 @@ function renderTileGrid(cat) {
   });
 }
 
+var _tileDmVisBefore = true;
 function toggleTileEditMode() {
   _tileEditMode = !_tileEditMode;
   var btn = document.getElementById('tileEditBtn');
@@ -19244,7 +19366,8 @@ function toggleTileEditMode() {
     var _subEl = document.querySelector('#tab-daily .cm-sechead__s');
     if(_subEl) _subEl.textContent = '항목을 끄거나 추가해 고양이에 맞게 구성하세요';
     var cfg = loadTileConfig(c);
-    var hidden = cfg.hidden || [];
+    var hidden = _tileEffectiveHidden(cfg, c);
+    _tileDmVisBefore = hidden.indexOf('diabetes') === -1;
     // reorder all tiles for editing
     var editOrder = cfg.order.slice();
     ALL_TILE_KEYS.forEach(function(id) { if(editOrder.indexOf(id) === -1) editOrder.push(id); });
@@ -19348,7 +19471,9 @@ function toggleTileEditMode() {
       if(t._phMove) { t.removeEventListener('pointermove', t._phMove); delete t._phMove; }
       if(t._phEnd) { t.removeEventListener('pointerup', t._phEnd); t.removeEventListener('pointercancel', t._phEnd); delete t._phEnd; }
     });
-    saveTileConfig(c, newOrder, newHidden);
+    var _dmCfg = loadTileConfig(c), _dmVisAfter = newHidden.indexOf('diabetes') === -1;
+    var _dmUser = (_dmVisAfter !== _tileDmVisBefore) ? _dmVisAfter : _dmCfg.dmUser;
+    saveTileConfig(c, newOrder, newHidden, _dmUser);
     renderTileGrid(c);
   }
 }
