@@ -664,7 +664,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.9.10</span>
+      <span class="cm-beta">v0.9.11</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -14734,6 +14734,138 @@ function deleteSkin(i){
   rec.skin.splice(i,1); saveS(date); renderSkinLog(); try{renderDailySummary();}catch(e){}
 }
 
+
+/* ── 식이 반응 노트 2단계 (v0.9.11) — 함께 나타난 횟수 · 식이 달력 · 사료 바꾸기 전후 ──
+   모두 보호자 기록의 날짜 수·횟수만(비율·위험도·판정 금지). 기록 안 한 날 ≠ 증상 없는 날 — 안내에 명시.
+   증상 범위(킷 확정, 지연성 반응 고려): 구토·대변 = 먹은 날~3일 뒤, 피부·귀 = 먹은 날~7일 뒤 */
+const FR_WIN_GI = 3, FR_WIN_SKIN = 7, FR_MIN_DAYS = 14, FR_COOC_DAYS = 90;
+/* 받침에 따라 이/가 */
+function _frIga(w){ const s=String(w||''), c=s.charCodeAt(s.length-1); return s+((c>=0xAC00 && c<=0xD7A3 && (c-0xAC00)%28) ? '이' : '가'); }
+function _frOpt(){ try{ return JSON.parse(localStorage.getItem('frOpt_v1')||'{}')||{}; }catch(e){ return {}; } }
+function frSetOpt(k,v){ const o=_frOpt(); o[k]=v; try{ localStorage.setItem('frOpt_v1', JSON.stringify(o)); }catch(e){} _renderFrHub(); }
+/* 그날 먹은 동물성 원료 계열 — 원재료 모르는 사료가 있으면 unknown (그날은 '안 든 날'로 세지 않음) */
+function _frDayFams(cat, d){
+  const reg = frGet(cat).items, customs = reg.filter(i=>i.custom).map(i=>({fam:i.fam, k:_cmIngrKey(i.fam)})).filter(c=>c.k);
+  const fams = new Set(); let unknown = 0;
+  const foods = _frDayFoods(cat, d);
+  foods.forEach(f=>{
+    const ing = _frFoodIngr(cat, f.name, f.foodId);
+    if(!ing.list){ unknown++; return; }
+    if(ing.level==='partial') unknown++;
+    ing.list.forEach(raw=>{
+      const rk=_cmIngrKey(raw); customs.forEach(c=>{ if(rk.indexOf(c.k)!==-1) fams.add(c.fam); });
+      const inf=cmIngrInfo(raw); if(!inf.fam || inf.unspec) return;
+      const de=(window.CM_INGR||{})[inf.canon]; if(de && de.x) return;
+      if(inf.form==='원료' && ['계란','우유'].indexOf(inf.fam)===-1) return;   // 곡물 등은 달력에서 생략(등록돼 있으면 아래에서 따로)
+      fams.add(inf.fam);
+    });
+    // 등록된 비동물성 원료(밀·옥수수 등)도 노출로 셈
+    ing.list.forEach(raw=>{ const inf=cmIngrInfo(raw); if(inf.fam && reg.some(i=>i.fam===inf.fam)) fams.add(inf.fam); });
+  });
+  return {fams, unknown, ate: foods.length>0};
+}
+/* 그날 증상 — 구토(헤어볼 제외 옵션) / 대변 5점↑·점액·피(점수 없는 예전 기록은 설사·무름·혈변) / 피부·귀(가려움 2↑ 또는 다른 항목) */
+function _frDaySym(cat, d, exHair){
+  const r=((state.records||{})[cat]||{})[d]||{};
+  const vomit=(r.vomits||[]).some(v=>!(exHair && v.content==='hairball'));
+  const stool=(r.poop||[]).some(p=>(p.score && p.score>=5) || p.mucus || p.blood || (!p.score && ['설사','무름','혈변'].indexOf(p.type)!==-1));
+  const skin=(r.skin||[]).some(s=>(s.itch!=null && s.itch>=2) || s.groom || (s.hair||[]).length || (s.skin||[]).length || (s.ear||[]).length);
+  return {vomit, stool, gi:vomit||stool, skin};
+}
+function _frCooccurHtml(cat){
+  const reg = frGet(cat).items.filter(i=>i.status!=='never');
+  if(!reg.length) return '<div style="font-size:12px;color:var(--cm-faint)">반응 성분을 등록하면 성분별로 보여드려요</div>';
+  const exHair = _frOpt().exHair!==false;
+  const di=_mrDayIdx(today()), days=[];
+  for(let i=di-FR_COOC_DAYS+1;i<=di;i++){ const d=_mrIdxDate(i); const f=_frDayFams(cat,d); if(f.ate) days.push({d, i, f}); }
+  const symIn = (i, w, key) => { for(let k=i;k<=Math.min(i+w,di);k++){ if(_frDaySym(cat,_mrIdxDate(k),exHair)[key]) return true; } return false; };
+  const card = it => {
+    const E=days.filter(x=>x.f.fams.has(it.fam)), N=days.filter(x=>!x.f.fams.has(it.fam) && !x.f.unknown);
+    const s=FR_STATUS[it.status]||FR_STATUS.suspect;
+    let h='<div style="padding:10px 12px;border:1px solid var(--cm-line);border-radius:12px;background:var(--cm-surface);margin-bottom:6px">'
+      + '<div style="font-size:12.5px;font-weight:800;color:var(--cm-ink)">'+_vEsc(it.fam)+' <span style="font-size:11px;font-weight:600;color:'+s.fg+'">· '+s.t+'</span></div>';
+    if(E.length<FR_MIN_DAYS || N.length<FR_MIN_DAYS){
+      h+='<div style="font-size:11.5px;color:var(--cm-faint);margin-top:4px;line-height:1.55">기록이 더 쌓이면 보여드려요 — '+_vEsc(_frIga(it.fam))+' 든 날 '+E.length+'일 · 안 든 날 '+N.length+'일 (각각 '+FR_MIN_DAYS+'일 이상 필요)</div>';
+    } else {
+      const row=(lab, arr, w, key)=>'<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0"><span style="color:var(--cm-faint)">'+lab+' '+arr.length+'일 중</span><span style="color:var(--cm-ink);font-weight:700">'+arr.filter(x=>symIn(x.i,w,key)).length+'일</span></div>';
+      h+='<div style="font-size:11.5px;font-weight:700;color:var(--cm-ink-soft);margin-top:6px">구토·대변 <span style="font-weight:500;color:var(--cm-faint)">먹은 날~'+FR_WIN_GI+'일 뒤</span></div>'
+        + row(_vEsc(_frIga(it.fam))+' 든 날', E, FR_WIN_GI, 'gi') + row('안 든 날', N, FR_WIN_GI, 'gi')
+        + '<div style="font-size:11.5px;font-weight:700;color:var(--cm-ink-soft);margin-top:5px">피부·귀 <span style="font-weight:500;color:var(--cm-faint)">먹은 날~'+FR_WIN_SKIN+'일 뒤</span></div>'
+        + row(_vEsc(_frIga(it.fam))+' 든 날', E, FR_WIN_SKIN, 'skin') + row('안 든 날', N, FR_WIN_SKIN, 'skin');
+    }
+    return h+'</div>';
+  };
+  return reg.map(card).join('')
+    + '<label style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--cm-ink-soft);margin:4px 0 6px"><input type="checkbox" '+(exHair?'checked':'')+' onchange="frSetOpt(\'exHair\', this.checked)" style="accent-color:var(--cm-green-700)"> 헤어볼 구토는 빼고 세기</label>'
+    + '<div style="font-size:10.5px;color:var(--cm-faint);line-height:1.6">최근 '+FR_COOC_DAYS+'일 기록에서 증상이 함께 나타난 날짜 수예요. 원재료를 모르는 사료를 먹은 날은 \'안 든 날\'에서 빼요. 기록하지 않은 날은 증상이 없던 날로 보이니 참고만 해 주세요. 매일 먹는 사료는 구분이 흐려질 수 있어서, 사료 바꾸기 전후 비교와 재도전 기록이 더 확실해요. 원인 확인은 수의사와 상담해 주세요.</div>';
+}
+function _frCalendarHtml(cat){
+  const exHair = _frOpt().exHair!==false;
+  const di=_mrDayIdx(today()), start=di-27;
+  const wd=new Date(_mrIdxDate(start)+'T00:00:00').getDay();   // 0=일
+  let cells='';
+  for(let k=0;k<wd;k++) cells+='<div></div>';
+  for(let i=start;i<=di;i++){
+    const d=_mrIdxDate(i), f=_frDayFams(cat,d), s=_frDaySym(cat,d,exHair);
+    const regF=frGet(cat).items.filter(it=>it.status!=='ok').map(it=>it.fam);
+    const fl=[...f.fams].sort((p,q)=>(regF.indexOf(p)===-1)-(regF.indexOf(q)===-1));
+    const fams=fl.slice(0,2).join('·')+(fl.length>2?'…':'');
+    const dot=(c)=>'<i style="display:block;width:5px;height:5px;border-radius:50%;background:'+c+'"></i>';
+    cells+='<div style="border:1px solid var(--cm-line);border-radius:6px;min-height:40px;padding:2px 3px;background:var(--cm-surface);position:relative;overflow:hidden">'
+      + '<div style="font-size:10px;font-weight:800;color:var(--cm-ink)">'+(+d.slice(8))+'</div>'
+      + '<div style="font-size:9px;color:var(--cm-faint);line-height:1.15;word-break:keep-all">'+(f.ate?_vEsc(fams||(f.unknown?'?':'')):'')+'</div>'
+      + '<div style="position:absolute;bottom:2px;left:3px;display:flex;gap:2px">'+(s.vomit?dot('var(--cm-clay)'):'')+(s.stool?dot('var(--cm-amber)'):'')+(s.skin?dot('#185FA5'):'')+'</div></div>';
+  }
+  return '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;font-size:10px;color:var(--cm-faint);text-align:center;margin-bottom:3px">'+['일','월','화','수','목','금','토'].map(w=>'<div>'+w+'</div>').join('')+'</div>'
+    + '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px">'+cells+'</div>'
+    + '<div style="display:flex;gap:10px;flex-wrap:wrap;font-size:10.5px;color:var(--cm-faint);margin-top:5px"><span><i style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--cm-clay)"></i> 구토</span><span><i style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--cm-amber)"></i> 대변 5점↑·점액·피</span><span><i style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#185FA5"></i> 피부·귀</span><span>? 원재료 모름</span></div>';
+}
+/* 주로 먹은 사료(그날 g 합 최대) — 바뀐 날 찾기용 */
+function _frMainFood(cat, d){
+  const r=((state.records||{})[cat]||{})[d]||{}, g={};
+  (r.meals||[]).forEach(m=>{ const n=m.mixTs?(m.mixName||m.name):m.name; if(!n) return; g[n]=(g[n]||0)+(parseFloat(m.amt)||1); });
+  const k=Object.keys(g).sort((a,b)=>g[b]-g[a])[0]; return k||null;
+}
+function _frSwitchCandidate(cat){
+  const di=_mrDayIdx(today());
+  const main=[]; for(let i=di-89;i<=di;i++) main.push({i, m:_frMainFood(cat,_mrIdxDate(i))});
+  // 최근부터: 그 날부터 3일 이상 같은 주식, 직전 7일 중 그 주식이 없던 날 = 바뀐 날
+  for(let k=main.length-3;k>=7;k--){
+    const m=main[k].m; if(!m) continue;
+    if(!(main[k+1].m===m && main[k+2].m===m)) continue;
+    const prev=main.slice(k-7,k).map(x=>x.m).filter(Boolean);
+    if(prev.length>=3 && prev.indexOf(m)===-1){
+      const before=prev.slice().sort((a,b)=>prev.filter(v=>v===b).length-prev.filter(v=>v===a).length)[0];
+      return {d:_mrIdxDate(main[k].i), from:before, to:m};
+    }
+  }
+  return null;
+}
+function _frSwitchHtml(cat){
+  const opt=_frOpt(), cand=_frSwitchCandidate(cat);
+  const pick = (opt.switchCat===cat && opt.switchDate) ? opt.switchDate : (cand ? cand.d : null);
+  let h = cand ? '<div style="font-size:11.5px;color:var(--cm-ink-soft);line-height:1.55;margin-bottom:6px">주로 먹은 사료가 <b>'+_vEsc(cand.from)+'</b> → <b>'+_vEsc(cand.to)+'</b>로 바뀐 날: '+_memKDate(cand.d)+'</div>' : '<div style="font-size:11.5px;color:var(--cm-faint);margin-bottom:6px">최근 90일에 주로 먹은 사료가 바뀐 날을 찾지 못했어요. 날짜를 직접 골라 주세요.</div>';
+  h += '<div style="display:flex;gap:6px;align-items:center;margin-bottom:8px"><span style="font-size:11.5px;color:var(--cm-faint)">비교 기준일</span><input type="date" value="'+(pick||'')+'" max="'+today()+'" onchange="frSetSwitch(this.value)" style="flex:1;padding:6px 9px;border:1px solid var(--cm-line);border-radius:9px;font-size:12.5px;background:var(--cm-surface);color:var(--cm-ink);font-family:inherit"></div>';
+  if(!pick) return h;
+  const exHair = opt.exHair!==false, di=_mrDayIdx(pick);
+  const span=(a,b)=>{ let vom=0, sc=[], skinDays=0, itch=[], rec=0;
+    for(let i=a;i<=b;i++){ const d=_mrIdxDate(i), r=((state.records||{})[cat]||{})[d]; if(!r) continue;
+      if(_mrIdxDate(i)>today()) break;
+      const has=['meals','poop','vomits','skin','water','urine'].some(k=>(r[k]||[]).length); if(has) rec++;
+      (r.vomits||[]).forEach(v=>{ if(!(exHair && v.content==='hairball')) vom++; });
+      (r.poop||[]).forEach(p=>{ if(p.score) sc.push(p.score); });
+      if((r.skin||[]).length){ skinDays++; r.skin.forEach(s=>{ if(s.itch!=null) itch.push(s.itch); }); } }
+    const av=a=>a.length?Math.round(a.reduce((s,v)=>s+v,0)/a.length*10)/10:'—';
+    return {vom, sc:av(sc), scN:sc.length, skinDays, itch:av(itch), rec}; };
+  const A=span(di-14,di-1), B=span(di,di+13);
+  const row=(l,a,b)=>'<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-top:1px solid var(--cm-line)"><span style="color:var(--cm-ink)">'+l+'</span><span style="color:var(--cm-ink);font-weight:700">'+a+' <span style="color:var(--cm-faint);font-weight:500">→</span> '+b+'</span></div>';
+  return h + '<div style="display:flex;justify-content:flex-end;font-size:10.5px;color:var(--cm-faint);margin-bottom:2px">전 14일 → 후 14일</div>'
+    + row('구토', A.vom+'회', B.vom+'회') + row('변 점수 평균', A.sc+(A.scN?' ('+A.scN+'회)':''), B.sc+(B.scN?' ('+B.scN+'회)':''))
+    + row('피부·귀 기록한 날', A.skinDays+'일', B.skinDays+'일') + row('가려움 평균', A.itch, B.itch)
+    + '<div style="font-size:10.5px;color:var(--cm-faint);margin-top:5px;line-height:1.55">기록한 날: 전 '+A.rec+'일 · 후 '+B.rec+'일. 기록하지 않은 날은 세지 않아요.</div>';
+}
+function frSetSwitch(v){ const o=_frOpt(); o.switchCat=state.activeCat; o.switchDate=v||null; try{ localStorage.setItem('frOpt_v1', JSON.stringify(o)); }catch(e){} _renderFrHub(); }
+
 /* ── 허브 (바텀시트) ── */
 var _frEdit = null;   // {fam, status, memo, isNew}
 function openFrHub(){ _frEdit=null; _renderFrHub(); _sheetOpen('frSheet', true); }
@@ -14865,8 +14997,9 @@ function _renderFrHub(){
         + '<div style="font-size:11px;color:var(--cm-faint);line-height:1.6">원재료를 아는 사료 '+known+'종 중 그 원료가 든 사료 수예요.'+(r30.length>known?' 원재료를 모르는 '+(r30.length-known)+'종은 빠져 있어요.':'')+'</div>'
       : '<div style="font-size:12px;color:var(--cm-faint)">원재료를 아는 사료 기록이 아직 없어요</div>')
     + '</div>';
-  h+='<div>'+sec('함께 나타난 횟수')
-    + '<div style="border:1px dashed var(--cm-line);border-radius:12px;padding:10px 12px;font-size:11.5px;color:var(--cm-faint);line-height:1.6">기록이 14일 이상 쌓이면 성분별로 구토·무른 변·피부 기록이 함께 나타난 횟수를 보여줄 예정이에요.</div></div>';
+  h+='<div>'+sec('함께 나타난 횟수')+_frCooccurHtml(cat)+'</div>';
+  h+='<div>'+sec('식이 달력 <span style="font-weight:500;font-size:11px;color:var(--cm-faint)">최근 4주</span>')+_frCalendarHtml(cat)+'</div>';
+  h+='<div>'+sec('사료 바꾸기 전후')+_frSwitchHtml(cat)+'</div>';
   h+='<div style="font-size:10.5px;color:var(--cm-faint);line-height:1.65;padding-bottom:8px">보호자가 남긴 기록을 정리해 보여줘요. 원인 확인과 식단 변경은 수의사와 상담해 주세요.</div>';
   body.innerHTML=h;
 }
