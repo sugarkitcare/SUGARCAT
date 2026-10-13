@@ -664,7 +664,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.9.4</span>
+      <span class="cm-beta">v0.9.5</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -19322,7 +19322,8 @@ function _tileEffectiveHidden(cfg, cat){
    표시 여부만 정함(자동 처리·판단 아님). 오늘 탭 당뇨 타일·그래프 [당뇨] 구분이 공유 */
 function _catHasDM(cat){
   var prof = ((state.catProfiles || {})[cat]) || {};
-  if((prof.diseases || []).indexOf('DM') !== -1) return true;
+  // 프로필 질환 값은 '당뇨(DM)' 형태 — 정확 일치('DM')로 찾으면 못 찾음 (v0.9.4 배포 직후 수정)
+  if((prof.diseases || []).some(function(x){ x = String(x); return x.indexOf('DM') !== -1 || x.indexOf('당뇨') !== -1; })) return true;
   var recs = (state.records || {})[cat] || {};
   for(var d in recs){ var r = recs[d]; if(r && ((r.bg && r.bg.length) || (r.ins && r.ins.length))) return true; }
   try{ var nm = (cat || '').trim(); return cgmAllEntries().some(function(c){ return (c.cat || '').trim() === nm; }); }catch(e){ return false; }
