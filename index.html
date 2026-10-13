@@ -664,7 +664,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.9.11</span>
+      <span class="cm-beta">v0.9.12</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -776,6 +776,8 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
     </div>
     <!-- 앱 참고 기준 각주 (v0.8.1) — 값마다 반복하는 대신 카드 하단 한 줄 (법적 표기 + 레이아웃 보존) -->
     <div style="margin-top:9px;font-size:11.5px;color:var(--cm-faint);line-height:1.5">※ 목표·기준값은 앱 참고 기준입니다</div>
+    <!-- 제한식 진행 띠 (v0.9.12) — 진행 중일 때만 -->
+    <div id="ftBand" style="display:none;margin-top:10px"></div>
     <!-- 피드백 슬라이더 -->
     <div id="heroFeedbackBar" style="margin-top:14px;min-height:44px;display:none">
       <div id="heroFeedbackSlide" style="background:var(--cm-surface-2);border:1px solid var(--cm-line);border-radius:13px;padding:11px 14px;font-size:13px;font-weight:700;color:var(--cm-ink-soft);line-height:1.4">
@@ -4440,7 +4442,7 @@ function _renderMealFoodSearchResults(local, master, masterLoading) {
     return '<div style="display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:0.5px solid var(--bd)">'
       + badge
       + '<span style="flex:1;font-size:12px;color:var(--text)">' + nm + kpStr
-      + (function(){ try{ var _ing = Array.isArray(r.ingredients)&&r.ingredients.length ? {list:r.ingredients, level:'full'} : (r.id!=null ? _frFoodIngr(state.activeCat, r.name, r.id) : {list:null, level:'none'}); var _m=_frMatch(state.activeCat, _ing); return _m ? '<br>'+_frBadgeHtml(_m) : ''; }catch(e){ return ''; } })()
+      + (function(){ try{ var _ing = Array.isArray(r.ingredients)&&r.ingredients.length ? {list:r.ingredients, level:'full'} : (r.id!=null ? _frFoodIngr(state.activeCat, r.name, r.id) : {list:null, level:'none'}); var _m=_frMatch(state.activeCat, _ing); return (_m ? '<br>'+_frBadgeHtml(_m) : '') + (_ftNotAllowed(state.activeCat, r.name, r.id) ? '<br>'+_ftNotAllowedHtml(state.activeCat, r.name, r.id) : ''); }catch(e){ return ''; } })()
       + '</span>'
       + '<button type="button" onclick="selectMealSearchFoodDaily(' + i + ')" style="padding:4px 10px;background:var(--teal);color:#fff;border:none;border-radius:7px;font-size:11px;cursor:pointer;font-family:inherit">선택</button>'
       + '</div>';
@@ -4497,7 +4499,7 @@ function _renderFavFoodPickerList(listId, onSelect) {
       var kpStr = kp ? ' <span style="color:var(--text3)">('+ kp +'kcal/100g)</span>' : '';
       return '<div style="display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:0.5px solid var(--bd)">'
         + '<span style="flex:1;font-size:12px;color:var(--text)">' + nm + kpStr
-        + (function(){ try{ var _m=_frMatch(state.activeCat, _frFoodIngr(state.activeCat, nm, (typeof f==='object'&&f.masterId!=null)?f.masterId:null)); return _m ? '<br>'+_frBadgeHtml(_m) : ''; }catch(e){ return ''; } })()
+        + (function(){ try{ var _m=_frMatch(state.activeCat, _frFoodIngr(state.activeCat, nm, (typeof f==='object'&&f.masterId!=null)?f.masterId:null)); return (_m ? '<br>'+_frBadgeHtml(_m) : '') + (_ftNotAllowed(state.activeCat, nm, (typeof f==='object'&&f.masterId!=null)?f.masterId:null) ? '<br>'+_ftNotAllowedHtml(state.activeCat, nm, (typeof f==='object'&&f.masterId!=null)?f.masterId:null) : ''); }catch(e){ return ''; } })()
         + '</span>'
         + '<button type="button" onclick="selectFavFoodDaily(' + i + ')" style="padding:4px 10px;background:var(--teal);color:#fff;border:none;border-radius:7px;font-size:11px;cursor:pointer;font-family:inherit">선택</button>'
         + '<button type="button" onclick="deleteFavFood(' + i + ',\u0027favFoodPickerDailyList\u0027)" style="background:none;border:none;color:var(--cm-faint);cursor:pointer;padding:2px 6px;font-size:15px;line-height:1">×</button>'
@@ -4609,12 +4611,12 @@ window.switchCat = function(c) {
 const CAT_US_PREFIXES=['fd_v2_','favFoods_v1_','manualFoods_v1_','tubeRecipes_v1_','cgm_data_',
   'routine_items_','routine_versions_','med_notif_','emerg_state_','fluid_state_',
   'card_order_','card_hidden_','tile_config_','memorial_','memorial_msg_',
-  'next_visit_','vet_questions_','last_inputs_','kcal_goal_','food_react_'];
+  'next_visit_','vet_questions_','last_inputs_','kcal_goal_','food_react_','food_trial_'];
 // 로컬 미러 키 접두사 — 접두사+이름 정확 일치로만 제거 (suffix 매칭은 이름 충돌 위험)
 const CAT_LS_PREFIXES=['fd_v2_','favFoods_v1_','manualFoods_v1_','tubeRecipes_v1_','cgmData_v1_',
   'routineItems_v1_','routineVersions_v1_','lastInputs_v1_','nextVisit_v1_','vetQuestions_v1_',
   'tileConfig_v1_','cardOrder_v1_','cardHidden_v1_','medNotif_v1_','memorial_v1_','memorialMsg_v1_',
-  'lastRecipeMode_','emerg_state_','fluid_state_','lastMealTab_','vetBannerDismiss_','kcalGoal_v1_','foodReact_v1_'];
+  'lastRecipeMode_','emerg_state_','fluid_state_','lastMealTab_','vetBannerDismiss_','kcalGoal_v1_','foodReact_v1_','foodTrial_v1_'];
 window.deleteCat = function(c) {
   // 삭제로 유도하지 않기 (스펙 금지사항 3) — 기록 보존 대안(기억하기)을 확인 문구에서 안내
   if(!confirm(c+'를 삭제할까요? 모든 기록이 삭제돼요.\n\n기록을 남기고 알림만 멈추려면, 프로필 화면의 "기억하기"를 사용할 수 있어요.'))return;
@@ -6341,6 +6343,7 @@ function renderDailySummary(catName) {
     try{renderVetTileStatus();}catch(e){}
     try{_renderDmTile(cat,d);}catch(e){console.warn('dm tile:', e);}
     try{_renderFrTile(cat,d);}catch(e){console.warn('fr tile:', e);}
+    try{_renderFtBand(cat);}catch(e){console.warn('ft band:', e);}
   } catch(e) { console.warn('tile status:', e); }
 }
 
@@ -10064,6 +10067,7 @@ function renderRoutineEditList(){
           <button type="button" onclick="addRoutineTime(${i})" style="padding:4px 10px;border:0.5px solid var(--cm-green-edge);border-radius:7px;background:var(--cm-green-tint);color:var(--cm-green-700);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap">+추가</button>
         </div>`:''}
         ${cat==='med'?_watchRowHtml(item, i):''}
+        ${(cat==='med'||cat==='food')?_rtIngrRowHtml(item, i):''}
       </div>`;
     });
   });
@@ -14535,6 +14539,7 @@ function _catHasFR(cat){
 /* ── 원재료 조회 ── */
 const _frMasterCache = {};   // 'id:<id>' | 'nm:<name>' → {ingredients, top5} | null(조회했지만 없음). undefined=미조회
 let _frQueue = new Map(), _frTimer = null;
+function _frItemIngr(cat, f){ return (f && f.ingrObjs) ? {list:[], level:'full', objs:f.ingrObjs} : _frFoodIngr(cat, f.name, f.foodId); }
 function _frFoodIngr(cat, name, foodId){
   let fd=[]; try{ fd=JSON.parse(localStorage.getItem('fd_v2_'+cat)||'[]')||[]; }catch(e){}
   const h = fd.find(x=>x && x.data && ((foodId!=null && x.masterId===foodId) || x.data.name===name));
@@ -14574,6 +14579,12 @@ function _frMatch(cat, ingr){
   const st = {}; reg.forEach(i=>st[i.fam]=i.status);
   const customs = reg.filter(i=>i.custom).map(i=>({fam:i.fam, k:_cmIngrKey(i.fam)})).filter(c=>c.k);
   const direct=[], related=[], never=[], unspec=[];
+  (ingr.objs||[]).forEach(o=>{   // 루틴 항목 — 보호자 등록 성분(계열·형태)
+    const s = st[o.fam]; if(!s) return;
+    const inf = {raw:o.fam+(o.form&&o.form!=='고기'?' '+o.form:''), fam:o.fam, form:o.form||'고기'};
+    if(s==='never'){ never.push(inf); return; }
+    ((window.CM_INGR_FORM_RELATED||[]).indexOf(inf.form)!==-1 ? related : direct).push(inf);
+  });
   ingr.list.forEach(raw=>{
     let inf = cmIngrInfo(raw);
     // 직접 입력 성분 — 원재료 표기에 그 이름이 들어 있으면 같은 성분(형태는 표기 키워드로)
@@ -14615,6 +14626,7 @@ function _frDayFoods(cat, d){
     out.push({name:m.name||'식사', foodId:m.foodId!=null?m.foodId:null, time:m.time});
   });
   Object.values(mix).forEach(ms=>ms.forEach(m=>out.push({name:m.name||'식사', foodId:m.foodId!=null?m.foodId:null, time:m.time, mix:m.mixName})));
+  try{ out.push(..._frDayRoutineFoods(cat, d)); }catch(e){}   // 약·보조제·간식 (v0.9.12)
   return out;
 }
 
@@ -14629,14 +14641,14 @@ function _renderFrTile(cat, d){
   if(!hasReg) fS='반응 성분을 등록하면 먹은 것에 표시돼요';
   else if(!foods.length) fS='식사 기록 전';
   else {
-    const ms=foods.map(f=>_frMatch(cat,_frFoodIngr(cat,f.name,f.foodId)));
+    const ms=foods.map(f=>_frMatch(cat,_frItemIngr(cat,f)));
     const n=k=>ms.filter(m=>m&&m.kind===k).length;
     const unk=n('unspec')+n('partial')+n('none');
     const m0 = n('direct') ? {kind:'direct',direct:[].concat(...ms.filter(m=>m&&m.kind==='direct').map(m=>m.direct)),related:[],never:[]}
       : n('related') ? {kind:'related',related:[].concat(...ms.filter(m=>m&&m.kind==='related').map(m=>m.related)),never:[]}
       : n('loading') ? {kind:'loading'} : unk ? {kind:'none'} : {kind:'clear',never:[]};
     fX=_frBadgeHtml(m0);
-    fS='식사 '+foods.length+'건'+(n('direct')?' · 등록한 성분 포함 '+n('direct')+'건':'')+(n('related')?' · 관련 성분 '+n('related')+'건':'')+(unk?' · 확인할 수 없음 '+unk+'건':'');
+    fS='먹은 것 '+foods.length+'건'+(n('direct')?' · 등록한 성분 포함 '+n('direct')+'건':'')+(n('related')?' · 관련 성분 '+n('related')+'건':'')+(unk?' · 확인할 수 없음 '+unk+'건':'');
   }
   // 피부·귀
   const sk=(((state.records||{})[cat]||{})[d]||{}).skin||[];
@@ -14735,6 +14747,60 @@ function deleteSkin(i){
 }
 
 
+
+/* ── 약·영양제·간식 성분 (v0.9.12, 식이 반응 노트 2단계 ④) ──
+   투약·루틴 항목(약·보조제/간식)에 보호자가 성분을 직접 등록: item.ingr = [{fam, form}]
+   - 체크한 날 = 그 성분을 먹은 날 (함께 나타난 횟수·달력·오늘 먹은 것에 반영)
+   - 보호자가 등록한 것만 — 의약품 정보 DB 구축 금지. 처방약은 "임의로 중단하지 말고 수의사와 상담" 고정
+   - 형태: 캡슐·정제 부형제(젤라틴), 향료(간 등 내장), 오일(지방) 중심 */
+const RT_INGR_FORMS = ['고기','내장','지방','젤라틴','육수·추출물'];
+const RT_INGR_FORM_LABEL = {'고기':'고기·분말','내장':'간 등 내장 (향료 포함)','지방':'오일·기름','젤라틴':'젤라틴 (캡슐 등)','육수·추출물':'육수·추출물'};
+var _rtIngrEdit = null;   // {idx, fam, form}
+function _rtIngrRowHtml(item, i){
+  const list = item.ingr || [];
+  let h = '<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-top:9px"><span style="font-size:11px;color:var(--cm-faint);flex-shrink:0">성분</span>'
+    + list.map((g,k)=>'<span style="display:inline-flex;align-items:center;gap:2px;background:var(--cm-surface-2);border:1px solid var(--cm-line);color:var(--cm-ink-soft);border-radius:7px;padding:2px 4px 2px 8px;font-size:12px;font-weight:600">'+_vEsc(g.fam)+(g.form&&g.form!=='고기'?' '+_vEsc(g.form):'')
+      + '<button type="button" onclick="rtIngrDel('+i+','+k+')" aria-label="성분 삭제" style="background:none;border:none;color:var(--cm-faint);cursor:pointer;font-size:13px;line-height:1;padding:0 2px">×</button></span>').join('')
+    + (!(_rtIngrEdit && _rtIngrEdit.idx===i) ? '<button type="button" onclick="rtIngrStart('+i+')" style="padding:3px 9px;border:1px dashed var(--cm-green-edge);border-radius:7px;background:none;color:var(--cm-green-700);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">+ 성분</button>' : '')
+    + '</div>';
+  if(_rtIngrEdit && _rtIngrEdit.idx===i){
+    const fams=_frFamilyGroups();
+    const sel='padding:6px 8px;border:1px solid var(--cm-line);border-radius:8px;font-size:12px;background:var(--cm-bg);color:var(--cm-ink);font-family:inherit';
+    h += '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:7px">'
+      + '<select id="rtIngrFam" style="'+sel+';flex:1;min-width:110px"><option value="">원료</option>'+fams.map(g=>'<optgroup label="'+_vEsc(g[0])+'">'+g[1].map(f=>'<option value="'+_vEsc(f)+'">'+_vEsc(f)+'</option>').join('')+'</optgroup>').join('')+'</select>'
+      + '<select id="rtIngrForm" style="'+sel+';flex:1;min-width:110px">'+RT_INGR_FORMS.map(f=>'<option value="'+f+'">'+RT_INGR_FORM_LABEL[f]+'</option>').join('')+'</select>'
+      + '<button type="button" onclick="rtIngrAdd('+i+')" style="padding:6px 12px;border:none;border-radius:8px;background:var(--cm-green-700);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">추가</button>'
+      + '<button type="button" onclick="_rtIngrEdit=null;renderRoutineEditList()" style="padding:6px 10px;border:1px solid var(--cm-line);border-radius:8px;background:none;color:var(--cm-faint);font-size:12px;cursor:pointer;font-family:inherit">취소</button>'
+      + '</div><div style="font-size:10.5px;color:var(--cm-faint);margin-top:4px;line-height:1.5">라벨에 적힌 원료만 넣어 주세요. 예: 연질캡슐 → 소 · 젤라틴, 닭간 향료 → 닭 · 간 등 내장</div>';
+  }
+  return h;
+}
+function rtIngrStart(i){ _rtIngrEdit={idx:i}; renderRoutineEditList(); }
+function rtIngrAdd(i){
+  const item=routineItems[i]; if(!item) return;
+  const fam=(document.getElementById('rtIngrFam')||{}).value, form=(document.getElementById('rtIngrForm')||{}).value||'고기';
+  if(!fam){ toast('원료를 골라 주세요'); return; }
+  if(!Array.isArray(item.ingr)) item.ingr=[];
+  if(item.ingr.some(g=>g.fam===fam && g.form===form)){ toast('이미 넣은 성분이에요'); return; }
+  item.ingr.push({fam, form});
+  _rtIngrEdit=null; saveRT(currentProfileCat||state.activeCat); renderRoutineEditList();
+}
+function rtIngrDel(i,k){
+  const item=routineItems[i]; if(!item||!item.ingr) return;
+  item.ingr.splice(k,1); if(!item.ingr.length) delete item.ingr;
+  saveRT(currentProfileCat||state.activeCat); renderRoutineEditList();
+}
+/* 고양이의 루틴 항목(로컬 저장본 — 전역 routineItems는 다른 고양이 것일 수 있음) */
+function _frRoutineItems(cat){ try{ return JSON.parse(localStorage.getItem(SK_RT+'_'+cat)||'[]')||[]; }catch(e){ return []; } }
+/* 그날 체크한 루틴 중 성분 등록된 약·보조제·간식 → 먹은 것 목록 항목 */
+function _frDayRoutineFoods(cat, d){
+  const items=_frRoutineItems(cat).filter(it=>(it.cat==='med'||it.cat==='food') && Array.isArray(it.ingr) && it.ingr.length);
+  if(!items.length) return [];
+  const r=((state.records||{})[cat]||{})[d]||{}, done=new Set();
+  (r.routines||[]).forEach(o=>(o.items||[]).forEach(n=>done.add(n)));
+  return items.filter(it=>done.has(it.name)).map(it=>({name:it.name, foodId:null, rt:it.cat, ingrObjs:it.ingr}));
+}
+
 /* ── 식이 반응 노트 2단계 (v0.9.11) — 함께 나타난 횟수 · 식이 달력 · 사료 바꾸기 전후 ──
    모두 보호자 기록의 날짜 수·횟수만(비율·위험도·판정 금지). 기록 안 한 날 ≠ 증상 없는 날 — 안내에 명시.
    증상 범위(킷 확정, 지연성 반응 고려): 구토·대변 = 먹은 날~3일 뒤, 피부·귀 = 먹은 날~7일 뒤 */
@@ -14749,6 +14815,7 @@ function _frDayFams(cat, d){
   const fams = new Set(); let unknown = 0;
   const foods = _frDayFoods(cat, d);
   foods.forEach(f=>{
+    if(f.ingrObjs){ f.ingrObjs.forEach(o=>fams.add(o.fam)); return; }   // 약·보조제·간식 등록 성분
     const ing = _frFoodIngr(cat, f.name, f.foodId);
     if(!ing.list){ unknown++; return; }
     if(ing.level==='partial') unknown++;
@@ -14866,6 +14933,240 @@ function _frSwitchHtml(cat){
 }
 function frSetSwitch(v){ const o=_frOpt(); o.switchCat=state.activeCat; o.switchDate=v||null; try{ localStorage.setItem('frOpt_v1', JSON.stringify(o)); }catch(e){} _renderFrHub(); }
 
+
+/* ── 식이 반응 노트 3단계 (v0.9.12) — 제한식(식이 시험)·재도전 기록, 진료 리포트 '식이 기록' ──
+   원칙: 사료·단백질 추천 금지, 기간·결과는 보호자가 병원과 정한 값을 기록, 상태 자동 변경 금지(끝나면 제안만),
+   자동 종료 금지(기간 지나면 알림만), 비교 숫자는 사실만(제한식은 주차별 나열 — 시작·끝 비교 숫자 없음).
+   저장: foodTrial_v1_<cat> + user_settings food_trial_<cat> = {trials:[{id,type:'elim'|'rechal',start,
+   weeks|days, foods:[{name,foodId}], fam, memo, status:'active'|'done'|'stopped', end, result}]} */
+function ftGet(cat){ try{ const v=JSON.parse(localStorage.getItem('foodTrial_v1_'+cat)||'null'); return (v&&Array.isArray(v.trials))?v:{trials:[]}; }catch(e){ return {trials:[]}; } }
+function ftSave(cat, v){
+  v={trials:(v.trials||[]), at:new Date().toISOString()};
+  try{ if(v.trials.length) localStorage.setItem('foodTrial_v1_'+cat, JSON.stringify(v)); else localStorage.removeItem('foodTrial_v1_'+cat); }catch(e){}
+  if(sbClient && currentUser){
+    sbClient.from('user_settings').upsert({user_id:currentUser.id, key:'food_trial_'+cat, value:v, updated_at:v.at}, {onConflict:'user_id,key'})
+      .then(({error})=>{ if(error) console.warn('제한식 기록 저장 오류:', error); }).catch(e=>console.warn('제한식 기록 저장 reject:', e));
+  }
+}
+async function loadFoodTrials(){
+  if(!sbClient || !currentUser || !state.cats.length) return;
+  try{
+    const {data}=await sbClient.from('user_settings').select('key,value').eq('user_id', currentUser.id).in('key', state.cats.map(c=>'food_trial_'+c));
+    (data||[]).forEach(row=>{ const cat=row.key.replace('food_trial_',''); try{
+      if(row.value && Array.isArray(row.value.trials) && row.value.trials.length) localStorage.setItem('foodTrial_v1_'+cat, JSON.stringify(row.value));
+      else localStorage.removeItem('foodTrial_v1_'+cat); }catch(e){} });
+    try{ renderDailySummary(); _frRefresh(); }catch(e){}
+  }catch(e){ console.warn('제한식 기록 로드 오류:', e); }
+}
+const _ftActive = (cat, type) => ftGet(cat).trials.find(t=>t.status==='active' && t.type===type) || null;
+const _ftDayNo = t => _mrDayIdx(today()) - _mrDayIdx(t.start) + 1;   // 시작일 = 1일째
+/* 제한식 이름 — 허용 사료의 동물성 원료(원재료 알면), 아니면 첫 사료 이름 */
+function _ftElimTitle(cat, t){
+  const fams=new Set();
+  (t.foods||[]).forEach(f=>{ const ing=_frFoodIngr(cat,f.name,f.foodId); (ing.list||[]).forEach(raw=>{ const inf=cmIngrInfo(raw); if(inf.fam && !inf.unspec && (inf.form!=='원료' || ['계란','우유'].indexOf(inf.fam)!==-1)) fams.add(inf.fam); }); });
+  return fams.size ? [...fams].join('·')+' 제한식' : ((t.foods&&t.foods[0]) ? t.foods[0].name+' 제한식' : '제한식');
+}
+/* 오늘 상태 카드 진행 띠 (제한식 진행 중일 때만) */
+function _renderFtBand(cat){
+  const el=document.getElementById('ftBand'); if(!el) return;
+  const t=_ftActive(cat,'elim');
+  if(!t){ el.style.display='none'; el.innerHTML=''; return; }
+  const day=_ftDayNo(t), tot=(t.weeks||0)*7, wk=Math.ceil(day/7), pct=tot?Math.min(100,Math.round(day/tot*100)):0, over=tot && day>tot;
+  el.style.display='';
+  el.innerHTML='<button type="button" onclick="openFrHub()" style="width:100%;display:flex;align-items:center;gap:10px;text-align:left;padding:10px 12px;border:1px solid var(--cm-green-edge);border-radius:13px;background:var(--cm-green-tint);cursor:pointer;font-family:inherit">'
+    + '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:800;color:var(--cm-green-700)">'+_vEsc(_ftElimTitle(cat,t))+' '+wk+'/'+(t.weeks||'?')+'주</div>'
+    + '<div style="height:6px;border-radius:3px;background:var(--cm-surface);margin-top:6px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:var(--cm-green-700)"></div></div>'
+    + (over?'<div style="font-size:11px;color:var(--cm-green-700);margin-top:4px">계획한 기간이 지났어요</div>':'')+'</div>'
+    + '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" style="color:var(--cm-green-700);flex:0 0 auto"><path d="M9 5l7 7-7 7"/></svg></button>';
+}
+/* 기간 통계 — 구토(헤어볼 제외 옵션)·변 점수 평균·피부귀 기록일·가려움 평균·기록한 날 */
+function _frSpanStats(cat, a, b, exHair){
+  let vom=0, sc=[], skinDays=0, itch=[], rec=0; const ti=_mrDayIdx(today());
+  for(let i=a;i<=Math.min(b,ti);i++){ const r=((state.records||{})[cat]||{})[_mrIdxDate(i)]; if(!r) continue;
+    if(['meals','poop','vomits','skin','water','urine','routines'].some(k=>(r[k]||[]).length)) rec++;
+    (r.vomits||[]).forEach(v=>{ if(!(exHair && v.content==='hairball')) vom++; });
+    (r.poop||[]).forEach(p=>{ if(p.score) sc.push(p.score); });
+    if((r.skin||[]).length){ skinDays++; r.skin.forEach(s=>{ if(s.itch!=null) itch.push(s.itch); }); } }
+  const av=x=>x.length?Math.round(x.reduce((s,v)=>s+v,0)/x.length*10)/10:null;
+  return {vom, sc:av(sc), scN:sc.length, skinDays, itch:av(itch), rec};
+}
+/* 제한식 기간 중 허용 목록에 없는 식사 (이름·사료 ID 기준) */
+function _ftOffList(cat, t){
+  const ok=new Set((t.foods||[]).map(f=>f.name)), okId=new Set((t.foods||[]).filter(f=>f.foodId!=null).map(f=>f.foodId));
+  const a=_mrDayIdx(t.start), b=t.end?_mrDayIdx(t.end):_mrDayIdx(today()), by={};
+  for(let i=a;i<=b;i++){ const r=((state.records||{})[cat]||{})[_mrIdxDate(i)]; if(!r) continue;
+    (r.meals||[]).forEach(m=>{ const n=m.mixTs?(m.mixName||m.name):m.name; if(!n || ok.has(n) || (m.foodId!=null && okId.has(m.foodId))) return; by[n]=(by[n]||0)+1; }); }
+  return by;
+}
+function _ftNotAllowed(cat, name, foodId){
+  const t=_ftActive(cat,'elim'); if(!t) return false;
+  return !(t.foods||[]).some(f=>f.name===name || (foodId!=null && f.foodId===foodId));
+}
+function _ftNotAllowedHtml(cat, name, foodId){
+  return _ftNotAllowed(cat,name,foodId) ? '<span style="display:inline-block;margin-top:3px;padding:2px 7px;border-radius:7px;font-size:11px;font-weight:600;background:var(--cm-surface-2);border:1px solid var(--cm-line);color:var(--cm-ink-soft)">제한식 목록에 없는 사료예요</span>' : '';
+}
+
+/* ── 허브: 제한식·재도전 영역 ── */
+var _ftForm = null;   // {type:'elim'|'rechal', start, weeks, days, foods:[], fam, memo}
+function ftFormStart(type){
+  _ftForm = type==='elim' ? {type, start:today(), weeks:'', foods:[], memo:''} : {type, start:today(), days:14, fam:'', memo:''};
+  _renderFrHub();
+}
+function _ftFormCapture(){
+  if(!_ftForm) return;
+  const g=id=>{ const e=document.getElementById(id); return e?e.value:null; };
+  const s=g('ftStart'); if(s!=null) _ftForm.start=s;
+  const w=g('ftWeeks'); if(w!=null) _ftForm.weeks=w;
+  const d=g('ftDays'); if(d!=null) _ftForm.days=d;
+  const m=g('ftMemo'); if(m!=null) _ftForm.memo=m;
+  const f=g('ftFam'); if(f!=null) _ftForm.fam=f;
+}
+function ftFormToggleFood(i){
+  _ftFormCapture();
+  const fav=_mrFavs(state.activeCat)[i]; if(!fav) return;
+  const name=typeof fav==='string'?fav:fav.name, foodId=(typeof fav==='object'&&fav.masterId!=null)?fav.masterId:null;
+  const k=_ftForm.foods.findIndex(f=>f.name===name);
+  if(k===-1){ if(_ftForm.foods.length>=2){ toast('허용 사료는 2개까지 고를 수 있어요'); return; } _ftForm.foods.push({name, foodId}); } else _ftForm.foods.splice(k,1);
+  _renderFrHub();
+}
+function ftFormSave(){
+  _ftFormCapture(); const f=_ftForm, cat=state.activeCat; if(!f) return;
+  if(!f.start){ toast('시작일을 골라 주세요'); return; }
+  const v=ftGet(cat), id='t_'+Date.now().toString(36);
+  if(f.type==='elim'){
+    const w=parseInt(f.weeks); if(!(w>=1 && w<=52)){ toast('병원에서 정한 기간(주)을 입력해 주세요'); return; }
+    if(!f.foods.length){ toast('허용 사료를 골라 주세요'); return; }
+    if(_ftActive(cat,'elim')){ toast('이미 진행 중인 제한식이 있어요'); return; }
+    v.trials.push({id, type:'elim', start:f.start, weeks:w, foods:f.foods, memo:(f.memo||'').trim(), status:'active'});
+  } else {
+    const d=parseInt(f.days); if(!(d>=1 && d<=90)){ toast('관찰 기간(일)을 입력해 주세요'); return; }
+    if(!f.fam){ toast('재도전할 성분을 골라 주세요'); return; }
+    if(_ftActive(cat,'rechal')){ toast('이미 진행 중인 재도전이 있어요'); return; }
+    v.trials.push({id, type:'rechal', start:f.start, days:d, fam:f.fam, memo:(f.memo||'').trim(), status:'active'});
+  }
+  ftSave(cat, v); _ftForm=null; _renderFrHub(); try{ renderDailySummary(); }catch(e){}
+}
+function ftEnd(id, status){
+  const cat=state.activeCat, v=ftGet(cat), t=v.trials.find(x=>x.id===id); if(!t) return;
+  if(!confirm(status==='done'?'제한식을 완료로 기록할까요?':'제한식을 중단으로 기록할까요?')) return;
+  t.status=status; t.end=today(); ftSave(cat, v); _renderFrHub(); try{ renderDailySummary(); }catch(e){}
+}
+/* 재도전 정리 — 보호자가 고른 상태로만 바꿈(그대로 두기 가능). 앱이 판단하지 않음 */
+function ftRechalResolve(id, choice){
+  const cat=state.activeCat, v=ftGet(cat), t=v.trials.find(x=>x.id===id); if(!t) return;
+  if(choice!=='keep'){
+    const fr=frGet(cat), i=fr.items.findIndex(x=>x.fam===t.fam), it={fam:t.fam, status:choice, memo:'재도전 '+t.start.slice(5)+' 기록', upd:new Date().toISOString()};
+    if(i===-1) fr.items.push(it); else fr.items[i]=Object.assign({}, fr.items[i], {status:choice, upd:it.upd, memo:fr.items[i].memo||it.memo});
+    frSave(cat, fr);
+  }
+  t.status='done'; t.end=today(); t.result=choice; ftSave(cat, v); _renderFrHub(); try{ renderTileGrid(cat); renderDailySummary(); }catch(e){}
+}
+function _ftHubHtml(cat){
+  const exHair=_frOpt().exHair!==false;
+  const sec=t=>'<div style="font-size:13px;font-weight:800;color:var(--cm-ink);margin:2px 0 7px">'+t+'</div>';
+  const btnP='padding:9px 0;border-radius:11px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit';
+  const inp='padding:8px 10px;border:1px solid var(--cm-line);border-radius:10px;font-size:13px;background:var(--cm-surface);color:var(--cm-ink);font-family:inherit';
+  let h='';
+  const el=_ftActive(cat,'elim'), rc=_ftActive(cat,'rechal');
+  // 진행 중 제한식
+  if(el){
+    const day=_ftDayNo(el), wkN=Math.ceil(day/7), tot=el.weeks*7, over=day>tot;
+    const a=_mrDayIdx(el.start);
+    let wk=''; for(let w=0; w<Math.min(wkN, el.weeks+4); w++){ const s=_frSpanStats(cat, a+w*7, a+w*7+6, exHair);
+      wk+='<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-top:1px solid var(--cm-line)"><span style="color:var(--cm-ink)">'+(w+1)+'주'+(w===wkN-1?' (진행 중)':'')+'</span><span style="color:var(--cm-ink-soft)">구토 '+s.vom+'회 · 변 '+(s.sc!=null?s.sc:'—')+' · 가려움 '+(s.itch!=null?s.itch:'—')+'</span></div>'; }
+    const off=_ftOffList(cat, el), offK=Object.keys(off);
+    h+='<div>'+sec('제한식')
+      + '<div style="background:var(--cm-green-tint);border:1px solid var(--cm-green-edge);border-radius:13px;padding:10px 12px;color:var(--cm-green-700)">'
+      + '<div style="font-size:13px;font-weight:800">'+_vEsc(_ftElimTitle(cat,el))+' · '+wkN+'/'+el.weeks+'주</div>'
+      + '<div style="font-size:11.5px;margin-top:3px;line-height:1.6">'+_memKDate(el.start)+' 시작 · 허용 사료: '+el.foods.map(f=>_vEsc(f.name)).join(', ')+(el.memo?'<br>메모: '+_vEsc(el.memo):'')+'</div>'
+      + (over?'<div style="font-size:11.5px;font-weight:700;margin-top:4px">계획한 기간('+el.weeks+'주)이 지났어요. 병원과 상의해 완료 여부를 기록해 주세요.</div>':'')+'</div>'
+      + '<div style="font-size:11.5px;font-weight:700;color:var(--cm-ink-soft);margin:9px 0 3px">주차별 기록 <span style="font-weight:500;color:var(--cm-faint)">구토 횟수 · 변 점수 평균 · 가려움 평균</span></div>'+wk
+      + '<div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-top:1px solid var(--cm-line)"><span>제한식 외 음식</span><span style="color:var(--cm-ink-soft)">'+(offK.length?offK.map(k=>_vEsc(k)+' '+off[k]+'회').join(', '):'없음')+'</span></div>'
+      + '<div style="display:flex;gap:6px;margin-top:8px"><button type="button" onclick="ftEnd(\''+el.id+'\',\'done\')" style="flex:1;'+btnP+';border:1px solid var(--cm-green-700);background:var(--cm-surface);color:var(--cm-green-700)">완료</button><button type="button" onclick="ftEnd(\''+el.id+'\',\'stopped\')" style="flex:1;'+btnP+';border:1px solid var(--cm-line);background:none;color:var(--cm-faint)">중단</button></div>'
+      + '</div>';
+  }
+  // 진행 중 재도전
+  if(rc){
+    const day=_ftDayNo(rc), a=_mrDayIdx(rc.start), B=_frSpanStats(cat, a-rc.days, a-1, exHair), A=_frSpanStats(cat, a, a+rc.days-1, exHair);
+    const row=(l,x,y)=>'<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-top:1px solid var(--cm-line)"><span>'+l+'</span><span style="font-weight:700">'+x+' <span style="color:var(--cm-faint);font-weight:500">→</span> '+y+'</span></div>';
+    const fin=day>rc.days;
+    h+='<div>'+sec('재도전 · '+_vEsc(rc.fam))
+      + '<div style="font-size:11.5px;color:var(--cm-ink-soft);margin-bottom:5px">'+_memKDate(rc.start)+' 시작 · '+Math.min(day,rc.days)+'/'+rc.days+'일'+(rc.memo?' · '+_vEsc(rc.memo):'')+'</div>'
+      + '<div style="display:flex;justify-content:flex-end;font-size:10.5px;color:var(--cm-faint)">전 '+rc.days+'일 → 재도전 후</div>'
+      + row('구토', B.vom+'회', A.vom+'회') + row('변 점수 평균', B.sc!=null?B.sc:'—', A.sc!=null?A.sc:'—') + row('피부·귀 기록한 날', B.skinDays+'일', A.skinDays+'일') + row('가려움 평균', B.itch!=null?B.itch:'—', A.itch!=null?A.itch:'—')
+      + '<div style="font-size:10.5px;color:var(--cm-faint);margin-top:4px">기록한 날: 전 '+B.rec+'일 · 후 '+A.rec+'일</div>'
+      + '<div style="margin-top:9px;padding:10px 12px;border:1px solid var(--cm-green-edge);border-radius:13px;background:var(--cm-green-tint)">'
+      + '<div style="font-size:12.5px;font-weight:800;color:var(--cm-green-700)">'+(fin?'재도전 기록을 정리했어요':'관찰 중이에요 — 미리 정리할 수도 있어요')+'</div>'
+      + '<div style="font-size:11.5px;color:var(--cm-green-700);margin:3px 0 7px;line-height:1.5">'+_vEsc(rc.fam)+'의 상태를 바꿀까요? 병원과 상의한 결과로 골라 주세요.</div>'
+      + ['confirmed','suspect','ok'].map(k=>'<button type="button" onclick="ftRechalResolve(\''+rc.id+'\',\''+k+'\')" style="width:100%;margin-bottom:5px;'+btnP+';background:'+FR_STATUS[k].bg+';border:1px solid '+FR_STATUS[k].bd+';color:'+FR_STATUS[k].fg+'">'+FR_STATUS[k].t+'</button>').join('')
+      + '<button type="button" onclick="ftRechalResolve(\''+rc.id+'\',\'keep\')" style="width:100%;'+btnP+';background:var(--cm-surface);border:1px solid var(--cm-line);color:var(--cm-ink-soft)">그대로 두기</button>'
+      + '</div></div>';
+  }
+  // 시작 폼
+  if(_ftForm){
+    const f=_ftForm;
+    h+='<div style="padding:11px;border:1px solid var(--cm-line);border-radius:13px;background:var(--cm-surface)">'
+      + '<div style="font-size:13px;font-weight:800;color:var(--cm-ink);margin-bottom:8px">'+(f.type==='elim'?'제한식 시작':'재도전 시작')+'</div>'
+      + '<div style="font-size:12px;font-weight:700;color:var(--cm-ink-soft);margin-bottom:5px">시작일</div><input type="date" id="ftStart" value="'+_vEsc(f.start)+'" max="'+today()+'" style="'+inp+';width:100%;box-sizing:border-box">';
+    if(f.type==='elim'){
+      const favs=_mrFavs(state.activeCat);
+      h+='<div style="font-size:12px;font-weight:700;color:var(--cm-ink-soft);margin:9px 0 5px">기간 (주)</div><input type="number" id="ftWeeks" min="1" max="52" inputmode="numeric" placeholder="병원에서 정한 기간" value="'+_vEsc(f.weeks)+'" style="'+inp+';width:100%;box-sizing:border-box">'
+        + '<div style="font-size:12px;font-weight:700;color:var(--cm-ink-soft);margin:9px 0 5px">허용 사료 <span style="font-weight:500;color:var(--cm-faint)">즐겨찾기에서 2개까지</span></div>'
+        + (favs.length ? '<div style="display:flex;flex-wrap:wrap;gap:5px">'+favs.map((fv,i)=>{ const n=typeof fv==='string'?fv:fv.name, on=f.foods.some(x=>x.name===n);
+            return '<button type="button" onclick="ftFormToggleFood('+i+')" style="padding:6px 10px;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;border:1px solid '+(on?'var(--cm-green-700)':'var(--cm-line)')+';background:'+(on?'var(--cm-green-tint)':'var(--cm-surface)')+';color:'+(on?'var(--cm-green-700)':'var(--cm-ink-soft)')+'">'+_vEsc(n)+'</button>'; }).join('')+'</div>'
+          : '<div style="font-size:11.5px;color:var(--cm-faint)">즐겨찾기한 사료가 없어요. 사료 탭에서 처방식을 즐겨찾기에 넣어 주세요.</div>');
+    } else {
+      const fams=_frFamilyGroups(), reg=frGet(cat).items;
+      h+='<div style="font-size:12px;font-weight:700;color:var(--cm-ink-soft);margin:9px 0 5px">재도전 성분</div><select id="ftFam" style="'+inp+';width:100%"><option value="">고르기</option>'
+        + (reg.length?'<optgroup label="등록한 성분">'+reg.map(i=>'<option value="'+_vEsc(i.fam)+'"'+(f.fam===i.fam?' selected':'')+'>'+_vEsc(i.fam)+'</option>').join('')+'</optgroup>':'')
+        + fams.map(g=>'<optgroup label="'+_vEsc(g[0])+'">'+g[1].filter(x=>!reg.some(i=>i.fam===x)).map(x=>'<option value="'+_vEsc(x)+'"'+(f.fam===x?' selected':'')+'>'+_vEsc(x)+'</option>').join('')+'</optgroup>').join('')+'</select>'
+        + '<div style="font-size:12px;font-weight:700;color:var(--cm-ink-soft);margin:9px 0 5px">관찰 기간 (일)</div><input type="number" id="ftDays" min="1" max="90" inputmode="numeric" value="'+_vEsc(f.days)+'" style="'+inp+';width:100%;box-sizing:border-box">';
+    }
+    h+='<input type="text" id="ftMemo" maxlength="120" placeholder="병원 메모 (예: 8주 후 재진료)" value="'+_vEsc(f.memo||'')+'" style="'+inp+';width:100%;box-sizing:border-box;margin-top:9px">'
+      + '<div style="font-size:11px;color:var(--cm-faint);margin-top:6px;line-height:1.55">기간과 사료는 병원에서 정한 대로 기록해 주세요. 끝내는 건 보호자가 정해요.</div>'
+      + '<div style="display:flex;gap:6px;margin-top:9px"><button type="button" onclick="ftFormSave()" style="flex:1;'+btnP+';border:none;background:var(--cm-green-700);color:#fff">시작</button><button type="button" onclick="_ftForm=null;_renderFrHub()" style="padding:9px 14px;border-radius:11px;font-size:12.5px;cursor:pointer;font-family:inherit;border:1px solid var(--cm-line);background:none;color:var(--cm-faint)">취소</button></div></div>';
+  } else if(!el || !rc){
+    h+='<div style="display:flex;gap:6px">'
+      + (!el?'<button type="button" onclick="ftFormStart(\'elim\')" style="flex:1;'+btnP+';border:1px dashed var(--cm-green-edge);background:none;color:var(--cm-green-700)">+ 제한식 시작</button>':'')
+      + (!rc?'<button type="button" onclick="ftFormStart(\'rechal\')" style="flex:1;'+btnP+';border:1px dashed var(--cm-green-edge);background:none;color:var(--cm-green-700)">+ 재도전 시작</button>':'')
+      + '</div>';
+  }
+  // 지난 기록
+  const past=ftGet(cat).trials.filter(t=>t.status!=='active').slice(-5).reverse();
+  if(past.length) h+='<div style="margin-top:8px">'+past.map(t=>'<div style="font-size:11.5px;color:var(--cm-ink-soft);padding:4px 0;border-top:1px solid var(--cm-line)">'
+      + (t.type==='elim' ? _vEsc(_ftElimTitle(cat,t))+' '+t.start.slice(5)+'~'+(t.end||'').slice(5)+' ('+t.weeks+'주 계획, '+(t.status==='done'?'완료':'중단')+')'
+                         : '재도전 '+_vEsc(t.fam)+' '+t.start.slice(5)+'~'+(t.end||'').slice(5)+(t.result&&t.result!=='keep'?' → '+FR_STATUS[t.result].t:''))+'</div>').join('')+'</div>';
+  return h;
+}
+
+/* ── 진료 리포트 '식이 기록' 칸 (텍스트·이미지 공용 줄) — 사실만, 제한식은 주차별 나열 ── */
+function _frReportLines(cat, fromStr, toStr){
+  const L=[], exHair=_frOpt().exHair!==false;
+  const reg=frGet(cat).items;
+  if(reg.length) L.push('등록한 성분: '+reg.map(i=>i.fam+' '+(FR_STATUS[i.status]||{}).t).join(' · '));
+  const foods=_frRecentFoods(cat,14).slice(0,5).map(f=>{ if(f.ingrObjs) return f.name+'('+(f.rt==='med'?'약·보조제':'간식')+')';
+    const ing=_frFoodIngr(cat,f.name,f.foodId); return f.name+' — '+(ing.level==='full'?'원재료 확인됨':ing.level==='partial'?'원재료 일부만':'원재료 정보 없음'); });
+  if(foods.length) L.push('최근 14일 먹은 것: '+foods.join(', '));
+  const a=_mrDayIdx(fromStr), b=_mrDayIdx(toStr);
+  ftGet(cat).trials.forEach(t=>{
+    const s=_mrDayIdx(t.start), e=t.end?_mrDayIdx(t.end):_mrDayIdx(today());
+    if(e<a || s>b) return;
+    if(t.type==='elim'){
+      const wkN=Math.min(Math.ceil((e-s+1)/7), t.weeks+4), vs=[], ss=[];
+      for(let w=0;w<wkN;w++){ const st=_frSpanStats(cat, s+w*7, s+w*7+6, exHair); vs.push(st.vom); ss.push(st.sc!=null?st.sc:'—'); }
+      L.push('제한식: '+_ftElimTitle(cat,t)+' '+t.start+' ~ '+(t.end||'진행 중')+' ('+t.weeks+'주 계획'+(t.status==='done'?', 완료':t.status==='stopped'?', 중단':'')+') · 허용 사료 '+t.foods.map(f=>f.name).join(', '));
+      L.push('  주차별 구토 '+vs.join(' · ')+'회 / 변 점수 평균 '+ss.join(' · '));
+      const off=_ftOffList(cat,t), k=Object.keys(off); if(k.length) L.push('  제한식 외 음식: '+k.map(n=>n+' '+off[n]+'회').join(', '));
+    } else {
+      const B=_frSpanStats(cat, s-t.days, s-1, exHair), A=_frSpanStats(cat, s, s+t.days-1, exHair);
+      L.push('재도전: '+t.fam+' '+t.start+' ('+t.days+'일 관찰'+(t.status==='active'?', 진행 중':'')+') · 구토 전 '+B.vom+'회 / 후 '+A.vom+'회 · 피부·귀 기록 전 '+B.skinDays+'일 / 후 '+A.skinDays+'일'+(t.result&&t.result!=='keep'?' · 보호자 기록 상태: '+FR_STATUS[t.result].t:''));
+    }
+  });
+  const P=_frSpanStats(cat, a, b, exHair);
+  if(P.scN || P.skinDays) L.push('기간 중 대변 점수 평균 '+(P.sc!=null?P.sc+' ('+P.scN+'회)':'—')+' · 피부·귀 기록 '+P.skinDays+'일'+(P.itch!=null?' · 가려움 평균 '+P.itch:''));
+  return L;
+}
+
 /* ── 허브 (바텀시트) ── */
 var _frEdit = null;   // {fam, status, memo, isNew}
 function openFrHub(){ _frEdit=null; _renderFrHub(); _sheetOpen('frSheet', true); }
@@ -14923,7 +15224,7 @@ function _frRecentFoods(cat, days){
   for(let i=di-days+1;i<=di;i++){
     const d=_mrIdxDate(i);
     if(!recs[d]) continue;
-    _frDayFoods(cat,d).forEach(f=>{ const k=f.name; if(!by[k]) by[k]={name:f.name, foodId:f.foodId, n:0, last:d}; by[k].n++; by[k].last=d; if(f.foodId!=null) by[k].foodId=f.foodId; });
+    _frDayFoods(cat,d).forEach(f=>{ const k=f.name; if(!by[k]) by[k]={name:f.name, foodId:f.foodId, n:0, last:d, rt:f.rt||null, ingrObjs:f.ingrObjs||null}; by[k].n++; by[k].last=d; if(f.foodId!=null) by[k].foodId=f.foodId; });
   }
   return Object.values(by).sort((a,b)=>b.last.localeCompare(a.last)||b.n-a.n);
 }
@@ -14937,6 +15238,7 @@ function _renderFrHub(){
   let h='<div style="background:var(--cm-green-tint);border:1px solid var(--cm-green-edge);border-radius:14px;padding:11px 13px;color:var(--cm-green-700)">'
     + '<div style="font-size:12.5px;font-weight:800">최근 7일</div>'
     + '<div style="font-size:12px;margin-top:3px;line-height:1.6">구토 '+s7.vomit+'회'+(s7.hair?' (헤어볼 '+s7.hair+'회)':'')+' · '+(s7.scoreN?'변 점수 평균 '+s7.scoreAvg+' ('+s7.scoreN+'회)':'변 점수 기록 없음')+' · 피부·귀 기록 '+s7.skinDays+'일</div></div>';
+  h+='<div>'+_ftHubHtml(cat)+'</div>';
   // 등록한 성분
   const items=frGet(cat).items;
   const order={confirmed:0,suspect:1,never:2,ok:3};
@@ -14970,20 +15272,24 @@ function _renderFrHub(){
   h+='</div>';
   // 지금 먹고 있는 것 (최근 14일)
   const recent=_frRecentFoods(cat, 14);
+  const _rtNoIngr=_frRoutineItems(cat).filter(it=>(it.cat==='med'||it.cat==='food') && !(it.ingr&&it.ingr.length)).length;
   h+='<div>'+sec('최근 14일 먹은 것')
     + (recent.length ? recent.map(f=>{
-        const ing=_frFoodIngr(cat,f.name,f.foodId), m=_frMatch(cat,ing);
-        const noInfo = ing.level==='none' || ing.level==='partial';
+        const ing=_frItemIngr(cat,f), m=_frMatch(cat,ing);
+        const noInfo = !f.ingrObjs && (ing.level==='none' || ing.level==='partial');
         return '<div style="padding:9px 11px;border:1px solid var(--cm-line);border-radius:12px;background:var(--cm-surface);margin-bottom:6px">'
-          + '<div style="font-size:12.5px;color:var(--cm-ink);font-weight:600">'+_vEsc(f.name)+' <span style="color:var(--cm-faint);font-weight:500;font-size:11px">'+f.n+'회 · 마지막 '+_vEsc(f.last.slice(5))+'</span></div>'
+          + '<div style="font-size:12.5px;color:var(--cm-ink);font-weight:600">'+_vEsc(f.name)+(f.rt?' <span style="font-size:10.5px;font-weight:600;color:var(--cm-faint)">'+(f.rt==='med'?'약·보조제':'간식')+'</span>':'')+' <span style="color:var(--cm-faint);font-weight:500;font-size:11px">'+f.n+'회 · 마지막 '+_vEsc(f.last.slice(5))+'</span></div>'
           + (m ? '<div>'+_frBadgeHtml(m)+'</div>' : '<div style="font-size:11px;color:var(--cm-faint);margin-top:2px">'+(ing.level==='full'?'원재료 확인됨':ing.level==='partial'?'원재료 일부만 있어요':ing.level==='loading'?'원재료 확인 중':'원재료 정보 없음')+'</div>')
           + (noInfo ? '<div style="font-size:11px;color:var(--cm-faint);margin-top:4px;line-height:1.5">사료 탭에서 원재료 사진을 분석하면 확인할 수 있어요</div>' : '')
+          + (f.rt==='med' && m && (m.kind==='direct'||m.kind==='related') ? '<div style="font-size:11px;color:var(--cm-ink-soft);margin-top:4px;line-height:1.5">처방약은 임의로 중단하지 말고 수의사와 상담해 주세요</div>' : '')
           + '</div>'; }).join('')
       : '<div style="font-size:12px;color:var(--cm-faint)">최근 14일 식사 기록이 없어요</div>')
+    + (_rtNoIngr ? '<div style="font-size:11px;color:var(--cm-faint);line-height:1.55;margin-top:2px">약·보조제·간식 '+_rtNoIngr+'개는 성분이 없어 빠져 있어요. 프로필의 투약·루틴 편집에서 성분을 넣을 수 있어요.</div>' : '')
     + '</div>';
   // 먹은 사료의 동물성 원료 계열 겹침 (최근 30일)
-  const r30=_frRecentFoods(cat, 30); let known=0; const famN={};
+  const r30=_frRecentFoods(cat, 30).filter(f=>!f.ingrObjs); let known=0; const famN={};   // 약·간식(루틴 성분)은 사료 겹침 통계 제외
   r30.forEach(f=>{
+    if(f.ingrObjs) return;   // 약·간식은 사료 겹침 통계에서 제외
     const ing=_frFoodIngr(cat,f.name,f.foodId); if(!ing.list) return; known++;
     const fams=new Set();
     ing.list.forEach(raw=>{ const inf=cmIngrInfo(raw); if(inf.fam && (inf.form!=='원료' || ['계란','우유'].indexOf(inf.fam)!==-1)) fams.add(inf.fam+(inf.unspec?' (특정 안 됨)':'')); });
@@ -16472,6 +16778,10 @@ function buildVetReportText(d, inc, memo){
     });
     if(d.vomits.length>10) L.push('- 외 '+(d.vomits.length-10)+'회');
   }
+  if(inc.food){
+    const _fl=_frReportLines(d.cat, d.fromStr, d.toStr);
+    if(_fl.length){ L.push(''); L.push('[식이 기록] (보호자 기록 · 판정 아님)'); _fl.forEach(s=>L.push(s)); }
+  }
   if(inc.meal){
     L.push('');
     L.push('[급여]');
@@ -16602,6 +16912,7 @@ function renderVetReportCanvas(d, inc, memo){
     if(d.poop.lastInfo) _pLines.push('마지막 배변 '+d.poop.lastInfo.date.slice(5)+' ('+(d.poop.lastInfo.daysAgo===0?'오늘':d.poop.lastInfo.daysAgo+'일 전')+')');
     secs.push({t:'배변', lines:_pLines, warn:Object.keys(d.poop.abn).length>0 || (d.poop.lastInfo&&d.poop.lastInfo.daysAgo>=3)});
   }
+  if(inc.food){ const _fl=_frReportLines(d.cat, d.fromStr, d.toStr); if(_fl.length) secs.push({t:'식이 기록', lines:_fl}); }
   if(inc.vomit) secs.push({t:'구토', lines:['기간 내 총 '+d.vomits.length+'회'+(d.vomits.some(v=>v.danger)?' · 피/붉은색 포함':'')], warn:d.vomits.some(v=>v.danger)});
   if(inc.meal){
     const _mT = _vrCovTier(d.meal.days, d.homeDays);
@@ -17571,7 +17882,8 @@ async function trfSavePdf(){
 
 function _vetIncDefaults(cat){
   const isDM = ((state.catProfiles||{})[cat]?.diseases||[]).some(x=>String(x).includes('DM'));
-  return { obs:true, profile:true, water:true, urine:true, poop:true, vomit:true, meal:true, weight:true, rr:true, med:true, cgm:isDM, bt:false };
+  let isFR=false; try{ isFR=_catHasFR(cat); }catch(e){}
+  return { obs:true, profile:true, water:true, urine:true, poop:true, vomit:true, meal:true, weight:true, rr:true, med:true, cgm:isDM, food:isFR, bt:false };
 }
 function openVetReport(){
   const cat = state.activeCat;
@@ -17779,6 +18091,7 @@ function renderVetReportStep(){
     const per = [['1w','1주'],['2w','2주'],['1m','1개월'],['3m','3개월'],['custom','직접 지정']];
     const incDefs = [['obs','최근 관찰 지표'],['profile','프로필'],['water','음수량'],['urine','소변'],['poop','배변'],['vomit','구토'],['meal','급여'],['weight','체중'],['rr','호흡수'],['med','투약·루틴']];
     if(((state.catProfiles||{})[R.cat]?.diseases||[]).some(x=>String(x).includes('DM'))) incDefs.push(['cgm','혈당']);
+    try{ if(_catHasFR(R.cat)) incDefs.push(['food','식이 기록']); }catch(e){}
     incDefs.push(['bt','혈액검사 (전원·타 병원용)']);
     box.innerHTML = head('리포트 옵션', '기간과 포함 항목을 선택해주세요')
       + '<div style="font-size:12.5px;font-weight:700;color:var(--cm-ink-soft);margin-bottom:8px">기간</div>'
@@ -19342,7 +19655,7 @@ async function exportAllDataJSON(){
       records:state, bloodTests:btData, careEvents:careEvents, perCatKeys:{} };
     for(let i=0;i<localStorage.length;i++){
       const k=localStorage.key(i); if(!k) continue;
-      if(/^(fd_v2_|cgmData_v1_|tubeRecipes_v1_|favFoods_v1_|manualFoods_v1_|routineItems_v1_|routineVersions_v1_|lastInputs_v1_|nextVisit_v1_|vetQuestions_v1_|kcalGoal_v1_|foodReact_v1_)/.test(k)){
+      if(/^(fd_v2_|cgmData_v1_|tubeRecipes_v1_|favFoods_v1_|manualFoods_v1_|routineItems_v1_|routineVersions_v1_|lastInputs_v1_|nextVisit_v1_|vetQuestions_v1_|kcalGoal_v1_|foodReact_v1_|foodTrial_v1_)/.test(k)){
         try{ dump.perCatKeys[k]=JSON.parse(localStorage.getItem(k)); }catch(e){ dump.perCatKeys[k]=localStorage.getItem(k); }
       }
     }
@@ -19508,6 +19821,7 @@ async function syncFromDB() {
       _tw('last_inputs',    loadLastInputs().catch(e => console.warn('lastInputs 로드 오류:', e))),
       _tw('kcal_goal',      loadKcalGoals().catch(e => console.warn('kcalGoal 로드 오류:', e))),
       _tw('food_react',     loadFoodReacts().catch(e => console.warn('식이 반응 노트 로드 오류:', e))),
+      _tw('food_trial',     loadFoodTrials().catch(e => console.warn('제한식 기록 로드 오류:', e))),
     ]);
     console.log(`[Perf] Promise.all 전체: ${(performance.now()-_parallelT0).toFixed(0)}ms`);
 
