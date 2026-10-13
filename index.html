@@ -664,7 +664,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.9.6</span>
+      <span class="cm-beta">v0.9.7</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -1075,7 +1075,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
     <div id="mealCard" style="display:none">
     <!-- 상단 고정 필드 — 어느 탭에서 선택해도 결과는 여기로 모임, 저장은 하단 버튼 하나 (v0.7.43) -->
     <div class="row2">
-      <div class="ig"><label>사료명</label><input type="text" id="foodName" placeholder="예: 몬지 레날" oninput="_favKcalPer100=null;_favMoisture=null;_mealSelRecipe=null;_mealSelSource=null"></div>
+      <div class="ig"><label>사료명</label><input type="text" id="foodName" placeholder="예: 몬지 레날" oninput="_favKcalPer100=null;_favMoisture=null;_mealSelFoodId=null;_mealSelRecipe=null;_mealSelSource=null"></div>
       <div class="ig"><label>급여량 (g)</label><input type="number" id="foodAmt" placeholder="g" oninput="if(_favKcalPer100){const _a=parseFloat(this.value);const _kEl=document.getElementById('foodKcal');if(_kEl)_kEl.value=isNaN(_a)||_a<=0?'':Math.round(_favKcalPer100*_a/100);}"></div>
       <div class="ig"><label>칼로리 (kcal)</label><input type="number" id="foodKcal" placeholder="kcal"></div>
       <div class="ig"><label>날짜</label><input type="date" id="foodDate"></div>
@@ -2183,6 +2183,10 @@ let btEditMode=false,btEditOriginals={};
 let favFoods=[];
 let _favKcalPer100=null; // 즐겨찾기 선택 시 세팅, 수동 입력 시 null로 초기화
 let _favMoisture=null;   // 즐겨찾기 선택 시 moisture% 세팅, 수동 입력 시 null
+/* 식사 기록의 사료 ID (v0.9.7) — 공유 사료 목록(foods_master) id. 즐겨찾기(masterId)·검색(master 행)에서 고를 때만.
+   식이 반응 노트의 성분 연결용 — 이름 매칭은 표기 차이로 끊길 수 있어 ID를 함께 저장(기존 기록은 이름으로 연결).
+   사료명을 직접 고치면 _fillMealFields/oninput 경로에서 null로 초기화 */
+let _mealSelFoodId=null;
 let _mealSelRecipe=null;   // 오늘탭 식사 시트에서 고른 혼합 레시피 {cat,id,name} — saveMeal 라우팅용 (v0.7.43)
 let _mealSelSource=null;   // 상단 필드 값의 출처 탭 'favorite'|'search'|'recipe' — lastInputs.meal.type용 (v0.7.43)
 let _mealPrefillType=null; // 직전 프리필의 lastInputs.meal.type — 시트 진입 기본 탭 결정용 (v0.7.43)
@@ -4337,6 +4341,7 @@ function selectMealRecipeDaily(i) {
    silentToast=true면 기본 토스트 생략(호출부가 자체 안내 토스트를 띄울 때). */
 function _fillMealFields(name, kcalPer100, moisture, silentToast) {
   _favMoisture = (moisture != null) ? moisture : null;
+  _mealSelFoodId = null;   // 호출부(즐겨찾기·검색)가 다시 세팅
   _mealSelRecipe = null;   // 레시피 선택 해제 — 레시피 경로는 selectMealRecipeDaily가 이후 다시 세팅
   document.getElementById('foodName').value = name;
   document.getElementById('foodKcal').value = '';
@@ -4359,6 +4364,7 @@ function selectFavFoodDaily(idx) {
   const moisture = (typeof fav === 'object' && fav.moisture != null) ? fav.moisture : null;
   _fillMealFields(name, kcalPer100, moisture, false);
   _mealSelSource = 'favorite';
+  _mealSelFoodId = (typeof fav === 'object' && fav.masterId != null) ? fav.masterId : null;
 }
 
 /* ── 사료 이름검색 (오늘기록탭 급여 폼) — searchFoodMaster 재사용, 즐겨찾기와 동일 필드채움 경로 (v0.7.19) ── */
@@ -4438,6 +4444,7 @@ function selectMealSearchFoodDaily(i) {
   _fillMealFields(item.name, item.kcal_per_100g, item.moisture, wetNoMoisture);
   if(wetNoMoisture) toast('💧 수분정보없음 (음수량 미반영) · 성분분석 필요', '#BA7517', 3500);
   _mealSelSource = 'search';
+  _mealSelFoodId = (item.id != null) ? item.id : null;   // foods_master 행만 id 있음(표준 cm_fooddb 항목은 id null)
 }
 
 /* ── 즐겨찾기 사료 피커 ── */
@@ -6362,14 +6369,16 @@ document.getElementById('saveMeal').onclick=()=>{
     document.getElementById('foodTime').value=nowTime();
     return;
   }
-  getRec(state.activeCat,mealD).meals.push({name,amt:parseFloat(amt)||0,kcal:parseFloat(document.getElementById('foodKcal').value)||0,time:document.getElementById('foodTime').value,ts:Date.now(),moisture:_favMoisture});
+  const _mealEntry={name,amt:parseFloat(amt)||0,kcal:parseFloat(document.getElementById('foodKcal').value)||0,time:document.getElementById('foodTime').value,ts:Date.now(),moisture:_favMoisture};
+  if(_mealSelFoodId!=null) _mealEntry.foodId=_mealSelFoodId;   // v0.9.7 사료 ID
+  getRec(state.activeCat,mealD).meals.push(_mealEntry);
   // 다음번 프리필용 (v0.7.42) — kcal/100g은 즐겨찾기 선택값 우선, 없으면 총kcal·급여량에서 역산
   if(name){
     const _liAmt=parseFloat(amt)||0, _liKcal=parseFloat(document.getElementById('foodKcal').value)||0;
     const _liK100=_favKcalPer100||(_liAmt>0&&_liKcal>0?Math.round(_liKcal/_liAmt*100):null);
     setLastInput(state.activeCat,'meal',{type:_mealSelSource||null,foodName:name,recipeId:null,amount_g:_liAmt||null,kcal_per_100g:_liK100,moisture:_favMoisture});
   }
-  _favMoisture=null;_mealSelSource=null;
+  _favMoisture=null;_mealSelSource=null;_mealSelFoodId=null;
   saveS(mealD);['foodName','foodAmt','foodKcal'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('foodTime').value=nowTime();   // 연속 급여 대응 (addWater 패턴)
   toast(mealD!==today()?mealD+' 날짜로 저장됐어요':'식사 저장 완료!');renderDailySummary();
@@ -6745,7 +6754,7 @@ function renderHistory(){
     else if(item.type==='rr'){const _rt=srrTier(d.rr);dot=(_rt==='emerg'||_rt==='obs')?'ld-d':_rt==='warn'?'ld-w':'ld-n';const sLbl=d.stateLabel||'';txt=`[호흡수] ${d.time} | ${d.rr}회/분 ${sLbl?'('+sLbl+')':''}${_rt==='emerg'?' ⚠️응급':_rt==='obs'?' 관찰↑':_rt==='warn'?' △주의':''}`;}
     else if(item.type==='water'){dot='ld-n';txt=`[음수${d.src==='tube'?'·강급':''}] ${d.time} | ${d.ml}ml`;}
     else if(item.type==='urine'){dot=d.amount==='혈뇨'?'ld-d':d.amount==='핍뇨'||d.amount==='소량'?'ld-w':'ld-n';txt=`[소변] ${d.time} | ${d.amount}`;}
-    else if(item.type==='poop'){dot=d.type==='혈변'||d.type==='설사'?'ld-d':d.type==='무름'||d.type==='무변'?'ld-w':'ld-n';txt=`[대변] ${d.time} | ${d.type}`;}
+    else if(item.type==='poop'){dot=d.type==='혈변'||d.type==='설사'?'ld-d':d.type==='무름'||d.type==='무변'?'ld-w':'ld-n';txt=`[대변] ${d.time} | ${_poopLabel(d)}`;}
     else if(item.type==='vomit'){dot=_vomitDanger(d)?'ld-d':'ld-w';txt=`[구토] ${d.time} | ${_vomitLabel(d)}${d.memo?' ('+d.memo+')':''}`;}
 
     const el=document.createElement('div');
@@ -10251,6 +10260,53 @@ function addUrine(amount, time) {
   try{renderDailySummary();}catch(e){}
 }
 
+/* ── 대변 7단계 점수 (v0.9.7) ──────────────────────────────────
+   동물병원에서 흔히 쓰는 1~7점(퓨리나 기준: 수분·집었을 때 모양 유지 여부)에 맞춘 자체 문장.
+   화면엔 판정(정상·설사 등) 없이 점수와 설명만. 브랜드명·원문·그림 사용 안 함(저작권).
+   기존 리포트·관찰 지표는 p.type(정상·설사·혈변 등)을 읽으므로 점수에 대응하는 type을 함께 저장.
+   피 체크 시 type='혈변'(기존 혈변 안내·지표 유지). 예전 5종 기록은 그대로 둠 */
+const POOP_SCORE_DESC = ['',
+  '아주 딱딱하고 마른 알갱이, 힘을 줘야 나와요',
+  '단단하지만 딱딱하지 않고, 마디가 보이며 쉽게 집혀요',
+  '통나무 모양에 겉이 촉촉해요. 자국은 남지만 집어도 모양이 유지돼요',
+  '아주 촉촉하고 질척해요. 통나무 모양이지만 집으면 무너져요',
+  '아주 촉촉하고 통나무가 아닌 무더기 모양이에요',
+  '질감은 있지만 모양이 없이 무더기나 얼룩으로 보여요',
+  '물 같고 질감 없이 납작하게 퍼져요'];
+const POOP_SCORE_TYPE = ['', '토끼똥/변비', '정상', '정상', '약간무름', '무름', '설사', '설사'];
+function _poopLabel(p){
+  if(!p) return '';
+  if(p.score) return p.score+'점'+(p.mucus?' · 점액':'')+(p.blood?' · 피':'');
+  return p.type||'';
+}
+var _poopSel = {score:null, mucus:false, blood:false};
+function _poopSelPaint(){
+  document.querySelectorAll('#poopScoreGrid [data-ps]').forEach(function(b){
+    var on = +b.dataset.ps === _poopSel.score;
+    b.style.background = on ? 'var(--cm-green-tint)' : 'var(--cm-surface)';
+    b.style.borderColor = on ? 'var(--cm-green-700)' : 'var(--cm-line)';
+    b.style.color = on ? 'var(--cm-green-700)' : 'var(--cm-ink)';
+  });
+  var d = document.getElementById('poopScoreDesc');
+  if(d){ d.textContent = _poopSel.score ? _poopSel.score+'점 · '+POOP_SCORE_DESC[_poopSel.score] : '점수를 고르면 설명이 보여요'; d.style.color = _poopSel.score ? 'var(--cm-ink)' : 'var(--cm-faint)'; }
+  [['poopMucusBtn','mucus'],['poopBloodBtn','blood']].forEach(function(x){
+    var b = document.getElementById(x[0]); if(!b) return; var on = _poopSel[x[1]];
+    b.style.background = on ? 'var(--cm-clay-tint)' : 'var(--cm-surface)';
+    b.style.borderColor = on ? 'var(--cm-clay-edge)' : 'var(--cm-line)';
+    b.style.color = on ? 'var(--cm-clay-ink)' : 'var(--cm-ink-soft)';
+  });
+}
+function poopPickScore(n){ _poopSel.score = (_poopSel.score===n ? null : n); _poopSelPaint(); }
+function poopToggle(k){ _poopSel[k] = !_poopSel[k]; _poopSelPaint(); }
+function poopSaveScored(){
+  if(!_poopSel.score && !_poopSel.mucus && !_poopSel.blood){ toast('대변 상태 점수를 골라 주세요'); return; }
+  var s = _poopSel.score;
+  var type = _poopSel.blood ? '혈변' : (s ? POOP_SCORE_TYPE[s] : '정상');
+  var t = (document.getElementById('sheetExcretaTime')||{}).value || nowTime();
+  addPoop(type, t, {score:s||null, mucus:!!_poopSel.mucus, blood:!!_poopSel.blood});
+  _poopSel = {score:null, mucus:false, blood:false}; _poopSelPaint();
+}
+
 let _pendingPoop = null;
 function selectPoop(type) {
   var sheetTimeEl = document.getElementById('sheetExcretaTime');
@@ -10272,17 +10328,22 @@ function confirmAddPoop() {
   addPoop(_pendingPoop, time);
   _pendingPoop = null;
 }
-function addPoop(type, time) {
+function addPoop(type, time, extra) {
   const t = time || nowTime();
   var sheetDateEl = document.getElementById('sheetExcretaDate');
   var dateEl2 = sheetDateEl || document.getElementById('waterDate');
   const date = (dateEl2 && dateEl2.value) ? dateEl2.value : today();
   const rec = getRec(state.activeCat, date);
   if(!rec.poop) rec.poop = [];
-  rec.poop.push({type, time: t, ts: Date.now()});
+  const entry = {type, time: t, ts: Date.now()};
+  if(extra && extra.score) entry.score = extra.score;
+  if(extra && extra.mucus) entry.mucus = true;
+  if(extra && extra.blood) entry.blood = true;
+  rec.poop.push(entry);
   saveS(date);
   renderWaterLog();
-  if(type==='혈변') toast('🔴 혈변 기록됨 — 즉시 수의사와 상담해 주세요', '#D85A30');
+  if(extra && extra.score && type!=='혈변' && type!=='설사' && type!=='토끼똥/변비') toast('대변 기록됐어요 ('+_poopLabel(entry)+')', '#1D9E75');
+  else if(type==='혈변') toast('🔴 혈변 기록됨 — 즉시 수의사와 상담해 주세요', '#D85A30');
   else if(type==='설사') toast('⚠️ 설사 기록됨 — 지속되면 수의사에게 연락하세요', '#BA7517');
   else if(type==='토끼똥/변비') toast('⚠️ 토끼똥/변비 기록됨 — 변비 여부를 확인해주세요', '#BA7517');
   else if(type==='무변') toast('💩 무변 기록됐어요 — 음수량을 확인해 주세요', '#BA7517');
@@ -10315,7 +10376,7 @@ function saveEditPoop(idx, date) {
   const time = document.getElementById('petim'+idx)?.value;
   const rec = getRec(state.activeCat, date);
   if(rec.poop && rec.poop[idx]) {
-    if(type) rec.poop[idx].type = type;
+    if(type && type !== rec.poop[idx].type){ rec.poop[idx].type = type; delete rec.poop[idx].score; delete rec.poop[idx].mucus; delete rec.poop[idx].blood; }
     if(time) rec.poop[idx].time = time;
     saveS(date); renderWaterLog();
     toast('💩 대변 기록이 수정됐어요', '#1D9E75');
@@ -10496,7 +10557,7 @@ function renderWaterLog() {
   if(poopLogEl) {
     poopLogEl.innerHTML = poopArr.length === 0 ? '' : poopArr.map((p, i) => {
       const color = p.type==='혈변'||p.type==='설사' ? 'var(--coral)' : p.type==='무름'||p.type==='무변' ? 'var(--amber-d)' : 'var(--teal)';
-      return `<span data-pidx="${i}" style="margin-right:4px;margin-bottom:4px;color:${color};display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap">${p.time} ${p.type}`
+      return `<span data-pidx="${i}" style="margin-right:4px;margin-bottom:4px;color:${color};display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap">${p.time} ${_poopLabel(p)}`
         + ` <span onclick="editPoop(${i},'${date}')" style="color:var(--amber);cursor:pointer;font-size:10px">✎</span>`
         + ` <span onclick="deletePoop(${i},'${date}')" style="color:var(--coral);cursor:pointer;font-size:10px">✕</span></span>`;
     }).join('');
@@ -19600,16 +19661,20 @@ function _dsExcretaBodyHtml() {
       '<button onclick="selectUrine(\'단백뇨\')" style="'+sAmber+'">단백뇨</button>' +
       '<button onclick="selectUrine(\'뇨당\')"  style="'+sAmber+'">뇨당</button>' +
     '</div>' +
-    '<div style="'+lbl+'">대변</div>' +
-    '<div style="display:flex;gap:6px;flex-wrap:wrap">' +
-      '<button onclick="selectPoop(\'정상\')"      style="'+sTan+'">정상</button>' +
-      '<button onclick="selectPoop(\'약간무름\')"  style="'+sAmber+'">약간무름</button>' +
-      '<button onclick="selectPoop(\'끝만무름\')"  style="'+sAmber+'">끝만무름</button>' +
-      '<button onclick="selectPoop(\'무름\')"      style="'+sAmber+'">무름</button>' +
-      '<button onclick="selectPoop(\'설사\')"      style="'+sClay+'">설사</button>' +
-      '<button onclick="selectPoop(\'혈변\')"      style="'+sClay+'">혈변</button>' +
-      '<button onclick="selectPoop(\'토끼똥/변비\')" style="'+sAmber+'">토끼똥/변비</button>' +
-      '<button onclick="selectPoop(\'무변\')"      style="'+sAmber+'">무변</button>' +
+    '<div style="'+lbl+'">대변 상태 <span style="font-weight:500;color:var(--cm-faint);font-size:11px">동물병원에서 흔히 쓰는 1~7점 기준</span></div>' +
+    '<div id="poopScoreGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:5px">' +
+      [1,2,3,4,5,6,7].map(function(n){ return '<button type="button" data-ps="'+n+'" onclick="poopPickScore('+n+')" style="padding:10px 0;border-radius:11px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid var(--cm-line);background:var(--cm-surface);color:var(--cm-ink)">'+n+'</button>'; }).join('') +
+    '</div>' +
+    '<div style="display:flex;justify-content:space-between;font-size:10.5px;color:var(--cm-faint);margin:3px 2px 0"><span>딱딱함</span><span>묽음</span></div>' +
+    '<div id="poopScoreDesc" style="margin-top:7px;padding:9px 11px;border-radius:11px;background:var(--cm-surface-2);font-size:12px;line-height:1.55;color:var(--cm-faint);min-height:18px">점수를 고르면 설명이 보여요</div>' +
+    '<div style="display:flex;gap:6px;align-items:center;margin-top:10px">' +
+      '<span style="font-size:12px;color:var(--cm-ink-soft);font-weight:600;margin-right:2px">함께 보인 것</span>' +
+      '<button type="button" id="poopMucusBtn" onclick="poopToggle(\'mucus\')" style="'+sBase+'var(--cm-line);background:var(--cm-surface);color:var(--cm-ink-soft)">점액</button>' +
+      '<button type="button" id="poopBloodBtn" onclick="poopToggle(\'blood\')" style="'+sBase+'var(--cm-line);background:var(--cm-surface);color:var(--cm-ink-soft)">피</button>' +
+    '</div>' +
+    '<div style="display:flex;gap:6px;margin-top:12px">' +
+      '<button type="button" onclick="poopSaveScored()" style="flex:1;padding:11px 0;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;border:none;background:var(--cm-green-700);color:#fff">대변 기록</button>' +
+      '<button type="button" onclick="selectPoop(\'무변\')" style="'+sAmber+'">무변</button>' +
     '</div>';
 }
 function _dsVomitBodyHtml() {
@@ -19670,6 +19735,7 @@ window.openDailySheet = function(type) {
     var wt2 = document.getElementById('sheetWaterTime'); if(wt2) wt2.value = nowTime();
     setWaterSrc('nat');   // 시트 열 때마다 자발음수로 초기화 (잔상 방지)
   } else if(type === 'excreta') {
+    _poopSel = {score:null, mucus:false, blood:false};
     sheetBody.innerHTML = _dsExcretaBodyHtml();
     if(sheetFoot) sheetFoot.innerHTML = '';
     var ed = document.getElementById('sheetExcretaDate'); if(ed) ed.value = today();
