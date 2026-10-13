@@ -664,7 +664,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.9.5</span>
+      <span class="cm-beta">v0.9.6</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -6863,6 +6863,7 @@ function _bgDaySeries(cat, d){
    - 판정·권고 문구 금지("이 사료가 더 올려요" 등). 횟수 항상 병기. '예측' 표현 금지
    - 사료는 이름으로 묶음(식사 기록에 사료 ID 없음). 혼합 급여(mixTs)는 한 끼로 묶음 */
 const MR_WET_MOISTURE=75, MR_WIN_WET=360, MR_WIN_DRY=720, MR_MIN_SPAN=120, MR_PRE=30, MR_LATE=240, MR_INS_NEAR=60;
+const MR_PRE_MANUAL=60;   // 손으로 잰 값(v0.9.6): 보통 밥 주기 전에 재므로 식전은 1시간 전까지
 const _mrDayIdx = d => Math.round(Date.parse(d+'T00:00:00Z')/86400000);
 const _mrIdxDate = i => new Date(i*86400000).toISOString().slice(0,10);
 function _mrFavs(cat){ try{ return JSON.parse(localStorage.getItem('favFoods_v1_'+cat)||'[]')||[]; }catch(e){ return []; } }
@@ -6916,6 +6917,9 @@ function _mrBuild(cat, fromDate, toDate){
     const near = insl.filter(s=>Math.abs(s.t-m.t)<=MR_INS_NEAR).sort((a,b)=>Math.abs(a.t-m.t)-Math.abs(b.t-m.t))[0];
     m.ins = near ? {time:near.time, dose:near.dose, type:near.type, off:near.t-m.t} : null;
     out.push(m);
+    // 잰 값 목록 (v0.9.6) — CGM이 없거나 촘촘하지 않을 때 그대로 보여줄 값. 최고·상승은 계산하지 않음
+    m.reads=[]; for(let i=di-1;i<=di+1;i++) ser(i).forEach(p=>{ if(p.x>=m.t-MR_PRE_MANUAL && p.x<=Math.min(end, nowAbs)) m.reads.push({off:p.x-m.t, y:Math.round(p.y), src:p.src}); });
+    m.reads.sort((a,b)=>a.off-b.off);
     if(end > nowAbs){ m.status='ongoing'; return; }   // 관찰 시간이 아직 안 끝남(오늘 식사)
     if(m.span < MR_MIN_SPAN){ m.status='overlap'; return; }
     const pts=[]; for(let i=di-1;i<=di+1;i++) ser(i).forEach(p=>{ if(p.x>=m.t-MR_PRE && p.x<=end) pts.push(p); });
@@ -6944,8 +6948,24 @@ const _mrDur = min => { const h=Math.floor(min/60), mm=Math.round(min%60); retur
 const _mrSkipText = {ongoing:'아직 관찰 중', overlap:'다음 식사와 겹침', nobase:'식전 혈당 기록 없음', sparse:'혈당 기록 부족'};
 const _mrKindText = k => k==='wet' ? '습식' : k==='dry' ? '건식' : '종류 미확인';
 // 한 줄 요약 — 판정 없이 사실만
+// 잰 값 나열 — "식전 15분 전 250 · 1시간 50분 뒤 230" (식전은 가장 가까운 1개, 식후는 최대 4개)
+function _mrReadsLine(m){
+  const rs=m.reads||[]; if(!rs.length) return '';
+  const pre=rs.filter(r=>r.off<=5).slice(-1)[0], post=rs.filter(r=>r.off>5);
+  if(!post.length && !pre) return '';
+  const parts=[ pre ? (pre.off<0 ? '식전 '+_mrDur(-pre.off)+' 전 '+pre.y : '식전 '+pre.y) : '식전 —' ];
+  post.slice(0,4).forEach(r=>parts.push(_mrDur(r.off)+' 뒤 '+r.y));
+  if(post.length>4) parts.push('외 '+(post.length-4)+'개');
+  return parts.join(' · ');
+}
 function _mrLine(m){
-  if(m.status!=='ok') return _mrSkipText[m.status]||'';
+  if(m.status!=='ok'){
+    const rl=_mrReadsLine(m), hasPost=(m.reads||[]).some(r=>r.off>5);
+    if(m.status==='ongoing') return rl ? rl+' · 아직 관찰 중' : '아직 관찰 중';
+    if(rl) return hasPost ? rl : rl+' · 식후에 잰 값 없음';
+    if(m.status==='overlap') return '다음 식사와 겹침';
+    return '이 식사 앞뒤로 잰 혈당이 없어요';
+  }
   let s='식전 '+m.base+' → 최고 '+m.peak+' ('+_mrDur(m.tPeak)+' 뒤) · '+(m.rise>=0?'+':'')+m.rise;
   if(m.lateRise!=null && m.tLate!==m.tPeak) s+=' · 4시간 이후 최고 '+m.latePeak+' ('+_mrDur(m.tLate)+' 뒤)';
   return s;
@@ -6998,9 +7018,65 @@ async function _mrEnsureCgm(cat, since){
     return added>0;
   }catch(e){ console.warn('식후 반응 CGM 추가 로드 오류:', e); return false; }
 }
-var _mrState = {per:30, ins:'all', food:null, sel:null};
+/* 식후 반응 — 손으로 잰 값 보기 (v0.9.6). 띄엄띄엄 잰 값이라 최고·상승은 만들지 않고
+   식후 경과 시간대별 평균·횟수만. 그램은 그 사료 기록의 중간값으로 두 덩어리(같으면 하나) */
+const MR_BUCKETS = [['식전',-MR_PRE_MANUAL,5],['식후 0–2시간',5,120],['2–4시간',120,240],['4–6시간',240,360],['6시간 이후',360,720]];
+function _renderMealRespManual(wrap, html, all, pill){
+  const withReads = all.filter(m=>(m.reads||[]).some(r=>r.off>5));
+  const byFood = {}; withReads.forEach(m=>{ (byFood[m.name]=byFood[m.name]||[]).push(m); });
+  const foods = Object.keys(byFood).sort((a,b)=>byFood[b].length-byFood[a].length);
+  if(!foods.includes(_mrState.food)) _mrState.food = foods[0];
+  html += '<select onchange="_mrSet(\x27food\x27, this.value)" style="width:100%;padding:8px 10px;border:1px solid var(--cm-line);border-radius:9px;font-size:13px;background:var(--cm-surface);color:var(--cm-ink);font-family:inherit;margin-bottom:.45rem">'
+    + foods.map(f=>'<option value="'+_vEsc(f)+'"'+(f===_mrState.food?' selected':'')+'>'+_vEsc(f)+' (식사 '+byFood[f].length+'번)</option>').join('') + '</select>';
+  html += '<div class="f-seg" style="margin-bottom:.45rem">'+pill('ins','all','전체')+pill('ins','with','인슐린과 함께')+pill('ins','no','인슐린 없이')+'</div>';
+  let L = byFood[_mrState.food].filter(m=>_mrState.ins==='all' || (_mrState.ins==='with') === !!m.ins);
+  // 그램 두 덩어리 — 중간값 이하 / 초과
+  const amts = L.map(m=>m.amt).filter(a=>a>0).sort((a,b)=>a-b);
+  const med = amts.length ? amts[Math.floor((amts.length-1)/2)] : 0;
+  const hiMin = amts.filter(a=>a>med)[0];
+  const grpOf = m => (hiMin!=null && m.amt>med) ? 'hi' : 'lo';
+  if(hiMin!=null){
+    if(!['all','lo','hi'].includes(_mrState.grp)) _mrState.grp='all';
+    html += '<div class="f-seg" style="margin-bottom:.6rem">'+pill('grp','all','전체')+pill('grp','lo',med+'g 이하')+pill('grp','hi',hiMin+'g 이상')+'</div>';
+    if(_mrState.grp!=='all') L = L.filter(m=>grpOf(m)===_mrState.grp);
+  }
+  if(!L.length){ wrap.innerHTML = html + '<div style="text-align:center;padding:1rem;color:var(--cm-faint);font-size:12px">해당하는 기록이 없어요</div>'; return; }
+  const pts = []; L.forEach(m=>(m.reads||[]).forEach(r=>{ if(r.off<=m.span) pts.push({x:r.off/60, y:r.y, g:grpOf(m), m}); }));
+  const maxH = Math.min(12, Math.ceil(Math.max(2, ...pts.map(p=>p.x))));
+  html += '<div style="font-size:12px;font-weight:700;color:var(--cm-ink);margin-bottom:.2rem">식후 시간과 잰 값</div>'
+    + '<div class="chart-wrap" style="height:180px"><canvas id="mrManual"></canvas></div>'
+    + (hiMin!=null ? '<div style="display:flex;gap:12px;font-size:10.5px;color:var(--cm-faint);margin:.3rem 0 .5rem"><span style="color:#1D9E75">● '+med+'g 이하</span><span style="color:#185FA5">● '+hiMin+'g 이상</span></div>' : '<div style="height:.4rem"></div>');
+  html += '<div style="border-top:1px solid var(--cm-line)">' + MR_BUCKETS.map(([nm,a,b])=>{
+      const q = []; L.forEach(m=>(m.reads||[]).forEach(r=>{ if(r.off>a && r.off<=b && r.off<=Math.max(m.span,5)) q.push(r.y); }));
+      if(a<0){ q.length=0; L.forEach(m=>{ const pr=(m.reads||[]).filter(r=>r.off<=5).slice(-1)[0]; if(pr) q.push(pr.y); }); }
+      return '<div style="display:flex;justify-content:space-between;align-items:baseline;padding:.45rem 0;border-bottom:1px solid var(--cm-line);font-size:12px">'
+        + '<span style="color:var(--cm-ink)">'+nm+'</span>'
+        + (q.length ? '<span style="color:var(--cm-ink)">평균 '+Math.round(q.reduce((s,v)=>s+v,0)/q.length)+' <span style="color:var(--cm-faint);font-size:11px">'+q.length+'번</span></span>'
+                    : '<span style="color:var(--cm-faint);font-size:11px">잰 값 없음</span>') + '</div>';
+    }).join('') + '</div>';
+  html += '<div style="font-size:10.5px;color:var(--cm-faint);line-height:1.65;margin-top:.6rem">'
+    + '띄엄띄엄 잰 값이라 최고점은 알 수 없어요. 잰 값의 평균과 횟수만 보여줘요.'
+    + '<br>식전은 식사 1시간 전까지 잰 값 중 가장 가까운 값이에요. CGM을 불러오면 최고값과 오른 정도도 볼 수 있어요.'
+    + '<br>잰 값은 사료와 인슐린이 함께 만든 결과예요. 궁금한 점은 병원과 상담해 주세요.</div>';
+  wrap.innerHTML = html;
+  const cv = document.getElementById('mrManual');
+  if(!cv || typeof Chart==='undefined') return;
+  const isDark = matchMedia('(prefers-color-scheme:dark)').matches;
+  const gc = isDark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.05)', tc = isDark?'#B4B2A9':'#888780';
+  const band = {id:'mrBand', beforeDatasetsDraw(ch){ const xs=ch.scales.x, ys=ch.scales.y, c=ch.ctx; c.save();
+    c.fillStyle='rgba(29,158,117,0.08)'; c.fillRect(xs.left, ys.getPixelForValue(200), xs.right-xs.left, ys.getPixelForValue(80)-ys.getPixelForValue(200));
+    const p0=xs.getPixelForValue(0); c.strokeStyle='rgba(186,117,23,0.6)'; c.setLineDash([3,3]); c.beginPath(); c.moveTo(p0,ys.top); c.lineTo(p0,ys.bottom); c.stroke(); c.setLineDash([]);
+    c.fillStyle='#BA7517'; c.font='600 10px sans-serif'; c.fillText('식사', p0+4, ys.top+10); c.restore(); }};
+  _mrCharts.push(new Chart(cv, {type:'scatter', plugins:[band],
+    data:{datasets:[{data:pts, pointBackgroundColor:pts.map(p=>p.g==='hi'?'#185FA5':'#1D9E75'), pointRadius:4, pointHoverRadius:6}]},
+    options:{responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>{ const p=c.raw, m=p.m; return ' '+m.date.slice(5)+' '+m.time+' '+m.amt+'g · '+(p.x<=0?'식전':'식후 '+_mrDur(Math.round(p.x*60)))+' '+p.y+(m.ins?' · 인슐린 '+m.ins.dose+'U':''); }}}},
+      scales:{x:{type:'linear', min:-MR_PRE_MANUAL/60, max:maxH, title:{display:true,text:'식후 시간',color:tc,font:{size:10}}, grid:{color:gc}, ticks:{color:tc,font:{size:10},stepSize:1,callback:v=>Number.isInteger(v)?v+'h':''}},
+              y:{suggestedMin:50, suggestedMax:300, grid:{color:gc}, ticks:{color:tc,font:{size:10}}}}}}));
+}
+var _mrState = {per:30, ins:'all', food:null, sel:null, grp:'all'};
 var _mrCharts = [];
-function _mrSet(k, v){ _mrState[k]=v; if(k!=='sel') _mrState.sel=null; renderMealResp(); }
+function _mrSet(k, v){ _mrState[k]=v; if(k!=='sel') _mrState.sel=null; if(k==='food'||k==='per') _mrState.grp='all'; renderMealResp(); }
 function renderMealResp(){
   const wrap = document.getElementById('mealRespWrap'); if(!wrap) return;
   _mrCharts.forEach(c=>{ try{c.destroy();}catch(e){} }); _mrCharts=[];
@@ -7014,9 +7090,11 @@ function renderMealResp(){
   let html = '<div class="f-seg" style="margin-bottom:.45rem">'+pill('per',30,'30일')+pill('per',90,'90일')+pill('per',0,'전체')+'</div>';
   const skip = {overlap:0, nobase:0, sparse:0}; all.forEach(m=>{ if(skip[m.status]!=null) skip[m.status]++; });
   const skipTxt = Object.keys(skip).filter(k=>skip[k]).map(k=>_mrSkipText[k]+' '+skip[k]+'번').join(' · ');
+  // CGM으로 분석된 식사가 없으면 손으로 잰 값 보기 (v0.9.6) — CGM 있는 아이는 위 화면 그대로
+  if(!ok.length && all.some(m=>(m.reads||[]).some(r=>r.off>5))){ _renderMealRespManual(wrap, html, all, pill); return; }
   if(!ok.length){
     html += '<div style="text-align:center;padding:1.1rem .5rem;color:var(--cm-faint);font-size:12px;line-height:1.7">'
-      + (all.length ? 'CGM처럼 촘촘한 혈당 기록이 있는 식사가 아직 없어요.<br>식사 시각과 CGM 기록이 함께 있으면 식후에 혈당이 얼마나 올랐는지 볼 수 있어요.'
+      + (all.length ? '식사 뒤에 잰 혈당 기록이 아직 없어요.<br>식사 앞뒤로 혈당을 재거나 CGM을 불러오면 식후 혈당을 볼 수 있어요.'
                     : '이 기간에 시각이 적힌 식사 기록이 없어요.')
       + (skipTxt ? '<div style="margin-top:.4rem;font-size:11px">제외: '+_vEsc(skipTxt)+'</div>' : '')
       + '</div>';
