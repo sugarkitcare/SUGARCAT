@@ -664,7 +664,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.9.2</span>
+      <span class="cm-beta">v0.9.3</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -1485,6 +1485,22 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
         <span>● 혈당 (mg/dL)</span><span>◆ 인슐린 (마커)</span><span>▲ 식사 (마커)</span>
       </div>
       <div id="timelineEmpty" style="display:none;text-align:center;padding:1rem;color:var(--cm-faint);font-size:12px">이 날의 기록이 없어요</div>
+      <div id="timelineEvents"></div>
+    </div>
+  </div>
+
+  <!-- 식후 혈당 반응 (v0.9.3) — 같은 사료의 그램별 식후 상승을 사실로만 -->
+  <div class="cm-card cm-card--flat" id="gMealRespCard" data-graph-card="mealresp">
+    <div class="cm-sechead" style="cursor:pointer;margin-bottom:.65rem" onclick="toggleCard('mealRespBody',this)">
+      <div class="cm-ic cm-ic--sm">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 17 9 11 13 15 21 7"/><polyline points="15 7 21 7 21 13"/></svg>
+      </div>
+      <div><div class="cm-sechead__t">식후 혈당 반응</div></div>
+      <div class="cm-sechead__r"><span style="font-size:11px;color:var(--cm-green-700)">▲ 접기</span></div>
+    </div>
+    <div id="mealRespBody">
+      <div style="font-size:11px;color:var(--cm-faint);margin-bottom:.6rem;line-height:1.6">같은 사료를 먹은 양에 따라 식후 혈당이 얼마나 올랐는지 지난 기록으로 보여줘요</div>
+      <div id="mealRespWrap"></div>
     </div>
   </div>
 
@@ -4516,7 +4532,7 @@ window.switchCat = function(c) {
   try{Promise.all([loadCGMForCat(c),loadCgmCsvForCat(c)]).then(()=>{
     const at=document.querySelector('.cm-tab.active')?.dataset?.tab;
     if(at==='cgm')renderCgmHistory();
-    if(at==='graph')try{renderTimelineChart(document.getElementById('timelineDatePicker')?.value||_memLastDailyDate(c)||today());}catch(e){}
+    if(at==='graph'){try{renderTimelineChart(document.getElementById('timelineDatePicker')?.value||_memLastDailyDate(c)||today());}catch(e){} try{_mrState.food=null;_mrState.sel=null;renderMealResp();}catch(e){}}
   });}catch(e){}
   try{
     const at=document.querySelector('.cm-tab.active')?.dataset?.tab;
@@ -4645,6 +4661,7 @@ function checkAILimit(type) {
 /* ── 그래프탭 카드 편집 ── */
 const GRAPH_CARDS = [
   { id: 'timelineCard', label: '당뇨 타임라인', icon: 'activity', seg: 'bio' },
+  { id: 'gMealRespCard', label: '식후 혈당 반응', icon: 'activity', seg: 'bio' },
   { id: 'gKetCard',     label: '케톤',          icon: 'flask',    seg: 'bio' },
   { id: 'gWtCard',      label: '체중',          icon: 'scale',    seg: 'bio' },
   { id: 'gRrCard',      label: '호흡수',        icon: 'lungs',    seg: 'bio' },
@@ -6305,7 +6322,7 @@ window.showTab = function showTab(tab, btn) {
 
     // 렌더링
     if(tab==='cgm') try{const cc=document.getElementById('cgmCat');if(cc)cc.value=state.activeCat||'';Promise.all([loadCGMForCat(state.activeCat),loadCgmCsvForCat(state.activeCat)]).then(()=>renderCgmHistory());}catch(e){console.warn(e);}
-    if(tab==='graph') try{loadGraphHiddenFromDB().then(()=>{applyGraphCards();});renderGraphs();renderBTTrend();const _tlDef=_memLastDailyDate(state.activeCat)||today();const tlDate=document.getElementById('timelineDatePicker');if(tlDate&&!tlDate.value)tlDate.value=_tlDef;try{renderTimelineChart(document.getElementById('timelineDatePicker')?.value||_tlDef);}catch(e2){console.warn(e2);}}catch(e){console.warn(e);}
+    if(tab==='graph') try{loadGraphHiddenFromDB().then(()=>{applyGraphCards();});renderGraphs();renderBTTrend();const _tlDef=_memLastDailyDate(state.activeCat)||today();const tlDate=document.getElementById('timelineDatePicker');if(tlDate&&!tlDate.value)tlDate.value=_tlDef;try{renderTimelineChart(document.getElementById('timelineDatePicker')?.value||_tlDef);}catch(e2){console.warn(e2);} try{renderMealResp();}catch(e3){console.warn(e3);}}catch(e){console.warn(e);}
     if(tab==='history') try{renderHistory();renderRoutineSchedule();}catch(e){console.warn(e);}
     if(tab==='bloodtest') try{renderBTGraphs();renderBTHistoryList();}catch(e){console.warn(e);}
     if(tab==='food') try{renderFdHistory();autoSetFdMode(state.activeCat);initCalcResult();}catch(e){console.warn(e);}
@@ -6700,42 +6717,30 @@ function renderHistory(){
 
 /* 타임라인 차트 */
 let timelineInst = null;
-function renderTimelineChart(date) {
-  const d = date || document.getElementById('histDatePicker')?.value || today();
-  const rec = getRec(state.activeCat, d);
-  const canvas = document.getElementById('timelineChart');
-  const empty = document.getElementById('timelineEmpty');
-  if(!canvas) return;
-
-  if(timelineInst){timelineInst.destroy();timelineInst=null;}
-
-  const isDark = matchMedia('(prefers-color-scheme:dark)').matches;
-  const gc = isDark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.05)';
-  const tc = isDark?'#B4B2A9':'#888780';
-
-  function timeToMin(t){ if(!t)return null; const p=t.split(':'); return parseInt(p[0])*60+parseInt(p[1]||0); }
-  function minToLabel(m){ return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'); }
-
-  // 혈당: 점+연결선 (수동 입력 + CGM 데이터 통합)
-  const bgManual = rec.bg.filter(r=>r.bg!==''&&r.time)
-    .map(r=>({x:timeToMin(r.time), y:parseFloat(r.bg),
+/* ── 하루 혈당 시리즈 (v0.9.3: 타임라인에서 분리 — 식후 반응 분석과 같은 규칙 공유) ──
+   수동 입력 + CGM(스크린샷·CSV) 통합. 읽기 전용(getRec 미사용 — 범위 순회 시 빈 날짜 생성 방지). */
+function _tlMin(t){ if(!t) return null; const p=String(t).split(':'); const h=parseInt(p[0]), m=parseInt(p[1]||0); return isNaN(h)?null:h*60+(isNaN(m)?0:m); }
+function _bgDaySeries(cat, d){
+  const rec = ((state.records||{})[cat]||{})[d] || {};
+  const bgManual = (rec.bg||[]).filter(r=>r.bg!==''&&r.bg!=null&&r.time)
+    .map(r=>({x:_tlMin(r.time), y:parseFloat(r.bg), src:'manual',
       _label:'혈당 '+r.bg+'mg/dL'+(r.ketone?' / 케톤 '+r.ketone:'')+(r.type?' ('+r.type+')':'')}))
-    .filter(r=>r.x!==null);
+    .filter(r=>r.x!==null && !isNaN(r.y));
 
   // CGM 데이터에서 해당 날짜+고양이 readings 추가 (스크린샷+CSV 통합, v0.7.53)
   const cgmForDay = (typeof cgmAllEntries === 'function' ? cgmAllEntries() : [])
-    .filter(c=>c.date===d && (c.cat||'').trim()===(state.activeCat||'').trim());
+    .filter(c=>c.date===d && (c.cat||'').trim()===(cat||'').trim());
   // 세션별 변환 — 자정 넘김(시각 큰 역행) 이후는 다음 날 데이터라 절단(하루 축 접힘 그물 방지),
   // 작은 역행(추출 노이즈)은 그 점만 스킵해 하루 전체가 잘리지 않게 함
   const cgmSessions = cgmForDay.map(c=>{
     const pts=[]; let prevX=-1;
     for(const r of (c.readings||[])){
       if(!r.time||!r.value) continue;
-      const x=timeToMin(r.time);
+      const x=_tlMin(r.time);
       if(x===null) continue;
       if(x<prevX){ if(prevX-x>720) break; continue; }
       prevX=x;
-      pts.push({x, y:r.value, _label:'혈당 '+r.value+'mg/dL (CGM)'});
+      pts.push({x, y:r.value, src:'cgm', _label:'혈당 '+r.value+'mg/dL (CGM)'});
     }
     return pts;
   }).filter(pts=>pts.length);
@@ -6758,8 +6763,306 @@ function renderTimelineChart(date) {
     const dup = bgManual.some(mp=>Math.abs(mp.x-cp.x)<=2);
     if(!dup) bgAll.push(cp);
   });
-  const bgPoints = bgAll.sort((a,b)=>a.x-b.x);
+  return bgAll.sort((a,b)=>a.x-b.x);
+}
+
+/* ── 식후 혈당 반응 (v0.9.3) ──────────────────────────────────
+   식사 기록마다 전후 혈당을 잘라 "식전 → 식후 최고, 오른 정도, 최고까지 시간"을 사실로만 보여줌.
+   - 관찰 시간: 습식(수분 75%↑) 6시간 / 건식·혼합·종류 미확인은 다음 식사 전까지 최대 12시간 (킷 확정 —
+     건식은 소화가 길어 뒷당이 오름). 다음 식사가 관찰 시간 안에 오면 거기서 끊음, 2시간 미만이면 '겹침' 제외
+   - 식전값 = 식사 30분 전~5분 후 중 식사 시각에 가장 가까운 기록. 없으면 제외
+   - 오른 정도는 사료와 인슐린이 함께 만든 결과 → 식사 ±60분 인슐린 기록을 항상 같이 표시, 함께/없이 필터
+   - 판정·권고 문구 금지("이 사료가 더 올려요" 등). 횟수 항상 병기. '예측' 표현 금지
+   - 사료는 이름으로 묶음(식사 기록에 사료 ID 없음). 혼합 급여(mixTs)는 한 끼로 묶음 */
+const MR_WET_MOISTURE=75, MR_WIN_WET=360, MR_WIN_DRY=720, MR_MIN_SPAN=120, MR_PRE=30, MR_LATE=240, MR_INS_NEAR=60;
+const _mrDayIdx = d => Math.round(Date.parse(d+'T00:00:00Z')/86400000);
+const _mrIdxDate = i => new Date(i*86400000).toISOString().slice(0,10);
+function _mrFavs(cat){ try{ return JSON.parse(localStorage.getItem('favFoods_v1_'+cat)||'[]')||[]; }catch(e){ return []; } }
+// 'wet' | 'dry' | null(미확인) — 식사 기록 수분 → 즐겨찾기(이름 일치)의 수분·종류 순
+function _mrFoodKind(m, favs){
+  const mo = (m.moisture!=null && m.moisture!=='') ? parseFloat(m.moisture) : NaN;
+  if(!isNaN(mo)) return mo>=MR_WET_MOISTURE?'wet':'dry';
+  const f = favs.find(x=>x && (x.name||x.foodName)===m.name);
+  if(f){
+    const fm = f.moisture!=null ? parseFloat(f.moisture) : NaN;
+    if(!isNaN(fm)) return fm>=MR_WET_MOISTURE?'wet':'dry';
+    if(f.type==='wet'||f.type==='dry') return f.type;
+  }
+  return null;
+}
+// [fromDate, toDate] 범위의 식사 이벤트 + 반응 계산. 반환 [{date,time,t,name,amt,kcal,kind,ins,status,...}]
+function _mrBuild(cat, fromDate, toDate){
+  const recs = (state.records||{})[cat]||{};
+  const favs = _mrFavs(cat);
+  const i0=_mrDayIdx(fromDate), i1=_mrDayIdx(toDate);
+  const meals=[], insl=[];
+  for(let i=i0-1;i<=i1+1;i++){
+    const d=_mrIdxDate(i), r=recs[d]; if(!r) continue;
+    const mix={};
+    (r.meals||[]).forEach(m=>{
+      const x=_tlMin(m.time); if(x===null) return;
+      if(m.mixTs){
+        const k=String(m.mixTs);
+        if(!mix[k]){ mix[k]={date:d, time:m.time, t:i*1440+x, name:m.mixName||m.name||'혼합급여', amt:0, kcal:0, kinds:[]}; meals.push(mix[k]); }
+        mix[k].amt+=parseFloat(m.amt)||0; mix[k].kcal+=parseFloat(m.kcal)||0; mix[k].kinds.push(_mrFoodKind(m,favs));
+      } else {
+        meals.push({date:d, time:m.time, t:i*1440+x, name:m.name||'식사', amt:parseFloat(m.amt)||0, kcal:parseFloat(m.kcal)||0, kinds:[_mrFoodKind(m,favs)]});
+      }
+    });
+    (r.ins||[]).forEach(s=>{ const x=_tlMin(s.time); if(x!==null && s.dose) insl.push({t:i*1440+x, time:s.time, dose:s.dose, type:s.type||''}); });
+  }
+  meals.sort((a,b)=>a.t-b.t);
+  // 혼합 급여: 하나라도 습식이 아니거나 미확인이면 길게(건식 기준)
+  meals.forEach(m=>{ m.kind = m.kinds.every(k=>k==='wet') ? 'wet' : (m.kinds.some(k=>k==='dry') ? 'dry' : null); m.amt=Math.round(m.amt*10)/10; m.kcal=Math.round(m.kcal); delete m.kinds; });
+  const series={};
+  const ser = i => { if(!series[i]) series[i]=_bgDaySeries(cat,_mrIdxDate(i)).map(p=>({x:p.x+i*1440, y:p.y, src:p.src})); return series[i]; };
+  const _nd=new Date(), nowAbs=_mrDayIdx(today())*1440+_nd.getHours()*60+_nd.getMinutes();
+  const out=[];
+  meals.forEach((m,k)=>{
+    if(m.date<fromDate || m.date>toDate) return;
+    const di=_mrDayIdx(m.date);
+    const win = m.kind==='wet' ? MR_WIN_WET : MR_WIN_DRY;
+    const next = meals[k+1] ? meals[k+1].t : Infinity;
+    const end = Math.min(m.t+win, next);
+    m.win=win; m.span=end-m.t; m.cut = next < m.t+win;
+    const near = insl.filter(s=>Math.abs(s.t-m.t)<=MR_INS_NEAR).sort((a,b)=>Math.abs(a.t-m.t)-Math.abs(b.t-m.t))[0];
+    m.ins = near ? {time:near.time, dose:near.dose, type:near.type, off:near.t-m.t} : null;
+    out.push(m);
+    if(end > nowAbs){ m.status='ongoing'; return; }   // 관찰 시간이 아직 안 끝남(오늘 식사)
+    if(m.span < MR_MIN_SPAN){ m.status='overlap'; return; }
+    const pts=[]; for(let i=di-1;i<=di+1;i++) ser(i).forEach(p=>{ if(p.x>=m.t-MR_PRE && p.x<=end) pts.push(p); });
+    pts.sort((a,b)=>a.x-b.x);
+    const pre = pts.filter(p=>p.x<=m.t+5).sort((a,b)=>Math.abs(a.x-m.t)-Math.abs(b.x-m.t))[0];
+    if(!pre){ m.status='nobase'; return; }
+    const post = pts.filter(p=>p.x>m.t);
+    // 밀도 — 관찰 시간 동안 평균 30분에 1개 이상, 최대 공백 90분 이하 (손으로 잰 몇 개로 최고점을 단정하지 않기)
+    let gap=0, prev=m.t; post.forEach(p=>{ gap=Math.max(gap,p.x-prev); prev=p.x; }); gap=Math.max(gap,end-prev);
+    if(post.length < m.span/30 || gap>90){ m.status='sparse'; return; }
+    m.status='ok';
+    m.base=Math.round(pre.y);
+    const pk = post.reduce((a,p)=>p.y>a.y?p:a, post[0]);
+    m.peak=Math.round(pk.y); m.tPeak=pk.x-m.t; m.rise=m.peak-m.base;
+    const late = post.filter(p=>p.x-m.t>=MR_LATE);
+    if(m.kind!=='wet' && m.span>=MR_LATE+60 && late.length){
+      const lp = late.reduce((a,p)=>p.y>a.y?p:a, late[0]);
+      m.latePeak=Math.round(lp.y); m.tLate=lp.x-m.t; m.lateRise=m.latePeak-m.base;
+    }
+    m.curve = pts.map(p=>({x:p.x-m.t, y:p.y}));
+  });
+  return out;
+}
+const _mrSign = v => (v>=0?'+':'')+v;
+const _mrDur = min => { const h=Math.floor(min/60), mm=Math.round(min%60); return h ? h+'시간'+(mm?' '+mm+'분':'') : mm+'분'; };
+const _mrSkipText = {ongoing:'아직 관찰 중', overlap:'다음 식사와 겹침', nobase:'식전 혈당 기록 없음', sparse:'혈당 기록 부족'};
+const _mrKindText = k => k==='wet' ? '습식' : k==='dry' ? '건식' : '종류 미확인';
+// 한 줄 요약 — 판정 없이 사실만
+function _mrLine(m){
+  if(m.status!=='ok') return _mrSkipText[m.status]||'';
+  let s='식전 '+m.base+' → 최고 '+m.peak+' ('+_mrDur(m.tPeak)+' 뒤) · '+(m.rise>=0?'+':'')+m.rise;
+  if(m.lateRise!=null && m.tLate!==m.tPeak) s+=' · 4시간 이후 최고 '+m.latePeak+' ('+_mrDur(m.tLate)+' 뒤)';
+  return s;
+}
+
+/* 타임라인 아래 이 날의 식사·인슐린 목록 — 그래프 마커의 내용을 바로 읽히게 + 식사별 식후 요약 */
+function _renderTimelineEvents(cat, d){
+  const box=document.getElementById('timelineEvents'); if(!box) return;
+  const rec=((state.records||{})[cat]||{})[d]||{};
+  const ms=_mrBuild(cat, d, d);
+  const rows=[];
+  ms.forEach(m=>rows.push({t:_tlMin(m.time), html:
+    '<div style="display:flex;gap:8px;align-items:baseline"><span style="font-size:11px;color:var(--cm-faint);min-width:38px">'+_vEsc(m.time)+'</span>'
+    +'<div style="flex:1;min-width:0"><div style="font-size:12.5px;color:var(--cm-ink)"><b style="font-weight:700">식사</b> '+_vEsc(m.name)+(m.amt?' '+m.amt+'g':'')+(m.kcal?' · '+m.kcal+'kcal':'')+'</div>'
+    +'<div style="font-size:11px;color:var(--cm-faint);margin-top:1px">'+_vEsc(_mrLine(m))+'</div></div></div>'}));
+  (rec.ins||[]).filter(s=>s.dose&&s.time).forEach(s=>rows.push({t:_tlMin(s.time), html:
+    '<div style="display:flex;gap:8px;align-items:baseline"><span style="font-size:11px;color:var(--cm-faint);min-width:38px">'+_vEsc(s.time)+'</span>'
+    +'<div style="font-size:12.5px;color:var(--cm-ink)"><b style="font-weight:700">인슐린</b> '+_vEsc(s.dose)+'U'+(s.type?' <span style="color:var(--cm-faint)">'+_vEsc(s.type)+'</span>':'')+(s.preBg?' <span style="color:var(--cm-faint)">· 투여 전 '+_vEsc(s.preBg)+'</span>':'')+'</div></div>'}));
+  rows.sort((a,b)=>a.t-b.t);
+  box.innerHTML = rows.length
+    ? '<div style="display:flex;flex-direction:column;gap:7px;margin-top:.6rem;padding-top:.6rem;border-top:1px solid var(--cm-line)">'+rows.map(r=>r.html).join('')+'</div>'
+    : '';
+}
+
+/* 식후 반응 카드 — 기간 60일 초과 시 CSV CGM(cgm_daily)을 그 기간만큼 추가 로드.
+   cgmCsv는 고양이 전환 때 새 배열로 교체되므로 로드 기록은 배열 참조로 무효화 */
+let _mrCgmLoaded = null;   // {ref:cgmCsv, cat, since}
+async function _mrEnsureCgm(cat, since){
+  if(!sbClient || !currentUser) return false;
+  const dbId = (state.catProfiles||{})[cat]?.dbId; if(!dbId) return false;
+  if(_mrCgmLoaded && _mrCgmLoaded.ref===cgmCsv && _mrCgmLoaded.cat===cat && _mrCgmLoaded.since<=since) return false;
+  const mine = cgmCsv.filter(c=>c.cat===cat).map(c=>c.date).sort();
+  if(mine.length && mine.length < CGM_CSV_LOAD_DAYS){ _mrCgmLoaded={ref:cgmCsv, cat, since:'0000-00-00'}; return false; }  // 창보다 적게 왔으면 이미 전부
+  try{
+    let q = sbClient.from('cgm_daily').select('date,device,serial,readings,summary').eq('cat_id', dbId).gte('date', since);
+    if(mine.length) q = q.lt('date', mine[0]);
+    const {data, error} = await q.order('date',{ascending:false}).limit(400);
+    if(error){ console.warn('식후 반응 CGM 추가 로드 오류:', error); return false; }
+    if(cat!==state.activeCat) return false;
+    const known = new Set(mine);
+    let added = 0;
+    (data||[]).forEach(row=>{
+      if(known.has(row.date)) return;
+      cgmCsv.push({cat, date:row.date, source:'csv', device:row.device||'CSV',
+        readings:(row.readings||[]).map(x=>({time:x.t, value:x.v})),
+        avg:row.summary?.avg, min:row.summary?.min, max:row.summary?.max});
+      added++;
+    });
+    _mrCgmLoaded = {ref:cgmCsv, cat, since};
+    return added>0;
+  }catch(e){ console.warn('식후 반응 CGM 추가 로드 오류:', e); return false; }
+}
+var _mrState = {per:30, ins:'all', food:null, sel:null};
+var _mrCharts = [];
+function _mrSet(k, v){ _mrState[k]=v; if(k!=='sel') _mrState.sel=null; renderMealResp(); }
+function renderMealResp(){
+  const wrap = document.getElementById('mealRespWrap'); if(!wrap) return;
+  _mrCharts.forEach(c=>{ try{c.destroy();}catch(e){} }); _mrCharts=[];
+  const cat = state.activeCat, to = today();
+  const keys = Object.keys((state.records||{})[cat]||{}).filter(k=>/^\d{4}-\d{2}-\d{2}$/.test(k)).sort();
+  const from = _mrState.per ? _mrIdxDate(_mrDayIdx(to)-_mrState.per+1) : (keys[0]||to);
+  if(_mrState.per!==30) _mrEnsureCgm(cat, from).then(ch=>{ if(ch && cat===state.activeCat) renderMealResp(); });
+  const all = _mrBuild(cat, from, to);
+  const ok = all.filter(m=>m.status==='ok');
+  const pill = (grp, val, label) => '<button type="button" data-on="'+(_mrState[grp]===val?'1':'0')+'" onclick="_mrSet(\''+grp+'\','+JSON.stringify(val).replace(/"/g,'&quot;')+')" style="padding:6px 0;font-size:12px">'+label+'</button>';
+  let html = '<div class="f-seg" style="margin-bottom:.45rem">'+pill('per',30,'30일')+pill('per',90,'90일')+pill('per',0,'전체')+'</div>';
+  const skip = {overlap:0, nobase:0, sparse:0}; all.forEach(m=>{ if(skip[m.status]!=null) skip[m.status]++; });
+  const skipTxt = Object.keys(skip).filter(k=>skip[k]).map(k=>_mrSkipText[k]+' '+skip[k]+'번').join(' · ');
+  if(!ok.length){
+    html += '<div style="text-align:center;padding:1.1rem .5rem;color:var(--cm-faint);font-size:12px;line-height:1.7">'
+      + (all.length ? 'CGM처럼 촘촘한 혈당 기록이 있는 식사가 아직 없어요.<br>식사 시각과 CGM 기록이 함께 있으면 식후에 혈당이 얼마나 올랐는지 볼 수 있어요.'
+                    : '이 기간에 시각이 적힌 식사 기록이 없어요.')
+      + (skipTxt ? '<div style="margin-top:.4rem;font-size:11px">제외: '+_vEsc(skipTxt)+'</div>' : '')
+      + '</div>';
+    wrap.innerHTML = html; return;
+  }
+  // 사료 목록 — 분석된 식사 많은 순
+  const byFood = {}; ok.forEach(m=>{ (byFood[m.name]=byFood[m.name]||[]).push(m); });
+  const foods = Object.keys(byFood).sort((a,b)=>byFood[b].length-byFood[a].length);
+  if(!foods.includes(_mrState.food)) _mrState.food = foods[0];
+  html += '<select onchange="_mrSet(\'food\', this.value)" style="width:100%;padding:8px 10px;border:1px solid var(--cm-line);border-radius:9px;font-size:13px;background:var(--cm-surface);color:var(--cm-ink);font-family:inherit;margin-bottom:.45rem">'
+    + foods.map(f=>'<option value="'+_vEsc(f)+'"'+(f===_mrState.food?' selected':'')+'>'+_vEsc(f)+' ('+byFood[f].length+'번)</option>').join('') + '</select>';
+  html += '<div class="f-seg" style="margin-bottom:.6rem">'+pill('ins','all','전체')+pill('ins','with','인슐린과 함께')+pill('ins','no','인슐린 없이')+'</div>';
+  const L = byFood[_mrState.food].filter(m=>_mrState.ins==='all' || (_mrState.ins==='with') === !!m.ins);
+  if(!L.length){
+    wrap.innerHTML = html + '<div style="text-align:center;padding:1rem;color:var(--cm-faint);font-size:12px">'+(_mrState.ins==='with'?'인슐린과 함께 먹은':'인슐린 없이 먹은')+' 기록이 없어요</div>';
+    return;
+  }
+  // 그램 구간(5g) 묶음
+  const bins = {};
+  L.forEach(m=>{ const lo = m.amt>0 ? Math.floor(m.amt/5)*5 : -1; (bins[lo]=bins[lo]||[]).push(m); });
+  const binKeys = Object.keys(bins).map(Number).sort((a,b)=>a-b);
+  const binLabel = lo => lo<0 ? '양 기록 없음' : lo+'–'+(lo+4)+'g';
+  const avg = (a, f) => Math.round(a.reduce((s,m)=>s+f(m),0)/a.length);
+  html += '<div style="font-size:12px;font-weight:700;color:var(--cm-ink);margin-bottom:.2rem">먹은 양과 오른 정도</div>'
+    + '<div class="chart-wrap" style="height:170px"><canvas id="mrScatter"></canvas></div>'
+    + '<div style="display:flex;gap:12px;font-size:10.5px;color:var(--cm-faint);margin:.3rem 0 .1rem;white-space:nowrap"><span style="color:#185FA5">● 인슐린과 함께</span><span style="color:#BA7517">● 인슐린 없이</span></div><div style="font-size:10.5px;color:var(--cm-faint);margin-bottom:.5rem">점을 누르면 그 식사를 아래에서 볼 수 있어요</div>';
+  html += '<div style="border-top:1px solid var(--cm-line)">' + binKeys.map(lo=>{
+      const a = bins[lo], late = a.filter(m=>m.lateRise!=null);
+      const r = avg(a, m=>m.rise);
+      return '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:.45rem 0;border-bottom:1px solid var(--cm-line);font-size:12px">'
+        + '<span style="color:var(--cm-ink);white-space:nowrap">'+binLabel(lo)+' <span style="color:var(--cm-faint);font-size:11px">'+a.length+'번</span></span>'
+        + '<span style="text-align:right;color:var(--cm-ink)">평균 '+(r>=0?'+':'')+r+' <span style="color:var(--cm-faint);font-size:11px">최고까지 '+_mrDur(avg(a,m=>m.tPeak))+'</span>'
+        + (late.length ? '<br><span style="color:var(--cm-faint);font-size:11px">4시간 이후 최고 평균 '+_mrSign(avg(late,m=>m.lateRise))+' ('+late.length+'번)</span>' : '')
+        + '</span></div>';
+    }).join('') + '</div>';
+  html += '<div style="font-size:12px;font-weight:700;color:var(--cm-ink);margin:.75rem 0 .2rem">식후 시간별 평균 변화</div>'
+    + '<div class="chart-wrap" style="height:170px"><canvas id="mrCurve"></canvas></div>'
+    + '<div style="font-size:10.5px;color:var(--cm-faint);margin-top:.25rem">식전 혈당을 0으로 맞춰 겹친 평균이에요</div>';
+  // 선택 식사 상세
+  const sel = L.find(m=>m.date+' '+m.time===_mrState.sel) || L[L.length-1];
+  _mrState.sel = sel.date+' '+sel.time;
+  const tile = (k, v) => '<div style="background:var(--cm-surface-2);border:1px solid var(--cm-line);border-radius:11px;padding:.5rem .6rem"><div style="font-size:10.5px;color:var(--cm-faint)">'+k+'</div><div style="font-size:16px;font-weight:800;color:var(--cm-ink);margin-top:1px">'+v+'</div></div>';
+  html += '<div style="margin-top:.85rem;padding:.7rem;border:1px solid var(--cm-line);border-radius:13px;background:var(--cm-surface)">'
+    + '<div style="font-size:12.5px;font-weight:700;color:var(--cm-ink)">'+_memKDate(sel.date)+' '+_vEsc(sel.time)+'</div>'
+    + '<div style="font-size:12px;color:var(--cm-ink-soft);margin-top:2px">'+_vEsc(sel.name)+(sel.amt?' '+sel.amt+'g':'')+(sel.kcal?' · '+sel.kcal+'kcal':'')+' <span style="color:var(--cm-faint)">('+_mrKindText(sel.kind)+')</span></div>'
+    + '<div style="font-size:11.5px;color:var(--cm-faint);margin-top:2px">'+(sel.ins ? '인슐린 '+_vEsc(sel.ins.time)+' '+_vEsc(sel.ins.dose)+'U'+(sel.ins.type?' '+_vEsc(sel.ins.type):'') : '식사 앞뒤 1시간 안 인슐린 기록 없음')+'</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:.55rem 0">'
+    + tile('식전', sel.base) + tile('식후 최고', sel.peak) + tile('오른 정도', (sel.rise>=0?'+':'')+sel.rise) + tile('최고까지', _mrDur(sel.tPeak))
+    + (sel.lateRise!=null && sel.tPeak<MR_LATE ? tile('4시간 이후 최고', sel.latePeak) + tile('그때까지', _mrDur(sel.tLate)) : '')
+    + '</div>'
+    + '<div class="chart-wrap" style="height:150px"><canvas id="mrMini"></canvas></div>'
+    + '<div style="font-size:10.5px;color:var(--cm-faint);margin-top:.3rem">'+(sel.cut ? '다음 식사 전까지 '+_mrDur(sel.span)+' 동안 봤어요' : _mrKindText(sel.kind)+' 기준 '+_mrDur(sel.span)+' 동안 봤어요')+'</div>'
+    + '</div>';
+  const unk = L.filter(m=>m.kind===null).length;
+  html += '<div style="font-size:10.5px;color:var(--cm-faint);line-height:1.65;margin-top:.6rem">'
+    + '습식은 식후 6시간, 건식·혼합은 다음 식사 전까지(최대 12시간) 봐요.'
+    + (unk ? ' 수분 정보가 없는 사료는 건식처럼 길게 봤어요.' : '')
+    + (skipTxt ? '<br>제외한 식사: '+_vEsc(skipTxt) : '')
+    + '<br>오른 정도는 사료와 인슐린이 함께 만든 결과예요. 궁금한 점은 병원과 상담해 주세요.</div>';
+  wrap.innerHTML = html;
+
+  if(typeof Chart==='undefined') return;
+  const isDark = matchMedia('(prefers-color-scheme:dark)').matches;
+  const gc = isDark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.05)', tc = isDark?'#B4B2A9':'#888780';
+  const insCol = m => m.ins ? '#185FA5' : '#BA7517';
+  // ① 산점도
+  const sc = document.getElementById('mrScatter');
+  if(sc){
+    const pts = L.filter(m=>m.amt>0);
+    _mrCharts.push(new Chart(sc, {type:'scatter',
+      data:{datasets:[{data:pts.map(m=>({x:m.amt, y:m.rise, _m:m})),
+        pointBackgroundColor:pts.map(insCol), pointBorderColor:pts.map(m=>m===sel?(isDark?'#fff':'#2C2C2A'):insCol(m)),
+        pointBorderWidth:pts.map(m=>m===sel?2:0), pointRadius:pts.map(m=>m===sel?7:5), pointHoverRadius:8}]},
+      options:{responsive:true, maintainAspectRatio:false,
+        onClick:(e, els)=>{ if(els.length){ const m=pts[els[0].index]; _mrSet('sel', m.date+' '+m.time); } },
+        plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>{ const m=c.raw._m; return ' '+m.date.slice(5)+' '+m.time+' · '+m.amt+'g · '+(m.rise>=0?'+':'')+m.rise+(m.ins?' · 인슐린 '+m.ins.dose+'U':''); }}}},
+        scales:{x:{title:{display:true,text:'먹은 양 (g)',color:tc,font:{size:10}}, grid:{color:gc}, ticks:{color:tc,font:{size:10}}},
+                y:{title:{display:true,text:'오른 정도 (mg/dL)',color:tc,font:{size:10}}, grid:{color:gc}, ticks:{color:tc,font:{size:10}}}}}}));
+  }
+  // ② 평균 변화 곡선 — 표본 많은 구간 4개까지, 30분 간격, ±15분 안의 기록
+  const cv = document.getElementById('mrCurve');
+  if(cv){
+    const top = binKeys.slice().sort((a,b)=>bins[b].length-bins[a].length).slice(0,4).sort((a,b)=>a-b);
+    const maxSpan = Math.max(...L.map(m=>m.span));
+    const steps = []; for(let t=0;t<=maxSpan;t+=30) steps.push(t);
+    const cols = ['#1D9E75','#185FA5','#BA7517','#993556'];
+    const ds = top.map((lo,i)=>({label:binLabel(lo)+' ('+bins[lo].length+'번)', borderColor:cols[i], backgroundColor:cols[i], pointRadius:0, borderWidth:2, tension:.3, spanGaps:true,
+      data:steps.map(t=>{
+        const vals = bins[lo].filter(m=>t<=m.span).map(m=>{ const p=m.curve.filter(q=>Math.abs(q.x-t)<=15).sort((a,b)=>Math.abs(a.x-t)-Math.abs(b.x-t))[0]; return p ? p.y-m.base : null; }).filter(v=>v!==null);
+        return {x:t/60, y: vals.length ? Math.round(vals.reduce((s,v)=>s+v,0)/vals.length) : null};
+      })}));
+    _mrCharts.push(new Chart(cv, {type:'line', data:{datasets:ds},
+      options:{responsive:true, maintainAspectRatio:false, parsing:true,
+        plugins:{legend:{display:true, position:'bottom', labels:{color:tc, font:{size:10}, boxWidth:10, boxHeight:2}},
+                 tooltip:{callbacks:{title:c=>'식후 '+_mrDur(Math.round(c[0].parsed.x*60)), label:c=>' '+c.dataset.label+': '+(c.parsed.y>=0?'+':'')+c.parsed.y}}},
+        scales:{x:{type:'linear', min:0, max:Math.ceil(maxSpan/60), title:{display:true,text:'식후 시간',color:tc,font:{size:10}}, grid:{color:gc}, ticks:{color:tc,font:{size:10},stepSize:1,callback:v=>v+'h'}},
+                y:{grid:{color:gc}, ticks:{color:tc,font:{size:10},callback:v=>(v>0?'+':'')+v}}}}}));
+  }
+  // ③ 선택 식사 전후
+  const mn = document.getElementById('mrMini');
+  if(mn){
+    const marks = {id:'mrMarks', afterDatasetsDraw(ch){
+      const xs=ch.scales.x, ys=ch.scales.y, c=ch.ctx; c.save(); c.font='600 10px sans-serif'; c.textBaseline='middle';
+      const p0=xs.getPixelForValue(0); c.strokeStyle='rgba(24,95,165,0.5)'; c.setLineDash([3,3]); c.beginPath(); c.moveTo(p0,ys.top); c.lineTo(p0,ys.bottom); c.stroke(); c.setLineDash([]);
+      c.fillStyle='#185FA5'; c.fillText('식사', p0+4, ys.top+7);
+      if(sel.ins){ const pi=xs.getPixelForValue(sel.ins.off/60); c.fillStyle='#BA7517'; c.beginPath(); c.moveTo(pi,ys.bottom-12); c.lineTo(pi+5,ys.bottom-7); c.lineTo(pi,ys.bottom-2); c.lineTo(pi-5,ys.bottom-7); c.closePath(); c.fill(); c.fillText(sel.ins.dose+'U', pi+7, ys.bottom-7); }
+      c.restore(); }};
+    _mrCharts.push(new Chart(mn, {type:'scatter', plugins:[marks],
+      data:{datasets:[{data:sel.curve.map(p=>({x:p.x/60, y:p.y})), showLine:true, tension:.3, borderColor:'#1D9E75', backgroundColor:'#1D9E75', pointRadius:0, borderWidth:2}]},
+      options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>' 식후 '+_mrDur(Math.max(0,Math.round(c.parsed.x*60)))+' · '+c.parsed.y}}},
+        scales:{x:{type:'linear', min:-MR_PRE/60, max:sel.span/60, grid:{color:gc}, ticks:{color:tc,font:{size:10},stepSize:1,callback:v=>Number.isInteger(v)?v+'h':''}},
+                y:{suggestedMin:Math.max(0,sel.base-40), suggestedMax:Math.max(sel.peak+10, sel.base+40), grid:{color:gc}, ticks:{color:tc,font:{size:10}}}}}}));   // 작은 변화가 과장돼 보이지 않게 최소 폭 확보
+  }
+}
+
+function renderTimelineChart(date) {
+  const d = date || document.getElementById('histDatePicker')?.value || today();
+  const rec = getRec(state.activeCat, d);
+  const canvas = document.getElementById('timelineChart');
+  const empty = document.getElementById('timelineEmpty');
+  if(!canvas) return;
+
+  if(timelineInst){timelineInst.destroy();timelineInst=null;}
+
+  const isDark = matchMedia('(prefers-color-scheme:dark)').matches;
+  const gc = isDark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.05)';
+  const tc = isDark?'#B4B2A9':'#888780';
+
+  function timeToMin(t){ if(!t)return null; const p=t.split(':'); return parseInt(p[0])*60+parseInt(p[1]||0); }
+  function minToLabel(m){ return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'); }
+
+  const bgPoints = _bgDaySeries(state.activeCat, d);
   const bgPtColors = bgPoints.map(p=>bgPointColor(p.y)); // 정렬 후 생성 — 색-점 순서 일치
+  _renderTimelineEvents(state.activeCat, d);
   // y축 상한 동적 계산 — 450 하드코딩 시 DKA급 고혈당(450↑)이 잘려 미기록으로 오해됨.
   // 데이터 최대값 +20% 여유를 50 단위로 올림, 최소 450 유지(정상 데이터 축 고정)
   const bgDataMax = bgPoints.length ? Math.max(...bgPoints.map(p=>p.y)) : 0;
@@ -6768,12 +7071,14 @@ function renderTimelineChart(date) {
   // 인슐린: y축 하단 고정 마커 (y=15 고정, 수치는 툴팁으로만)
   const insPoints = rec.ins.filter(r=>r.dose&&r.time)
     .map(r=>({x:timeToMin(r.time), y:15,
+      _short:r.dose+'U',
       _label:'💉 인슐린 '+r.dose+'U'+(r.type?' ('+r.type+')':'')+(r.preBg?' 투여전혈당:'+r.preBg:'')}))
     .filter(r=>r.x!==null);
 
   // 식사: y축 하단 고정 마커 (y=8 고정, kcal은 툴팁으로만)
   const mealPoints = rec.meals.filter(r=>r.time)
     .map(r=>({x:timeToMin(r.time), y:8,
+      _short:(r.amt?r.amt+'g':'식사'),
       _label:'🍽️ '+(r.name||'식사')+(r.kcal?' '+r.kcal+'kcal':'')+(r.amt?' '+r.amt+'g':'')}))
     .filter(r=>r.x!==null);
 
@@ -6806,9 +7111,39 @@ function renderTimelineChart(date) {
     }
   };
 
+  // 식사·인슐린 내용 바로 표시 (v0.9.3) — 식사: 세로 점선+위쪽에 g, 인슐린: 마커 옆 용량. 가까운 라벨은 줄을 바꿔 겹침 방지
+  const eventLabelPlugin = {
+    id:'tlEventLabels',
+    afterDatasetsDraw:function(chart){
+      const xs=chart.scales['x'], ys=chart.scales['yBg']; if(!xs||!ys) return;
+      const c=chart.ctx; c.save();
+      c.font='600 10px sans-serif'; c.textBaseline='middle';
+      const rowsUsed=[];
+      // 라벨 배경 = 실제 카드 배경 (OS 다크모드와 앱 테마가 다를 수 있어 matchMedia 대신 계산값 사용)
+      const _cardBg = getComputedStyle(chart.canvas.closest('.cm-card')||document.body).backgroundColor || '#fff';
+      mealPoints.forEach(p=>{
+        const px=xs.getPixelForValue(p.x); if(px<xs.left||px>xs.right) return;
+        c.strokeStyle='rgba(24,95,165,0.35)'; c.setLineDash([3,3]); c.lineWidth=1;
+        c.beginPath(); c.moveTo(px, ys.bottom); c.lineTo(px, ys.top); c.stroke(); c.setLineDash([]);
+        const w=c.measureText(p._short).width;
+        let row=0; while(rowsUsed.some(u=>u.row===row && Math.abs(u.x-px)<(u.w+w)/2+6)) row++;
+        rowsUsed.push({row,x:px,w});
+        const tx=Math.min(Math.max(px-w/2, xs.left), xs.right-w), ty=ys.top+8+row*13;
+        c.fillStyle=_cardBg; c.fillRect(tx-2, ty-6, w+4, 12);
+        c.fillStyle='#185FA5'; c.fillText(p._short, tx, ty);
+      });
+      insPoints.forEach(p=>{
+        const px=xs.getPixelForValue(p.x); if(px<xs.left||px>xs.right) return;
+        const py=ys.getPixelForValue(p.y)-14, w=c.measureText(p._short).width;
+        c.fillStyle='#BA7517'; c.fillText(p._short, Math.min(px+7, xs.right-w), py);
+      });
+      c.restore();
+    }
+  };
+
   timelineInst = new Chart(canvas, {
     type:'scatter',
-    plugins:[targetBandPlugin],
+    plugins:[targetBandPlugin, eventLabelPlugin],
     data:{datasets:[
       // 혈당 라인+점
       {label:'혈당', yAxisID:'yBg',
