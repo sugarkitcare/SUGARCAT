@@ -664,7 +664,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.9.8</span>
+      <span class="cm-beta">v0.9.9</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -14476,10 +14476,10 @@ function setKcalGoal(cat, v){
    - 원재료 출처: 보호자 사료 분석(fd_v2_<cat>, 전체 목록) → 공유 사료 목록(foods_master, foodId/이름) → 없음
    - 공통 기록(식사·대변·구토)은 기존 카드에서만. 피부·귀 기록만 노트 전용(rec.skin) */
 const FR_STATUS = {
-  confirmed: {t:'확인됨',         bg:'var(--cm-clay-tint)',  bd:'var(--cm-clay-edge)',  fg:'var(--cm-clay-ink)'},
-  suspect:   {t:'의심',           bg:'var(--cm-amber-tint)', bd:'var(--cm-amber-edge)', fg:'#7E5C16'},
-  ok:        {t:'먹어도 괜찮았음', bg:'var(--cm-surface-2)',  bd:'var(--cm-line)',       fg:'var(--cm-ink-soft)'},
-  never:     {t:'먹어본 적 없음',  bg:'var(--cm-surface-2)',  bd:'var(--cm-line)',       fg:'var(--cm-ink-soft)'},
+  confirmed: {t:'반응 확인',       d:'병원 식이 시험·재도전 등으로 반응이 확인된 성분', bg:'var(--cm-clay-tint)',  bd:'var(--cm-clay-edge)',  fg:'var(--cm-clay-ink)'},
+  suspect:   {t:'반응 의심',       d:'먹은 뒤 증상이 있었던 것 같은 성분', bg:'var(--cm-amber-tint)', bd:'var(--cm-amber-edge)', fg:'#7E5C16'},
+  ok:        {t:'먹어도 괜찮았음', d:'먹었을 때 별다른 변화가 없었던 성분', bg:'var(--cm-surface-2)',  bd:'var(--cm-line)',       fg:'var(--cm-ink-soft)'},
+  never:     {t:'먹어본 적 없음',  d:'아직 먹여 본 적 없는 성분 (식이 시험 때 새 단백질 후보)', bg:'var(--cm-surface-2)',  bd:'var(--cm-line)',       fg:'var(--cm-ink-soft)'},
 };
 function frGet(cat){
   try{ const v=JSON.parse(localStorage.getItem('foodReact_v1_'+cat)||'null'); return (v&&Array.isArray(v.items))?v:{items:[]}; }
@@ -14555,9 +14555,15 @@ function _frMatch(cat, ingr){
   if(ingr.level==='loading') return {kind:'loading'};
   if(!ingr.list || typeof cmIngrInfo!=='function') return {kind:'none'};
   const st = {}; reg.forEach(i=>st[i.fam]=i.status);
+  const customs = reg.filter(i=>i.custom).map(i=>({fam:i.fam, k:_cmIngrKey(i.fam)})).filter(c=>c.k);
   const direct=[], related=[], never=[], unspec=[];
   ingr.list.forEach(raw=>{
-    const inf = cmIngrInfo(raw); if(!inf.fam) return;
+    let inf = cmIngrInfo(raw);
+    // 직접 입력 성분 — 원재료 표기에 그 이름이 들어 있으면 같은 성분(형태는 표기 키워드로)
+    const rk = _cmIngrKey(raw), cu = customs.find(c=>rk.indexOf(c.k)!==-1);
+    if(cu) inf = {raw:inf.raw, fam:cu.fam, form:(inf.form && inf.form!=='원료' && !inf.guess) ? inf.form : '', unspec:false};   // 직접 입력은 형태 표시 생략
+    if(!inf.fam) return;
+    const de = (window.CM_INGR||{})[inf.canon]; if(!cu && de && de.x) return;   // 첨가·영양 보충 원료는 대조하지 않음
     if(inf.unspec && inf.form!=='원료'){ unspec.push(inf); return; }
     const s = st[inf.fam]; if(!s) return;
     if(s==='never'){ never.push(inf); return; }
@@ -14573,7 +14579,7 @@ function _frBadgeHtml(m){
   let h='';
   if(m.kind==='direct'){
     const by={}; m.direct.forEach(i=>{ (by[i.fam]=by[i.fam]||[]).push(i.form); });
-    h=b('var(--cm-clay-tint)','var(--cm-clay-edge)','var(--cm-clay-ink)','등록한 성분이 들어 있어요: '+Object.keys(by).map(f=>f+'('+_frUniq(by[f]).join('·')+')').join(', '));
+    h=b('var(--cm-clay-tint)','var(--cm-clay-edge)','var(--cm-clay-ink)','등록한 성분이 들어 있어요: '+Object.keys(by).map(f=>{ const fs=_frUniq(by[f]).filter(Boolean); return fs.length ? f+'('+fs.join('·')+')' : f; }).join(', '));
   } else if(m.kind==='related') h=b('var(--cm-amber-tint)','var(--cm-amber-edge)','#7E5C16','관련 성분이 있어요: '+_frUniq(m.related.map(i=>i.raw)).join(', '));
   else if(m.kind==='unspec') h=b('var(--cm-surface-2)','#A39A8C','#6B6255','특정되지 않은 원료가 있어 확인할 수 없어요: '+_frUniq(m.unspec.map(i=>i.raw)).slice(0,3).join(', '),true);
   else if(m.kind==='partial') h=b('var(--cm-surface-2)','#A39A8C','#6B6255','원재료 일부만 있어 확인할 수 없어요',true);
@@ -14720,24 +14726,39 @@ function _frRefresh(){
   const s=document.getElementById('frSheet'); if(s && s.dataset.open==='1') _renderFrHub();
   try{ const fl=document.getElementById('favFoodPickerDailyList'); if(fl && fl.offsetParent!==null) _renderFavFoodPickerList('favFoodPickerDailyList'); }catch(e){}
 }
-function _frFamilies(){
-  const D=window.CM_INGR||{}, seen=new Set(), out=[];
-  Object.keys(D).forEach(k=>{ const e=D[k]; if(e.u) return; if(!seen.has(e.f)){ seen.add(e.f); out.push({fam:e.f, animal:e.t!=='원료' || ['계란','우유'].indexOf(e.f)!==-1}); } });
-  return out.filter(x=>x.animal).concat(out.filter(x=>!x.animal));
+/* 등록 목록 — 묶음별(cm_ingrnorm CM_INGR_GROUPS), 첨가·영양 보충 원료(x)·특정 불가(u) 제외. 묶음에 없는 사전 계열은 '기타' */
+function _frFamilyGroups(){
+  const D=window.CM_INGR||{}, all=new Set();
+  Object.keys(D).forEach(k=>{ const e=D[k]; if(!e.u && !e.x) all.add(e.f); });
+  const groups=(window.CM_INGR_GROUPS||[]).map(g=>[g[0], g[1].filter(f=>all.has(f))]);
+  const used=new Set([].concat(...groups.map(g=>g[1])));
+  const etc=[...all].filter(f=>!used.has(f));
+  if(etc.length) groups.push(['기타', etc]);
+  return groups;
 }
 function frEditStart(fam){
   const it=frGet(state.activeCat).items.find(i=>i.fam===fam);
-  _frEdit = it ? {fam:it.fam, status:it.status, memo:it.memo||'', isNew:false} : {fam:'', status:'suspect', memo:'', isNew:true};
+  _frEdit = it ? {fam:it.fam, status:it.status, memo:it.memo||'', isNew:false, custom:!!it.custom} : {fam:'', status:'suspect', memo:'', isNew:true, custom:false};
   _renderFrHub();
 }
-function frEditSet(k,v){ if(!_frEdit) return; _frEdit[k]=v; if(k!=='memo') _renderFrHub(); }
+// 다시 그리기 전에 입력 중인 값(직접 입력 이름·메모)을 보관 — 상태 버튼을 누르면 화면이 새로 그려져 입력이 지워지던 문제
+function _frEditCapture(){
+  if(!_frEdit) return;
+  const m=document.getElementById('frEditMemo'); if(m) _frEdit.memo=m.value;
+  const c=document.getElementById('frEditCustom'); if(c && _frEdit.custom) _frEdit.fam=c.value;
+}
+function frEditSet(k,v){ if(!_frEdit) return; _frEditCapture(); _frEdit[k]=v; if(k!=='memo') _renderFrHub(); }
+function frEditPick(v){ if(!_frEdit) return; _frEditCapture(); if(v==='__custom'){ _frEdit.custom=true; _frEdit.fam=''; } else { _frEdit.custom=false; _frEdit.fam=v; } _renderFrHub(); if(v==='__custom'){ const c=document.getElementById('frEditCustom'); if(c) c.focus(); } }
 function frEditSave(){
   const e=_frEdit; if(!e) return;
   const memoEl=document.getElementById('frEditMemo'); if(memoEl) e.memo=memoEl.value.trim();
-  if(!e.fam){ toast('성분을 골라 주세요'); return; }
+  const cuEl=document.getElementById('frEditCustom'); if(e.isNew && e.custom && cuEl) e.fam=cuEl.value.trim();
+  if(!e.fam){ toast(e.custom?'성분 이름을 입력해 주세요':'성분을 골라 주세요'); return; }
+  if(e.isNew && frGet(state.activeCat).items.some(x=>x.fam===e.fam)){ toast('이미 등록한 성분이에요'); return; }
   const cat=state.activeCat, v=frGet(cat);
   const i=v.items.findIndex(x=>x.fam===e.fam);
   const it={fam:e.fam, status:e.status, memo:e.memo||'', upd:new Date().toISOString()};
+  if(e.custom) it.custom=true;   // 직접 입력 — 원재료 표기에 이름이 포함되면 대조
   if(i===-1) v.items.push(it); else v.items[i]=it;
   frSave(cat, v); _frEdit=null; _renderFrHub(); try{ renderTileGrid(cat); renderDailySummary(); }catch(err){}
 }
@@ -14775,17 +14796,21 @@ function _renderFrHub(){
     + items.slice().sort((a,b)=>order[a.status]-order[b.status]).map(i=>{ const s=FR_STATUS[i.status]||FR_STATUS.suspect;
         return '<button type="button" onclick="frEditStart(\''+_vEsc(i.fam).replace(/'/g,'&#39;')+'\')" style="padding:6px 11px;border-radius:999px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;background:'+s.bg+';border:1px solid '+s.bd+';color:'+s.fg+'">'+_vEsc(i.fam)+' · '+s.t+'</button>'; }).join('')
     + '<button type="button" onclick="frEditStart(null)" style="padding:6px 11px;border-radius:999px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;background:none;border:1px dashed var(--cm-green-edge);color:var(--cm-green-700)">+ 추가</button></div>'
-    + (items.length?'':'<div style="font-size:11.5px;color:var(--cm-faint);margin-top:6px;line-height:1.6">병원에서 확인했거나 의심되는 성분, 먹어도 괜찮았던 성분, 아직 먹어본 적 없는 성분을 등록해 두면 먹은 것과 이어서 볼 수 있어요.</div>');
+    + (items.length?'':'<div style="font-size:11.5px;color:var(--cm-faint);margin-top:6px;line-height:1.6">반응이 확인됐거나 의심되는 성분, 먹어도 괜찮았던 성분, 아직 먹어본 적 없는 성분을 등록해 두면 먹은 것과 이어서 볼 수 있어요.</div>');
   if(_frEdit){
-    const fams=_frFamilies(), e=_frEdit;
+    const fams=_frFamilyGroups(), e=_frEdit;
     h+='<div style="margin-top:10px;padding:11px;border:1px solid var(--cm-line);border-radius:13px;background:var(--cm-surface)">'
       + '<div style="font-size:12px;font-weight:700;color:var(--cm-ink-soft);margin-bottom:6px">성분</div>'
-      + (e.isNew ? '<select onchange="frEditSet(\'fam\',this.value)" style="width:100%;padding:9px 10px;border:1px solid var(--cm-line);border-radius:10px;font-size:13px;background:var(--cm-surface);color:var(--cm-ink);font-family:inherit"><option value="">고르기</option>'
-          + fams.filter(f=>!items.some(i=>i.fam===f.fam)).map(f=>'<option value="'+_vEsc(f.fam)+'"'+(f.fam===e.fam?' selected':'')+'>'+_vEsc(f.fam)+'</option>').join('')+'</select>'
-          : '<div style="font-size:14px;font-weight:800;color:var(--cm-ink)">'+_vEsc(e.fam)+'</div>')
-      + '<div style="font-size:11px;color:var(--cm-faint);margin-top:4px">같은 동물에서 나온 고기·내장·기름·육수 등을 함께 확인해요</div>'
+      + (e.isNew ? '<select onchange="frEditPick(this.value)" style="width:100%;padding:9px 10px;border:1px solid var(--cm-line);border-radius:10px;font-size:13px;background:var(--cm-surface);color:var(--cm-ink);font-family:inherit"><option value="">고르기</option>'
+          + fams.map(g=>{ const opts=g[1].filter(f=>!items.some(i=>i.fam===f)); return opts.length ? '<optgroup label="'+_vEsc(g[0])+'">'+opts.map(f=>'<option value="'+_vEsc(f)+'"'+(f===e.fam&&!e.custom?' selected':'')+'>'+_vEsc(f)+'</option>').join('')+'</optgroup>' : ''; }).join('')
+          + '<option value="__custom"'+(e.custom?' selected':'')+'>목록에 없어요 · 직접 입력</option></select>'
+          + (e.custom ? '<input type="text" id="frEditCustom" maxlength="20" placeholder="예: 메추리알, 연어 껍질" value="'+_vEsc(e.fam||'')+'" style="width:100%;box-sizing:border-box;margin-top:7px;padding:9px 11px;border:1px solid var(--cm-line);border-radius:10px;font-size:13px;background:var(--cm-surface);color:var(--cm-ink);font-family:inherit">'
+              + '<div style="font-size:11px;color:var(--cm-faint);margin-top:4px;line-height:1.5">원재료 표기에 이 이름이 들어 있으면 같은 성분으로 표시해요</div>' : '')
+          : '<div style="font-size:14px;font-weight:800;color:var(--cm-ink)">'+_vEsc(e.fam)+(e.custom?' <span style="font-size:11px;font-weight:500;color:var(--cm-faint)">직접 입력</span>':'')+'</div>')
+      + (e.custom ? '' : '<div style="font-size:11px;color:var(--cm-faint);margin-top:4px">같은 동물에서 나온 고기·내장·기름·육수 등을 함께 확인해요</div>')
       + '<div style="font-size:12px;font-weight:700;color:var(--cm-ink-soft);margin:10px 0 6px">상태</div>'
       + '<div class="f-seg" style="flex-wrap:wrap">'+Object.keys(FR_STATUS).map(k=>'<button type="button" data-on="'+(e.status===k?'1':'0')+'" onclick="frEditSet(\'status\',\''+k+'\')" style="padding:8px 4px;font-size:12px;min-width:44%">'+FR_STATUS[k].t+'</button>').join('')+'</div>'
+      + '<div style="font-size:11px;color:var(--cm-faint);margin-top:5px;line-height:1.5">'+_vEsc((FR_STATUS[e.status]||{}).d||'')+'</div>'
       + '<input type="text" id="frEditMemo" maxlength="120" placeholder="메모 (예: 식이 시험 때 확인)" value="'+_vEsc(e.memo||'')+'" style="width:100%;box-sizing:border-box;margin-top:9px;padding:9px 11px;border:1px solid var(--cm-line);border-radius:10px;font-size:12.5px;background:var(--cm-surface);color:var(--cm-ink);font-family:inherit">'
       + '<div style="display:flex;gap:6px;margin-top:9px">'
       + '<button type="button" onclick="frEditSave()" style="flex:1;padding:10px 0;border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;border:none;background:var(--cm-green-700);color:#fff">저장</button>'
