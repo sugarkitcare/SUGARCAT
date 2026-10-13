@@ -664,7 +664,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.9.9</span>
+      <span class="cm-beta">v0.9.10</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -761,6 +761,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
           <div>
             <div class="l">대변</div>
             <div class="v" id="heroStoolVal">—</div>
+            <div id="heroStoolSub" style="display:none;font-size:10.5px;font-weight:700;line-height:1.35;margin-top:2px;word-break:keep-all"></div>
           </div>
           <div>
             <div class="l">소변</div>
@@ -6211,16 +6212,32 @@ function renderDailySummary(catName) {
       }
     }
 
-    // 대변 (미니 셀 — 'N회'만 표기, 정상 아닌 기록 있으면 clay. 상세는 소변·대변 시트에서, v0.7.38)
+    // 대변 (미니 셀 — 'N회' + 7단계 점수 기록이 있으면 가장 최근 "5점 · 점액" 한 줄, v0.9.10)
+    // 5점 이상·점액·피가 있으면 칸을 황토로(판정 문구 없이 색으로만 — 2026-10-10 합의 시안).
+    // 점수 없는 예전 기록은 기존대로 정상 아니면 숫자 clay
     const poopArr = rec.poop || [];
     const stoolEl = document.getElementById('heroStoolVal');
+    const stoolSub = document.getElementById('heroStoolSub');
+    const stoolCell = stoolEl ? stoolEl.parentElement : null;
     if(stoolEl) {
+      if(stoolCell){ stoolCell.style.background = ''; stoolCell.style.borderColor = ''; }
+      if(stoolSub){ stoolSub.style.display = 'none'; stoolSub.textContent = ''; }
       if(!poopArr.length) {
         stoolEl.textContent = '—';
         stoolEl.style.color = '';
       } else {
         stoolEl.textContent = poopArr.length + '회';
-        stoolEl.style.color = poopArr.some(p => p.type && p.type !== '정상') ? 'var(--cm-clay)' : '';
+        const legacyAbn = poopArr.some(p => !p.score && p.type && p.type !== '정상' && p.type !== '무변');
+        stoolEl.style.color = (legacyAbn || poopArr.some(p => p.blood)) ? 'var(--cm-clay)' : '';
+        const scored = poopArr.filter(p => p.score || p.mucus || p.blood).slice().sort((a,b) => String(a.time||'').localeCompare(String(b.time||'')));
+        const last = scored[scored.length-1];
+        if(last && stoolSub){
+          stoolSub.textContent = _poopLabel(last);
+          stoolSub.style.display = '';
+          const flag = poopArr.some(p => (p.score && p.score >= 5) || p.mucus || p.blood);
+          stoolSub.style.color = flag ? '#7E5C16' : 'var(--cm-ink-soft)';
+          if(flag && stoolCell){ stoolCell.style.background = 'var(--cm-amber-tint)'; stoolCell.style.borderColor = 'var(--cm-amber-edge)'; }
+        }
       }
     }
 
