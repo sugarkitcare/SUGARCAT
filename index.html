@@ -664,7 +664,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.9.12</span>
+      <span class="cm-beta">v0.9.13</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -4320,13 +4320,17 @@ function _initMealTabs() {
     switchMealTab(tab || 'favorite', true);
   }catch(e){}
 }
-/* 레시피 kcal/100g(사료 g 기준, 물 제외) — feedTubeRecipeMix의 kcal 분배와 동일 기준 */
+/* 레시피 kcal/100g — 완성 무게(사료 + 추가한 물) 기준 (v0.9.13).
+   레시피 화면의 '한 번에 약 Ng'이 물 포함 완성 무게라, 식사 기록에 그 g을 넣으면 같은 kcal가 나와야 함.
+   (이전: 사료 g 기준이라 물 60ml 넣은 레시피에서 78g → 137kcal로 과다 — 보호자 제보 2026-10-17)
+   물 없는 레시피는 완성 무게 = 사료 g이라 기존과 같음. feedTubeRecipeMix의 분배와 동일 기준 */
 function _mealRecipeKcalPer100(r) {
   const items = (r && r.items) || [];
   const foodG = items.reduce((a,it) => a + (parseFloat(it.grams)||0), 0);
   if(foodG <= 0) return null;
+  const totalG = Math.max(foodG, _tubeRecipeTotalG(r) || foodG);
   const totalKcal = items.reduce((a,it) => a + (parseFloat(it.grams)||0) * (parseFloat(it.kcalPer100g)||0) / 100, 0);
-  return Math.round(totalKcal / foodG * 100 * 10) / 10;
+  return Math.round(totalKcal / totalG * 100 * 10) / 10;
 }
 function _renderMealRecipeTab() {
   const list = document.getElementById('mealRecipeListDaily');
@@ -4356,7 +4360,8 @@ function selectMealRecipeDaily(i) {
   _fillMealFields(name, kp, null, true);
   _mealSelRecipe = {cat: state.activeCat, id: (r.id != null ? r.id : null), name: name};   // 선택 시점 고양이 캡처 (소유 가드)
   _mealSelSource = 'recipe';
-  toast(name + ' · 먹은 양(g) 입력 후 식사 저장을 눌러주세요');
+  const _rw = parseFloat(r.addedWaterMl)||0;
+  toast(name + (_rw > 0 ? ' · 물 포함 완성 무게(g)로 먹은 양을 입력해 주세요' : ' · 먹은 양(g) 입력 후 식사 저장을 눌러주세요'), '#235B43', _rw > 0 ? 3200 : 2200);
 }
 /* 공용 필드 채움 — 즐겨찾기·이름검색·레시피 [선택]이 공유. moisture가 즐겨찾기와 동일 경로
    (_favMoisture → saveMeal → meals[].moisture → 음수량 집계)를 타는 것이 핵심 (v0.7.19).
@@ -11668,9 +11673,11 @@ function feedTubeRecipeMix(idx, gOverride, dateOverride, timeOverride){
   if(!items.length){toast('레시피에 재료가 없어요','#BA7517');return;}
   const eg=parseFloat(gOverride)||0;
   if(eg<=0){toast('먹은 양(g)을 입력해주세요','#BA7517');return;}
-  // 레시피 사료 총 g(물 제외) — 먹은 g을 재료 비율대로 분배
+  // 먹은 g = 물 포함 완성 무게 (v0.9.13) → 사료 몫(사료g/완성g)만 재료 비율대로 분배. 물 몫은 식사에 넣지 않음
   const foodG=items.reduce((a,it)=>a+(parseFloat(it.grams)||0),0);
   if(foodG<=0){toast('레시피 재료 g이 없어요','#BA7517');return;}
+  const totalG=Math.max(foodG, _tubeRecipeTotalG(r)||foodG);
+  const egFood=eg*foodG/totalG, egWater=eg-egFood;
   const d=dateOverride||today();
   const recd=getRec(state.activeCat,d);
   const t=timeOverride||nowTime();
@@ -11679,7 +11686,7 @@ function feedTubeRecipeMix(idx, gOverride, dateOverride, timeOverride){
   items.forEach(item=>{
     const ig=parseFloat(item.grams)||0;
     if(ig<=0)return;
-    const g=eg*(ig/foodG);            // 먹은 총g × 재료 비율
+    const g=egFood*(ig/foodG);        // 먹은 사료 g × 재료 비율
     const k=parseFloat(item.kcalPer100g)||0;
     const moi=parseFloat(item.moisture);
     const kc=Math.round(g*k/100*10)/10;
@@ -11692,7 +11699,7 @@ function feedTubeRecipeMix(idx, gOverride, dateOverride, timeOverride){
   try{updateMetrics();}catch(e){}
   try{renderDailySummary();}catch(e){}
   try{renderTubeRecipeList();}catch(e){}
-  toast((d!==today()?d+' · ':'')+'혼합급여 기록 · '+Math.round(eg)+'g · '+Math.round(kcalSum)+'kcal'+(waterSum>0?' · 수분 '+Math.round(waterSum)+'ml':''));
+  toast((d!==today()?d+' · ':'')+'혼합급여 기록 · '+Math.round(eg)+'g · '+Math.round(kcalSum)+'kcal'+(egWater>=1?' (탄 물 약 '+Math.round(egWater)+'ml 포함 무게)':'')+(waterSum>0?' · 사료 수분 '+Math.round(waterSum)+'ml':''), '#235B43', egWater>=1?3200:2200);
 }
 
 function openTubeFavPicker(){
