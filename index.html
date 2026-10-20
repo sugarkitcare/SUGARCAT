@@ -664,7 +664,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.9.15</span>
+      <span class="cm-beta">v0.9.16</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -2228,6 +2228,9 @@ function recHasData(rec){
    이 창에서 saveS가 돌면 불완전한 records가 localStorage·DB를 덮어씀 → 저장을 미루고 동기화 후 flush */
 let _recordsSyncing=false;
 let _pendingSaveDates=new Set();
+/* saveToDB 묶기용 (v0.9.16) — saveS보다 먼저 선언(초기화 중 저장 호출 시 TDZ 방지). 설명은 saveToDB 참고 */
+const _dbLastSaved=new Map();   // 'cat|date' → 마지막으로 DB와 일치한 data JSON
+const _dbSaveTimers=new Map();  // 'cat|date' → timeout id
 const saveS=(date)=>{
   if(_recordsSyncing){
     _pendingSaveDates.add(date||null);
@@ -19825,7 +19828,7 @@ async function syncFromDB() {
     const _tw = (label, p) => p.finally(() =>
       console.log(`[Perf]   ${label}: ${(performance.now()-_parallelT0).toFixed(0)}ms`));
     await Promise.all([
-      _tw('daily_records', loadDailyRecords().catch(e => {
+      _tw('daily_records', loadDailyRecords(localRecordsBackup).catch(e => {
         console.warn('DB 기록 로드 실패, 로컬 데이터 복구:', e);
         state.records = localRecordsBackup;
       })),
@@ -19921,19 +19924,40 @@ async function syncFromDB() {
   }
 }
 
-async function loadDailyRecords() {
+/* 일일 기록 증분 동기화 (v0.9.16, Supabase Disk IO 경고 대응 2026-10-21)
+   예전: 앱을 열 때마다 180일치 전체 행(data jsonb)을 받음 → DB 읽기 시간의 44%.
+   지금: 이 기기에서 전체 동기화를 한 번 마친 계정은 '마지막으로 본 updated_at 이후 바뀐 행'만 받음.
+   · merge는 기존 그대로(로컬 위에 DB 행 overlay) — 안 바뀐 행은 이미 이 기기 로컬에 반영돼 있음
+   · updated_at은 쓰는 기기의 시계 → 시계 차이 대비 2일 겹쳐서 받음 + 7일마다 전체 동기화
+   · 로컬 기록이 비었거나(새 기기·캐시 삭제) 표시가 없으면 전체 동기화
+   · 행 삭제는 고양이 삭제뿐(saveToDB는 빈 행 upsert 금지)이라 증분에서 놓치는 삭제 없음 */
+const _DR_SYNC_KEY = uid => 'drSync_v1_' + uid;
+const _DR_FULL_EVERY_MS = 7*24*3600*1000, _DR_OVERLAP_MS = 2*24*3600*1000;
+function _drSyncMeta(){
+  try{ return JSON.parse(localStorage.getItem(_DR_SYNC_KEY(currentUser.id))||'null'); }catch(e){ return null; }
+}
+async function loadDailyRecords(localBackup) {
   if(!sbClient || !currentUser) return;
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - 180);
-  const cutoffStr = cutoff.toISOString().slice(0, 10);
-  // cats JOIN, 최근 180일만 fetch
+  const meta = _drSyncMeta();
+  const localHas = Object.values(localBackup || {}).some(byDate => Object.values(byDate || {}).some(recHasData));
+  const incremental = !!(meta && meta.wm && meta.full && localHas && (Date.now() - meta.full) < _DR_FULL_EVERY_MS);
   const _t0 = performance.now();
-  const { data } = await sbClient.from('daily_records')
-    .select('*, cats(name)')
-    .eq('user_id', currentUser.id)
-    .gte('record_date', cutoffStr);
-  console.log(`[Perf]   daily_records 쿼리: ${(performance.now()-_t0).toFixed(0)}ms, ${data?.length||0}행`);
+  let q = sbClient.from('daily_records').select('*, cats(name)').eq('user_id', currentUser.id);
+  if(incremental) {
+    q = q.gt('updated_at', new Date(new Date(meta.wm).getTime() - _DR_OVERLAP_MS).toISOString());
+  } else {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 180);
+    q = q.gte('record_date', cutoff.toISOString().slice(0, 10));   // cats JOIN, 최근 180일만
+  }
+  const { data, error } = await q;
+  if(error) throw error;   // 호출부 catch → 로컬 백업 복원
+  console.log(`[Perf]   daily_records 쿼리(${incremental?'증분':'전체'}): ${(performance.now()-_t0).toFixed(0)}ms, ${data?.length||0}행`);
   if(data) {
+    // 동기화 표시 갱신 — DB가 준 updated_at 최댓값 기준(이 기기 시계 아님)
+    let wm = (incremental && meta.wm) || null;
+    data.forEach(r => { if(r.updated_at && (!wm || r.updated_at > wm)) wm = r.updated_at; });
+    try{ localStorage.setItem(_DR_SYNC_KEY(currentUser.id), JSON.stringify({ wm: wm || new Date().toISOString(), full: incremental ? meta.full : Date.now() })); }catch(e){}
     data.forEach(r => {
       // JOIN 결과 우선, 없으면 catProfiles에서 매핑
       const cat = r.cats?.name ||
@@ -19943,6 +19967,7 @@ async function loadDailyRecords() {
       if(cat && r.data) { // data가 null인 행은 스킵 — null이 records에 들어가면 이후 렌더가 throw (v0.7.35)
         if(!state.records[cat]) state.records[cat] = {};
         state.records[cat][r.record_date] = r.data;
+        try{ _dbLastSaved.set(cat + '|' + r.record_date, JSON.stringify(r.data)); }catch(e){}
       }
     });
   }
@@ -19957,9 +19982,9 @@ async function loadBloodTests() {
     .eq('user_id', currentUser.id)
     .order('created_at', {ascending: false});
 
-  // JOIN 실패 or cats 빈 경우 단순 조회로 폴백
+  // JOIN 실패 시에만 단순 조회로 폴백 (v0.9.16 — 예전엔 0건이어도 재조회해서 혈검 없는 계정이 매번 2번 조회)
   let btRaw = data;
-  if(error || !data || data.length === 0) {
+  if(error || !data) {
     const { data: plain } = await sbClient.from('blood_tests')
       .select('*').eq('user_id', currentUser.id)
       .order('created_at', {ascending: false});
@@ -19991,30 +20016,55 @@ async function loadBloodTests() {
   }
 }
 
-async function saveToDB(targetDate) {
+/* DB 저장 묶기 (v0.9.16, Disk IO 대응) — daily_records upsert가 37.9만 회(고양이 전환·탭 이동마다 saveS()가
+   바뀌지 않은 오늘 기록을 다시 보냄). ① 마지막으로 DB와 맞춘 내용과 같으면 생략 ② 같은 (고양이,날짜)는
+   0.8초 안의 연속 저장을 1번으로. 로컬(localStorage)은 saveS가 즉시 저장 — 지연되는 건 DB 전송뿐.
+   고양이는 호출 시점에 고정(전환 후 다른 고양이로 저장되는 사고 방지). 화면이 숨겨질 때 즉시 전송 */
+function saveToDB(targetDate) {
+  if(!sbClient || !currentUser) return;
+  const cat = state.activeCat;
+  if(!cat || cat.trim() === '') return;
+  const date = targetDate || today();
+  const k = cat + '|' + date;
+  if(_dbSaveTimers.has(k)) clearTimeout(_dbSaveTimers.get(k));
+  _dbSaveTimers.set(k, setTimeout(() => { _dbSaveTimers.delete(k); _saveToDBNow(cat, date); }, 800));
+}
+function _flushDBSaves() {
+  _dbSaveTimers.forEach((t, k) => {
+    clearTimeout(t);
+    const i = k.indexOf('|');
+    _saveToDBNow(k.slice(0, i), k.slice(i + 1));
+  });
+  _dbSaveTimers.clear();
+}
+try{
+  document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'hidden') _flushDBSaves(); });
+  window.addEventListener('pagehide', _flushDBSaves);
+}catch(e){}
+async function _saveToDBNow(cat, date) {
   if(!sbClient || !currentUser) return;
   if(!_uploadOwnershipOk()) return;   // 다른 계정의 로컬 캐시 업로드 차단 (v0.7.89 P0)
-  // 이름 없는 고양이는 저장 안 함
-  if(!state.activeCat || state.activeCat.trim() === '') return;
+  // 동기화 격리 창이면(state.records가 임시 객체) 잠시 뒤 다시 — 불완전한 기록 전송 방지
+  if(_recordsSyncing) { const k = cat + '|' + date; _dbSaveTimers.set(k, setTimeout(() => { _dbSaveTimers.delete(k); _saveToDBNow(cat, date); }, 1000)); return; }
+  if(!(state.cats || []).includes(cat)) return;   // 그 사이 삭제·이름 변경된 고양이
   try {
-    const cat = state.activeCat;
     let profile = (state.catProfiles || {})[cat];
     if(!profile?.dbId) {
       await upsertCatToDB(cat);
       profile = (state.catProfiles || {})[cat];
       if(!profile?.dbId) return;
     }
-    // 특정 날짜 지정 없으면 오늘 저장
-    const dates = targetDate ? [targetDate] : [today()];
-    for(const date of dates) {
+    {
       const rec = getRec(cat, date);
       // 빈 데이터 가드: 모든 배열이 동시에 빈 레코드는 upsert 금지.
       // 개별 삭제는 배열이 줄어드는 것이지 전체가 한번에 비지 않음 —
       // 전체가 빈 경우는 레이스로 초기화된 레코드일 가능성이 높아 DB의 정상 데이터 보호가 우선.
       if(!recHasData(rec)) {
         console.warn(`[saveToDB] 빈 레코드 upsert 차단: ${cat} ${date}`);
-        continue;
+        return;
       }
+      const k = cat + '|' + date, js = JSON.stringify(rec);
+      if(_dbLastSaved.get(k) === js) return;   // DB와 같은 내용 → 전송 생략
       const { error } = await sbClient.from('daily_records').upsert({
         cat_id: profile.dbId,
         user_id: currentUser.id,
@@ -20023,6 +20073,7 @@ async function saveToDB(targetDate) {
         updated_at: new Date().toISOString()
       }, { onConflict: 'cat_id,record_date' });
       if(error) console.error('daily_records upsert 오류:', error);
+      else _dbLastSaved.set(k, js);
     }
   } catch(e) {
     console.error('DB 저장 오류:', e);
