@@ -664,7 +664,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.9.14</span>
+      <span class="cm-beta">v0.9.15</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -8479,7 +8479,9 @@ function renderFdResult(d){
   const typeDisp=(d.type==='wet'?'습식':'건식')+(d.moisture!=null?' (수분 '+m.toFixed(0)+'%)':'');
   // === 강화 검증 블록 ===
   const afSum=parseFloat((p+f+fi+a+m).toFixed(1));
-  const afSumError=afSum>110;const afSumWarn=!afSumError&&afSum>100;
+  // 보장성분은 최소(이상)·최대(이하) 한계값이라 합이 100%를 조금 넘는 건 흔함 (v0.9.15, 킷 확인 사례: 퍼시캣 101%)
+  // 100~103%: 안내만(입력 오류 아님) / 103~110%: 확인 권유 / 110% 초과: 오류 가능성
+  const afSumError=afSum>110;const afSumWarn=!afSumError&&afSum>103;const afSumNote=!afSumError&&!afSumWarn&&afSum>100;
   const _dHints=[];
   if(afSumError){[['protein_af','단백질',p],['fat_af','지방',f],['moisture','수분',m],['fiber_af','조섬유',fi]].forEach(([fk,fn,fv])=>{if(fv<=10)return;const fx=parseFloat((fv/10).toFixed(1));if(afSum-fv+fx<=100)_dHints.push({field:fk,label:fn,orig:fv,fixed:fx});});}
   const _rWarn=[];
@@ -8488,7 +8490,8 @@ function renderFdResult(d){
   const lv=(dmError||afSumError)?'caution':getLv(cdm??999);const lc=lvColor(lv);
   let warnHtml='';
   if(afSumError)warnHtml+=`<div style="background:#FAECE7;border:1px solid #D85A30;border-radius:8px;padding:.5rem .75rem;margin-bottom:.5rem;font-size:12px;color:#D85A30">⛔ as-fed 합(단백질+지방+조섬유+조회분+수분) <b>${afSum}%</b> — 110% 초과. 수치 오류 가능성이 높아요. 아래에서 직접 수정하세요.</div>`;
-  else if(afSumWarn)warnHtml+=`<div style="background:#FEF3E7;border:1px solid #BA7517;border-radius:8px;padding:.5rem .75rem;margin-bottom:.5rem;font-size:12px;color:#BA7517">⚠️ as-fed 합 <b>${afSum}%</b> — 100% 초과. 성분 수치를 확인해주세요.</div>`;
+  else if(afSumNote)warnHtml+=`<div style="background:var(--cm-surface-2);border:1px solid var(--cm-line);border-radius:8px;padding:.5rem .75rem;margin-bottom:.5rem;font-size:12px;color:var(--cm-ink-soft);line-height:1.55">as-fed 합 <b>${afSum}%</b> — 보장성분은 최소·최대값이라 합이 100%를 조금 넘을 수 있어요. 탄수화물과 건물 기준(DM) 값은 참고용으로 봐 주세요.</div>`;
+  else if(afSumWarn)warnHtml+=`<div style="background:#FEF3E7;border:1px solid #BA7517;border-radius:8px;padding:.5rem .75rem;margin-bottom:.5rem;font-size:12px;color:#BA7517">⚠️ as-fed 합 <b>${afSum}%</b> — 100%를 넘어요. 보장성분은 최소·최대값이라 조금 넘을 수는 있지만, 차이가 커서 성분 수치를 한 번 확인해 주세요.</div>`;
   _dHints.forEach(h=>{warnHtml+=`<div style="background:#FEF3E7;border:1px solid #BA7517;border-radius:8px;padding:.5rem .75rem;margin-bottom:.5rem;font-size:12px;color:#BA7517;display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span>🔢 ${h.label} <b>${h.orig}%</b>를 <b>${h.fixed}%</b>로 읽은 것 같아요 (자릿수 오류 의심)</span><button type="button" onclick="applyDigitFix('${h.field}',${h.fixed})" style="padding:3px 10px;background:#BA7517;color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0">${h.fixed}%로 수정</button></div>`;});
   if(dmError&&!afSumError)warnHtml+=`<div style="background:#FAECE7;border:1px solid #D85A30;border-radius:8px;padding:.5rem .75rem;margin-bottom:.5rem;font-size:12px;color:#D85A30">⚠️ DM 100% 초과. 수분 수치를 확인해주세요.</div>`;
   _rWarn.forEach(w=>{warnHtml+=`<div style="background:#FFFBEB;border:1px solid #BA7517;border-radius:8px;padding:.5rem .75rem;margin-bottom:.5rem;font-size:12px;color:#BA7517">△ ${w}</div>`;});
