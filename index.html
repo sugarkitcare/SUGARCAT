@@ -664,7 +664,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.9.13</span>
+      <span class="cm-beta">v0.9.14</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -1658,7 +1658,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
           style="padding:4px 10px;border:0.5px solid var(--cm-line);border-radius:7px;background:transparent;color:var(--cm-faint);font-size:11px;cursor:pointer;font-family:inherit;margin-top:.5rem">닫기</button>
       </div>
       <div id="calcFoodSection" style="display:none;margin-top:.5rem">
-        <div style="font-size:11px;color:var(--cm-faint);margin-bottom:.3rem">분석된 사료 (성분 분석 기준)</div>
+        <div style="font-size:11px;color:var(--cm-faint);margin-bottom:.3rem">즐겨찾기 사료 (100g당 칼로리 기준)</div>
         <div id="calcFoodList"></div>
       </div>
     </div>
@@ -4537,6 +4537,39 @@ function _renderFavFoodPickerList(listId, onSelect) {
   }
 }
 
+/* 계산기 '즐겨찾기 사료' 목록 — 예전엔 사료 분석 기록 최근 5개(fdData)라 즐겨찾기에서 지워도 남고
+   같은 사료를 두 번 분석하면 두 번 떴음(보호자 제보 2026-10-20). 이제 즐겨찾기 기준, 이름 중복 제거 */
+var _calcFavGoalK=null;
+function _renderCalcFavFoods(){
+  const sec=document.getElementById('calcFoodSection'), list=document.getElementById('calcFoodList');
+  if(!sec||!list) return;
+  const goalK=_calcFavGoalK;
+  let favs=[]; try{ favs=JSON.parse(localStorage.getItem('favFoods_v1_'+state.activeCat)||'[]')||[]; }catch(e){}
+  const seen=new Set(), rows=[];
+  favs.forEach(f=>{
+    const name=typeof f==='string'?f:(f&&f.name); if(!name||seen.has(name)) return; seen.add(name);
+    const h=(fdData||[]).find(x=>x&&x.data&&((f.masterId!=null&&x.masterId===f.masterId)||x.data.name===name||x.name===name));
+    const d=(h&&h.data)||{};
+    const kcalPer100=(typeof f==='object'&&f.kcalPer100g)||d.kcal_per_100g||null;
+    if(!kcalPer100||!goalK) return;
+    rows.push({name, d, kcalPer100, analyzed:!!h});
+  });
+  if(!rows.length){ sec.style.display='none'; list.innerHTML=''; return; }
+  sec.style.display='block';
+  list.innerHTML=rows.map(r=>{
+    const d=r.d, grams=Math.round(goalK/r.kcalPer100*100), meals2=Math.round(grams/2);
+    let lc='var(--cm-line-2)';
+    if(r.analyzed){ try{
+      const _carb4=(d.carb_af!=null&&d.carb_af>0)?d.carb_af:estCarb(d.protein_af??0,d.fat_af??0,d.fiber_af??0,d.ash_af??(d.type==='wet'?2:7),d.moisture??(d.type==='wet'?75:10));const lv=getLv(cDM(_carb4,d.moisture||(d.type==='wet'?75:10))??999);
+      lc=lvColor(lv);
+    }catch(e){} }
+    return '<div style="display:flex;align-items:center;gap:8px;padding:.55rem .75rem;background:var(--bg2);border-radius:8px;margin-bottom:5px">'
+      + '<div style="width:8px;height:8px;border-radius:50%;background:'+lc+';flex-shrink:0"></div>'
+      + '<div style="flex:1;font-size:12px;color:var(--text)">'+_vEsc(r.name)+'</div>'
+      + '<div style="text-align:right;font-size:12px;font-weight:500;color:var(--text)">'+grams+'g/일</div>'
+      + '<div style="font-size:10px;color:var(--text2)">1회 '+meals2+'g×2</div></div>';
+  }).join('');
+}
 function deleteFavFood(idx, listId) {
   if(idx < 0 || idx >= favFoods.length) return;
   var _nm = (typeof favFoods[idx] === 'string' ? favFoods[idx] : favFoods[idx].name) || '';
@@ -4544,6 +4577,7 @@ function deleteFavFood(idx, listId) {
   saveFavFoods();
   toast(_nm + ' 즐겨찾기에서 삭제됐어요');
   _renderFavFoodPickerList(listId);
+  try{ _renderCalcFavFoods(); }catch(e){}
 }
 
 function addFavFoodToCalc(name, kcalPer100, per) {
@@ -11033,28 +11067,9 @@ function calcCalorie(){
   const _goal=state.activeCat?getKcalGoal(state.activeCat):null;
   const goalK=_goal?_goal.v:mer;
 
-  // 분석된 사료 목록과 연동 (100g 기준 칼로리로 정확히 계산)
-  if(fdData.length){
-    document.getElementById('calcFoodSection').style.display='block';
-    const list=document.getElementById('calcFoodList');list.innerHTML='';
-    fdData.slice(0,5).forEach(h=>{
-      const d=h.data;
-      const kcalPer100=d.kcal_per_100g||null;
-      if(!kcalPer100)return;
-      const grams=Math.round(goalK/kcalPer100*100);
-      const meals2=Math.round(grams/2);
-      const _carb4=(d.carb_af!=null&&d.carb_af>0)?d.carb_af:estCarb(d.protein_af??0,d.fat_af??0,d.fiber_af??0,d.ash_af??(d.type==='wet'?2:7),d.moisture??(d.type==='wet'?75:10));const lv=getLv(cDM(_carb4,d.moisture||(d.type==='wet'?75:10))??999);
-      const lc=lvColor(lv);
-      list.innerHTML+=`<div style="display:flex;align-items:center;gap:8px;padding:.55rem .75rem;background:var(--bg2);border-radius:8px;margin-bottom:5px">
-        <div style="width:8px;height:8px;border-radius:50%;background:${lc};flex-shrink:0"></div>
-        <div style="flex:1;font-size:12px;color:var(--text)">${h.name}</div>
-        <div style="text-align:right;font-size:12px;font-weight:500;color:var(--text)">${grams}g/일</div>
-        <div style="font-size:10px;color:var(--text2)">1회 ${meals2}g×2</div>
-      </div>`;
-    });
-  }else{
-    document.getElementById('calcFoodSection').style.display='none';
-  }
+  // 즐겨찾기 사료별 급여량 (v0.9.14) — 즐겨찾기 기준(지우면 사라짐, 같은 사료 한 번). 점 색은 분석 기록에서
+  _calcFavGoalK=goalK;
+  _renderCalcFavFoods();
 
   // 수동 입력 사료 다시 계산
   updateManualFoodCalc(goalK);
