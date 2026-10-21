@@ -618,6 +618,24 @@ input[type="date"]{ border-radius:13px !important; -webkit-border-radius:13px !i
   box-shadow:0 6px 14px rgba(35,91,67,.28);
 }
 .cm-pets .cm-pet.active button{ color:#fff; }
+/* 얼굴 동그라미 칩 (v0.9.20) */
+.cm-pets .cm-pet.cm-pet--face{ flex-direction:column; gap:0; padding:0; background:none; border:none; box-shadow:none; position:relative; width:58px; }
+.cm-pet--face > button[id^="catName"]{ display:flex; flex-direction:column; align-items:center; gap:4px; width:58px; }
+.cm-face{ width:46px; height:46px; border-radius:50%; overflow:hidden; display:flex; align-items:center; justify-content:center;
+  background:var(--cm-surface); border:1px solid var(--cm-line); box-sizing:border-box; font-size:17px; font-weight:800; color:var(--cm-ink-soft); flex:0 0 auto; }
+.cm-face img{ width:100%; height:100%; object-fit:cover; display:block; }
+.cm-face--photo{ border:none; }
+.cm-face__nm{ font-size:11.5px; font-weight:600; color:var(--cm-faint); max-width:58px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; line-height:1.25; }
+.cm-pets .cm-pet--face.active .cm-face{ box-shadow:0 0 0 2.5px var(--cm-bg), 0 0 0 4.5px var(--cm-green-700); }
+.cm-pets .cm-pet--face.active .cm-face__nm{ color:var(--cm-green-700); font-weight:800; }
+.cm-pets .cm-pet--face:not(.active) .cm-face--photo{ opacity:.6; }
+.cm-pets .cm-pet--face.active button[id^="catName"]{ color:inherit; }
+.cm-pet--face button[id^="catSettings"]{ position:absolute; top:30px; right:2px; width:20px; height:20px; padding:0 !important;
+  border-radius:50% !important; background:var(--cm-green-700) !important; color:#fff !important; border:2px solid var(--cm-bg) !important; box-sizing:border-box;
+  display:flex; align-items:center; justify-content:center; }
+.cm-pet--face button[id^="catSettings"] .cm-pet__gear{ width:11px; height:11px; opacity:1; }
+.cm-addface{ display:flex; flex-direction:column; align-items:center; gap:4px; width:58px; cursor:pointer; flex-shrink:0; }
+.cm-face--add{ border:1px dashed var(--cm-line-2); background:transparent; color:var(--cm-green-700); font-size:20px; font-weight:600; }
 #dailyFeedbackList{ display:none !important; }
 .cm-appbar, .app > .cm-appbar, header, .cm-pets{ background:var(--cm-bg) !important; }
 .cm-card.cm-card--flat{ margin-bottom:.75rem !important; }

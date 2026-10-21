@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<link rel="stylesheet" href="cm.css?v=0.9.18">
+<link rel="stylesheet" href="cm.css?v=0.9.20">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <link rel="manifest" href="/manifest.json">
@@ -664,7 +664,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.9.19</span>
+      <span class="cm-beta">v0.9.20</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -3700,13 +3700,18 @@ function renderCatBar(){
     if(!slot||!nameBtn)continue;
     const c=_ordered[i];
     if(c){
-      const _av=_catPhotoImg(c, 22);   // 아이 사진 (v0.9.19) — 없으면 이름만
-      if(_av){ nameBtn.innerHTML=_av+'<span>'+_vEsc(c)+'</span>'; nameBtn.style.display='inline-flex'; nameBtn.style.alignItems='center'; nameBtn.style.gap='6px'; nameBtn.style.marginLeft='-4px'; }
-      else { nameBtn.textContent=c; nameBtn.style.display=''; nameBtn.style.marginLeft=''; }
+      // 얼굴 동그라미 칩 (v0.9.20, 킷 시안 확정) — 사진 있으면 얼굴 꽉 차게, 없으면 이름 첫 글자 + 아래 이름.
+      // 설정 버튼은 선택된 아이에만(얼굴 오른쪽 아래), 삭제는 고양이 설정 화면 안으로 이동(실수 방지)
+      const _ph=getCatPhoto(c);
+      nameBtn.innerHTML='<span class="cm-face'+(_ph?' cm-face--photo':'')+'">'+(_ph?'<img src="'+_ph+'" alt="">':_vEsc(Array.from(String(c))[0]||''))+'</span>'
+        +'<span class="cm-face__nm">'+_vEsc(c)+'</span>';
+      nameBtn.setAttribute('aria-label', c);
       nameBtn.dataset.cat=c;
       nameBtn.style.opacity = isMemorial(c) ? '0.55' : '';
-      document.getElementById('catSettings'+i).style.display='';
-      document.getElementById('catDel'+i).style.display='';
+      slot.classList.add('cm-pet--face');
+      document.getElementById('catSettings'+i).style.display = c===state.activeCat ? '' : 'none';
+      document.getElementById('catSettings'+i).setAttribute('aria-label', c+' 설정');
+      document.getElementById('catDel'+i).style.display='none';
       slot.style.display='flex';
       if(c===state.activeCat) slot.classList.add('active');
       else slot.classList.remove('active');
@@ -3719,8 +3724,8 @@ function renderCatBar(){
   if(addSlot) addSlot.innerHTML='';
   // + 추가 버튼 (인라인 입력)
   const addBtn=document.createElement('div');
-  addBtn.className='cat-chip add';
-  addBtn.textContent='+ 추가';
+  addBtn.className='cm-addface';   // 얼굴 칩과 같은 모양 (v0.9.20) — .cm-pet 아님(순서 편집 대상 제외)
+  addBtn.innerHTML='<span class="cm-face cm-face--add">+</span><span class="cm-face__nm">추가</span>';
   addBtn.style.cursor='pointer';
 
   const inputWrap=document.createElement('div');
@@ -4796,6 +4801,12 @@ const CAT_LS_PREFIXES=['fd_v2_','favFoods_v1_','manualFoods_v1_','tubeRecipes_v1
   'routineItems_v1_','routineVersions_v1_','lastInputs_v1_','nextVisit_v1_','vetQuestions_v1_',
   'tileConfig_v1_','cardOrder_v1_','cardHidden_v1_','medNotif_v1_','memorial_v1_','memorialMsg_v1_',
   'lastRecipeMode_','emerg_state_','fluid_state_','lastMealTab_','vetBannerDismiss_','kcalGoal_v1_','foodReact_v1_','foodTrial_v1_','catPhoto_v1_'];
+/* 설정 화면의 삭제 — 확인은 deleteCat 안에서. 실제로 지워졌을 때만 화면 닫기 */
+function _cpDeleteCat(){
+  const c = currentProfileCat; if(!c) return;
+  deleteCat(c);
+  if(!(state.cats||[]).includes(c)) { try{ closeModal('catProfilePage'); }catch(e){} }
+}
 window.deleteCat = function(c) {
   // 삭제로 유도하지 않기 (스펙 금지사항 3) — 기록 보존 대안(기억하기)을 확인 문구에서 안내
   if(!confirm(c+'를 삭제할까요? 모든 기록이 삭제돼요.\n\n기록을 남기고 알림만 멈추려면, 프로필 화면의 "기억하기"를 사용할 수 있어요.'))return;
@@ -21379,6 +21390,10 @@ async function uploadFoodDataToDB(cat) {
 
   <div id="cpMemorialBox"></div>
   <div id="cardOrderUI" style="display:none"></div>
+  <!-- 삭제 (v0.9.20 — 칩의 × 에서 이동) -->
+  <div style="text-align:center;margin:18px 0 6px">
+    <button type="button" onclick="_cpDeleteCat()" style="background:none;border:none;padding:6px 10px;font-size:12.5px;color:var(--cm-faint);text-decoration:underline;cursor:pointer;font-family:inherit">이 아이 삭제</button>
+  </div>
   <div style="position:sticky;bottom:0;padding:12px 0 20px;background:var(--cm-bg-soft);border-top:1px solid var(--cm-line);margin-top:8px">
     <button onclick="saveCatProfile()" class="cm-btn cm-btn--block">저장</button>
   </div>
