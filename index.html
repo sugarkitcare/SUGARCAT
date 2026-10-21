@@ -664,7 +664,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.9.21</span>
+      <span class="cm-beta">v0.9.22</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -3199,8 +3199,8 @@ function renderMemorialCard(cat){
   card.innerHTML =
     '<div class="cm-card" style="padding:16px 15px;margin-bottom:.75rem">'
     + (getCatPhoto(cat) ? '<div style="display:flex;justify-content:center;margin:2px 0 10px">'+_catPhotoImg(cat, 72)+'</div>' : '')
-    + '<div style="font-size:17px;font-weight:800;color:var(--cm-ink)">기억 속의 '+_vEsc(cat)+'</div>'
-    + (sub?'<div style="font-size:12px;color:var(--cm-faint);margin-top:2px">'+_vEsc(sub)+'</div>':'')
+    + '<div style="font-size:17px;font-weight:800;color:var(--cm-ink);text-align:center">기억 속의 '+_vEsc(cat)+'</div>'   // 사진·본문과 같이 가운데 (v0.9.22)
+    + (sub?'<div style="font-size:12px;color:var(--cm-faint);margin-top:2px;text-align:center">'+_vEsc(sub)+'</div>':'')
     + journey
     + msgHtml
     + statsHtml
