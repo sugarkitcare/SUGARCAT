@@ -619,6 +619,8 @@ input[type="date"]{ border-radius:13px !important; -webkit-border-radius:13px !i
 }
 .cm-pets .cm-pet.active button{ color:#fff; }
 /* 얼굴 동그라미 칩 (v0.9.20) */
+/* v0.9.21: 선택 테두리(바깥 4.5px)가 가로 스크롤 컨테이너(overflow)에 잘리던 문제 — 위·왼쪽 여유 */
+.cm-pets{ padding-top:6px; padding-left:6px; }
 .cm-pets .cm-pet.cm-pet--face{ flex-direction:column; gap:0; padding:0; background:none; border:none; box-shadow:none; position:relative; width:58px; }
 .cm-pet--face > button[id^="catName"]{ display:flex; flex-direction:column; align-items:center; gap:4px; width:58px; }
 .cm-face{ width:46px; height:46px; border-radius:50%; overflow:hidden; display:flex; align-items:center; justify-content:center;
