@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<link rel="stylesheet" href="cm.css?v=0.7.38">
+<link rel="stylesheet" href="cm.css?v=0.9.18">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <link rel="manifest" href="/manifest.json">
@@ -50,7 +50,7 @@
 }
 html,body{font-family:'Noto Sans KR',sans-serif;background:var(--cm-bg);color:var(--text);min-height:100vh}
 /* iOS PWA 상태바 겹침 방어 (v0.7.98) — 풀블리드 모드에서만 env()가 양수, 일반 모드는 0이라 무해 */
-body{padding-top:env(safe-area-inset-top, 0px)}
+body{padding-top:max(env(safe-area-inset-top, 0px), var(--safe-area-inset-top, 0px))}  /* v0.9.18: Capacitor 8 주입 변수도 함께 (구형 안드로이드 WebView) */
 .app{max-width:680px;margin:0 auto;padding:0 16px 4rem}
 
 /* 헤더 */
@@ -664,7 +664,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.9.17</span>
+      <span class="cm-beta">v0.9.18</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -5184,7 +5184,17 @@ function _btPickBySource(a, b) {
 }
 
 // 항목 정규화 함수
+/* 참고범위 0~0 정리 (v0.9.18) — 검사지에 범위가 없는 항목을 AI 추출이 0으로 채운 경우(예: BUN/CREA 비율 15인데 '범위 위').
+   뇨검(음성=0 기준이 실제로 있을 수 있음) 제외, 상한이 0인 비뇨 항목은 '범위 없음'으로 봄. 표시용 정리 — DB 원본은 그대로 */
+function _btFixZeroRef(item) {
+  if(!item || (item.category||'') === '뇨검') return item;
+  const hi = item.refHigh, lo = item.refLow;
+  const isZero = v => v === 0 || v === '0';
+  if(isZero(hi) && (lo == null || lo === '' || isZero(lo))) return {...item, refLow:null, refHigh:null};
+  return item;
+}
 function normalizeBTItem(item) {
+  item = _btFixZeroRef(item);
   const std = BT_NORM_REVERSE[item.abbr] || BT_NORM_REVERSE[item.name];
   const targetAbbr = std || item.abbr;
   const cat = BT_ABBR_CAT[targetAbbr] || item.category || '기타';
@@ -7788,6 +7798,7 @@ setupDrop('btDrop','btFile',async file=>{
 '날짜가 여러 개이면 날짜별로 각각 분리해서 추출하세요.\n'+
 '{"results":[{"date":"YYYY-MM-DD","items":[{"name":"항목명","abbr":"약어","value":숫자,"unit":"단위","refLow":숫자or null,"refHigh":숫자or null,"category":"신장|간|혈구|전해질|혈당|췌장|갑상선|단백|지질|혈가스|심장|뇨검|기타","source":"CBC|혈액가스|화학|뇨검|특수 또는 기계명"}]}]}\n'+
 '날짜를 모르면 date를 null로 설정하세요.\n'+
+'검사지에 참고범위가 적혀 있지 않은 항목은 refLow·refHigh를 null로 두세요. 0으로 채우지 마세요.\n'+
 '[출처 태깅] 각 항목의 measurement 출처를 source에 표기하세요. CBC 전용기(ProCyte/VetABC 등 혈구계수기)=\"CBC\", 혈액가스기(ABL 등)=\"혈액가스\", 화학분석기=\"화학\", 요검사=\"뇨검\", 특수검사(fPL/proBNP 등)=\"특수\". 기계명이 인쇄돼 있으면 그 원문을 써도 됩니다. 알 수 없으면 category와 같은 값을 쓰세요.\n'+
 '[혈청 vs 뇨 분리] 소변(뇨) 패널 항목은 반드시 혈청 항목과 분리하세요. 뇨 항목은 category를 \"뇨검\"으로 하고 abbr에 U- 접두를 붙이세요: 뇨크레아티닌→U-CREA, 뇨당→U-GLU, 뇨단백→U-PRO, 뇨잠혈→U-BLD, 뇨pH→U-pH, 뇨백혈구→U-LEU, 뇨알부민→U-ALB, 뇨케톤→U-KET, 뇨빌리루빈→U-BIL. 뇨비중=USG, 뇨단백/크레아티닌비=UPC 는 그대로. 혈청 CREA·GLU 등은 U- 없이 원래 약자를 유지하세요. (혈청 크레아티닌 자리에 뇨 크레아티닌 값을 넣지 마세요.)\n'+
 '[중복 측정] 같은 항목이 하루에 2회 이상(다른 기계/다른 채혈시각) 측정됐으면 모두 추출하세요. 임의로 하나만 남기지 말고, 각각 source를 다르게 태깅하세요.\n'+
