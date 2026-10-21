@@ -664,7 +664,7 @@ html,body{background:var(--cm-bg) !important;min-height:100vh}
   <div class="cm-appbar__top">
     <div class="cm-brand hdr-title">
       <span class="cm-brand__name">케어마스터즈</span>
-      <span class="cm-beta">v0.9.16</span>
+      <span class="cm-beta">v0.9.17</span>
     </div>
     <div class="cm-appbar__actions">
       <button type="button" onclick="openFeedback()" class="cm-ghost cm-ghost--green">피드백</button>
@@ -5797,8 +5797,8 @@ function renderDailySummary(catName) {
 
     // 핍뇨 기록
     const todayUrine = rec.urine || [];
-    const hasPiknuria = todayUrine.some(u=>u.amount==='핍뇨');
-    const hasHematuria = todayUrine.some(u=>u.amount==='혈뇨');
+    const hasPiknuria = todayUrine.some(u=>_urineHas(u,'핍뇨'));
+    const hasHematuria = todayUrine.some(u=>_urineHas(u,'혈뇨'));
     if(hasHematuria) {
       feedbacks.push({priority:1, ...makeFeedback('danger','🔴','혈뇨가 기록됐어요',
         '소변에 피가 섞인 경우 즉시 수의사 상담이 필요해요')});
@@ -5811,7 +5811,7 @@ function renderDailySummary(catName) {
     // 3일 연속 핍뇨
     const pikDays = getRecentDays(3).filter(day => {
       const r = getRec(cat, day);
-      return (r.urine||[]).some(u=>u.amount==='핍뇨');
+      return (r.urine||[]).some(u=>_urineHas(u,'핍뇨'));
     });
     if(pikDays.length === 3) {
       feedbacks.push({priority:1, ...makeFeedback('danger','🚨','3일째 소변량이 적게 기록됐어요',
@@ -6197,8 +6197,8 @@ function renderDailySummary(catName) {
     items.push({ts:r.ts, time:r.time, html:`💧 ${r.src==='tube'?'강급 ':''}<span style="font-weight:600">+${r.ml}ml</span> <span style="color:var(--text3);font-size:11px">${r.time}</span>`});
   });
   (rec.urine||[]).forEach(r => {
-    const uc = r.amount==='혈뇨'?'var(--coral)':r.amount==='핍뇨'?'var(--amber)':'var(--teal)';
-    items.push({ts:r.ts, time:r.time, html:`🚽 <span style="color:${uc};font-weight:600">${r.amount}</span> <span style="color:var(--text3);font-size:11px">${r.time}</span>`});
+    const uc = _urineHas(r,'혈뇨')?'var(--coral)':_urineHas(r,'핍뇨')?'var(--amber)':'var(--teal)';
+    items.push({ts:r.ts, time:r.time, html:`🚽 <span style="color:${uc};font-weight:600">${_urineLabel(r)}</span> <span style="color:var(--text3);font-size:11px">${r.time}</span>`});
   });
   (rec.vomits||[]).forEach(r => {
     const vc = _vomitDanger(r)?'var(--coral)':'var(--amber-d)';
@@ -6308,7 +6308,7 @@ function renderDailySummary(catName) {
         urineSmEl.style.color = '';
       } else {
         urineSmEl.textContent = urineArrHero.length + '회';
-        urineSmEl.style.color = urineArrHero.some(u => u.amount === '혈뇨' || u.amount === '핍뇨') ? 'var(--cm-clay)' : '';
+        urineSmEl.style.color = urineArrHero.some(u => _urineHas(u,'혈뇨') || _urineHas(u,'핍뇨')) ? 'var(--cm-clay)' : '';
       }
     }
     // 피드백 슬라이더
@@ -6839,7 +6839,7 @@ function renderHistory(){
     else if(item.type==='routine'){dot='ld-m';const _rNm=(d.items||[]).join(', ')+(d.slot?` (예정 ${d.slot})`:'');const _rTxt=(d.ml&&d.ml>0)?`${_rNm} ${d.ml}ml${d.fluidType?' · '+d.fluidType:''}`:_rNm;txt=`[투약·루틴] ${d.time} | ${_rTxt}${d.memo?' · '+d.memo:''}`;}
     else if(item.type==='rr'){const _rt=srrTier(d.rr);dot=(_rt==='emerg'||_rt==='obs')?'ld-d':_rt==='warn'?'ld-w':'ld-n';const sLbl=d.stateLabel||'';txt=`[호흡수] ${d.time} | ${d.rr}회/분 ${sLbl?'('+sLbl+')':''}${_rt==='emerg'?' ⚠️응급':_rt==='obs'?' 관찰↑':_rt==='warn'?' △주의':''}`;}
     else if(item.type==='water'){dot='ld-n';txt=`[음수${d.src==='tube'?'·강급':''}] ${d.time} | ${d.ml}ml`;}
-    else if(item.type==='urine'){dot=d.amount==='혈뇨'?'ld-d':d.amount==='핍뇨'||d.amount==='소량'?'ld-w':'ld-n';txt=`[소변] ${d.time} | ${d.amount}`;}
+    else if(item.type==='urine'){dot=_urineHas(d,'혈뇨')?'ld-d':_urineTags(d).some(t=>t!=='정상'&&t!=='다량')?'ld-w':'ld-n';txt=`[소변] ${d.time} | ${_urineLabel(d)}`;}
     else if(item.type==='poop'){dot=d.type==='혈변'||d.type==='설사'?'ld-d':d.type==='무름'||d.type==='무변'?'ld-w':'ld-n';txt=`[대변] ${d.time} | ${_poopLabel(d)}`;}
     else if(item.type==='vomit'){dot=_vomitDanger(d)?'ld-d':'ld-w';txt=`[구토] ${d.time} | ${_vomitLabel(d)}${d.memo?' ('+d.memo+')':''}`;}
 
@@ -10304,6 +10304,80 @@ function addWater() {
   try{renderDailySummary();}catch(e){}
 }
 
+/* 소변 1회 = 기록 1건 (v0.9.17, 보호자 제보 2026-10-21)
+   예전: 양(다량)·단백뇨·뇨당을 각각 눌러 따로 저장 → 한 번 본 소변이 3회로 집계됨.
+   지금: { amount: 양 1개(없어도 됨), flags: 함께 보인 것(혈뇨·단백뇨·뇨당) } 한 건으로 저장.
+   옛 기록(amount에 '단백뇨' 등이 들어 있음)도 그대로 읽히도록, 성상 판단은 항상 _urineTags/_urineHas 경유 */
+const URINE_AMOUNTS = ['소량','정상','다량','핍뇨'];
+const URINE_FLAGS = ['혈뇨','단백뇨','뇨당'];
+function _urineTags(u){
+  if(!u) return [];
+  const t = [];
+  if(u.amount) t.push(u.amount);
+  (u.flags||[]).forEach(f => { if(f && !t.includes(f)) t.push(f); });
+  return t;
+}
+/* 리포트용 '집에서 잰 뇨비중' 한 줄 — 최근 8개 날짜·값만(판정·참고 범위 없음) */
+function _vrUsgLine(arr){
+  if(!arr || !arr.length) return '';
+  const s = arr.slice().sort((a,b)=>(a.d+a.t).localeCompare(b.d+b.t)).slice(-8)
+    .map(e=>e.d.slice(5).replace('-','/')+' '+_usgFmt(e.v)).join(', ');
+  return '집에서 잰 뇨비중 ('+arr.length+'회'+(arr.length>8?', 최근 8개':'')+'): '+s;
+}
+function _urineHas(u, tag){ return _urineTags(u).includes(tag); }
+/* 집에서 잰 뇨비중 (v0.9.17) — u.usg 숫자(예: 1.035). 숫자 기록·표시만, 판정·참고 범위 표시 금지(검역본부 이슈).
+   태그가 아님 — _urineTags에 넣으면 리포트 '이상 기록' 집계에 섞임 */
+function _usgFmt(v){ return (typeof v === 'number' && isFinite(v)) ? v.toFixed(3) : ''; }
+function _urineLabel(u){
+  const t = _urineTags(u);
+  if(u && u.usg) t.push('뇨비중 ' + _usgFmt(u.usg));
+  return t.join(' · ') || '소변';
+}
+/* 입력 해석: '1.035' 그대로 / 줄여 쓴 '35'·'035'·'1035' → 1.035. 빈 칸 = null, 해석 불가·범위 밖 = NaN */
+function _usgParse(s){
+  s = String(s == null ? '' : s).trim().replace(',', '.');
+  if(!s) return null;
+  let v;
+  if(s.includes('.')) v = parseFloat(s);
+  else if(/^\d{1,3}$/.test(s)) v = 1 + parseInt(s, 10) / 1000;
+  else if(/^1\d{3}$/.test(s)) v = parseInt(s, 10) / 1000;
+  else return NaN;
+  if(!isFinite(v) || v < 1.000 || v > 1.080) return NaN;
+  return Math.round(v * 1000) / 1000;
+}
+var _urineSel = {amount:null, flags:[]};
+function _urineSelPaint(){
+  document.querySelectorAll('#urineAmtGrid [data-ua]').forEach(function(b){
+    var on = b.dataset.ua === _urineSel.amount;
+    b.style.background = on ? 'var(--cm-green-tint)' : 'var(--cm-surface)';
+    b.style.borderColor = on ? 'var(--cm-green-700)' : 'var(--cm-line)';
+    b.style.color = on ? 'var(--cm-green-700)' : 'var(--cm-ink)';
+  });
+  document.querySelectorAll('#urineFlagRow [data-uf]').forEach(function(b){
+    var on = _urineSel.flags.includes(b.dataset.uf);
+    b.style.background = on ? 'var(--cm-clay-tint)' : 'var(--cm-surface)';
+    b.style.borderColor = on ? 'var(--cm-clay-edge)' : 'var(--cm-line)';
+    b.style.color = on ? 'var(--cm-clay-ink)' : 'var(--cm-ink-soft)';
+  });
+}
+function urinePickAmount(a){ _urineSel.amount = (_urineSel.amount === a ? null : a); _urineSelPaint(); }
+function urineToggleFlag(f){
+  var i = _urineSel.flags.indexOf(f);
+  if(i >= 0) _urineSel.flags.splice(i, 1); else _urineSel.flags.push(f);
+  _urineSelPaint();
+}
+function urineSaveSel(){
+  var usgEl = document.getElementById('urineUsgInput');
+  var usg = _usgParse(usgEl ? usgEl.value : '');
+  if(Number.isNaN(usg)){ toast('뇨비중은 1.000~1.080 사이 숫자로 적어 주세요 (예: 1.035 또는 35)', '#BA7517', 3200); return; }
+  if(!_urineSel.amount && !_urineSel.flags.length && usg == null){ toast('소변 양이나 함께 보인 것을 골라 주세요'); return; }
+  var t = (document.getElementById('sheetExcretaTime')||{}).value || nowTime();
+  // 고정 순서로 저장 (누른 순서와 무관하게 표시 일관)
+  addUrine(_urineSel.amount, t, URINE_FLAGS.filter(function(f){ return _urineSel.flags.includes(f); }), usg);
+  _urineSel = {amount:null, flags:[]}; _urineSelPaint();
+  if(usgEl) usgEl.value = '';
+}
+
 let _pendingUrine = null;
 function selectUrine(amount) {
   var sheetTimeEl = document.getElementById('sheetExcretaTime');
@@ -10325,25 +10399,25 @@ function confirmAddUrine() {
   addUrine(_pendingUrine, time);
   _pendingUrine = null;
 }
-function addUrine(amount, time) {
+function addUrine(amount, time, flags, usg) {
   const t = time || nowTime();
   var sheetDateEl = document.getElementById('sheetExcretaDate');
   var dateEl2 = sheetDateEl || document.getElementById('waterDate');
   const date = (dateEl2 && dateEl2.value) ? dateEl2.value : today();
   const rec = getRec(state.activeCat, date);
   if(!rec.urine) rec.urine = [];
-  if(amount === '핍뇨') {
-    toast('⚠️ 핍뇨 기록됨 — 소변량이 매우 적어요. 음수량과 함께 모니터링하세요', '#BA7517');
-  } else if(amount === '혈뇨') {
-    toast('🔴 혈뇨 기록됨 — 수의사와 상담해 주세요', '#D85A30');
-  } else if(amount === '단백뇨') {
-    toast('단백뇨 기록됨 — 신장 기능 모니터링이 필요해요', '#BA7517');
-  } else if(amount === '뇨당') {
-    toast('뇨당 기록됨 — 혈당 수치와 함께 모니터링하세요', '#BA7517');
+  const entry = {amount: amount || null, time: t, ts: Date.now()};
+  if(flags && flags.length) entry.flags = flags.slice();
+  if(typeof usg === 'number' && isFinite(usg)) entry.usg = usg;
+  const _lbl = _urineLabel(entry);
+  if(_urineHas(entry, '혈뇨')) {
+    toast('소변 기록됐어요 (' + _lbl + ') — 혈뇨는 수의사와 상담해 주세요', '#D85A30', 3200);
+  } else if(_urineHas(entry, '핍뇨')) {
+    toast('소변 기록됐어요 (' + _lbl + ') — 음수량과 함께 지켜봐 주세요', '#BA7517', 3000);
   } else {
-    toast('🚽 소변 기록됐어요 (' + amount + ')', '#1D9E75');
+    toast('소변 기록됐어요 (' + _lbl + ')', _urineTags(entry).some(x => x!=='정상' && x!=='다량') ? '#BA7517' : '#1D9E75');
   }
-  rec.urine.push({amount, time: t, ts: Date.now()});
+  rec.urine.push(entry);
   saveS(date);
   renderWaterLog();
   renderDiureticAlert(date);
@@ -10631,8 +10705,8 @@ function renderWaterLog() {
       urineLogEl.innerHTML = '';
     } else {
       urineLogEl.innerHTML = urineArr.map((u, i) => {
-        const color = u.amount==='혈뇨' ? 'var(--coral)' : u.amount==='핍뇨'||u.amount==='소량' ? 'var(--amber)' : 'var(--teal)';
-        return `<span data-uidx="${i}" style="margin-right:4px;margin-bottom:4px;color:${color};display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap">${u.time} ${u.amount}`
+        const color = _urineHas(u,'혈뇨') ? 'var(--coral)' : _urineTags(u).some(t=>t!=='정상'&&t!=='다량') ? 'var(--amber)' : 'var(--teal)';
+        return `<span data-uidx="${i}" style="margin-right:4px;margin-bottom:4px;color:${color};display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap">${u.time} ${_urineLabel(u)}`
           + ` <span onclick="editUrine(${i},'${date}')" style="color:var(--amber);cursor:pointer;font-size:10px">✎</span>`
           + ` <span onclick="deleteUrine(${i},'${date}')" style="color:var(--coral);cursor:pointer;font-size:10px">✕</span></span>`;
       }).join('');
@@ -13425,9 +13499,14 @@ function editLogItem(type, ts, date) {
       <label style="font-size:11px;color:var(--text3)">시간</label>
       <input type="time" id="ei_time" value="${item.time||''}" style="padding:5px 8px;border:1px solid var(--teal);border-radius:7px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit">`;
   } else if(type==='urine') {
-    const _uopts = ['소량','정상','다량','혈뇨','핍뇨','단백뇨','뇨당'].map(a=>`<option value="${a}"${a===item.amount?' selected':''}>${a}</option>`).join('');
+    const _utags = _urineTags(item);
+    const _uamt = URINE_AMOUNTS.find(a=>_utags.includes(a)) || '';
+    const _uopts = ['<option value=""'+(_uamt?'':' selected')+'>양 선택 안 함</option>'].concat(URINE_AMOUNTS.map(a=>`<option value="${a}"${a===_uamt?' selected':''}>${a}</option>`)).join('');
     fields = `<label style="font-size:11px;color:var(--text3)">소변</label>
       <select id="ei_amount" style="padding:5px 8px;border:1px solid var(--teal);border-radius:7px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit">${_uopts}</select>
+      ${URINE_FLAGS.map(f=>`<label style="font-size:12px;color:var(--text2);display:inline-flex;align-items:center;gap:3px"><input type="checkbox" class="ei_uflag" value="${f}"${_utags.includes(f)?' checked':''}>${f}</label>`).join('')}
+      <label style="font-size:11px;color:var(--text3)">뇨비중</label>
+      <input type="text" id="ei_usg" inputmode="decimal" maxlength="5" placeholder="선택" value="${_usgFmt(item.usg)}" style="width:70px;padding:5px 8px;border:1px solid var(--teal);border-radius:7px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit">
       <label style="font-size:11px;color:var(--text3)">시간</label>
       <input type="time" id="ei_time" value="${item.time||''}" style="padding:5px 8px;border:1px solid var(--teal);border-radius:7px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit">`;
   } else if(type==='poop') {
@@ -13513,8 +13592,14 @@ function saveEditLog(type, ts, date) {
     if(time) item.time = time;
   } else if(type==='urine') {
     const item = (rec.urine||[]).find(r=>r.ts===ts); if(!item) return;
-    const amount = document.getElementById('ei_amount')?.value;
-    if(amount) item.amount = amount;
+    const amount = document.getElementById('ei_amount')?.value || '';
+    const flags = [...document.querySelectorAll('.ei_uflag')].filter(c=>c.checked).map(c=>c.value);
+    const usg = _usgParse(document.getElementById('ei_usg')?.value);
+    if(Number.isNaN(usg)) { toast('뇨비중은 1.000~1.080 사이 숫자로 적어 주세요 (예: 1.035)', '#BA7517', 3200); return; }
+    if(!amount && !flags.length && usg == null) { toast('소변 양이나 함께 보인 것을 하나 이상 골라 주세요'); return; }
+    if(usg != null) item.usg = usg; else delete item.usg;
+    item.amount = amount || null;   // 옛 기록의 amount='단백뇨' 등은 여기서 flags로 정리됨
+    if(flags.length) item.flags = flags; else delete item.flags;
     if(time) item.time = time;
   } else if(type==='poop') {
     const item = (rec.poop||[]).find(r=>r.ts===ts); if(!item) return;
@@ -16350,7 +16435,7 @@ function computeObservations(cat, anchor){
   //      혈뇨 등 이상 성상은 기존 리포트 [소변] 이상 기록이 담당 (응급 뉘앙스 방지 — 별도 논의)
   {
     const recs=(state.records||{})[cat]||{};
-    const cnt=dates=>{ let n=0,h=0; dates.forEach(day=>{ ((recs[day]||{}).urine||[]).forEach(u=>{ n++; if(u.amount==='다량') h++; }); }); return {n,h}; };
+    const cnt=dates=>{ let n=0,h=0; dates.forEach(day=>{ ((recs[day]||{}).urine||[]).forEach(u=>{ n++; if(_urineHas(u,'다량')) h++; }); }); return {n,h}; };
     const r=cnt(_obsDates(_obsAddDays(anchor,-6), anchor));
     const p=cnt(_obsDates(_obsAddDays(anchor,-34), _obsAddDays(anchor,-7)));
     if(r.n>=3 && p.n>=8 && r.n+p.n>=OBS_TH.urineHeavyMinN){
@@ -16616,6 +16701,7 @@ function collectVetReportData(cat, fromStr, toStr, excludeSet){
   d.homeDays = dates.filter(dy=>!excludeSet.has(dy)).length;   // 커버리지 분모 = 기간 - 입원 제외 (v0.7.70)
   const intake = [], natArr = [], tubeArr = [], wetArr = [], fluid = [], fluidDates = [], urineC = [], poopC = [], kcal = [], rrAll = [], rrSleep = [];
   const intakeList = [], kcalList = [], urineList = [], poopList = [];
+  const urineUsg = [];   // 집에서 잰 뇨비중 (v0.9.17)
   const urineAbn = {}, poopAbn = {}, fluidTypes = {}, foods = {}, medCount = {};
   let fluidCount = 0, fluidMlSum = 0, wetUnknownDays = 0, rrWarnDays = 0, rrObsDays = 0, recordedDaysCnt = 0;
   d.vomits = []; d.weights = [];
@@ -16640,7 +16726,7 @@ function collectVetReportData(cat, fromStr, toStr, excludeSet){
     fArr.forEach(r=>{ fluidCount++; fluidMlSum+=r.ml; if(r.fluidType) fluidTypes[r.fluidType]=(fluidTypes[r.fluidType]||0)+1; });
     const uArr = rec.urine||[];
     if(uArr.length){ urineC.push(uArr.length); urineList.push({d:day, v:uArr.length}); }
-    uArr.forEach(u=>{ if(u.amount && u.amount!=='정상' && u.amount!=='다량') urineAbn[u.amount]=(urineAbn[u.amount]||0)+1; });
+    uArr.forEach(u=>{ _urineTags(u).forEach(tg=>{ if(tg!=='정상' && tg!=='다량') urineAbn[tg]=(urineAbn[tg]||0)+1; }); if(typeof u.usg==='number') urineUsg.push({d:day, t:u.time||'', v:u.usg}); });
     const pArr = rec.poop||[];
     if(pArr.length){ poopC.push(pArr.length); poopList.push({d:day, v:pArr.length}); }
     pArr.forEach(p=>{ if(p.type && p.type!=='정상') poopAbn[p.type]=(poopAbn[p.type]||0)+1; });
@@ -16673,7 +16759,7 @@ function collectVetReportData(cat, fromStr, toStr, excludeSet){
     fluidLast: fluidDates.length?fluidDates[fluidDates.length-1]:null, fluidGap,
     fluidTypeMain: Object.keys(fluidTypes).sort((a,b)=>fluidTypes[b]-fluidTypes[a])[0]||null,
     target: d.profile.weight?Math.round(d.profile.weight*40):null, list: intakeList };
-  d.urine = { avg:_vrAvg(urineC), days:urineC.length, abn:urineAbn, list: urineList };
+  d.urine = { avg:_vrAvg(urineC), days:urineC.length, abn:urineAbn, list: urineList, usg: urineUsg };
   d.poop = { avg:_vrAvg(poopC), days:poopC.length, abn:poopAbn, list: poopList, lastInfo: _lastPoopInfo(cat, toStr) };
   d.meal = { kcalAvg:_vrAvg(kcal), days:kcal.length, list: kcalList,
     topFoods: Object.keys(foods).sort((a,b)=>foods[b]-foods[a]).slice(0,2) };
@@ -16785,6 +16871,8 @@ function buildVetReportText(d, inc, memo){
     else L.push('평균 '+_vrNum(d.urine.avg,1)+'회/일 ('+(_uTier==='partial'?d.homeDays+'일 중 ':'')+d.urine.days+'일 기록)');
     const abn = Object.keys(d.urine.abn).map(k=>k+' '+d.urine.abn[k]+'회').join(' · ');
     L.push('이상 기록: '+(abn||'없음'));
+    const _usgL = _vrUsgLine(d.urine.usg);
+    if(_usgL) L.push(_usgL);
   }
   if(inc.poop){
     L.push('');
@@ -16932,7 +17020,9 @@ function renderVetReportCanvas(d, inc, memo){
   }
   if(inc.urine){
     const _uT = _vrCovTier(d.urine.days, d.homeDays);
-    secs.push({t:'소변', lines:[_covLine(_uT, d.urine.days, '평균 '+_vrNum(d.urine.avg,1)+'회/일', d.urine.list, '회')+(Object.keys(d.urine.abn).length?' · 이상 '+Object.values(d.urine.abn).reduce((a,b)=>a+b,0)+'회':'')], warn:Object.keys(d.urine.abn).length>0});
+    const _uLines = [_covLine(_uT, d.urine.days, '평균 '+_vrNum(d.urine.avg,1)+'회/일', d.urine.list, '회')+(Object.keys(d.urine.abn).length?' · 이상 '+Object.values(d.urine.abn).reduce((a,b)=>a+b,0)+'회':'')];
+    const _usgL = _vrUsgLine(d.urine.usg); if(_usgL) _uLines.push(_usgL);
+    secs.push({t:'소변', lines:_uLines, warn:Object.keys(d.urine.abn).length>0});
   }
   if(inc.poop){
     const _pT = _vrCovTier(d.poop.days, d.homeDays);
@@ -17112,7 +17202,7 @@ function buildIntervalReport(cat, lastVisit, incBt){
         }
       }
     }
-    (rec.urine||[]).forEach(u=>{ if(u.amount&&['혈뇨','핍뇨','단백뇨','뇨당'].includes(u.amount)) abnorm.push({d:dy,t:u.time||'',txt:'소변 '+u.amount}); });
+    (rec.urine||[]).forEach(u=>{ const _ab=_urineTags(u).filter(tg=>['혈뇨','핍뇨','단백뇨','뇨당'].includes(tg)); if(_ab.length) abnorm.push({d:dy,t:u.time||'',txt:'소변 '+_ab.join(' · ')}); });
     (rec.poop||[]).forEach(p=>{ if(p.type&&['설사','혈변','무변','토끼똥/변비'].includes(p.type)) abnorm.push({d:dy,t:p.time||'',txt:'대변 '+p.type}); });
   });
   // 체중 비교 기준: 지난 진료일 이전 60일 내 마지막 기록 (절대값만 주면 수의사가 다시 계산해야 함)
@@ -20611,16 +20701,19 @@ function _dsExcretaBodyHtml() {
   var sClay  = sBase+'var(--cm-clay-edge);background:var(--cm-clay-tint);color:var(--cm-clay-ink)';
   var lbl = 'font-size:12.5px;font-weight:700;color:var(--cm-ink-soft);margin-bottom:8px';
   return _dsDateTimeRow('sheetExcretaDate','sheetExcretaTime') +
-    '<div style="'+lbl+'">소변</div>' +
-    '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">' +
-      '<button onclick="selectUrine(\'소량\')"  style="'+sAmber+'">소량</button>' +
-      '<button onclick="selectUrine(\'정상\')"  style="'+sTan+'">정상</button>' +
-      '<button onclick="selectUrine(\'다량\')"  style="'+sTan+'">다량</button>' +
-      '<button onclick="selectUrine(\'혈뇨\')"  style="'+sClay+'">혈뇨</button>' +
-      '<button onclick="selectUrine(\'핍뇨\')"  style="'+sClay+'">핍뇨</button>' +
-      '<button onclick="selectUrine(\'단백뇨\')" style="'+sAmber+'">단백뇨</button>' +
-      '<button onclick="selectUrine(\'뇨당\')"  style="'+sAmber+'">뇨당</button>' +
+    '<div style="'+lbl+'">소변 <span style="font-weight:500;color:var(--cm-faint);font-size:11px">한 번 본 소변 = 기록 1회</span></div>' +
+    '<div id="urineAmtGrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px">' +
+      URINE_AMOUNTS.map(function(a){ return '<button type="button" data-ua="'+a+'" onclick="urinePickAmount(\''+a+'\')" style="padding:10px 0;border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid var(--cm-line);background:var(--cm-surface);color:var(--cm-ink)">'+a+'</button>'; }).join('') +
     '</div>' +
+    '<div id="urineFlagRow" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:10px">' +
+      '<span style="font-size:12px;color:var(--cm-ink-soft);font-weight:600;margin-right:2px">함께 보인 것</span>' +
+      URINE_FLAGS.map(function(f){ return '<button type="button" data-uf="'+f+'" onclick="urineToggleFlag(\''+f+'\')" style="'+sBase+'var(--cm-line);background:var(--cm-surface);color:var(--cm-ink-soft)">'+f+'</button>'; }).join('') +
+    '</div>' +
+    '<div style="display:flex;gap:8px;align-items:center;margin-top:10px">' +
+      '<span style="font-size:12px;color:var(--cm-ink-soft);font-weight:600">뇨비중 <span style="font-weight:500;color:var(--cm-faint)">(선택 · 집에서 잰 값)</span></span>' +
+      '<input type="text" id="urineUsgInput" inputmode="decimal" placeholder="예: 1.035" maxlength="5" autocomplete="off" style="width:96px;padding:8px 10px;border:1px solid var(--cm-line);border-radius:10px;font-size:14px;font-family:inherit;background:var(--cm-surface);color:var(--cm-ink);text-align:center">' +
+    '</div>' +
+    '<button type="button" onclick="urineSaveSel()" style="width:100%;margin:12px 0 18px;padding:11px 0;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;border:none;background:var(--cm-green-700);color:#fff">소변 기록</button>' +
     '<div style="'+lbl+'">대변 상태 <span style="font-weight:500;color:var(--cm-faint);font-size:11px">동물병원에서 흔히 쓰는 1~7점 기준</span></div>' +
     '<div id="poopScoreGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:5px">' +
       [1,2,3,4,5,6,7].map(function(n){ return '<button type="button" data-ps="'+n+'" onclick="poopPickScore('+n+')" style="padding:10px 0;border-radius:11px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid var(--cm-line);background:var(--cm-surface);color:var(--cm-ink)">'+n+'</button>'; }).join('') +
@@ -20697,6 +20790,7 @@ window.openDailySheet = function(type) {
     setWaterSrc('nat');   // 시트 열 때마다 자발음수로 초기화 (잔상 방지)
   } else if(type === 'excreta') {
     _poopSel = {score:null, mucus:false, blood:false};
+    _urineSel = {amount:null, flags:[]};
     sheetBody.innerHTML = _dsExcretaBodyHtml();
     if(sheetFoot) sheetFoot.innerHTML = '';
     var ed = document.getElementById('sheetExcretaDate'); if(ed) ed.value = today();
